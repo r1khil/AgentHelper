@@ -706,9 +706,15 @@ footer {
   }
   .side-label,
   .side-note,
-  .profile,
-  .signout {
+  .profile {
     display: none;
+  }
+  .sidebar > form {
+    display: inline-block;
+  }
+  .signout {
+    padding: 8px 5px;
+    font-size: 12px;
   }
   .nav-link {
     display: inline-flex;
