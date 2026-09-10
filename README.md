@@ -20,6 +20,7 @@ The first release provides dedicated team workspaces, closing-movement investiga
 - [Proposed architecture and data contracts](docs/architecture.md)
 - [Implementation roadmap](docs/roadmap.md)
 - [Approved decisions and remaining choices](docs/decisions.md)
+- [Stack recommendation, cloud hosting costs, and credit considerations](docs/stack-and-hosting-research.md)
 - [Collaboration workflow](CONTRIBUTING.md)
 
 ## Phases
