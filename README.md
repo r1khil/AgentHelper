@@ -8,9 +8,9 @@ The project helps analysts gather information, investigate major movements, prep
 
 ## Project status
 
-Initial planning repository. No application, market-data integration, notification service, or deployed environment exists yet. Fund policies and the technology stack still need to be agreed upon.
+Initial planning repository. No application, market-data integration, notification service, or deployed environment exists yet. The product baseline, core Fund policies, and stack direction were approved on 2026-09-10; specific providers and operational configuration remain open.
 
-The first release pilots with **one sector team**: a holdings roster, a dependable movement trigger, a factual alert, a sourced evidence workspace, and analyst completion tracking.
+The first release provides dedicated team workspaces, closing-movement investigations, sourced evidence, analyst reasoning feedback, completion tracking, and meaningful daily briefings.
 
 ## Start here
 
@@ -19,14 +19,14 @@ The first release pilots with **one sector team**: a holdings roster, a dependab
 - [First-release specification](docs/mvp.md)
 - [Proposed architecture and data contracts](docs/architecture.md)
 - [Implementation roadmap](docs/roadmap.md)
-- [Decisions to resolve with the Fund](docs/decisions.md)
+- [Approved decisions and remaining choices](docs/decisions.md)
 - [Collaboration workflow](CONTRIBUTING.md)
 
 ## Phases
 
 | Phase | Outcome |
 | --- | --- |
-| 1: Movement pilot | One team can investigate a qualifying movement and record completion. |
+| 1: Movement pilot | Teams can investigate qualifying movements, record completion, and receive meaningful briefings. |
 | 2: Earnings | Reusable checklists, sourced results, refreshed charts, and preserved expectations. |
 | 3: Model historicals | Analyst-approved company mappings support sourced proposals and exception review. |
 | 4: Six teams | Shared collection and Fund policies, permission-aware research, and semester continuity. |

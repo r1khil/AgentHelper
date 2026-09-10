@@ -1,6 +1,6 @@
 # Proposed architecture
 
-This is a logical design, not a chosen implementation stack.
+Approved stack direction (2026-09-10): TypeScript and Next.js, PostgreSQL, managed authentication/storage, and a durable background-job service. Specific providers and hosting remain to be selected. Integrations must remain replaceable. The records below are a logical design to implement.
 
 ## Components
 

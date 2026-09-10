@@ -2,9 +2,9 @@
 
 ## Scope
 
-One team, a holdings roster, a reproducible trigger, a factual alert, a sourced evidence workspace, and analyst completion status. Earnings, historical model writes, and cross-team agent conversations are deferred.
+Dedicated team workspaces, holdings and owners, a reproducible closing trigger, factual email alerts, sourced evidence, analyst reasoning feedback, completion status, and meaningful daily briefings. Earnings, historical model writes, and cross-team agent conversations are deferred.
 
-## Trigger proposal — requires Fund approval
+## Approved closing-movement trigger
 
 Use the difference between the holding's daily return and SPX's daily return, measured in **percentage points**:
 
@@ -17,7 +17,7 @@ qualifies = abs(relative_move_pp) >= 4.0
 
 Prices must use aligned timestamps and trading sessions. Define provider, reference-close handling, corporate-action treatment, holidays, and timestamp tolerance before implementation. SPX is the requested benchmark; any proxy requires an explicit decision.
 
-| Holding return | SPX return | Relative move | Qualifies under proposal |
+| Holding return | SPX return | Relative move | Qualifies |
 | --- | --- | --- | --- |
 | +5.0% | +0.7% | +4.3 pp | Yes |
 | -3.5% | +0.8% | -4.3 pp | Yes |
@@ -25,7 +25,7 @@ Prices must use aligned timestamps and trading sessions. Define provider, refere
 | -4.0% | 0.0% | -4.0 pp | Yes |
 | +3.9% | 0.0% | +3.9 pp | No |
 
-Do not treat missing, stale, misaligned, or invalid inputs as a non-event. Record an explicit data-quality failure and expose it for resolution. The exact inclusive boundary above is a proposed decision.
+Do not treat missing, stale, misaligned, or invalid inputs as a non-event. Record an explicit data-quality failure and expose it for resolution. The inclusive boundary was approved on 2026-09-10. Apply the same rule to ETFs and investigate relevant constituents and sectors.
 
 ## Workflow
 
@@ -41,7 +41,7 @@ Suggested investigation states: `open`, `in_progress`, `completed`. Delivery sta
 
 ## Alert contents
 
-Ticker, holding return, SPX return, relative move in percentage points, observation timestamp/timezone, provisional or official status, and workspace link. Delivery channel and recipients are not yet selected. Automated messages must contain facts, not a generated investment conclusion.
+Ticker, holding return, SPX return, relative move in percentage points, observation timestamp/timezone, official closing status, and workspace link. Deliver by email to the relevant team; actual recipient configuration remains to be supplied. Automated messages must contain facts, not a generated investment conclusion.
 
 ## Evidence workspace
 
@@ -52,7 +52,7 @@ Show the observation and calculation inputs, policy version, owner, due time, st
 - Reproduce the examples and both threshold boundaries using synthetic fixtures.
 - Reject stale/missing/misaligned observations; handle sessions, holidays, and corporate-action cases under an agreed policy.
 - Reprocessing the same holding/session/event type does not duplicate workspaces or alerts.
-- Intraday and official closing events remain distinguishable if both are enabled.
+- Only official closing observations trigger this release.
 - Failed delivery is retried safely and remains visible; define provider idempotency/reconciliation to avoid duplicate sends after uncertain responses.
 - Each factual claim links to its source; absent evidence is explicit.
 - Every investigation has a responsible owner and a deadline or visible configuration error.
@@ -62,4 +62,12 @@ Show the observation and calculation inputs, policy version, owner, due time, st
 
 ## Pilot evaluation
 
-Replay one historical event with a team lead, label each step automate/assist/analyst-owned, and record correctness, duplicates, source quality, and time saved. Move to live use only after policy and delivery settings are resolved.
+Replay the THC and DRAM examples with Rikhil and Max, label each step automate/assist/analyst-owned, and record correctness, duplicates, source quality, and time saved. Treat example explanations as analyst claims to investigate. Record learning outcomes and follow-up feedback.
+
+## Approved workflow details
+
+Assign the holding owner, with team lead as fallback. Investigations are due at noon America/New_York on the next trading day; send one reminder before the deadline and one overdue notice to owner and lead. Configure the reminder offset and market calendar explicitly. Completion requires an analyst-authored update and supporting sources and records actor/time. Stop pending reminders when completed.
+
+The agent may explain concepts, offer sourced possible catalysts, and ask questions. After the analyst provides reasoning, flag unsupported claims, missing evidence, alternatives, and contradictions with approved theses; ask for revisions rather than write a replacement.
+
+Daily team briefings reuse the evidence infrastructure for material developments and upcoming catalysts. Suppress empty briefings, retain citations, and email workspace links. Send time and materiality criteria remain implementation choices.
