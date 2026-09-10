@@ -17,3 +17,9 @@ coverage/
 data/
 uploads/
 local/
+
+.next/
+*.tsbuildinfo
+.artifacts/
+playwright-report/
+test-results/

@@ -8,8 +8,9 @@ The project helps analysts gather information, investigate major movements, prep
 
 ## Project status
 
-Initial planning repository. No application, market-data integration, notification service, or deployed environment exists yet. The product baseline, core Fund policies, and stack direction were approved on 2026-09-10; specific providers and operational configuration remain open.
+The movement pilot is implemented on `codex/v1-pilot`: Next.js, PostgreSQL, invite-only Entra sign-in, durable jobs, sourced investigations, captured notifications, and fixture reasoning feedback. Azure deployment configuration targets a two-developer environment; all market/evidence inputs are synthetic. Live providers and Fund rollout are deferred.
 
+See [local setup and deployment](docs/deployment.md) and [implementation validation](docs/v1-validation.md).
 The first release provides dedicated team workspaces, closing-movement investigations, sourced evidence, analyst reasoning feedback, completion tracking, and meaningful daily briefings.
 
 ## Start here
@@ -25,12 +26,12 @@ The first release provides dedicated team workspaces, closing-movement investiga
 
 ## Phases
 
-| Phase | Outcome |
-| --- | --- |
-| 1: Movement pilot | Teams can investigate qualifying movements, record completion, and receive meaningful briefings. |
-| 2: Earnings | Reusable checklists, sourced results, refreshed charts, and preserved expectations. |
-| 3: Model historicals | Analyst-approved company mappings support sourced proposals and exception review. |
-| 4: Six teams | Shared collection and Fund policies, permission-aware research, and semester continuity. |
+| Phase                | Outcome                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| 1: Movement pilot    | Teams can investigate qualifying movements, record completion, and receive meaningful briefings. |
+| 2: Earnings          | Reusable checklists, sourced results, refreshed charts, and preserved expectations.              |
+| 3: Model historicals | Analyst-approved company mappings support sourced proposals and exception review.                |
+| 4: Six teams         | Shared collection and Fund policies, permission-aware research, and semester continuity.         |
 
 ## Relationship to Historicals Solver
 
