@@ -4,6 +4,10 @@
 
 Dedicated team workspaces, holdings and owners, a reproducible closing trigger, factual email alerts, sourced evidence, analyst reasoning feedback, completion status, and meaningful daily briefings. Earnings, historical model writes, and cross-team agent conversations are deferred.
 
+## Two-developer development delivery
+
+The approved development plan implements this workflow with synthetic closing observations and bounded source fixtures, captured messages instead of sent email, and explicitly labeled fixture reasoning feedback. Azure Container Apps hosts the web/worker, Neon Free stores PostgreSQL state, and Entra External ID provides real sign-in. Live data/model/email integrations and Fund rollout follow later. Operating defaults and deployment validation are recorded in [decisions.md](decisions.md) and [v1-validation.md](v1-validation.md).
+
 ## Approved closing-movement trigger
 
 Use the difference between the holding's daily return and SPX's daily return, measured in **percentage points**:
