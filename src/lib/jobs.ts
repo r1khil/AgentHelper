@@ -109,12 +109,12 @@ export async function makeBriefings(day: string) {
       const start = DateTime.fromISO(day, { zone: "America/New_York" }).set({
         hour: 8,
       });
-      const since = start.minus({ days: 1 }).toJSDate();
+      const since = start.minus({ days: 7 }).toJSDate();
       const until = start.toJSDate();
       const sources =
         await tx`select s.id from source s where s.team_id=${team.id} and ((s.category in ('announcement','filing','sector','constituent') and s.published_at>${since} and s.published_at<=${until}) or (s.category='catalyst' and s.catalyst_at>=${until} and s.catalyst_at<=${start.plus({ days: 7 }).toJSDate()} and s.published_at<=${until})) and not exists(select 1 from briefing_item bi where bi.item_key='source:'||s.id::text)`;
       const events =
-        await tx`select e.id from movement_event e where e.team_id=${team.id} and e.session<${day} and e.session>=${start.minus({ days: 4 }).toISODate()!} and not exists(select 1 from briefing_item bi where bi.item_key='event:'||e.id::text)`;
+        await tx`select e.id from movement_event e where e.team_id=${team.id} and e.session<${day} and e.session>=${start.minus({ days: 7 }).toISODate()!} and not exists(select 1 from briefing_item bi where bi.item_key='event:'||e.id::text)`;
       if (!sources.length && !events.length) return false;
       const [b] =
         await tx`insert into briefing(team_id,day,source_ids,event_ids) values(${team.id},${day},${tx.json(sources.map((s) => s.id))},${tx.json(events.map((e) => e.id))}) returning id`;

@@ -5,7 +5,7 @@ Implementation branch: `codex/v1-pilot`. Worktree: `../agenthelper-v1`.
 ## Completed checks
 
 - 22 deterministic tests: inclusive positive/negative four-point boundary, below threshold, missing/invalid/misaligned SPX and closes, corporate-action ambiguity, fixture holidays, early closes, DST deadlines, and structured fixture feedback.
-- 14 PostgreSQL integration tests: concurrent replay, event/outbox uniqueness, cross-team access and source isolation, quality failures, completion/source requirements, expired leases, stale worker tokens, reminder cancellation, bounded retries, thesis approval, single-use invitations, briefing suppression, and untrusted source instruction resistance.
+- 15 PostgreSQL integration tests: concurrent replay, event/outbox uniqueness, cross-team access and source isolation, quality failures, completion/source requirements, expired leases, stale worker tokens, reminder cancellation, bounded retries, thesis approval, single-use invitations, briefing suppression and weekend lookback, and untrusted source instruction resistance.
 - TypeScript, Next production build, worker bundle, and production dependency audit passed. Production audit reported zero vulnerabilities. The development toolchain still reports moderate transitive advisories under Drizzle Kit; no forced major upgrade was applied.
 - Linux/amd64 production container built and private GHCR visibility verified. The production worker connected to Neon successfully.
 - Reviewed migration applied to Neon. Synthetic THC and DRAM replays persisted investigations, evidence and captured deliveries in Neon.

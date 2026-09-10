@@ -215,6 +215,15 @@ describe.skipIf(!url)("PostgreSQL workflow and isolation", () => {
     expect(await makeBriefings("2026-09-11")).toBe(0);
     expect(await makeBriefings("2026-09-14")).toBe(0);
   });
+  it("includes unbriefed pre-weekend evidence in the seven-day window", async () => {
+    await replay(admin);
+    await drain();
+    expect(await makeBriefings("2026-09-14")).toBe(2);
+    const [briefing] =
+      await db()`select * from briefing where team_id=${IDS.health}`;
+    expect(briefing.source_ids.length).toBeGreaterThan(0);
+    expect(briefing.event_ids).toHaveLength(1);
+  });
   it("source instructions cannot alter feedback or completion", async () => {
     const id = await event();
     await drain();
