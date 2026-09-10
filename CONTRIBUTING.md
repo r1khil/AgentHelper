@@ -7,7 +7,7 @@
 5. Open a pull request, include validation evidence, and ask the other collaborator to review.
 6. Merge after review and update the roadmap/linked issue.
 
-This review process is a team convention; repository branch protection has not been configured. The approved stack direction is in docs/architecture.md; setup commands will be added with the application scaffold.
+This review process is a team convention; repository branch protection has not been configured. The approved stack direction is in docs/architecture.md; local setup, checks, and deployment commands are in [docs/deployment.md](docs/deployment.md).
 
 Use synthetic data for initial fixtures. Never commit credentials, private Fund documents, real portfolio exports, or restricted vendor content. Store runtime secrets outside git. Keep `.env.example` limited to names and nonsecret placeholders if one is introduced.
 

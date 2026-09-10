@@ -1,6 +1,6 @@
-# Proposed architecture
+# Development architecture
 
-Approved stack direction (2026-09-10): TypeScript and Next.js, PostgreSQL, managed authentication/storage, and a durable background-job service. Specific providers and hosting remain to be selected. Integrations must remain replaceable. The records below are a logical design to implement.
+Approved stack direction (2026-09-10): TypeScript and Next.js, PostgreSQL, managed authentication/storage, and a durable background-job service. The v1 development deployment uses Azure Container Apps Consumption, Neon Free PostgreSQL, Entra External ID, and private GHCR images. Integrations remain replaceable. PostgreSQL owns all durable state; web replicas are disposable.
 
 ## Components
 
@@ -15,19 +15,19 @@ Start with one deployable application and a background worker if the selected st
 
 ## Proposed records
 
-| Record | Essential fields |
-| --- | --- |
-| Team / Membership | Team ID, user ID, role, access scope |
-| Holding | Stable security ID, ticker, exchange, team, owner, effective dates |
-| FundPolicy | Version, benchmark, threshold, observation mode, session rules, deadline/reminder rules |
-| MarketObservation | Security ID, value, previous close, currency, session, timestamp, provider, quality status |
-| MovementEvent | Holding, session, event type, observation IDs, returns, relative move, policy version |
-| Investigation | Event, team, owner, due time, status, completion actor/time, update reference |
-| Source | URL/document ID, title, publisher, publication/retrieval times, location, permission scope |
-| EvidenceFact | Source ID/location, reported content or value, period/units/currency where applicable, derivation |
-| AnalystNote | Author, team, access scope, content, working/approved status, timestamps |
-| DeliveryAttempt | Event/reminder ID, channel, recipient reference, idempotency key, attempt, outcome |
-| AuditEvent | Actor, action, target, timestamp, previous/new values where appropriate |
+| Record            | Essential fields                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------- |
+| Team / Membership | Team ID, user ID, role, access scope                                                              |
+| Holding           | Stable security ID, ticker, exchange, team, owner, effective dates                                |
+| FundPolicy        | Version, benchmark, threshold, observation mode, session rules, deadline/reminder rules           |
+| MarketObservation | Security ID, value, previous close, currency, session, timestamp, provider, quality status        |
+| MovementEvent     | Holding, session, event type, observation IDs, returns, relative move, policy version             |
+| Investigation     | Event, team, owner, due time, status, completion actor/time, update reference                     |
+| Source            | URL/document ID, title, publisher, publication/retrieval times, location, permission scope        |
+| EvidenceFact      | Source ID/location, reported content or value, period/units/currency where applicable, derivation |
+| AnalystNote       | Author, team, access scope, content, working/approved status, timestamps                          |
+| DeliveryAttempt   | Event/reminder ID, channel, recipient reference, idempotency key, attempt, outcome                |
+| AuditEvent        | Actor, action, target, timestamp, previous/new values where appropriate                           |
 
 Keep source assertions, system calculations, and analyst opinions distinct. Retain source references and allowed excerpts; source storage depends on provider licensing and Fund policy.
 
