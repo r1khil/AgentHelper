@@ -1,0 +1,75 @@
+I would build this around one principle: the agent prepares the evidence; the analyst owns the interpretation. Success means analysts spend less time chasing information and more time understanding companies—and can still explain every number and conclusion they submit.
+Treat the following as a proposed product blueprint, with the Fund setting the final rules.
+1. Define the boundary around learning
+“Research” needs a clearer boundary than “writing,” because an agent could effectively do the assignment through a detailed research summary even if the analyst types the final email.
+Give analysts an evidence workspace, rather than a draft-update button. Organize it around source documents, extracted facts, charts, unresolved questions, and analyst notes.
+2. Major movements: detect → notify → investigate
+This is the best first feature because the trigger is measurable and the analyst’s responsibility remains clear.
+First, define “±4% compared to SPX.” My suggested interpretation is a difference of four percentage points between the holding’s daily return and SPX’s daily return:
+- Holding +5.0%; SPX +0.7% → relative move +4.3 points → trigger.
+- Holding −3.5%; SPX +0.8% → relative move −4.3 points → trigger.
+The Fund should also decide whether an intraday breach counts or only the closing return. A useful design is intraday heads-ups with the official requirement determined at the close, if that matches Fund policy.
+The agent would:
+1. Monitor holdings against SPX using aligned timestamps and trading sessions.
+2. Notify the responsible team when the rule is met.
+3. Open a research workspace containing the price move, company announcements, relevant news, peer movements, and source timestamps.
+4. Assign an owner and track the update deadline.
+5. Remind the team if the update is outstanding.
+The notification can be a fixed factual template: ticker, stock return, benchmark return, relative move, timestamp, and workspace link. It is separate from the analyst-written major movement email to the Fund.
+For initial research, distinguish “potentially relevant developments” from a verified explanation. The agent should be comfortable reporting that it found no clear catalyst.
+3. Earnings: automate preparation around the analyst’s process
+Each company gets a reusable earnings checklist and chart package, initially approved by its team.
+Before earnings, the agent can:
+- Track the date and whether it is company-confirmed or estimated.
+- Remind the team according to Fund deadlines.
+- Gather the prior release, guidance, presentation, and the team’s previous update.
+- Refresh approved charts using available historical data.
+- Bring forward questions analysts recorded last quarter.
+The analyst supplies the expectations, key questions, and assessment of what would change the thesis.
+After earnings, the agent can:
+- Retrieve the release, presentation, filing, and transcript as each becomes available.
+- Populate a sourced table of actual results, prior-year results, prior guidance, and estimates where available.
+- Refresh the same charts.
+- Flag changed metric definitions, missing disclosures, and inconsistent figures.
+- Link relevant management comments to questions the analyst entered before earnings.
+The analyst explains the results, updates assumptions, and writes the post-earnings update.
+A particularly useful learning feature: preserve the analyst’s pre-earnings expectations and ask them to revisit those expectations afterward. That makes the platform support reflection as well as efficiency.
+4. Model historicals: automate repeated extraction after analysts establish the mapping
+This needs the most care. Copying an established number repeatedly is tedious; deciding what a reported number means and where it belongs is part of learning accounting and modeling.
+I would use this workflow:
+1. Analyst establishes the first period. They locate the source figures and explain how company-reported lines map into the model.
+2. The agent proposes the remaining historicals. It uses the approved mapping and shows the source for every proposed input.
+3. The analyst reviews exceptions. Changed reporting, ambiguous mappings, restatements, and new segments require attention.
+4. Approved inputs enter the model. Preserve formulas and keep a record of changes.
+Every proposed number should carry its period, units, currency, reported label, source location, and any calculation used to derive it.
+Avoid forcing every company into one identical mapping. Maintain a company-specific mapping and flag when disclosures change. Particular review points include:
+- Quarterly versus year-to-date figures.
+- Fiscal versus calendar periods.
+- GAAP versus adjusted measures.
+- Segment changes and restated comparatives.
+- Sign conventions and units.
+For learning, use demonstrated proficiency to unlock more automation. New analysts complete a small historical section manually and explain it; experienced analysts can approve larger batches. Sampling a few inputs back to their filings keeps source familiarity without recreating all the busywork.
+5. Six team agents, with shared Fund infrastructure
+Give each team its own agent experience and research context, backed by common tools and Fund policies.
+This avoids six agents independently collecting the same information or applying different definitions of a major movement.
+For cross-team questions, a person could ask another team’s agent: “What has your team documented about freight costs?”
+The answer should identify:
+- What comes from public sources.
+- What comes from that team’s approved research.
+- When the material was last updated.
+- Whether it is a working view or an approved team position.
+An agent should not invent the other team’s opinion or present its own inference as that team’s conclusion. Unanswered questions can be routed to a person. Access should follow shared-folder permissions; talking to another agent should not unlock private notes.
+A useful additional benefit is continuity between semesters: incoming analysts inherit sourced research history, model mappings, and unresolved questions, while still developing their own thesis.
+6. Build in stages
+Pilot with one team first. For historicals, test on the same company across several periods before expanding to other reporting structures.
+Keep the first release narrow: a holdings roster, a dependable movement trigger, an alert, a sourced evidence page, and an analyst completion status.
+7. Measure both efficiency and learning
+Track time spent gathering data, missed deadlines, false or duplicate alerts, source accuracy, and corrections to historical inputs.
+Alongside those, have team leads periodically check whether analysts can:
+- Trace a figure to its filing.
+- Explain a model mapping.
+- Defend their explanation of an event.
+- Describe how evidence changed—or did not change—the thesis.
+Less manual work is only a win if understanding holds up.
+The most useful next planning exercise is to walk through one past major movement, one earnings cycle, and one historical model section. Label each step automate, assist, or analyst-owned. Those real examples will give you a much stronger first specification than starting with a broad agent chat interface.
+
