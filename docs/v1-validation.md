@@ -21,3 +21,11 @@ Implementation branch: `codex/v1-pilot`. Worktree: `../agenthelper-v1`.
 - Second developer sign-in: deliberately deferred by the user.
 
 These are implementation checks, not evidence of real market-data accuracy or analyst learning outcomes. Licensed actual SPX coverage, model selection, real email, operating-default approval, retention policy, and Fund rollout remain future work.
+
+## Azure status at 2026-09-10 16:35 UTC
+
+Neon Free and the External ID tenant/application/user flow are configured. Azure reports the Consumption environment as `Succeeded`, but the web app and scheduled worker remain `InProgress`; the `main` deployment is still `Running`. Public DNS returns NXDOMAIN for the assigned application hostname, and no ready web revision exists yet. An attempt to apply the final image returned `ContainerAppOperationInProgress` (operation `04a4c38e-32e2-4232-8a73-929b55cfa5c7`). No paid add-ons or ingestion resources were created.
+
+The private final image is `ghcr.io/r1khil/agenthelper@sha256:26e8831b4a85cee6c361a79b6090104c07533f54ed0d2c67a1e900af29d33d40`. It is pinned in the private deployment configuration, ready to apply after the initial operation completes. The initial deployment uses the earlier validated image; apply the final digest before declaring acceptance.
+
+Next: inspect `az deployment group show -g agenthelper-dev -n main`, apply `npm run deploy` after the active operation finishes, run the worker/replay, verify Entra sign-in and the intended administrator, then check persistence across a revision replacement and scale-to-zero. Do not describe the application as live until its health and authentication checks pass. GitHub branch publication and hosted CI are awaiting explicit user approval after automatic approval review rejected the initial push.
