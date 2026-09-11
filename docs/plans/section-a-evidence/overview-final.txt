@@ -1,0 +1,171 @@
+2026-09-11T17:14:45.732Z
+[p1 "AgentHelper · Evidence workspace" | space "AgentHelper Dev"(0): 1 managed, 2 untracked — p1* "AgentHelper · Evidence workspace"]
+root
+  container
+    container
+      anchor [ref=1, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/]
+        container
+          text "a"
+          text "h"
+        container
+          text "AgentHelper"
+          text "OWLFUND RESEARCH"
+      text "WORKSPACE"
+      anchor [ref=2, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/]
+        text "◈"
+        text "Overview"
+      anchor [ref=3, loc=href:/join, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/join]
+        text "⊕"
+        text "Join a team"
+      anchor [ref=4, loc=href:/admin, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/admin]
+        text "⚙"
+        text "Administration"
+      container
+        text "DEVELOPMENT"
+        paragraph
+          text "Synthetic evidence."
+          text "Real analytical practice."
+      container
+        text "R"
+        container
+          text "Rikhil Sharma"
+          text "Fund administrator"
+      form
+        button [ref=5]
+          text "Sign out ↗"
+    container
+      container
+        text "RESEARCH / EVIDENCE WORKSPACE"
+        text "●   Synthetic pilot"
+      container
+        container
+          text "THE RESEARCH DESK"
+          heading
+            text "A clearer starting point."
+          paragraph
+            text "Follow the evidence. Investigate the move. Build your own view."
+        container
+          container
+            text "TEAM WORKSPACES"
+            text "02"
+            text "Your research communities"
+          container
+            text "OPEN INVESTIGATIONS"
+            text "01"
+            text "Waiting for analyst judgment"
+          container
+            text "MOVEMENT THRESHOLD"
+            container
+              text "±4.0"
+              text "pp"
+            text "Closing return relative to SPX"
+        container
+          heading
+            text "Your teams"
+          text "Shared context. Distinct perspectives."
+        container
+          anchor [ref=6, loc=href:/teams/10000000-0000-4000-8000-000000000001, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/teams/10000000-0000-4000-8000-000000000001]
+            container
+              text "0"
+              text "1"
+              text "/ SECTOR"
+            heading
+              text "Healthcare"
+              text "↗"
+            paragraph
+              text "1"
+              text "holdings"
+              text "·"
+              text "0"
+              text "open investigations"
+          anchor [ref=7, loc=href:/teams/10000000-0000-4000-8000-000000000002, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/teams/10000000-0000-4000-8000-000000000002]
+            container
+              text "0"
+              text "2"
+              text "/ SECTOR"
+            heading
+              text "Technology"
+              text "↗"
+            paragraph
+              text "1"
+              text "holdings"
+              text "·"
+              text "1"
+              text "open investigations"
+        container
+          heading
+            text "Movement investigations"
+          text "OFFICIAL CLOSE · SYNTHETIC DATA"
+        table
+          table_row
+            table_cell
+              text "Holding / team"
+            table_cell
+              text "Relative move"
+            table_cell
+              text "Owner"
+            table_cell
+              text "Due · Eastern"
+            table_cell
+              text "Status"
+            table_cell
+          table_row
+            table_cell
+              text "DRAM"
+              text "Technology"
+            table_cell
+              text "-4.30"
+              text "pp vs SPX"
+            table_cell
+              text "Technology analyst"
+            table_cell
+              text "Sep 11, 12:00 PM EDT"
+            table_cell
+              text "open"
+            table_cell
+              anchor [ref=8, loc=href:/investigations/f92f9d4c-10ee-468f-b23b-f93c6a9d7c8a, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/investigations/f92f9d4c-10ee-468f-b23b-f93c6a9d7c8a]
+                text "Investigate ↗"
+          table_row
+            table_cell
+              text "THC"
+              text "Healthcare"
+            table_cell
+              text "+"
+              text "4.30"
+              text "pp vs SPX"
+            table_cell
+              text "Healthcare analyst"
+            table_cell
+              text "Sep 11, 12:00 PM EDT"
+            table_cell
+              text "completed"
+            table_cell
+              anchor [ref=9, loc=href:/investigations/1aa462cc-819c-4fe0-b988-ea6c398fba11, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/investigations/1aa462cc-819c-4fe0-b988-ea6c398fba11]
+                text "Investigate ↗"
+        heading
+          text "Daily briefings"
+        text "Only when there is something to review"
+        anchor [ref=10, loc=href:/briefings/3c312e3f-9d7f-47c2-9b56-202e73b5e7f4, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/briefings/3c312e3f-9d7f-47c2-9b56-202e73b5e7f4]
+          text "Healthcare"
+          text "/"
+          text "2026-09-11"
+          heading
+            text "The evidence briefing ↗"
+          paragraph
+            text "1"
+            text "sources ·"
+            text "1"
+            text "movements"
+        anchor [ref=11, loc=href:/briefings/30340f1d-8d8e-4f06-85fd-0b788fe22e21, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/briefings/30340f1d-8d8e-4f06-85fd-0b788fe22e21]
+          text "Technology"
+          text "/"
+          text "2026-09-11"
+          heading
+            text "The evidence briefing ↗"
+          paragraph
+            text "2"
+            text "sources ·"
+            text "1"
+            text "movements"
+      text "The agent prepares the evidence. The analyst owns the interpretation."
+  alert

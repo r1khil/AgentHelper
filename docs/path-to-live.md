@@ -4,9 +4,11 @@ What's left between the current synthetic pilot and a genuinely live application
 
 ## A. Close out deployment acceptance (synthetic pilot, on Azure)
 
-- [ ] Run deployed browser replays — THC and DRAM end to end in a browser against the deployed origin, signed in via Entra. Confirm no duplicate investigations on re-run and all deliveries captured.
+- [x] Run deployed browser replays — THC and DRAM verified 2026-09-11 against the deployed origin as the Entra-authenticated administrator. Two combined replays preserved scoped IDs/counts; all eight deliveries were captured. THC test completion persisted; DRAM remains open. See [acceptance evidence](plans/section-a-evidence/README.md).
 - [ ] Second developer sign-in (deliberately deferred by the user).
-- [ ] Optional cleanup: delete the kept failed Azure resources (`agenthelper-dev-env`, `agenthelper-dev`, `agenthelper-dev-worker`) or raise them with Azure support.
+- Failed-resource disposition: **retained; optional cleanup not selected** for `agenthelper-dev-env`, `agenthelper-dev`, and `agenthelper-dev-worker`. No deletion or support case. See [KEEP record](plans/section-a-keep-record.md).
+
+Required synthetic deployment acceptance is complete, with the second-developer exception above. This does not close the real-data, policy, or rollout work below.
 
 ## B. Evaluate the pilot with real analysts
 

@@ -1,0 +1,64 @@
+[p1 "AgentHelper · Evidence workspace" | space "AgentHelper Dev"(0): 1 managed, 2 untracked — p1* "AgentHelper · Evidence workspace"]
+root
+  container
+    container
+      anchor [ref=1, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/]
+        container
+          text "a"
+          text "h"
+        container
+          text "AgentHelper"
+          text "OWLFUND RESEARCH"
+      text "WORKSPACE"
+      anchor [ref=2, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/]
+        text "◈"
+        text "Overview"
+      anchor [ref=3, loc=href:/join, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/join]
+        text "⊕"
+        text "Join a team"
+      anchor [ref=4, loc=href:/admin, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/admin]
+        text "⚙"
+        text "Administration"
+      container
+        text "DEVELOPMENT"
+        paragraph
+          text "Synthetic evidence."
+          text "Real analytical practice."
+      container
+        text "R"
+        container
+          text "Rikhil Sharma"
+          text "Fund administrator"
+      form
+        button [ref=5]
+          text "Sign out ↗"
+    container
+      container
+        text "RESEARCH / EVIDENCE WORKSPACE"
+        text "●   Synthetic pilot"
+      container
+        container
+          text "SOURCE DOCUMENT"
+          heading
+            text "DRAM · synthetic constituent context"
+          paragraph
+            text "Development fixture"
+        text "Synthetic fixture. This is not a real disclosure or independently verified market evidence."
+        container
+          unordered_list
+            list_item
+              text "Published"
+            list_item
+              text "Sep 10, 4:00 PM EDT"
+            list_item
+              text "Retrieved"
+            list_item
+              text "Sep 10, 11:50 AM EDT"
+            list_item
+              text "Source location"
+            list_item
+              text "Fixture table rows 1–2"
+          paragraph
+            text "Synthetic constituents A and B return -4.8% and -2.1%. Holdings and returns are invented for testing."
+      text "The agent prepares the evidence. The analyst owns the interpretation."
+  alert

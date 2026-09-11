@@ -1,0 +1,233 @@
+2026-09-11T17:12:55.584Z
+[p1 "AgentHelper · Evidence workspace" | space "AgentHelper Dev"(0): 1 managed, 2 untracked — p1* "AgentHelper · Evidence workspace"]
+root
+  container
+    container
+      anchor [ref=1, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/]
+        container
+          text "a"
+          text "h"
+        container
+          text "AgentHelper"
+          text "OWLFUND RESEARCH"
+      text "WORKSPACE"
+      anchor [ref=2, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/]
+        text "◈"
+        text "Overview"
+      anchor [ref=3, loc=href:/join, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/join]
+        text "⊕"
+        text "Join a team"
+      anchor [ref=4, loc=href:/admin, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/admin]
+        text "⚙"
+        text "Administration"
+      container
+        text "DEVELOPMENT"
+        paragraph
+          text "Synthetic evidence."
+          text "Real analytical practice."
+      container
+        text "R"
+        container
+          text "Rikhil Sharma"
+          text "Fund administrator"
+      form
+        button [ref=5]
+          text "Sign out ↗"
+    container
+      container
+        text "RESEARCH / EVIDENCE WORKSPACE"
+        text "●   Synthetic pilot"
+      container
+        container
+          container
+            text "CLOSING MOVEMENT / 2026-09-10"
+            heading
+              text "DRAM: investigate the move."
+            paragraph
+              text "Start with what is known. Keep possible explanations open."
+          text "open"
+        container
+          container
+            text "HOLDING RETURN"
+            container
+              text "-3.50"
+              text "%"
+          container
+            text "SPX RETURN"
+            container
+              container
+                text "+"
+                text "0.80"
+              text "%"
+          container
+            text "RELATIVE MOVE"
+            container
+              text "-4.30"
+              text "pp"
+        container
+          container
+            container
+              container
+                heading
+                  text "The evidence"
+                text "SOURCED / SYNTHETIC"
+              container
+                text "FACT"
+                paragraph
+                  text "The synthetic sector report discusses softer pricing."
+                anchor [ref=6, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/sources/72a6b75a-df3f-4a96-b9a1-8892ecbaeef7]
+                  text "DRAM · synthetic sector context"
+                  text "↗"
+                container
+                  text "Fixture paragraph 1"
+                  text "· Published"
+                  text "Sep 10, 10:00 AM EDT"
+                  text "Retrieved"
+                  text "Sep 10, 11:50 AM EDT"
+              container
+                text "FACT"
+                paragraph
+                  text "Both synthetic constituents declined; their weights are unavailable."
+                anchor [ref=7, loc=href:/sources/9d9f547e-340f-418d-9c1b-8be698868b3a, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/sources/9d9f547e-340f-418d-9c1b-8be698868b3a]
+                  text "DRAM · synthetic constituent context"
+                  text "↗"
+                container
+                  text "Fixture table rows 1–2"
+                  text "· Published"
+                  text "Sep 10, 4:00 PM EDT"
+                  text "Retrieved"
+                  text "Sep 10, 11:50 AM EDT"
+              heading
+                text "Possible explanations"
+              container
+                text "HYPOTHESIS · NOT ESTABLISHED CAUSATION"
+                paragraph
+                  text "Could sector pricing expectations be relevant? Establish exposure and timing before drawing a conclusion."
+                anchor [ref=8, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/sources/72a6b75a-df3f-4a96-b9a1-8892ecbaeef7]
+                  text "Related source ↗"
+              paragraph
+                text "Evidence near a price move does not establish its cause. Missing transcripts, estimates, and constituent weights remain unavailable."
+            container
+              heading
+                text "Your reasoning"
+              paragraph
+                text "Explain the evidence, consider alternatives, and connect it to your thesis."
+              form
+                textbox "Analyst reasoning" [ref=9, loc=css:textarea[name="reasoning"]]
+                  text "What do you think happened, and what supports that view?"
+                container
+                  checkbox [ref=10, loc=css:input[name="noCatalyst"]]
+                  text "No clear catalyst found"
+                button [ref=11]
+                  text "Save reasoning"
+              form
+                button [ref=12]
+                  text "Get learning prompts"
+              paragraph
+                text "Scripted fixture feedback. No live AI analysis or claim verification."
+            container
+              heading
+                text "Research notes"
+              form
+                container
+                  text "Team note"
+                  textbox [ref=13, loc=css:textarea[name="content"]]
+                button [ref=14]
+                  text "Add note"
+          container
+            container
+              text "RESPONSIBILITY"
+              heading
+                text "Technology analyst"
+              unordered_list
+                list_item
+                  text "Update due"
+                list_item
+                  text "Sep 11, 12:00 PM EDT"
+                list_item
+                  text "Policy"
+                list_item
+                  text "development-close-v1"
+                list_item
+                  text "Trigger"
+                list_item
+                  text "|Holding return − SPX return| ≥ 4 pp"
+              anchor [ref=15, loc=href:/teams/10000000-0000-4000-8000-000000000002, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/teams/10000000-0000-4000-8000-000000000002]
+                text "Open team context ↗"
+            container
+              heading
+                text "Complete investigation"
+              form
+                paragraph
+                  text "Save your own update and select its supporting sources."
+                container
+                  checkbox [ref=16]
+                  text "DRAM · synthetic sector context"
+                container
+                  checkbox [ref=17]
+                  text "DRAM · synthetic constituent context"
+                button [ref=18]
+                  text "Mark completed"
+            container [ref=19]
+              text "Calculation inputs"
+            container
+              unordered_list
+                list_item
+                  text "SYNTH:DRAM"
+                list_item
+                  text "Close"
+                  text "96.5"
+                  text "/ previous"
+                  text "100"
+                list_item
+                  text "Sep 10, 4:00 PM EDT"
+                list_item
+                  text "synthetic-fixture"
+                  text "·"
+                  text "valid"
+                list_item
+                  text "split-adjusted-price"
+              unordered_list
+                list_item
+                  text "SPX"
+                list_item
+                  text "Close"
+                  text "100.8"
+                  text "/ previous"
+                  text "100"
+                list_item
+                  text "Sep 10, 4:00 PM EDT"
+                list_item
+                  text "synthetic-fixture"
+                  text "·"
+                  text "valid"
+                list_item
+                  text "split-adjusted-price"
+            container [ref=20]
+              text "Captured notifications ("
+              text "3"
+              text ")"
+            container
+              container
+                heading
+                  text "Closing movement · DRAM"
+                text "[recipient redacted]"
+                paragraph
+                  text "SYNTHETIC DEVELOPMENT — email captured, not sent. DRAM: -3.5% | SPX: 0.8% | Difference: -4.3 pp. Official closing observation: 2026-09-10T16:00:00.000-04:00 (America/New_York). Due: 2026-09-11T12:00..."
+                text "captured"
+              container
+                heading
+                  text "Update reminder · DRAM"
+                text "[recipient redacted]"
+                paragraph
+                  text "SYNTHETIC DEVELOPMENT — email captured, not sent. DRAM: -3.5% | SPX: 0.8% | Difference: -4.3 pp. Official closing observation: 2026-09-10T16:00:00.000-04:00 (America/New_York). Due: 2026-09-11T12:00..."
+                text "captured"
+              container
+                heading
+                  text "Overdue update · DRAM"
+                text "[recipient redacted]"
+                paragraph
+                  text "SYNTHETIC DEVELOPMENT — email captured, not sent. DRAM: -3.5% | SPX: 0.8% | Difference: -4.3 pp. Official closing observation: 2026-09-10T16:00:00.000-04:00 (America/New_York). Due: 2026-09-11T12:00..."
+                text "captured"
+      text "The agent prepares the evidence. The analyst owns the interpretation."
+  alert

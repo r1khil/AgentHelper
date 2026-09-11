@@ -1,0 +1,14 @@
+{
+  "utc": "2026-09-11T17:12:25.759Z",
+  "snapshots": [
+    "2026-09-11T17:09:47.956518+00:00",
+    "2026-09-11T17:10:45.95542+00:00",
+    "2026-09-11T17:12:25.740359+00:00"
+  ],
+  "allFieldsExceptTimestampIdentical": true,
+  "jobs": 10,
+  "deliveryJobs": 8,
+  "capturedDeliveries": 8,
+  "uniqueDeliveryKeys": 8,
+  "passed": true
+}
