@@ -1,7 +1,10 @@
 targetScope = 'resourceGroup'
+param location string = 'eastus'
+param appName string = 'agenthelper-dev'
+param environmentName string = '${appName}-env'
 resource environment 'Microsoft.App/managedEnvironments@2025-01-01' = {
-  name: 'agenthelper-dev-env'
-  location: 'eastus'
+  name: environmentName
+  location: location
   tags: { project: 'agenthelper', environment: 'development' }
   properties: {
     workloadProfiles: [{ name: 'Consumption', workloadProfileType: 'Consumption' }]
@@ -9,4 +12,4 @@ resource environment 'Microsoft.App/managedEnvironments@2025-01-01' = {
     zoneRedundant: false
   }
 }
-output appUrl string = 'https://agenthelper-dev.${environment.properties.defaultDomain}'
+output appUrl string = 'https://${appName}.${environment.properties.defaultDomain}'

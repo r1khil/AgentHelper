@@ -1,6 +1,7 @@
 targetScope = 'resourceGroup'
 param location string = 'eastus'
 param appName string = 'agenthelper-dev'
+param environmentName string = '${appName}-env'
 param image string
 param registryUser string
 @secure()
@@ -16,15 +17,9 @@ param entraClientId string
 param entraClientSecret string
 param workerEnabled bool = true
 var tags = { project: 'agenthelper', environment: 'development' }
-resource environment 'Microsoft.App/managedEnvironments@2025-01-01' = {
-  name: '${appName}-env'
-  location: location
-  tags: tags
-  properties: {
-    workloadProfiles: [{ name: 'Consumption', workloadProfileType: 'Consumption' }]
-    appLogsConfiguration: {}
-    zoneRedundant: false
-  }
+// Provision and validate the environment separately before deploying workloads.
+resource environment 'Microsoft.App/managedEnvironments@2025-01-01' existing = {
+  name: environmentName
 }
 var origin = 'https://${appName}.${environment.properties.defaultDomain}'
 var secrets = [
