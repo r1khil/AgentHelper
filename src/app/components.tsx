@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { DateTime } from "luxon";
-import { signOut, mutate } from "./actions";
+import { signOut } from "./actions";
 import type { Actor } from "@/lib/access";
 export function Shell({
   actor,
@@ -110,29 +110,13 @@ export function ErrorNotice({ message }: { message?: string }) {
     </div>
   ) : null;
 }
-export function Action({
-  op,
-  id,
-  returnTo,
-  label,
-  children,
-}: {
-  op: string;
-  id?: string;
-  returnTo: string;
-  label: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <form action={mutate}>
-      <input type="hidden" name="op" value={op} />
-      <input type="hidden" name="id" value={id ?? ""} />
-      <input type="hidden" name="returnTo" value={returnTo} />
-      {children}
-      <button>{label}</button>
-    </form>
-  );
-}
+/**
+ * Barrel re-export. The implementation moved to src/components/app so pages
+ * can migrate one at a time without touching their imports. This file is
+ * deleted once every page imports from @/components/app directly.
+ */
+export { ActionForm as Action } from "@/components/app/action-form";
+
 export function Empty({ children }: { children: React.ReactNode }) {
   return <div className="empty">{children}</div>;
 }
