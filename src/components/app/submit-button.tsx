@@ -14,15 +14,16 @@ import { cn } from "@/components/utils";
  *  - Never give this button a `name`/`value`. A disabled button contributes
  *    nothing to FormData, so a submitter-carried field would vanish exactly
  *    when the form is submitted.
- *  - The label keeps its width while pending, so nothing reflows.
+ *  - While pending, the real label stays in the layout but invisible and the
+ *    pending label is overlaid, so the button never changes size.
  *  - `pending` tracks the action promise only. `mutate` ends in redirect(),
  *    and the navigation that follows is a separate phase -- expect a short
- *    gap after pending clears. Loading boundaries cover that half.
+ *    gap after pending clears.
  */
 export function SubmitButton({
   children,
   className,
-  pendingLabel,
+  pendingLabel = "Working…",
   ...props
 }: React.ComponentProps<"button"> & { pendingLabel?: string }) {
   const { pending } = useFormStatus();
@@ -33,26 +34,22 @@ export function SubmitButton({
       disabled={pending}
       aria-disabled={pending}
       data-pending={pending ? "" : undefined}
-      className={cn(
-        "disabled:cursor-wait disabled:opacity-60",
-        className,
-      )}
+      className={cn("relative disabled:cursor-wait", className)}
       {...props}
     >
-      <span className="grid [grid-template-areas:'label']">
-        <span
-          aria-hidden={pending}
-          className="col-start-1 row-start-1 [grid-area:label]"
-          style={pending ? { visibility: "hidden" } : undefined}
-        >
-          {children}
-        </span>
-        {pending && (
-          <span className="col-start-1 row-start-1 [grid-area:label]">
-            {pendingLabel ?? "Working…"}
-          </span>
+      <span
+        className={cn(
+          "inline-flex items-center gap-2",
+          pending && "invisible",
         )}
+      >
+        {children}
       </span>
+      {pending && (
+        <span className="absolute inset-0 grid place-items-center opacity-70">
+          {pendingLabel}
+        </span>
+      )}
     </button>
   );
 }
