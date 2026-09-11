@@ -21,11 +21,11 @@ Implementation branch: `codex/v1-pilot`. Worktree: `../agenthelper-v1`.
 - Persistence verified after both revision replacement and scale-to-zero; table counts unchanged.
 - Scale to zero and wake verified: cold request `200` in 36.8 s, warm request in 0.05 s.
 - Entra callback URI registered and accepted; the authorize redirect carries the new origin and the branded sign-in page renders with no redirect-URI mismatch.
+- First real-user sign-in succeeded against the deployment, and that user was granted administrator through `scripts/bootstrap.ts`, recording an `admin.bootstrap` audit event. Exactly one non-fixture user exists; the seeded `dev:` fixtures remain rejected in deployment.
 
 ## Deployment checks still to record
 
-- First real-user sign-in and administrator bootstrap. Completing sign-in requires a person to enter credentials, so this automation stopped at the rendered sign-in page.
-- Deployed browser replays, which depend on that sign-in.
+- Deployed browser replays.
 - Second developer sign-in: deliberately deferred by the user.
 
 These are implementation checks, not evidence of real market-data accuracy or analyst learning outcomes. Licensed actual SPX coverage, model selection, real email, operating-default approval, retention policy, and Fund rollout remain future work.
@@ -50,4 +50,4 @@ The application now runs as `agenthelper` with worker `agenthelper-worker` in th
 
 The new callback URI was added to the Entra registration and the original was preserved. Both temporary diagnostic probes were removed. The original failed resources were kept deliberately, so the evidence survives if the broken environment is raised with Azure support; they hold no data and run no replicas. No paid add-ons or ingestion resources were created.
 
-Do not describe the application as live to end users until a real sign-in has been completed and the intended administrator verified.
+Sign-in and administrator bootstrap are now verified against the deployment. The sign-in method is email one-time passcode; the user flow has no password or Microsoft-account provider configured.

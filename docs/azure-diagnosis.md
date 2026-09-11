@@ -103,7 +103,8 @@ The private GHCR path is now positively confirmed rather than merely unfalsified
 
 ### Remaining limitations
 
-- Interactive Entra sign-in has not been completed. The redirect URI is registered and the authorize request is accepted, but completing sign-in requires a person to enter credentials, which this automation does not do. First-user administrator bootstrap and deployed browser replays therefore remain unverified.
+- Interactive Entra sign-in is verified. The first real user signed in through the `agenthelper_developers` user flow, which uses email one-time passcode as its only identity provider, and was then granted administrator through `scripts/bootstrap.ts`. The directory also holds an older federated Microsoft-account entry that this user flow cannot authenticate; it is unused and was left in place.
+- Deployed browser replays are still unverified.
 - The original failed resources (`agenthelper-dev-env`, `agenthelper-dev`, `agenthelper-dev-worker`) were deliberately kept. Recovery is proven, so they may now be deleted, but they were preserved so the evidence survives in case the broken environment is raised with Azure support. They hold no data, run no replicas, and a Consumption environment has no idle charge.
 - The 15 PostgreSQL integration tests remain skipped; no disposable test database is configured in this worktree, and they were not run against Neon.
 - The exact Azure-internal reason the original environment's components failed to initialize is not established and is not customer-visible.
