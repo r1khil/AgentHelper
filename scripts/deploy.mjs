@@ -28,9 +28,40 @@ const run = (args) => {
     throw Error(`Azure command failed: ${args.slice(0, 2).join(" ")}`);
 };
 const group = "agenthelper-dev";
+const appName = config.AZURE_APP_NAME || "agenthelper-dev";
+const environmentName = config.AZURE_ENVIRONMENT_NAME || `${appName}-env`;
+const location = config.AZURE_LOCATION || "eastus";
+// Do not turn a failed environment write into an apparent successful workload deployment.
+// Environment creation and its public-image acceptance probe are separate operations.
+const environment = spawnSync(
+  "az",
+  [
+    "containerapp",
+    "env",
+    "show",
+    "--resource-group",
+    group,
+    "--name",
+    environmentName,
+    "--subscription",
+    config.AZURE_SUBSCRIPTION_ID,
+    "--query",
+    "properties.provisioningState",
+    "--output",
+    "tsv",
+  ],
+  { encoding: "utf8" },
+);
+if (environment.status !== 0 || environment.stdout.trim() !== "Succeeded")
+  throw Error(
+    `Environment ${environmentName} must be provisioned and validated before deployment`,
+  );
 mkdirSync(".artifacts", { recursive: true });
 const path = ".artifacts/deployment.parameters.json";
 const values = {
+  appName,
+  environmentName,
+  location,
   image: config.CONTAINER_IMAGE,
   registryUser: config.GHCR_USER,
   registryPassword: config.GHCR_TOKEN,
@@ -58,7 +89,7 @@ try {
     "--name",
     group,
     "--location",
-    "eastus",
+    location,
     "--tags",
     "project=agenthelper",
     "environment=development",

@@ -44,7 +44,7 @@ Integration tests require a disposable PostgreSQL database whose name ends in `_
 
 ## Development infrastructure
 
-- Azure resource group `agenthelper-dev`, East US: Consumption environment, web app, and finite scheduled worker. Web: 0.25 vCPU / 0.5 GiB, zero to one replicas. Worker: same size, 60-second execution timeout, no platform retry, hourly 12–22 UTC weekdays.
+- Azure resource group `agenthelper-dev`, East US: Consumption environment, web app, and finite scheduled worker. The live deployment uses environment `agenthelper-recovery-env`, app `agenthelper`, and worker `agenthelper-worker`, set through `AZURE_APP_NAME` and `AZURE_ENVIRONMENT_NAME`; the original `agenthelper-dev*` resources are a failed environment retained for evidence, not the running deployment. See [Azure diagnosis](azure-diagnosis.md). Web: 0.25 vCPU / 0.5 GiB, zero to one replicas. Worker: same size, 60-second execution timeout, no platform retry, hourly 12–22 UTC weekdays.
 - Separate `agenthelper-identity-dev` resource group: Entra External ID tenant `agenthelperdev2026.onmicrosoft.com`, email one-time-passcode flow `agenthelper_developers` associated with the Web app registration.
 - Neon Free project `agenthelper-dev`: PostgreSQL 17, AWS US East 1, scale-to-zero. Its default branch is named `production` but contains only this development database.
 - Private image `ghcr.io/r1khil/agenthelper:v1-dev`. CI image publication is manual; the GitHub workflow uses the repository owner's GHCR namespace. Keep package visibility private and grant the deployer pull access.
@@ -58,10 +58,13 @@ The application registration is a confidential Web client using authorization co
 
 ```sh
 az login
+# First provision an environment; workload deployments only reference it.
+az deployment group create -g agenthelper-dev -n environment --template-file infra/environment.bicep
+# Verify environment health with a public-image probe before proceeding.
 npm run deploy -- --what-if
 ```
 
-Review the resource changes and shared subscription usage before applying. The deployment script temporarily writes a private parameter file and deletes it on exit. Migrations are additive standard PostgreSQL migrations; review generated SQL before applying it to Neon. Seed is idempotent and only adds labeled fixtures.
+Review the resource changes and shared subscription usage before applying. The deployment script refuses environments that have not reached `Succeeded`, references the environment without rewriting it, and temporarily writes a private parameter file that it deletes on exit. `Succeeded` alone is not a health test: validate a public-image revision and HTTP response before first workload deployment. Optional `AZURE_APP_NAME`, `AZURE_ENVIRONMENT_NAME`, and `AZURE_LOCATION` in `.env.azure` select a recovery target; defaults preserve the original names and East US. Pass matching `appName`, `environmentName`, and `location` parameters when provisioning with `infra/environment.bicep`. If the hostname changes, add its exact HTTPS callback URI to the existing Entra registration before first sign-in. Migrations are additive standard PostgreSQL migrations; review generated SQL before applying it to Neon. Seed is idempotent and only adds labeled fixtures.
 
 ```sh
 node --env-file=.env.azure --import tsx scripts/migrate.ts
@@ -94,10 +97,10 @@ There is no paid log ingestion. Scheduled jobs can wake Neon even when the web i
 Suspend web traffic and scheduled work (state remains in Neon):
 
 ```sh
-az containerapp revision list -g agenthelper-dev -n agenthelper-dev --query '[?properties.active].name' -o tsv
-az containerapp revision deactivate -g agenthelper-dev -n agenthelper-dev --revision REVISION_NAME
-az containerapp job stop -g agenthelper-dev -n agenthelper-dev-worker
-az containerapp job delete -g agenthelper-dev -n agenthelper-dev-worker --yes
+az containerapp revision list -g agenthelper-dev -n agenthelper --query '[?properties.active].name' -o tsv
+az containerapp revision deactivate -g agenthelper-dev -n agenthelper --revision REVISION_NAME
+az containerapp job stop -g agenthelper-dev -n agenthelper-worker
+az containerapp job delete -g agenthelper-dev -n agenthelper-worker --yes
 ```
 
 Redeploy Bicep to restore the scheduled job; reactivate the intended revision to resume the web. For complete Azure compute teardown:
