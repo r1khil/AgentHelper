@@ -268,6 +268,44 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════
+   BASE — the new foundation. Declared before the legacy layer, so while the
+   migration is in flight legacy rules still win (same layer, later in source
+   order) and nothing shifts. Once the legacy block is deleted, this takes
+   over. Nothing here may depend on a legacy class.
+   ════════════════════════════════════════════════════════════════════════ */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Deliberate, high-contrast focus ring carried over from the original
+     stylesheet. Preflight removes outlines; this puts one back. Do not
+     replace it with a subtler default -- it is an accessibility feature
+     and no test covers it. */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  summary:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 3px;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
    LEGACY — the original hand-written stylesheet, wrapped verbatim.
 
    The wrap is REQUIRED, not cosmetic. Tailwind v4 emits utilities inside
