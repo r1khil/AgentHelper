@@ -1,0 +1,210 @@
+2026-09-11T17:12:23.204Z
+[{"url":"https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/admin","duration":299.69999998807907,"responseStatus":200}]
+[p1 "AgentHelper · Evidence workspace" | space "AgentHelper Dev"(0): 1 managed, 2 untracked — p1* "AgentHelper · Evidence workspace"]
+root
+  alert
+  container
+    container
+      anchor [ref=1, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/]
+        container
+          text "a"
+          text "h"
+        container
+          text "AgentHelper"
+          text "OWLFUND RESEARCH"
+      text "WORKSPACE"
+      anchor [ref=2, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/]
+        text "◈"
+        text "Overview"
+      anchor [ref=3, loc=href:/join, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/join]
+        text "⊕"
+        text "Join a team"
+      anchor [ref=4, loc=href:/admin, url=https://agenthelper.redtree-e725cc47.eastus.azurecontainerapps.io/admin]
+        text "⚙"
+        text "Administration"
+      container
+        text "DEVELOPMENT"
+        paragraph
+          text "Synthetic evidence."
+          text "Real analytical practice."
+      container
+        text "R"
+        container
+          text "Rikhil Sharma"
+          text "Fund administrator"
+      form
+        button [ref=5]
+          text "Sign out ↗"
+    container
+      container
+        text "RESEARCH / EVIDENCE WORKSPACE"
+        text "●   Synthetic pilot"
+      container
+        container
+          text "OPERATIONS"
+          heading
+            text "Keep the workflow accountable."
+          paragraph
+            text "Inspect replay results, job failures, invitations, and the audit trail."
+        text "Development mode: synthetic observations, captured emails, and fixture feedback. No paid data or model integrations are enabled."
+        container
+          form
+            button [ref=6]
+              text "Replay THC + DRAM"
+          form
+            button [ref=7]
+              text "Process due jobs"
+        container
+          heading
+            text "Invite a developer"
+          form
+            container
+              container
+                text "Email"
+                textbox [ref=8, loc=css:input[name="email"]]
+              container
+                text "Team"
+                combobox [ref=9, loc=css:select[name="teamId"]]
+                  text "Healthcare"
+              container
+                text "Role"
+                combobox [ref=10, loc=css:select[name="role"]]
+                  text "Member"
+            button [ref=11]
+              text "Create one-time invitation"
+        heading
+          text "Data quality"
+        paragraph
+          text "No data-quality failures recorded."
+        heading
+          text "Durable jobs"
+        table
+          table_row
+            table_cell
+              text "Kind"
+            table_cell
+              text "Status"
+            table_cell
+              text "Attempts"
+            table_cell
+              text "Scheduled · Eastern"
+            table_cell
+              text "Error / action"
+          table_row
+            table_cell
+              text "briefing"
+            table_cell
+              text "done"
+            table_cell
+              text "1"
+            table_cell
+              text "Sep 10, 11:50 AM EDT"
+            table_cell
+          table_row
+            table_cell
+              text "briefing"
+            table_cell
+              text "done"
+            table_cell
+              text "1"
+            table_cell
+              text "Sep 10, 11:50 AM EDT"
+            table_cell
+          table_row
+            table_cell
+              text "evidence"
+            table_cell
+              text "done"
+            table_cell
+              text "1"
+            table_cell
+              text "Sep 10, 11:50 AM EDT"
+            table_cell
+          table_row
+            table_cell
+              text "overdue"
+            table_cell
+              text "done"
+            table_cell
+              text "1"
+            table_cell
+              text "Sep 11, 12:00 PM EDT"
+            table_cell
+          table_row
+            table_cell
+              text "alert"
+            table_cell
+              text "done"
+            table_cell
+              text "1"
+            table_cell
+              text "Sep 10, 11:50 AM EDT"
+            table_cell
+          table_row
+            table_cell
+              text "reminder"
+            table_cell
+              text "done"
+            table_cell
+              text "1"
+            table_cell
+              text "Sep 11, 10:00 AM EDT"
+            table_cell
+          table_row
+            table_cell
+              text "reminder"
+            table_cell
+              text "done"
+            table_cell
+              text "1"
+            table_cell
+              text "Sep 11, 10:00 AM EDT"
+            table_cell
+          table_row
+            table_cell
+              text "alert"
+            table_cell
+              text "done"
+            table_cell
+              text "1"
+            table_cell
+              text "Sep 10, 11:50 AM EDT"
+            table_cell
+          table_row
+            table_cell
+              text "overdue"
+            table_cell
+              text "done"
+            table_cell
+              text "1"
+            table_cell
+              text "Sep 11, 12:00 PM EDT"
+            table_cell
+          table_row
+            table_cell
+              text "evidence"
+            table_cell
+              text "done"
+            table_cell
+              text "1"
+            table_cell
+              text "Sep 10, 11:50 AM EDT"
+            table_cell
+        heading
+          text "Audit trail"
+        table
+          table_row
+            table_cell
+              text "Action"
+            table_cell
+              text "Actor"
+            table_cell
+              text "Time · Eastern"
+          table_row
+            table_cell
+              text "admin.bootstrap"
+            table_cell
+              text "344c5b86-02a0-44c5-b5e5-6a8b54afe339"
+            table_cell
+              text "Sep 11, 1:05 AM EDT"
+      text "The agent prepares the evidence. The analyst owns the interpretation."
