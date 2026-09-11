@@ -3,16 +3,24 @@ import { notFound } from "next/navigation";
 import { requireActor } from "@/lib/auth";
 import { getInvestigation } from "@/lib/access";
 import { db } from "@/db/client";
+import { AppShell } from "@/components/app/shell";
+import { PageHeader } from "@/components/app/page-header";
+import { ActionForm } from "@/components/app/action-form";
+import { StatusBadge, DeliveryBadge } from "@/components/app/status-badge";
+import { RelativeMove } from "@/components/app/relative-move";
+import { Timestamp } from "@/components/app/timestamp";
+import { EmptyState } from "@/components/app/empty-state";
+import { AlertIcon, ArrowOut } from "@/components/app/icons";
 import {
-  Shell,
-  PageTitle,
-  Action,
-  ErrorNotice,
-  Badge,
-  Time,
-  MoneyMove,
-  Empty,
-} from "../../components";
+  EvidenceFact,
+  Hypothesis,
+  OwnershipRegion,
+} from "@/components/app/evidence";
+import { Card } from "@/components/ui/card";
+import { Alert } from "@/components/ui/alert";
+import { buttonVariants } from "@/components/ui/button";
+import { CheckboxField, Field, Input, Textarea } from "@/components/ui/field";
+
 export default async function Investigation({
   params,
   searchParams,
@@ -22,131 +30,162 @@ export default async function Investigation({
 }) {
   const { id } = await params;
   const a = await requireActor();
+
   let i;
   try {
     i = await getInvestigation(a, id);
   } catch {
     notFound();
   }
-  const evidence =
-    await db()`select f.*,s.title,s.published_at,s.retrieved_at from evidence_fact f join source s on s.id=f.source_id where f.investigation_id=${id} and s.team_id=${i.team_id} order by f.kind,f.id`;
-  const notes =
-    await db()`select n.*,u.name from analyst_note n join app_user u on u.id=n.author_id where n.investigation_id=${id} order by n.created_at`;
-  const feedback =
-    await db()`select * from reasoning_feedback where investigation_id=${id} order by created_at desc limit 3`;
-  const deliveries =
-    await db()`select * from delivery where investigation_id=${id} and team_id=${i.team_id} order by created_at`;
-  const observations =
-    await db()`select * from market_observation where id in (${i.holding_observation_id},${i.benchmark_observation_id})`;
+
+  const evidence = await db()`
+    select f.*, s.title, s.published_at, s.retrieved_at
+    from evidence_fact f
+    join source s on s.id = f.source_id
+    where f.investigation_id = ${id} and s.team_id = ${i.team_id}
+    order by f.kind, f.id`;
+  const notes = await db()`
+    select n.*, u.name
+    from analyst_note n
+    join app_user u on u.id = n.author_id
+    where n.investigation_id = ${id}
+    order by n.created_at`;
+  const feedback = await db()`
+    select * from reasoning_feedback
+    where investigation_id = ${id}
+    order by created_at desc limit 3`;
+  const deliveries = await db()`
+    select * from delivery
+    where investigation_id = ${id} and team_id = ${i.team_id}
+    order by created_at`;
+  const observations = await db()`
+    select * from market_observation
+    where id in (${i.holding_observation_id}, ${i.benchmark_observation_id})`;
+  // docs/mvp.md:52 lists unresolved questions as a workspace element. They
+  // lived only on the team page, where an analyst mid-investigation never
+  // saw them.
+  const [holding] = await db()`
+    select questions, peers, prior_updates from holding where id = ${i.holding_id}`;
+
   const path = `/investigations/${id}`;
-  const sourceMap = new Map(evidence.map((e) => [e.source_id, e]));
+  const error = (await searchParams).error;
+  const facts = evidence.filter((e) => e.kind === "fact");
+  const hypotheses = evidence.filter((e) => e.kind === "hypothesis");
+  const sources = new Map(evidence.map((e) => [e.source_id, e]));
+  const done = i.status === "completed";
+
   return (
-    <Shell actor={a}>
-      <PageTitle
-        eyebrow={`CLOSING MOVEMENT / ${i.session}`}
-        title={`${i.ticker}: investigate the move.`}
+    <AppShell actor={a}>
+      <PageHeader
+        eyebrow={`Closing movement · ${i.session}`}
+        title={`${i.ticker}: investigate the move`}
         description="Start with what is known. Keep possible explanations open."
       >
-        <Badge status={i.status} />
-      </PageTitle>
-      <ErrorNotice message={(await searchParams).error} />
-      {i.configuration_error && (
-        <div className="notice error">{i.configuration_error}</div>
+        <StatusBadge status={i.status} />
+      </PageHeader>
+
+      {error && (
+        <Alert variant="destructive" className="mb-4 flex items-center gap-2.5">
+          <AlertIcon className="size-4" />
+          <span>
+            <strong className="font-semibold">Your last action failed</strong> —{" "}
+            {error}
+          </span>
+        </Alert>
       )}
-      <div className="metrics">
-        <div>
-          <span>HOLDING RETURN</span>
-          <strong>
-            <MoneyMove value={i.holding_return} />
-            <em>%</em>
-          </strong>
-        </div>
-        <div>
-          <span>SPX RETURN</span>
-          <strong>
-            <MoneyMove value={i.spx_return} />
-            <em>%</em>
-          </strong>
-        </div>
-        <div>
-          <span>RELATIVE MOVE</span>
-          <strong>
-            <MoneyMove value={i.relative_move} />
-            <em>pp</em>
-          </strong>
-        </div>
+      {i.configuration_error && (
+        <Alert variant="destructive" className="mb-4 flex items-center gap-2.5">
+          <AlertIcon className="size-4" />
+          <span>
+            <strong className="font-semibold">Configuration</strong> —{" "}
+            {i.configuration_error}
+          </span>
+        </Alert>
+      )}
+
+      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+        <Metric label="Holding return" value={i.holding_return} unit="%" />
+        <Metric label="SPX return" value={i.spx_return} unit="%" />
+        <Metric label="Relative move" value={i.relative_move} unit="pp" lead />
       </div>
-      <div className="investigation-grid">
-        <div>
-          <section className="panel form-panel">
-            <div className="section-head">
-              <h2>The evidence</h2>
-              <span>SOURCED / SYNTHETIC</span>
-            </div>
-            {evidence
-              .filter((e) => e.kind === "fact")
-              .map((e) => (
-                <article className="evidence" key={e.id}>
-                  <span className="eyebrow">FACT</span>
-                  <p>{e.content}</p>
-                  <Link
-                    className="source-link"
-                    href={`/sources/${e.source_id}`}
-                  >
-                    {e.title} ↗
-                  </Link>
-                  <small>
-                    {e.location} · Published <Time value={e.published_at} />
-                    <br />
-                    Retrieved <Time value={e.retrieved_at} />
-                  </small>
-                </article>
-              ))}
-            {!evidence.length && (
-              <Empty>
-                Evidence is not available yet. Collection status is visible in
-                administration.
-              </Empty>
+
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid gap-5">
+          <OwnershipRegion
+            owner="agent"
+            title="The evidence"
+            description="Sourced material gathered around the move. Every factual claim links to where it came from."
+          >
+            {facts.length ? (
+              <div className="grid gap-4">
+                {facts.map((e) => (
+                  <EvidenceFact
+                    key={e.id}
+                    content={e.content}
+                    title={e.title}
+                    location={e.location}
+                    sourceId={e.source_id}
+                    publishedAt={e.published_at}
+                    retrievedAt={e.retrieved_at}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="No evidence yet">
+                Collection status is visible in Administration. Absent evidence
+                is explicit, not assumed.
+              </EmptyState>
             )}
-            <h3>Possible explanations</h3>
-            {evidence
-              .filter((e) => e.kind === "hypothesis")
-              .map((e) => (
-                <article className="hypothesis" key={e.id}>
-                  <span className="eyebrow">
-                    HYPOTHESIS · NOT ESTABLISHED CAUSATION
-                  </span>
-                  <p>{e.content}</p>
-                  <Link href={`/sources/${e.source_id}`}>Related source ↗</Link>
-                </article>
-              ))}
-            <p className="muted">
+
+            {hypotheses.length > 0 && (
+              <>
+                <h3 className="mt-6 mb-2 font-serif text-base">
+                  Possible explanations
+                </h3>
+                <div className="grid gap-3">
+                  {hypotheses.map((e) => (
+                    <Hypothesis
+                      key={e.id}
+                      content={e.content}
+                      sourceId={e.source_id}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
+            <p className="text-muted-foreground mt-5 mb-0 text-xs leading-relaxed">
               Evidence near a price move does not establish its cause. Missing
               transcripts, estimates, and constituent weights remain
               unavailable.
             </p>
-          </section>
-          <section className="panel form-panel">
-            <h2>Your reasoning</h2>
-            <p className="muted">
-              Explain the evidence, consider alternatives, and connect it to
-              your thesis.
-            </p>
-            {i.status === "completed" ? (
+          </OwnershipRegion>
+
+          <OwnershipRegion
+            owner="analyst"
+            title="Your reasoning"
+            description="Explain the evidence, consider alternatives, and connect it to your thesis. The agent will not write this for you."
+          >
+            {done ? (
               <>
-                <div className="preserve">{i.analyst_update}</div>
-                <p>
-                  Completed <Time value={i.completed_at} />
+                <div className="text-[13px] leading-relaxed whitespace-pre-wrap">
+                  {i.analyst_update}
+                </div>
+                <p className="text-muted-foreground mt-3 mb-0 text-xs">
+                  Completed <Timestamp value={i.completed_at} />
                 </p>
               </>
             ) : (
-              <Action
+              <ActionForm
                 op="reasoning"
                 id={id}
                 returnTo={path}
                 label="Save reasoning"
+                pendingLabel="Saving…"
+                buttonClassName={buttonVariants({ className: "justify-self-start" })}
+                className="grid gap-3"
               >
-                <textarea
+                <Textarea
                   aria-label="Analyst reasoning"
                   name="reasoning"
                   rows={7}
@@ -155,178 +194,336 @@ export default async function Investigation({
                   maxLength={10000}
                   placeholder="What do you think happened, and what supports that view?"
                 />
-                <label className="checkbox">
+                <CheckboxField>
                   <input
                     type="checkbox"
                     name="noCatalyst"
                     defaultChecked={i.no_catalyst}
-                  />{" "}
-                  No clear catalyst found
-                </label>
-              </Action>
+                    className="mt-0.5"
+                  />
+                  <span>
+                    No clear catalyst found
+                    <span className="text-muted-foreground block text-xs">
+                      A legitimate outcome. Do not manufacture an explanation.
+                    </span>
+                  </span>
+                </CheckboxField>
+              </ActionForm>
             )}
-            <div className="divider" />
-            <Action
-              op="review"
+
+            <div className="border-border mt-5 border-t pt-5">
+              <h3 className="mb-1 font-serif text-base">Learning prompts</h3>
+              <p className="text-muted-foreground mt-0 mb-3 text-xs">
+                The agent asks questions and flags gaps. It does not produce a
+                replacement update.
+              </p>
+              <ActionForm
+                op="review"
+                id={id}
+                returnTo={path}
+                label="Get learning prompts"
+                pendingLabel="Reviewing…"
+                buttonClassName={buttonVariants({ variant: "outline" })}
+              />
+              {feedback.map((f) => (
+                <div
+                  key={f.id}
+                  className="border-notice-border bg-notice-surface mt-3 rounded-md border px-4 py-3"
+                >
+                  <div className="text-notice mb-2 text-[10px] font-semibold tracking-[0.14em] uppercase">
+                    Reflection prompts · fixture
+                  </div>
+                  <ul className="mt-0 mb-2 grid list-disc gap-1 pl-4 text-[13px]">
+                    {f.result.questions.map((q: string) => (
+                      <li key={q}>{q}</li>
+                    ))}
+                  </ul>
+                  <p className="text-muted-foreground mt-0 mb-0 text-[11px]">
+                    {f.result.limitations}
+                  </p>
+                </div>
+              ))}
+              <p className="text-muted-foreground mt-2 mb-0 text-[11px]">
+                Scripted fixture feedback. No live analysis or claim
+                verification.
+              </p>
+            </div>
+          </OwnershipRegion>
+
+          {holding?.questions?.trim() && (
+            <OwnershipRegion
+              owner="analyst"
+              title="Open questions"
+              description="Carried forward from your team's context for this holding."
+            >
+              <div className="text-[13px] leading-relaxed whitespace-pre-wrap">
+                {holding.questions}
+              </div>
+              <Link
+                href={`/teams/${i.team_id}`}
+                className="text-primary mt-3 inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+              >
+                Edit in team context
+                <ArrowOut className="size-3" />
+              </Link>
+            </OwnershipRegion>
+          )}
+
+          <OwnershipRegion
+            owner="analyst"
+            title="Research notes"
+            description="Shared with your team."
+          >
+            {notes.length > 0 && (
+              <div className="mb-5 grid gap-4">
+                {notes.map((n) => (
+                  <article key={n.id} className="border-border border-l-2 pl-4">
+                    <div className="flex items-baseline gap-2">
+                      <strong className="text-[13px]">{n.name}</strong>
+                      <span className="text-muted-foreground text-[11px]">
+                        <Timestamp value={n.created_at} />
+                      </span>
+                    </div>
+                    <p className="mt-1 mb-0 text-[13px] leading-relaxed whitespace-pre-wrap">
+                      {n.content}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            )}
+            <ActionForm
+              op="note"
               id={id}
               returnTo={path}
-              label="Get learning prompts"
-            />
-            <p className="muted">
-              Scripted fixture feedback. No live AI analysis or claim
-              verification.
-            </p>
-            {feedback.map((f) => (
-              <div className="feedback" key={f.id}>
-                <span className="eyebrow">REFLECTION PROMPTS · FIXTURE</span>
-                <ul>
-                  {f.result.questions.map((q: string) => (
-                    <li key={q}>{q}</li>
-                  ))}
-                </ul>
-                <small>{f.result.limitations}</small>
-              </div>
-            ))}
-          </section>
-          <section className="panel form-panel">
-            <h2>Research notes</h2>
-            {notes.map((n) => (
-              <article className="note" key={n.id}>
-                <strong>{n.name}</strong>
-                <small>
-                  <Time value={n.created_at} />
-                </small>
-                <p className="preserve">{n.content}</p>
-              </article>
-            ))}
-            <Action op="note" id={id} returnTo={path} label="Add note">
-              <label>
+              label="Add note"
+              pendingLabel="Adding…"
+              buttonClassName={buttonVariants({ variant: "outline", className: "justify-self-start" })}
+              className="grid gap-3"
+            >
+              <Field>
                 Team note
-                <textarea name="content" required maxLength={10000} />
-              </label>
-            </Action>
-          </section>
+                <Textarea name="content" required maxLength={10000} rows={3} />
+              </Field>
+            </ActionForm>
+          </OwnershipRegion>
         </div>
-        <aside>
-          <section className="panel form-panel">
-            <span className="eyebrow">RESPONSIBILITY</span>
-            <h3>{i.owner_name ?? "Owner missing"}</h3>
-            <dl>
-              <dt>Update due</dt>
-              <dd>
-                <Time value={i.due_at} />
-              </dd>
-              <dt>Policy</dt>
-              <dd>{i.policy_version}</dd>
-              <dt>Trigger</dt>
-              <dd>|Holding return − SPX return| ≥ 4 pp</dd>
+
+        <aside className="grid content-start gap-4">
+          <Card className="p-4">
+            <div className="text-muted-foreground mb-2 text-[10px] font-semibold tracking-[0.14em] uppercase">
+              Responsibility
+            </div>
+            <div
+              className={`font-serif text-lg ${i.owner_name ? "" : "text-quality-fail"}`}
+            >
+              {i.owner_name ?? "No owner set"}
+            </div>
+            {!i.owner_name && (
+              <p className="text-quality-fail mt-1 mb-0 text-xs">
+                Responsibility falls back to the team lead until an owner is
+                assigned.
+              </p>
+            )}
+            <dl className="mt-3 grid gap-2 text-xs">
+              <Row label="Update due">
+                <Timestamp value={i.due_at} due={!done} absent="Not configured" />
+              </Row>
+              <Row label="Policy">{i.policy_version}</Row>
+              <Row label="Trigger">
+                |Holding return − SPX return| ≥ 4 pp
+              </Row>
             </dl>
-            <Link href={`/teams/${i.team_id}`} className="text-link">
-              Open team context ↗
+            <Link
+              href={`/teams/${i.team_id}`}
+              className="text-primary mt-3 inline-flex items-center gap-1 text-xs font-semibold hover:underline"
+            >
+              Open team context
+              <ArrowOut className="size-3" />
             </Link>
-          </section>
-          <section className="panel form-panel">
-            <h3>Complete investigation</h3>
-            {i.status === "completed" ? (
-              <Badge status="completed" />
+          </Card>
+
+          <Card className="p-4">
+            <h3 className="mb-2 font-serif text-base">Complete investigation</h3>
+            {done ? (
+              <>
+                <StatusBadge status="completed" />
+                <p className="text-muted-foreground mt-2 mb-0 text-xs">
+                  Completed <Timestamp value={i.completed_at} />
+                </p>
+              </>
             ) : (
-              <Action
+              <ActionForm
                 op="complete"
                 id={id}
                 returnTo={path}
                 label="Mark completed"
+                pendingLabel="Completing…"
+                buttonClassName={buttonVariants({ className: "mt-3 w-full" })}
+                className="grid"
               >
-                <p>Save your own update and select its supporting sources.</p>
-                {[...sourceMap.values()].map((s) => (
-                  <label className="checkbox" key={s.source_id}>
-                    <input
-                      type="checkbox"
-                      name="sourceId"
-                      value={s.source_id}
-                    />
-                    {s.title}
-                  </label>
-                ))}
-              </Action>
+                <p className="text-muted-foreground mt-0 mb-2 text-xs">
+                  Completion requires your own update and the sources that
+                  support it.
+                </p>
+                {sources.size ? (
+                  [...sources.values()].map((s) => (
+                    <CheckboxField key={s.source_id}>
+                      <input
+                        type="checkbox"
+                        name="sourceId"
+                        value={s.source_id}
+                        className="mt-0.5"
+                      />
+                      <span className="text-xs">{s.title}</span>
+                    </CheckboxField>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground mt-0 mb-0 text-xs">
+                    No sources are attached yet.
+                  </p>
+                )}
+              </ActionForm>
             )}
-          </section>
-          <details className="panel form-panel">
-            <summary>Calculation inputs</summary>
+          </Card>
+
+          <Disclosure summary="Calculation inputs">
             {observations.map((o) => (
-              <dl key={o.id}>
-                <dt>{o.security_id}</dt>
-                <dd>
-                  Close {o.value} / previous {o.previous_close}
-                </dd>
-                <dd>
-                  <Time value={o.observed_at} />
-                </dd>
-                <dd>
+              <dl key={o.id} className="mb-3 grid gap-1 text-xs last:mb-0">
+                <div className="font-semibold">{o.security_id}</div>
+                <div className="text-muted-foreground">
+                  Close {o.value} · previous {o.previous_close}
+                </div>
+                <div className="text-muted-foreground">
+                  <Timestamp value={o.observed_at} />
+                </div>
+                <div className="text-muted-foreground">
                   {o.provider} · {o.quality}
-                </dd>
-                <dd>{o.raw.basis}</dd>
+                </div>
+                <div className="text-muted-foreground">{o.raw.basis}</div>
               </dl>
             ))}
-          </details>
-          <details className="panel form-panel">
-            <summary>Captured notifications ({deliveries.length})</summary>
-            {deliveries.map((d) => (
-              <article key={d.id}>
-                <h4>{d.subject}</h4>
-                <small>{d.recipients.join(", ")}</small>
-                <p className="preserve">{d.body}</p>
-                <Badge status={d.status} />
-              </article>
-            ))}
-          </details>
-          {i.status === "completed" && (
-            <section className="panel form-panel">
-              <h3>A quick reflection</h3>
-              <Action
+          </Disclosure>
+
+          <Disclosure summary={`Captured notifications (${deliveries.length})`}>
+            {deliveries.length ? (
+              deliveries.map((d) => (
+                <article key={d.id} className="mb-3 last:mb-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h4 className="mt-0 mb-0 text-xs font-semibold">
+                      {d.subject}
+                    </h4>
+                    <DeliveryBadge status={d.status} />
+                  </div>
+                  <div className="text-muted-foreground mt-0.5 text-[11px]">
+                    {d.recipients.join(", ")}
+                  </div>
+                  <p className="text-muted-foreground mt-1 mb-0 text-[11px] leading-relaxed whitespace-pre-wrap">
+                    {d.body}
+                  </p>
+                </article>
+              ))
+            ) : (
+              <p className="text-muted-foreground mt-0 mb-0 text-xs">
+                Nothing captured yet.
+              </p>
+            )}
+          </Disclosure>
+
+          {done && (
+            <Card className="p-4">
+              <h3 className="mb-1 font-serif text-base">A quick reflection</h3>
+              <p className="text-muted-foreground mt-0 mb-3 text-xs">
+                Brief feedback after completion.
+              </p>
+              <ActionForm
                 op="evaluate"
                 id={id}
                 returnTo={path}
                 label="Save feedback"
+                pendingLabel="Saving…"
+                buttonClassName={buttonVariants({ className: "mt-3 w-full" })}
+                className="grid gap-3"
               >
-                <label>
+                <Field>
                   Preparation time (minutes)
-                  <input
-                    type="number"
-                    name="minutes"
-                    min={0}
-                    max={1440}
-                    required
-                  />
-                </label>
-                <label>
+                  <Input type="number" name="minutes" min={0} max={1440} required />
+                </Field>
+                <Field>
                   Source tracing (1–5)
-                  <input
-                    type="number"
-                    name="tracing"
-                    min={1}
-                    max={5}
-                    required
-                  />
-                </label>
-                <label>
+                  <Input type="number" name="tracing" min={1} max={5} required />
+                </Field>
+                <Field>
                   Reasoning confidence (1–5)
-                  <input
+                  <Input
                     type="number"
                     name="reasoningScore"
                     min={1}
                     max={5}
                     required
                   />
-                </label>
-                <label>
+                </Field>
+                <Field>
                   What helped or was missing?
-                  <textarea name="comment" maxLength={2000} />
-                </label>
-              </Action>
-            </section>
+                  <Textarea name="comment" maxLength={2000} rows={3} />
+                </Field>
+              </ActionForm>
+            </Card>
           )}
         </aside>
       </div>
-    </Shell>
+    </AppShell>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  unit,
+  lead,
+}: {
+  label: string;
+  value: string | number;
+  unit: string;
+  lead?: boolean;
+}) {
+  return (
+    <Card className={`px-4 py-3 ${lead ? "border-foreground/25" : ""}`}>
+      <div className="text-muted-foreground text-[10px] font-semibold tracking-[0.12em] uppercase">
+        {label}
+      </div>
+      <div className="mt-1 text-3xl">
+        <RelativeMove value={value} unit={unit} />
+      </div>
+    </Card>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <dt className="text-muted-foreground shrink-0">{label}</dt>
+      <dd className="m-0 text-right">{children}</dd>
+    </div>
+  );
+}
+
+/** Native <details>: no JavaScript, works unhydrated, accessible by default. */
+function Disclosure({
+  summary,
+  children,
+}: {
+  summary: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="border-border bg-card group rounded-lg border">
+      <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-xs font-semibold">
+        {summary}
+        <span className="text-muted-foreground transition-transform group-open:rotate-90">
+          ›
+        </span>
+      </summary>
+      <div className="border-border border-t px-4 py-3">{children}</div>
+    </details>
   );
 }
