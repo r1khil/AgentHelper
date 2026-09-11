@@ -104,6 +104,8 @@ describe.skipIf(!url)("PostgreSQL workflow and isolation", () => {
   });
   it("requires authored reasoning and sources, cancels reminders", async () => {
     const id = await event();
+    // Keep scheduled notices pending even after the fixed fixture date passes.
+    await db()`update job set run_at=now()+interval '1 day' where payload->>'investigationId'=${id} and kind in ('reminder','overdue')`;
     await drain();
     await expect(complete(analyst, id, [])).rejects.toThrow();
     const [s] =
@@ -119,9 +121,9 @@ describe.skipIf(!url)("PostgreSQL workflow and isolation", () => {
     expect((await getInvestigation(analyst, id)).status).toBe("completed");
     expect(
       (
-        await db()`select * from job where kind in ('reminder','overdue') and status<>'cancelled'`
-      ).length,
-    ).toBe(0);
+        await db()`select status from job where payload->>'investigationId'=${id} and kind in ('reminder','overdue') order by kind`
+      ).map((job) => job.status),
+    ).toEqual(["cancelled", "cancelled"]);
     await expect(
       saveReasoning(analyst, id, "Overwrite", false),
     ).rejects.toThrow("immutable");
@@ -156,9 +158,12 @@ describe.skipIf(!url)("PostgreSQL workflow and isolation", () => {
   });
   it("completion wins over already leased reminders", async () => {
     const id = await event();
+    // Drain evidence and the alert without delivering this test's reminder.
+    await db()`update job set run_at=now()+interval '1 day' where payload->>'investigationId'=${id} and kind in ('reminder','overdue')`;
     await drain();
     await db()`update job set run_at=now()-interval '1 second' where kind='reminder'`;
     const j = await claim();
+    expect(j?.kind).toBe("reminder");
     const [s] =
       await db()`select source_id from evidence_fact where investigation_id=${id} limit 1`;
     await saveReasoning(analyst, id, "My sourced update", false);

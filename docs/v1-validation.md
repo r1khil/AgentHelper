@@ -63,3 +63,9 @@ Sign-in and administrator bootstrap are now verified against the deployment. The
 - THC `1aa462cc-819c-4fe0-b988-ea6c398fba11` completed at 17:14:11 UTC with explicitly labeled test text, two supporting sources, one fixture feedback record, and reasoning/completion audit events. Reload preserved its text and status. DRAM `f92f9d4c-10ee-468f-b23b-f93c6a9d7c8a` remained open and unchanged. Reminder/overdue jobs were already done, so no pending-reminder cancellation is claimed.
 - Browser/CLI sandbox restrictions were resolved through reviewed escalated execution. One test-driver status-text wait timed out, then inspection confirmed successful save without resubmission. No application defect requiring a code change was found.
 - Failed Azure resources remain deliberately retained; [KEEP record](plans/section-a-keep-record.md). No Azure writes, direct database mutations, deployment, migration, commit or push. Application writes occurred only through the authorized browser workflow. No build or unit/integration test rerun was needed for this evidence/docs-only change.
+
+## Section A publication follow-up, 2026-09-11
+
+The first PR validation run exposed two existing date-dependent integration tests: after the fixture's September 11 reminder/deadline, setup drained those jobs before cancellation could be tested. Both failures reproduced in a new isolated local `_test` database. The tests now place reminder/overdue jobs in the future before setup drains, then explicitly make the reminder due for the lease scenario. Assertions require both cancellation records and the intended reminder lease. Application behavior and the accepted deployment are unchanged.
+
+All 42 tests passed locally after the test-only fix, including all 15 PostgreSQL integration tests. The acceptance evidence above records the earlier deployed run; this publication follow-up does not require another deployment.
