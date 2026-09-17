@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
+  index,
   integer,
   jsonb,
   numeric,
@@ -14,6 +16,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { GICS_SECTORS } from "../lib/attribution/sectors";
 
 // Supabase-managed auth schema; referenced for the profiles FK only.
 const auth = pgSchema("auth");
@@ -31,6 +34,12 @@ export const earningsStatusEnum = pgEnum("earnings_status", ["upcoming", "report
 export const periodTypeEnum = pgEnum("period_type", ["quarterly", "annual"]);
 export const proposalStatusEnum = pgEnum("proposal_status", ["proposed", "approved", "rejected", "exception"]);
 export const notificationKindEnum = pgEnum("notification_kind", ["movement_alert", "reminder", "overdue", "earnings"]);
+export const gicsSectorEnum = pgEnum("gics_sector", GICS_SECTORS);
+export const tradeSideEnum = pgEnum("trade_side", ["buy", "sell"]);
+export const tradeKindEnum = pgEnum("trade_kind", ["opening", "trade"]);
+export const cashFlowKindEnum = pgEnum("cash_flow_kind", ["deposit", "withdrawal", "fee", "interest"]);
+export const securityEventKindEnum = pgEnum("security_event_kind", ["dividend", "split"]);
+export const sectorSourceEnum = pgEnum("sector_source", ["yahoo", "default", "manual"]);
 
 const sqlActive = sql`status = 'active'`;
 
@@ -93,7 +102,8 @@ export const holdings = pgTable(
     ownerId: uuid("owner_id").references(() => profiles.id, { onDelete: "set null" }),
     thesis: text("thesis"),
     thesisUpdatedAt: timestamp("thesis_updated_at", { withTimezone: true }),
-    shares: integer("shares"),
+    // Derived from the trade ledger once one exists; fractional because dividends reinvest.
+    shares: numeric("shares", { precision: 18, scale: 6 }),
     weightPct: numeric("weight_pct", { precision: 6, scale: 2 }),
     status: holdingStatusEnum("status").notNull().default("active"),
     addedAt: date("added_at").notNull().defaultNow(),
@@ -122,6 +132,92 @@ export const dailyCloses = pgTable(
   },
   (t) => [primaryKey({ columns: [t.ticker, t.sessionDate] })],
 );
+
+// Attribution. The trade ledger is the source of truth for what the Fund owned and when.
+export const securities = pgTable("securities", {
+  ticker: text("ticker").primaryKey(),
+  name: text("name").notNull(),
+  sector: gicsSectorEnum("sector"),
+  sectorSource: sectorSourceEnum("sector_source"),
+  yahooSector: text("yahoo_sector"),
+  teamId: uuid("team_id").references(() => teams.id, { onDelete: "set null" }),
+  ...timestamps,
+});
+
+export const trades = pgTable(
+  "trades",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tradeDate: date("trade_date").notNull(),
+    ticker: text("ticker").notNull().references(() => securities.ticker),
+    side: tradeSideEnum("side").notNull(),
+    kind: tradeKindEnum("kind").notNull().default("trade"),
+    // As executed, not split-adjusted.
+    shares: numeric("shares", { precision: 18, scale: 6 }).notNull(),
+    price: numeric("price", { precision: 18, scale: 6 }).notNull(),
+    fees: numeric("fees", { precision: 12, scale: 2 }).notNull().default("0"),
+    note: text("note"),
+    createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidedBy: uuid("voided_by").references(() => profiles.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [
+    index("trades_ticker_date").on(t.ticker, t.tradeDate),
+    check("trades_positive", sql`${t.shares} > 0 and ${t.price} > 0 and ${t.fees} >= 0`),
+  ],
+);
+
+export const cashFlows = pgTable(
+  "cash_flows",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    flowDate: date("flow_date").notNull(),
+    kind: cashFlowKindEnum("kind").notNull(),
+    // Always positive; the kind carries the sign.
+    amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+    note: text("note"),
+    createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidedBy: uuid("voided_by").references(() => profiles.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [check("cash_flows_positive", sql`${t.amount} > 0`)],
+);
+
+export const securityEvents = pgTable(
+  "security_events",
+  {
+    ticker: text("ticker").notNull(),
+    exDate: date("ex_date").notNull(),
+    kind: securityEventKindEnum("kind").notNull(),
+    // Dividend per share, on the same split-adjusted basis as daily_closes.
+    amount: numeric("amount", { precision: 18, scale: 6 }),
+    // Split: new shares per old share.
+    ratio: numeric("ratio", { precision: 12, scale: 6 }),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.ticker, t.exDate, t.kind] })],
+);
+
+export const benchmarkSectorWeights = pgTable(
+  "benchmark_sector_weights",
+  {
+    asOf: date("as_of").notNull(),
+    sector: gicsSectorEnum("sector").notNull(),
+    weightPct: numeric("weight_pct", { precision: 7, scale: 4 }).notNull(),
+    source: text("source"),
+    updatedBy: uuid("updated_by").references(() => profiles.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [primaryKey({ columns: [t.asOf, t.sector] })],
+);
+
+// Each GICS sector belongs to at most one team; defines a team's benchmark.
+export const teamSectors = pgTable("team_sectors", {
+  sector: gicsSectorEnum("sector").primaryKey(),
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+});
 
 export const movementRuns = pgTable("movement_runs", {
   sessionDate: date("session_date").primaryKey(),
@@ -325,4 +421,7 @@ export type EvidenceItem = typeof evidenceItems.$inferSelect;
 export type Model = typeof models.$inferSelect;
 export type ModelMapping = typeof modelMappings.$inferSelect;
 export type ModelProposal = typeof modelProposals.$inferSelect;
+export type Security = typeof securities.$inferSelect;
+export type TradeRow = typeof trades.$inferSelect;
+export type CashFlowRow = typeof cashFlows.$inferSelect;
 export type Role = Profile["role"];

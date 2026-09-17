@@ -24,7 +24,7 @@ Next.js 16 (App Router), TypeScript, Tailwind v4, shadcn/ui, Supabase (Postgres,
 
 1. `npm install`
 2. Copy `.env.example` to `.env.local` and fill it in (Supabase URL and keys, `DATABASE_URL` from the transaction pooler, `OPENROUTER_API_KEY`, optional `FINNHUB_API_KEY` and `RESEND_API_KEY`).
-3. Apply the schema: `npm run db:migrate` (or paste `drizzle/*.sql` into the Supabase SQL editor).
+3. Apply the schema: `npm run db:migrate` (or paste `drizzle/*.sql` into the Supabase SQL editor). Migrations from `0002` on are hand-written and not in the drizzle journal; apply each with `npx tsx scripts/apply-sql.ts drizzle/<file>.sql` and do not run `db:generate`.
 4. `npm run db:seed` creates the `admin` username account (password from `SEED_ADMIN_PASSWORD`) and the admin invitation for the Fund's Google account.
 5. `npm run dev`, sign in with the username account, and add members from Admin.
 

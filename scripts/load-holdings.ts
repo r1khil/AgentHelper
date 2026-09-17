@@ -67,7 +67,7 @@ async function main() {
     for (const [ticker, shares, weight] of book) {
       const [company, cik] = await Promise.all([lookupCompany(ticker), tickerToCik(ticker)]);
       if (!company) throw new Error(`Could not find ${ticker} on the market data provider`);
-      rows.push({ teamId: team.id, ticker, companyName: cik?.name ?? company.name, cik: cik?.cik ?? null, shares, weightPct: weight.toFixed(2) });
+      rows.push({ teamId: team.id, ticker, companyName: cik?.name ?? company.name, cik: cik?.cik ?? null, shares: String(shares), weightPct: weight.toFixed(2) });
       console.log(`${slug.padEnd(12)} ${ticker.padEnd(5)} ${String(shares).padStart(5)} ${weight.toFixed(2).padStart(5)}%  ${cik?.name ?? company.name}`);
     }
   }

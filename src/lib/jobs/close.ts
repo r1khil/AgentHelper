@@ -1,13 +1,14 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { dailyCloses, holdings, jobRuns, movementRuns, movements, profiles, teams } from "@/db/schema";
+import { holdings, jobRuns, movementRuns, movements, profiles, teams } from "@/db/schema";
 import { getDailyBars, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { isTradingDay, movementDueAt, todayNY, formatNY } from "@/lib/providers/calendar";
 import { qualifies, relativeMovePp, returnPct } from "@/lib/movement/math";
 import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
 import { gatherMovementEvidence } from "./evidence";
 import { queueNotification, sendPendingNotifications } from "./notify";
+import { upsertCloses } from "@/lib/prices";
 
 export type CloseJobResult = {
   sessionDate: string;
@@ -63,7 +64,7 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
   const spxIdx = spxBars.findIndex((b) => b.date === sessionDate);
   if (spxIdx < 1) return finish({ ...base, status: "skipped", reason: `No S&P 500 close for ${sessionDate} yet` });
   const spx = { close: spxBars[spxIdx].close, prevClose: spxBars[spxIdx - 1].close };
-  await upsertCloses(SPX_SYMBOL, spxBars);
+  await upsertCloses(db, SPX_SYMBOL, spxBars);
 
   const active = await db
     .select({ h: holdings, teamSlug: teams.slug, teamName: teams.name })
@@ -77,7 +78,7 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
   for (const t of tickers) {
     try {
       const bars = await getDailyBars(t, span);
-      await upsertCloses(t, bars);
+      await upsertCloses(db, t, bars);
       const i = bars.findIndex((b) => b.date === sessionDate);
       if (i < 1) barsByTicker.set(t, { error: `no close for ${sessionDate} (latest ${bars.at(-1)?.date ?? "none"})` });
       else barsByTicker.set(t, { close: bars[i].close, prevClose: bars[i - 1].close });
@@ -156,15 +157,6 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
     // Morning job retries.
   }
   return finish(result);
-}
-
-async function upsertCloses(ticker: string, bars: { date: string; close: number }[]) {
-  for (const b of bars) {
-    await db
-      .insert(dailyCloses)
-      .values({ ticker, sessionDate: b.date, close: b.close.toString(), source: "yahoo" })
-      .onConflictDoUpdate({ target: [dailyCloses.ticker, dailyCloses.sessionDate], set: { close: b.close.toString(), fetchedAt: new Date() } });
-  }
 }
 
 async function fallbackLead(teamId: string) {

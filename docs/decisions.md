@@ -54,3 +54,11 @@ Approved in the implementation request: Azure Container Apps Consumption (zero t
 Operating defaults are proposals, not additional approved Fund policy: 10 a.m. Eastern reminder, noon overdue notice, 8 a.m. trading-day briefing; a fixture calendar, split-adjusted price basis, explicit corporate-action ambiguity rejection, and 60-second close tolerance. A licensed provider and production calendar must be selected and reviewed before real observations are used.
 
 The hourly worker runs 12–22 UTC weekdays, covering the proposed Eastern deadlines in both DST offsets. It exits after at most 30 jobs; leases last two minutes and attempts are capped at three. Captured delivery is transactionally deduplicated. No live email or model provider is configured.
+
+## Attribution analysis — 2026-09-17
+
+- Decision: add fund-level and team-level performance attribution.
+- Owner / approver: Rikhil Sharma.
+- Chosen behavior: positions come from an exec-maintained trade ledger seeded from the 2026-09-17 book; Brinson-Fachler by GICS sector plus contribution by holding and team; benchmark is exec-saved S&P 500 sector weights applied to the 11 Select Sector SPDR ETFs; dividends are treated as automatically reinvested on the ex-date; the fund page is for execs and admins, the team tab for leads and above.
+- Rationale and evidence: free data sources do not provide S&P 500 constituents, and sector SPDRs track the index sectors closely; a ledger handles position changes correctly where a static share count cannot.
+- Known limits: Yahoo sector labels are not official GICS (overridable per security); reinvestment happens at the ex-date close, so share counts can drift slightly from broker statements; sector SPDRs carry a small fee drag against true index sectors.
