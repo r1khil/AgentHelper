@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -117,12 +118,14 @@ function SidebarBody({ user, teams, signOut }: Props) {
               <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
-              <DropdownMenuLabel>Sector teams</DropdownMenuLabel>
-              {teams.map((t) => (
-                <DropdownMenuItem key={t.id} render={<Link href={`/t/${t.slug}`} />}>
-                  {t.name}
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Sector teams</DropdownMenuLabel>
+                {teams.map((t) => (
+                  <DropdownMenuItem key={t.id} render={<Link href={`/t/${t.slug}`} />}>
+                    {t.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
@@ -158,9 +161,11 @@ function SidebarBody({ user, teams, signOut }: Props) {
             </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="start">
-            <DropdownMenuLabel className="font-normal">
-              <span className="block truncate text-xs text-muted-foreground">{user.username ?? user.email}</span>
-            </DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="font-normal">
+                <span className="block truncate text-xs text-muted-foreground">{user.username ?? user.email}</span>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => signOut()}>
               <LogOut />

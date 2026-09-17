@@ -123,6 +123,11 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                 <TableCell className="font-medium">
                   {p.fullName}
                   {p.id === me.id && <span className="ml-1.5 text-xs text-muted-foreground">(you)</span>}
+                  {!p.onboardedAt && (
+                    <Badge variant="outline" className="ml-1.5 border-warning text-warning-foreground">
+                      setup pending
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {p.kind === "password" ? (

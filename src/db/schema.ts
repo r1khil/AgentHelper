@@ -65,6 +65,9 @@ export const profiles = pgTable("profiles", {
   role: roleEnum("role").notNull().default("associate_analyst"),
   kind: accountKindEnum("kind").notNull().default("google"),
   teamId: uuid("team_id").references(() => teams.id, { onDelete: "set null" }),
+  // First-sign-in setup. Null until the member finishes the onboarding steps.
+  boundaryAcknowledgedAt: timestamp("boundary_acknowledged_at", { withTimezone: true }),
+  onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
   ...timestamps,
 });
 

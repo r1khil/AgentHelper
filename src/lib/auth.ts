@@ -31,6 +31,13 @@ export async function requireUser(): Promise<CurrentUser> {
   return user;
 }
 
+/** For app pages: signed in and finished first-sign-in setup. */
+export async function requireOnboardedUser(): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (!user.onboardedAt) redirect("/onboarding");
+  return user;
+}
+
 export function isFundWide(user: Pick<Profile, "role">) {
   return user.role === "exec" || user.role === "admin";
 }

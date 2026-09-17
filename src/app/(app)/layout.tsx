@@ -1,9 +1,9 @@
-import { requireUser, listAccessibleTeams } from "@/lib/auth";
+import { requireOnboardedUser, listAccessibleTeams } from "@/lib/auth";
 import { signOut } from "@/lib/actions/auth";
 import { Sidebar } from "@/components/app/sidebar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireUser();
+  const user = await requireOnboardedUser();
   const teams = await listAccessibleTeams(user);
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
