@@ -93,6 +93,8 @@ export const holdings = pgTable(
     ownerId: uuid("owner_id").references(() => profiles.id, { onDelete: "set null" }),
     thesis: text("thesis"),
     thesisUpdatedAt: timestamp("thesis_updated_at", { withTimezone: true }),
+    shares: integer("shares"),
+    weightPct: numeric("weight_pct", { precision: 6, scale: 2 }),
     status: holdingStatusEnum("status").notNull().default("active"),
     addedAt: date("added_at").notNull().defaultNow(),
     exitedAt: date("exited_at"),

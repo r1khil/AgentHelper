@@ -44,6 +44,8 @@ export default async function TeamHoldingsPage({ params }: { params: Promise<{ t
               <TableRow>
                 <TableHead>Ticker</TableHead>
                 <TableHead>Company</TableHead>
+                <TableHead className="text-right">Shares</TableHead>
+                <TableHead className="text-right">Weight</TableHead>
                 <TableHead className="text-right">Price</TableHead>
                 <TableHead className="text-right">Day</TableHead>
                 <TableHead className="text-right">vs S&amp;P</TableHead>
@@ -61,6 +63,8 @@ export default async function TeamHoldingsPage({ params }: { params: Promise<{ t
                       </Link>
                     </TableCell>
                     <TableCell className="max-w-64 truncate text-muted-foreground">{h.companyName}</TableCell>
+                    <TableCell className="tnum text-right">{h.shares != null ? h.shares.toLocaleString("en-US") : <span className="text-muted-foreground">—</span>}</TableCell>
+                    <TableCell className="tnum text-right">{h.weightPct != null ? fmtPct(h.weightPct, 2, false) : <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell className="tnum text-right">{m?.quote ? fmtMoney(m.quote.price) : <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell className="text-right"><Move value={m?.quote?.changePct} unit="%" digits={2} /></TableCell>
                     <TableCell className="text-right"><Move value={m?.relativePp} unit=" pp" digits={1} /></TableCell>
