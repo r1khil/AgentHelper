@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ChartColumn,
+  ChartNoAxesCombined,
   Activity,
   CalendarDays,
   ChevronsUpDown,
@@ -87,6 +89,10 @@ function SidebarBody({ user, teams, signOut }: Props) {
         { href: `${base}/movements`, label: "Movements", icon: Activity },
         { href: `${base}/earnings`, label: "Earnings", icon: CalendarDays },
         { href: `${base}/models`, label: "Models", icon: Table2 },
+        // Position sizes and P&L: leads of this team and fund-wide roles only.
+        ...(fundWide || (user.role === "lead_analyst" && user.teamId === team?.id)
+          ? [{ href: `${base}/attribution`, label: "Attribution", icon: ChartColumn }]
+          : []),
       ]
     : [];
 
@@ -104,6 +110,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
 
       <nav className="px-3">
         <NavItem href="/" label="Today" icon={Home} active={pathname === "/"} />
+        {fundWide && <NavItem href="/attribution" label="Fund attribution" icon={ChartNoAxesCombined} active={isActive("/attribution")} />}
       </nav>
 
       <div className="mt-4 px-3">

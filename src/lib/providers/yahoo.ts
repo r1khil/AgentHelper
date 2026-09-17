@@ -104,3 +104,68 @@ export async function getEarningsDate(symbol: string): Promise<EarningsDate | nu
     };
   });
 }
+
+export type BarsRange = {
+  bars: { date: string; close: number }[];
+  dividends: { date: string; amount: number }[];
+  splits: { date: string; ratio: number }[];
+};
+
+/**
+ * Daily closes plus dividend and split events between two dates (inclusive). Closes are
+ * split-adjusted but not dividend-adjusted. Today's bar is left out until the session has closed.
+ */
+export async function getBarsRange(symbol: string, from: string, to?: string): Promise<BarsRange> {
+  const now = DateTime.now().setZone(NY);
+  const end = to ?? now.toISODate()!;
+  const period1 = DateTime.fromISO(from, { zone: NY }).startOf("day");
+  const period2 = DateTime.fromISO(end, { zone: NY }).plus({ days: 1 }).startOf("day");
+  const sessionOpen = now.hour < 16 || (now.hour === 16 && now.minute < 15) ? now.toISODate()! : null;
+  return cached(
+    `yahoo:range:${symbol}:${from}:${end}`,
+    60 * 10,
+    async () => {
+      const res = await spaced(HOST, GAP_MS, () =>
+        retry(() => yf().chart(symbol, { period1: period1.toJSDate(), period2: period2.toJSDate(), interval: "1d", events: "div|split" })),
+      );
+      const iso = (d: Date) => DateTime.fromJSDate(d).setZone(NY).toISODate()!;
+      const bars: BarsRange["bars"] = [];
+      for (const q of res.quotes ?? []) {
+        if (q.close === null || q.close === undefined) continue;
+        const date = iso(q.date);
+        if (date === sessionOpen) continue;
+        bars.push({ date, close: q.close });
+      }
+      return {
+        bars,
+        dividends: (res.events?.dividends ?? []).map((d) => ({ date: iso(d.date), amount: d.amount })),
+        splits: (res.events?.splits ?? []).filter((s) => s.denominator > 0).map((s) => ({ date: iso(s.date), ratio: s.numerator / s.denominator })),
+      };
+    },
+    { db: false },
+  );
+}
+
+/** Yahoo's sector label for a company; null for ETFs and funds. */
+export async function getSectorProfile(symbol: string): Promise<string | null> {
+  return cached(`yahoo:sector:${symbol}`, 60 * 60 * 24 * 7, async () => {
+    try {
+      const res = await spaced(HOST, GAP_MS, () => retry(() => yf().quoteSummary(symbol, { modules: ["assetProfile"] }), 2));
+      return res.assetProfile?.sector ?? null;
+    } catch {
+      return null;
+    }
+  });
+}
+
+/** Sector weights of a fund as Yahoo reports them (Morningstar sector names), in percent. */
+export async function getFundSectorWeights(symbol: string): Promise<Record<string, number>> {
+  return cached(`yahoo:sectorweights:${symbol}`, 60 * 60 * 12, async () => {
+    const res = await spaced(HOST, GAP_MS, () => retry(() => yf().quoteSummary(symbol, { modules: ["topHoldings"] })));
+    const out: Record<string, number> = {};
+    for (const row of res.topHoldings?.sectorWeightings ?? []) {
+      for (const [k, v] of Object.entries(row)) if (typeof v === "number") out[k] = v * 100;
+    }
+    return out;
+  });
+}

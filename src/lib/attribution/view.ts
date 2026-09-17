@@ -1,0 +1,77 @@
+import "server-only";
+import { DateTime } from "luxon";
+import { fmtDate } from "@/lib/format";
+import { parsePeriodKey, resolvePeriod, type ResolvedPeriod } from "./periods";
+import { SECTOR_LABELS } from "./sectors";
+import type { LoadedSeries } from "./store";
+
+export type PageQuery = { period?: string | string[]; from?: string | string[]; to?: string | string[]; all?: string | string[] };
+
+const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+export function periodFromQuery(query: PageQuery, loaded: { inception: string; latest: string }): { period: ResolvedPeriod; queryString: string; from?: string; to?: string } {
+  const key = parsePeriodKey(one(query.period));
+  const from = one(query.from);
+  const to = one(query.to);
+  const period = resolvePeriod(key, { from, to, inception: loaded.inception, latest: loaded.latest });
+  const params = new URLSearchParams({ period: key });
+  if (key === "custom") {
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+  }
+  return { period, queryString: `?${params}`, from, to };
+}
+
+/** Plain-language data problems, each pointing at where to fix it. */
+export function qualityNotices(loaded: LoadedSeries, period: ResolvedPeriod, opts: { canEdit: boolean }) {
+  const out: { text: string; href?: string; action?: string }[] = [];
+  const ledger = opts.canEdit ? "/attribution/ledger" : undefined;
+  if (period.clamped) out.push({ text: `The ledger starts on ${fmtDate(loaded.inception)}, so this period is measured from that date.` });
+
+  const inPeriod = <T extends { date: string }>(xs: T[]) => xs.filter((x) => x.date > period.start && x.date <= period.end);
+  const stale = [...new Set(inPeriod(loaded.quality.ledger.stale).map((s) => s.ticker))];
+  if (stale.length) out.push({ text: `Missing closes were carried forward for ${stale.join(", ")}.` });
+  if (loaded.quality.ledger.unpriced.length) out.push({ text: `No price history yet for ${loaded.quality.ledger.unpriced.join(", ")}; valued at trade price until the next price run.` });
+  const staleEtf = [...new Set(inPeriod(loaded.quality.benchmark.staleEtf).map((s) => s.ticker))];
+  if (staleEtf.length) out.push({ text: `Benchmark closes are missing for ${staleEtf.join(", ")}.` });
+
+  const lastSet = loaded.weightSets.at(-1);
+  if (!lastSet) {
+    out.push({ text: "No S&P 500 sector weights saved, so allocation and selection cannot be calculated.", href: ledger ? `${ledger}?tab=benchmark` : undefined, action: "Add weights" });
+  } else {
+    if (loaded.quality.benchmark.beforeFirstWeights && lastSet && loaded.weightSets[0].asOf >= period.start) {
+      out.push({ text: `Benchmark weights start ${fmtDate(loaded.weightSets[0].asOf)}; earlier days use that first set.` });
+    }
+    const age = Math.floor(DateTime.fromISO(period.end).diff(DateTime.fromISO(lastSet.asOf), "days").days);
+    if (age > 100) out.push({ text: `Benchmark sector weights are ${age} days old (as of ${fmtDate(lastSet.asOf)}).`, href: ledger ? `${ledger}?tab=benchmark` : undefined, action: "Update" });
+  }
+
+  const held = new Set(loaded.series.portfolio.filter((d) => d.date > period.start && d.date <= period.end).flatMap((d) => d.positions.map((p) => p.ticker)));
+  const unclassified = [...held].filter((t) => !loaded.series.meta.get(t)?.sector);
+  if (unclassified.length) out.push({ text: `No sector set for ${unclassified.join(", ")}.`, href: ledger ? `${ledger}?tab=securities` : undefined, action: "Classify" });
+  return out;
+}
+
+export function sectorEffectPoints(result: { sectors: { key: keyof typeof SECTOR_LABELS | "cash" | "unclassified"; allocation: number; selection: number; interaction: number; total: number }[] }) {
+  return result.sectors.map((s) => ({
+    sector: s.key === "cash" ? "Cash" : s.key === "unclassified" ? "Unclassified" : SECTOR_LABELS[s.key],
+    allocation: s.allocation * 100,
+    selection: s.selection * 100,
+    interaction: s.interaction * 100,
+    total: s.total * 100,
+  }));
+}
+
+/** SPY total return over the period, shown beside the constructed benchmark as a sanity check. */
+export function referenceReturn(loaded: LoadedSeries, period: ResolvedPeriod): number | null {
+  const base = loaded.reference.get(period.start);
+  if (!base) return null;
+  let growth = 1;
+  let prev = base;
+  for (const d of [...loaded.reference.keys()].filter((x) => x > period.start && x <= period.end).sort()) {
+    const close = loaded.reference.get(d)!;
+    growth *= (close + (loaded.referenceDividends.get(d) ?? 0)) / prev;
+    prev = close;
+  }
+  return growth - 1;
+}

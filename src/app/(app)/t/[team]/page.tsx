@@ -63,7 +63,7 @@ export default async function TeamHoldingsPage({ params }: { params: Promise<{ t
                       </Link>
                     </TableCell>
                     <TableCell className="max-w-64 truncate text-muted-foreground">{h.companyName}</TableCell>
-                    <TableCell className="tnum text-right">{h.shares != null ? h.shares.toLocaleString("en-US") : <span className="text-muted-foreground">—</span>}</TableCell>
+                    <TableCell className="tnum text-right">{h.shares != null ? Number(h.shares).toLocaleString("en-US", { maximumFractionDigits: 2 }) : <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell className="tnum text-right">{h.weightPct != null ? fmtPct(h.weightPct, 2, false) : <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell className="tnum text-right">{m?.quote ? fmtMoney(m.quote.price) : <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell className="text-right"><Move value={m?.quote?.changePct} unit="%" digits={2} /></TableCell>

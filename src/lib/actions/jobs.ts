@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { runCloseJob } from "@/lib/jobs/close";
 import { runMorningJob } from "@/lib/jobs/morning";
+import { runPricesJob } from "@/lib/jobs/prices";
 
 export async function runCloseNow(fd: FormData) {
   await requireAdmin();
@@ -20,4 +21,13 @@ export async function runMorningNow() {
   const r = await runMorningJob();
   revalidatePath("/admin");
   redirect(`/admin?ok=${encodeURIComponent(`Morning job: evidence ${r.evidenceFinished}, reminders ${r.reminders}, overdue ${r.overdue}, email ${JSON.stringify(r.email)}`)}`);
+}
+
+export async function runPricesNow() {
+  await requireAdmin();
+  const r = await runPricesJob();
+  revalidatePath("/admin");
+  revalidatePath("/attribution", "layout");
+  const failed = Object.keys(r.failed);
+  redirect(`/admin?${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Prices job: ${r.status}${r.reason ? ` (${r.reason})` : ""}; updated ${r.updated.length}${failed.length ? `; failed ${failed.join(", ")}` : ""}${r.remaining.length ? `; remaining ${r.remaining.length}` : ""}`)}`);
 }
