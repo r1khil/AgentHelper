@@ -24,7 +24,7 @@ import { fmtDate } from "@/lib/format";
 export const metadata: Metadata = { title: "Fund attribution" };
 
 const ledgerButton = (
-  <Button variant="outline" size="sm" render={<Link href="/attribution/ledger" />}>
+  <Button nativeButton={false} variant="outline" size="sm" render={<Link href="/attribution/ledger" />}>
     <BookOpenText />
     Ledger
   </Button>
@@ -39,7 +39,7 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
     return (
       <>
         <PageHeader title="Attribution" description="vs S&P 500 sector benchmark" actions={ledgerButton} />
-        <EmptyState title="No trades recorded" action={<Button size="sm" render={<Link href="/attribution/ledger" />}>Open ledger</Button>}>
+        <EmptyState title="No trades recorded" action={<Button nativeButton={false} size="sm" render={<Link href="/attribution/ledger" />}>Open ledger</Button>}>
           Attribution is calculated from the trade ledger. Record the Fund&apos;s positions and cash to begin.
         </EmptyState>
       </>
