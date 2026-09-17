@@ -1,43 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
-import { AlertIcon } from "@/components/app/icons";
+import { Button } from "@/components/ui/button";
 
-/**
- * Next 16 passes `retry`, not `reset` -- the prop was renamed and became
- * stable in 16.3.0. Verified in node_modules/next/dist/docs.
- */
-export default function Error({
-  error,
-  retry,
-}: {
-  error: Error & { digest?: string };
-  retry: () => void;
-}) {
-  useEffect(() => {
-    console.error(error);
-  }, [error]);
-
+export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   return (
-    <div className="mx-auto grid min-h-screen max-w-md place-items-center px-6">
-      <div className="text-center">
-        <AlertIcon className="text-quality-fail mx-auto mb-3 size-7" />
-        <h1 className="mb-2 font-serif text-2xl">Something went wrong.</h1>
-        <p className="text-muted-foreground mb-5 text-[13px]">
-          The page could not be loaded. Nothing you had saved is affected.
-        </p>
-        <button
-          onClick={retry}
-          className="bg-primary text-primary-foreground hover:bg-primary-hover inline-flex h-9 items-center rounded-md px-4 text-[13px] font-semibold transition-colors"
-        >
+    <main className="flex min-h-screen items-center justify-center p-6 text-center">
+      <div>
+        <div className="text-sm font-medium">Something went wrong</div>
+        <p className="mt-1 max-w-md text-sm text-muted-foreground">{error.message}</p>
+        <Button className="mt-4" variant="outline" onClick={() => retry()}>
           Try again
-        </button>
-        {error.digest && (
-          <p className="text-muted-foreground mt-4 font-mono text-[11px]">
-            Reference {error.digest}
-          </p>
-        )}
+        </Button>
       </div>
-    </div>
+    </main>
   );
 }

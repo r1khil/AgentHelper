@@ -1,44 +1,52 @@
-# AgentHelper
+# Owl Fund Workspace
 
-An evidence workspace for Owlfund sector teams, built around one principle:
+Research workspace for the six sector teams of Temple University's Owl Fund. One rule shapes every feature:
 
-> The agent prepares the evidence; the analyst owns the interpretation.
+> The agent prepares the evidence. The student owns the interpretation.
 
-The project helps analysts gather information, investigate major movements, prepare for earnings, and review model historicals while preserving source traceability and analyst learning.
+The agent pulls prices, SEC filings, XBRL financials, news, and earnings dates, and cites a source for every fact. It never writes a student's movement update, earnings reflection, thesis, or conclusion.
 
-## Project status
+## What it does
 
-The movement pilot is implemented on `codex/v1-pilot`: Next.js, PostgreSQL, invite-only Entra sign-in, durable jobs, sourced investigations, captured notifications, and fixture reasoning feedback. Azure deployment configuration targets a two-developer environment; all market/evidence inputs are synthetic. Live providers and Fund rollout are deferred.
+| Area | What the app does | What the student does |
+| --- | --- | --- |
+| Holdings | Live quote and day move vs the S&P 500, filings, news, notes, owner | Writes and maintains the thesis |
+| Research agent | Chat with tools for quotes, price history, relative moves, EDGAR filings and documents, XBRL facts, news, earnings calendar, team context. Every claim carries a `[src:ID]` chip | Asks questions, judges the evidence |
+| Major movements | Nightly close check: any holding whose daily return differs from the S&P 500 by 4 pp or more opens an investigation with evidence and a noon-next-day deadline, and emails the owner and lead | Writes the update, asks for feedback, marks it complete |
+| Earnings | Tracks the next report date (confirmed vs estimated); locks the student's expectations at the report; gathers the 8-K, press release and XBRL actuals with sources | Records expectations before, writes the reflection after |
+| Model historicals | Reads an uploaded Excel model, maps line items to XBRL concepts, proposes the other periods with period, unit, filing and derivation, and writes approved values into a new file version without touching formulas | Maps the anchor period, approves or rejects each proposal |
 
-See [local setup and deployment](docs/deployment.md) and [implementation validation](docs/v1-validation.md).
-The first release provides dedicated team workspaces, closing-movement investigations, sourced evidence, analyst reasoning feedback, completion tracking, and meaningful daily briefings.
+## Stack
 
-## Start here
+Next.js 16 (App Router), TypeScript, Tailwind v4, shadcn/ui, Supabase (Postgres, Auth, Storage), Drizzle ORM, Vercel AI SDK v7 via OpenRouter, Vercel hosting with Vercel Cron. Data providers: Yahoo Finance (prices, `^GSPC`), SEC EDGAR (filings, XBRL), Finnhub (news, earnings calendar), Resend (email).
 
-- [Original project outline](docs/original-outline.txt)
-- [Product scope and ownership boundaries](docs/product.md)
-- [First-release specification](docs/mvp.md)
-- [Proposed architecture and data contracts](docs/architecture.md)
-- [Implementation roadmap](docs/roadmap.md)
-- [Approved decisions and remaining choices](docs/decisions.md)
-- [Stack recommendation, cloud hosting costs, and credit considerations](docs/stack-and-hosting-research.md)
-- [Collaboration workflow](CONTRIBUTING.md)
+## Local setup
 
-## Phases
+1. `npm install`
+2. Copy `.env.example` to `.env.local` and fill it in (Supabase URL and keys, `DATABASE_URL` from the transaction pooler, `OPENROUTER_API_KEY`, optional `FINNHUB_API_KEY` and `RESEND_API_KEY`).
+3. Apply the schema: `npm run db:migrate` (or paste `drizzle/*.sql` into the Supabase SQL editor).
+4. `npm run db:seed` creates the `admin` username account (password from `SEED_ADMIN_PASSWORD`) and the admin invitation for the Fund's Google account.
+5. `npm run dev`, sign in with the username account, and add members from Admin.
 
-| Phase                | Outcome                                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------------------ |
-| 1: Movement pilot    | Teams can investigate qualifying movements, record completion, and receive meaningful briefings. |
-| 2: Earnings          | Reusable checklists, sourced results, refreshed charts, and preserved expectations.              |
-| 3: Model historicals | Analyst-approved company mappings support sourced proposals and exception review.                |
-| 4: Six teams         | Shared collection and Fund policies, permission-aware research, and semester continuity.         |
+Sign-in is by invitation only: Google for real members, username + password for test accounts created on the Admin page.
 
-## Relationship to Historicals Solver
+## Scheduled jobs
 
-This is a separate project serving the same organization. Historicals Solver is a potential integration for phase 3; no integration or shared implementation is assumed. Define the integration contract and review the existing tool before connecting it.
+`vercel.json` runs two crons: the close check at 23:00 UTC on weekdays and the morning sweep (pending evidence, reminders, overdue notices, earnings calendar, email retries) at 14:00 UTC. Both endpoints accept `Authorization: Bearer $CRON_SECRET` and can be run from the Admin page, with a date for backfills:
 
-## Working together
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/close?date=2026-08-28"
+```
 
-Pick a roadmap item, open an issue with acceptance criteria, implement it on a short-lived branch, and ask the other collaborator to review the pull request. See [CONTRIBUTING.md](CONTRIBUTING.md).
+## Scripts
 
-Keep real holdings, private analyst notes, credentials, and licensed source material out of the repository. Use synthetic or appropriately redistributable fixtures. No open-source license has been selected.
+- `npm run typecheck`, `npm run lint`, `npm test`
+- `npm run smoke:providers AAPL` hits Yahoo, EDGAR and Finnhub live
+- `npx tsx scripts/find-move.ts NVDA 4` lists recent sessions that met the 4 pp rule
+- `npx tsx scripts/upload-model.ts NVDA model.xlsx` uploads a model without the browser
+
+## Docs
+
+- [docs/product.md](docs/product.md): scope and the learning boundary
+- [docs/original-outline.txt](docs/original-outline.txt): the original proposal
+- [docs/decisions.md](docs/decisions.md): historical decision log

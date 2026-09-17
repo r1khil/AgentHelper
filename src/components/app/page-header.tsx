@@ -1,49 +1,32 @@
-import { cn } from "@/components/utils";
+import { cn } from "@/lib/utils";
 
-/**
- * Compact by design. The previous heading block ran a serif display line and
- * a tagline that together ate the top third of every screen while saying
- * nothing an analyst needed -- the first open investigation sat below the
- * fold.
- */
 export function PageHeader({
-  eyebrow,
   title,
   description,
+  actions,
   className,
-  children,
 }: {
-  eyebrow?: string;
-  title: string;
-  description?: string;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  actions?: React.ReactNode;
   className?: string;
-  children?: React.ReactNode;
 }) {
   return (
-    <div
-      className={cn(
-        "border-border mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b pb-4",
-        className,
-      )}
-    >
+    <div className={cn("mb-6 flex flex-wrap items-start justify-between gap-3", className)}>
       <div className="min-w-0">
-        {eyebrow && (
-          <div className="text-muted-foreground mb-1.5 text-[10px] font-semibold tracking-[0.14em] uppercase">
-            {eyebrow}
-          </div>
-        )}
-        <h1 className="font-serif text-[26px] leading-tight tracking-tight">
-          {title}
-        </h1>
-        {description && (
-          <p className="text-muted-foreground mt-1 mb-0 text-[13px]">
-            {description}
-          </p>
-        )}
+        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
-      {children && (
-        <div className="flex shrink-0 items-center gap-3">{children}</div>
-      )}
+      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+export function SectionTitle({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
+  return (
+    <div className="mb-2 flex items-baseline justify-between gap-3">
+      <h2 className="text-sm font-semibold">{children}</h2>
+      {aside && <div className="text-xs text-muted-foreground">{aside}</div>}
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import { defineConfig } from "vitest/config";
+import path from "node:path";
+
 export default defineConfig({
-  test: { fileParallelism: false, testTimeout: 20000 },
-  resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
+  resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
+  test: { include: ["src/**/*.test.ts"], environment: "node" },
 });

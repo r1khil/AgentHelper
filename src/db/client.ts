@@ -1,19 +1,20 @@
+import "server-only";
+import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-let client: ReturnType<typeof postgres> | undefined;
-export function db() {
-  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required");
-  return (client ??= postgres(process.env.DATABASE_URL, {
-    max: 3,
-    idle_timeout: 15,
-    connect_timeout: 15,
-    prepare: false,
-    onnotice: () => {},
-  }));
+import * as schema from "./schema";
+
+declare global {
+  var __owlfundDb: ReturnType<typeof createDb> | undefined;
 }
-export async function closeDb() {
-  if (client) {
-    await client.end();
-    client = undefined;
-  }
+
+function createDb() {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL is not set");
+  // Supabase transaction pooler: no prepared statements.
+  const client = postgres(url, { prepare: false, max: 5 });
+  return drizzle(client, { schema });
 }
-export type Tx = postgres.TransactionSql;
+
+export const db = globalThis.__owlfundDb ?? createDb();
+if (process.env.NODE_ENV !== "production") globalThis.__owlfundDb = db;
+export { schema };
