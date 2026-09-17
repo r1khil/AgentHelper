@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader, SectionTitle } from "@/components/app/page-header";
 import { BenchmarkWeightsForm } from "@/components/app/attribution/benchmark-weights-form";
+import { ImportDialog } from "@/components/app/attribution/import-dialog";
 import { CashFlowDialog } from "@/components/app/attribution/cash-flow-dialog";
 import { SecurityRowForm } from "@/components/app/attribution/security-row-form";
 import { TeamSectorsForm } from "@/components/app/attribution/team-sectors-form";
@@ -85,9 +86,18 @@ export default async function LedgerPage({ searchParams }: PageProps<"/attributi
         </TabsList>
 
         <TabsContent value="trades" className="mt-4">
-          <SectionTitle aside={<TradeDialog today={today} positions={positions.map((p) => ({ ticker: p.ticker, shares: p.shares }))} />}>Trades</SectionTitle>
+          <SectionTitle
+            aside={
+              <span className="flex items-center gap-2">
+                <ImportDialog />
+                <TradeDialog today={today} positions={positions.map((p) => ({ ticker: p.ticker, shares: p.shares }))} />
+              </span>
+            }
+          >
+            Trades
+          </SectionTitle>
           {tradeRows.length === 0 ? (
-            <EmptyState title="No trades recorded">Record each buy and sell as executed. Positions, weights and returns are derived from this list.</EmptyState>
+            <EmptyState title="No trades recorded">Record each buy and sell as executed, or import a CSV of past trades. Positions, weights and returns are derived from this list.</EmptyState>
           ) : (
             <Card className="overflow-x-auto p-0">
               <Table>
