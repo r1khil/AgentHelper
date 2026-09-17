@@ -15,6 +15,18 @@ function createDb() {
   return drizzle(client, { schema });
 }
 
-export const db = globalThis.__owlfundDb ?? createDb();
-if (process.env.NODE_ENV !== "production") globalThis.__owlfundDb = db;
+function getDb() {
+  if (!globalThis.__owlfundDb) globalThis.__owlfundDb = createDb();
+  return globalThis.__owlfundDb;
+}
+
+// Lazy: the connection is created on first query, never at import time, so builds without
+// DATABASE_URL still succeed and only requests fail loudly.
+export const db = new Proxy({} as ReturnType<typeof createDb>, {
+  get(_t, prop) {
+    const real = getDb() as unknown as Record<string | symbol, unknown>;
+    const v = real[prop];
+    return typeof v === "function" ? (v as (...a: unknown[]) => unknown).bind(real) : v;
+  },
+});
 export { schema };
