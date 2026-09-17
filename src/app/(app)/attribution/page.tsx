@@ -8,7 +8,9 @@ import { PageHeader, SectionTitle } from "@/components/app/page-header";
 import { ContributorsTable, type TeamLookup } from "@/components/app/attribution/contributors-table";
 import { CumulativeActiveChart } from "@/components/app/attribution/cumulative-active-chart";
 import { DataQualityNotices } from "@/components/app/attribution/data-quality-notice";
+import { EXPLAIN } from "@/components/app/attribution/explainers";
 import { fmtSigned } from "@/components/app/attribution/format";
+import { Explained } from "@/components/app/attribution/info-tip";
 import { PeriodSelector } from "@/components/app/attribution/period-selector";
 import { SectorEffectsChart } from "@/components/app/attribution/sector-effects-chart";
 import { SectorTable } from "@/components/app/attribution/sector-table";
@@ -83,21 +85,21 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
       ) : (
         <>
           <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-            <StatTile label="Portfolio" value={result.portfolioReturn} />
-            <StatTile label="Benchmark" value={result.benchmarkReturn} />
-            <StatTile label="Active return" value={result.activeReturn} unit="pp" emphasis />
-            <StatTile label="Allocation" value={result.effects?.allocation ?? null} unit="pp" hint="Sector weights" />
-            <StatTile label="Selection" value={result.effects?.selection ?? null} unit="pp" hint="Picks within sectors" />
-            <StatTile label="Interaction" value={result.effects?.interaction ?? null} unit="pp" hint="Weight × pick" />
+            <StatTile label="Portfolio" value={result.portfolioReturn} explain={EXPLAIN.portfolio} />
+            <StatTile label="Benchmark" value={result.benchmarkReturn} explain={EXPLAIN.benchmark} />
+            <StatTile label="Active return" value={result.activeReturn} unit="pp" emphasis explain={EXPLAIN.active} />
+            <StatTile label="Allocation" value={result.effects?.allocation ?? null} unit="pp" hint="Sector weights" explain={EXPLAIN.allocation} />
+            <StatTile label="Selection" value={result.effects?.selection ?? null} unit="pp" hint="Picks within sectors" explain={EXPLAIN.selection} />
+            <StatTile label="Interaction" value={result.effects?.interaction ?? null} unit="pp" hint="Weight × pick" explain={EXPLAIN.interaction} />
           </div>
 
           <div className="mb-6 grid gap-4 lg:grid-cols-2">
             <Card className="p-4">
-              <SectionTitle>Effects by sector</SectionTitle>
+              <SectionTitle><Explained label="Effects by sector">{EXPLAIN.effectsChart}</Explained></SectionTitle>
               {result.effects ? <SectorEffectsChart data={sectorEffectPoints(result)} /> : <div className="text-sm text-muted-foreground">Add S&amp;P 500 sector weights to see allocation and selection.</div>}
             </Card>
             <Card className="p-4">
-              <SectionTitle>Fund vs benchmark</SectionTitle>
+              <SectionTitle><Explained label="Fund vs benchmark">{EXPLAIN.cumulativeChart}</Explained></SectionTitle>
               <CumulativeActiveChart
                 portfolioLabel="Owl Fund"
                 benchmarkLabel="Benchmark"
@@ -106,7 +108,7 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
             </Card>
           </div>
 
-          <SectionTitle>Sectors</SectionTitle>
+          <SectionTitle aside="pp = percentage points of return">Sectors</SectionTitle>
           <div className="mb-6"><SectorTable result={result} /></div>
 
           {showAll ? (
@@ -117,7 +119,7 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
           ) : (
             <div className="mb-6 grid gap-4 lg:grid-cols-2">
               <div>
-                <SectionTitle>Top contributors</SectionTitle>
+                <SectionTitle><Explained label="Top contributors">{EXPLAIN.contributors}</Explained></SectionTitle>
                 <ContributorsTable rows={top} teams={teams} />
               </div>
               <div>
@@ -127,7 +129,7 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
             </div>
           )}
 
-          <SectionTitle>Teams</SectionTitle>
+          <SectionTitle><Explained label="Teams">{EXPLAIN.teams}</Explained></SectionTitle>
           <div className="mb-6"><TeamTable rows={result.teams} teams={teams} cashContribution={result.cashContribution} query={queryString} /></div>
 
           <p className="text-xs text-muted-foreground">

@@ -4,7 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { HoldingRow } from "@/lib/attribution/attribution";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
 import { Move } from "../move";
+import { EXPLAIN } from "./explainers";
 import { fmtWeight, pct } from "./format";
+import { Explained } from "./info-tip";
 
 export type TeamLookup = Map<string, { name: string; slug: string }>;
 
@@ -16,9 +18,9 @@ export function ContributorsTable({ rows, teams, showTeam = true }: { rows: Hold
           <TableRow>
             <TableHead>Holding</TableHead>
             <TableHead>{showTeam ? "Team" : "Sector"}</TableHead>
-            <TableHead className="text-right">Avg wt</TableHead>
-            <TableHead className="text-right">Return</TableHead>
-            <TableHead className="text-right">Contribution</TableHead>
+            <TableHead className="text-right"><Explained align="right" label="Avg wt">{EXPLAIN.holdingWeight}</Explained></TableHead>
+            <TableHead className="text-right"><Explained align="right" label="Return">{EXPLAIN.holdingReturn}</Explained></TableHead>
+            <TableHead className="text-right"><Explained align="right" label="Contribution">{EXPLAIN.contribution}</Explained></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

@@ -4,7 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { TeamRow } from "@/lib/attribution/attribution";
 import { Move } from "../move";
 import type { TeamLookup } from "./contributors-table";
+import { EXPLAIN } from "./explainers";
 import { fmtWeight, pct } from "./format";
+import { Explained } from "./info-tip";
 
 export function TeamTable({ rows, teams, cashContribution, query }: { rows: TeamRow[]; teams: TeamLookup; cashContribution: number; query: string }) {
   return (
@@ -13,9 +15,9 @@ export function TeamTable({ rows, teams, cashContribution, query }: { rows: Team
         <TableHeader>
           <TableRow>
             <TableHead>Team</TableHead>
-            <TableHead className="text-right">Avg wt</TableHead>
-            <TableHead className="text-right">Return</TableHead>
-            <TableHead className="text-right">Contribution</TableHead>
+            <TableHead className="text-right"><Explained align="right" label="Avg wt">{EXPLAIN.holdingWeight}</Explained></TableHead>
+            <TableHead className="text-right"><Explained align="right" label="Return">{EXPLAIN.holdingReturn}</Explained></TableHead>
+            <TableHead className="text-right"><Explained align="right" label="Contribution">{EXPLAIN.contribution}</Explained></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

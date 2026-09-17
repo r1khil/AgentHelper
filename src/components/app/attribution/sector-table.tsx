@@ -3,7 +3,9 @@ import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, Table
 import type { AttributionResult } from "@/lib/attribution/attribution";
 import { ETF_BY_SECTOR, bucketLabel } from "@/lib/attribution/sectors";
 import { Move } from "../move";
+import { EXPLAIN } from "./explainers";
 import { fmtWeight, pct } from "./format";
+import { Explained } from "./info-tip";
 
 export function SectorTable({ result }: { result: AttributionResult }) {
   const hasBench = result.effects !== null;
@@ -13,17 +15,17 @@ export function SectorTable({ result }: { result: AttributionResult }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Sector</TableHead>
-            <TableHead className="text-right">Avg wt</TableHead>
-            {hasBench && <TableHead className="text-right">Bench wt</TableHead>}
-            {hasBench && <TableHead className="text-right">Active wt</TableHead>}
-            <TableHead className="text-right">Return</TableHead>
-            {hasBench && <TableHead className="text-right">Bench return</TableHead>}
-            <TableHead className="text-right">Contribution</TableHead>
-            {hasBench && <TableHead className="text-right">Allocation</TableHead>}
-            {hasBench && <TableHead className="text-right">Selection</TableHead>}
-            {hasBench && <TableHead className="text-right">Interaction</TableHead>}
-            {hasBench && <TableHead className="text-right">Total effect</TableHead>}
+            <TableHead><Explained label="Sector">{EXPLAIN.sectors}</Explained></TableHead>
+            <TableHead className="text-right"><Explained align="right" label="Avg wt">{EXPLAIN.avgWeight}</Explained></TableHead>
+            {hasBench && <TableHead className="text-right"><Explained align="right" label="Bench wt">{EXPLAIN.benchWeight}</Explained></TableHead>}
+            {hasBench && <TableHead className="text-right"><Explained align="right" label="Active wt">{EXPLAIN.activeWeight}</Explained></TableHead>}
+            <TableHead className="text-right"><Explained align="right" label="Return">{EXPLAIN.sectorReturn}</Explained></TableHead>
+            {hasBench && <TableHead className="text-right"><Explained align="right" label="Bench return">{EXPLAIN.benchReturn}</Explained></TableHead>}
+            <TableHead className="text-right"><Explained align="right" label="Contribution">{EXPLAIN.contribution}</Explained></TableHead>
+            {hasBench && <TableHead className="text-right"><Explained align="right" label="Allocation">{EXPLAIN.allocation}</Explained></TableHead>}
+            {hasBench && <TableHead className="text-right"><Explained align="right" label="Selection">{EXPLAIN.selection}</Explained></TableHead>}
+            {hasBench && <TableHead className="text-right"><Explained align="right" label="Interaction">{EXPLAIN.interaction}</Explained></TableHead>}
+            {hasBench && <TableHead className="text-right"><Explained align="right" label="Total effect">{EXPLAIN.totalEffect}</Explained></TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>

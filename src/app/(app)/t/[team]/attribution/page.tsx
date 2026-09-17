@@ -7,6 +7,8 @@ import { PageHeader, SectionTitle } from "@/components/app/page-header";
 import { ContributorsTable, type TeamLookup } from "@/components/app/attribution/contributors-table";
 import { CumulativeActiveChart } from "@/components/app/attribution/cumulative-active-chart";
 import { DataQualityNotices } from "@/components/app/attribution/data-quality-notice";
+import { EXPLAIN } from "@/components/app/attribution/explainers";
+import { Explained } from "@/components/app/attribution/info-tip";
 import { PeriodSelector } from "@/components/app/attribution/period-selector";
 import { SectorEffectsChart } from "@/components/app/attribution/sector-effects-chart";
 import { SectorTable } from "@/components/app/attribution/sector-table";
@@ -69,21 +71,21 @@ export default async function TeamAttributionPage({ params, searchParams }: Page
       ) : (
         <>
           <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-            <StatTile label="Team return" value={result.portfolioReturn} />
-            <StatTile label="Sector benchmark" value={result.benchmarkReturn} />
-            <StatTile label="Active return" value={result.activeReturn} unit="pp" emphasis />
-            <StatTile label="Selection" value={selection} unit="pp" hint="Picks vs sector ETF" />
-            <StatTile label="Allocation" value={result.effects?.allocation ?? null} unit="pp" hint="Mix across team sectors" />
-            <StatTile label="Contribution to Fund" value={result.fundContribution} unit="pp" hint={`${(result.avgFundWeight * 100).toFixed(1)}% of the Fund`} />
+            <StatTile label="Team return" value={result.portfolioReturn} explain={EXPLAIN.teamReturn} />
+            <StatTile label="Sector benchmark" value={result.benchmarkReturn} explain={EXPLAIN.teamBenchmark} />
+            <StatTile label="Active return" value={result.activeReturn} unit="pp" emphasis explain={EXPLAIN.active} />
+            <StatTile label="Selection" value={selection} unit="pp" hint="Picks vs sector ETF" explain={EXPLAIN.teamSelection} />
+            <StatTile label="Allocation" value={result.effects?.allocation ?? null} unit="pp" hint="Mix across team sectors" explain={EXPLAIN.teamAllocation} />
+            <StatTile label="Contribution to Fund" value={result.fundContribution} unit="pp" hint={`${(result.avgFundWeight * 100).toFixed(1)}% of the Fund`} explain={EXPLAIN.fundContribution} />
           </div>
 
           <div className="mb-6 grid gap-4 lg:grid-cols-2">
             <Card className="p-4">
-              <SectionTitle>Effects by sector</SectionTitle>
+              <SectionTitle><Explained label="Effects by sector">{EXPLAIN.effectsChart}</Explained></SectionTitle>
               {result.effects ? <SectorEffectsChart data={sectorEffectPoints(result)} /> : <div className="text-sm text-muted-foreground">No benchmark for this period.</div>}
             </Card>
             <Card className="p-4">
-              <SectionTitle>Team vs sector benchmark</SectionTitle>
+              <SectionTitle><Explained label="Team vs sector benchmark">{EXPLAIN.cumulativeChart}</Explained></SectionTitle>
               <CumulativeActiveChart
                 portfolioLabel={team.name}
                 benchmarkLabel={benchmarkName}
@@ -92,10 +94,10 @@ export default async function TeamAttributionPage({ params, searchParams }: Page
             </Card>
           </div>
 
-          <SectionTitle>Sectors</SectionTitle>
+          <SectionTitle aside="pp = percentage points of return">Sectors</SectionTitle>
           <div className="mb-6"><SectorTable result={result} /></div>
 
-          <SectionTitle>Holdings by contribution</SectionTitle>
+          <SectionTitle><Explained label="Holdings by contribution">{EXPLAIN.contributors}</Explained></SectionTitle>
           <div className="mb-6"><ContributorsTable rows={result.holdings} teams={teams} showTeam={false} /></div>
 
           <p className="text-xs text-muted-foreground">
