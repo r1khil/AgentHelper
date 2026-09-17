@@ -1,7 +1,8 @@
 {
-  "name": "agenthelper",
+  "name": "owlfund-workspace",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "engines": {
     "node": ">=22 <27"
   },
@@ -12,31 +13,43 @@
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "test:integration": "vitest run tests/integration.test.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx scripts/migrate.ts",
+    "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed.ts",
-    "worker": "tsx scripts/worker.ts",
-    "replay": "tsx scripts/replay.ts",
-    "build:worker": "node scripts/build-worker.mjs",
-    "deploy": "node scripts/deploy.mjs",
-    "bootstrap": "tsx scripts/bootstrap.ts",
-    "lint:tokens": "node scripts/lint-tokens.mjs"
+    "smoke:providers": "tsx scripts/smoke-providers.ts"
   },
   "dependencies": {
+    "@ai-sdk/react": "^4.0.108",
+    "@base-ui/react": "^1.8.0",
+    "@openrouter/ai-sdk-provider": "^3.0.0",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0",
+    "ai": "^7.0.105",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "decimal.js": "^10.6.0",
+    "cmdk": "^1.1.1",
+    "cn": "^0.3.0",
     "drizzle-orm": "^0.45.2",
-    "jose": "^6.2.12",
+    "exceljs": "^4.4.0",
+    "jszip": "^3.10.2",
+    "lucide-react": "^1.46.0",
     "luxon": "^3.7.2",
-    "next": "^16.3.4",
+    "next": "^16.3.5",
+    "next-themes": "^0.4.6",
     "postgres": "^3.4.9",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "react-markdown": "^10.1.0",
+    "recharts": "^3.10.1",
+    "remark-gfm": "^4.0.1",
+    "resend": "^6.28.1",
     "server-only": "^0.0.1",
-    "tailwind-merge": "^3.6.0",
-    "zod": "^4.6.1"
+    "shadcn": "^4.21.0",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.7.0",
+    "tw-animate-css": "^1.4.0",
+    "yahoo-finance2": "^4.0.2",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
@@ -44,15 +57,14 @@
     "@types/node": "^22.20.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.10",
-    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
-    "eslint-config-next": "^16.3.4",
+    "eslint-config-next": "^16.3.5",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.13",
     "typescript": "^6.0.3",
-    "vitest": "^5.0.0"
-  },
-  "type": "module"
+    "vitest": "^5.0.1"
+  }
 }

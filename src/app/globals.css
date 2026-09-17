@@ -1,304 +1,145 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-/* ════════════════════════════════════════════════════════════════════════
-   THE ONE BLOCK
-   ────────────────────────────────────────────────────────────────────────
-   Restyle the entire application by editing the values below. Nothing else
-   needs to change. Two rules keep that promise true:
+@custom-variant dark (&:is(.dark *));
 
-     1. App code uses semantic tokens only — never `bg-slate-50`,
-        `text-red-500`, or any raw Tailwind palette utility.
-     2. App code contains NO `dark:` variants. Dark mode is expressed
-        purely as different values in the dark block. A component written
-        once is correct in both themes.
-
-   `npm run lint:tokens` enforces both. Vendored shadcn files in
-   src/components/ui are exempt and may contain `dark:`.
-
-   Values are the app's existing brand hexes, carried over exactly so the
-   token layer introduced no visual change on adoption.
-   ════════════════════════════════════════════════════════════════════════ */
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --color-up: var(--up);
+    --color-down: var(--down);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
 
 :root {
-  --radius: 0.5rem;
-
-  /* ── surfaces & text ───────────────────────────────────────────── */
-  --background: #f7f8f4;
-  --foreground: #183632;
-  --card: #ffffff;
-  --card-foreground: #183632;
-  --muted: #edf1e8;
-  --muted-foreground: #71807b;
-  --border: #e1e7df;
-  --input: #e1e7df;
-  --ring: #cfb875;
-
-  /* ── brand ─────────────────────────────────────────────────────── */
-  --primary: #285c48;
-  --primary-foreground: #ffffff;
-  --primary-hover: #194736;
-  --accent: #c4b57b;
-  --accent-foreground: #183632;
-  --destructive: #9a503b;
-  --destructive-foreground: #ffffff;
-
-  /* ── sidebar (a deliberately dark surface in both themes) ──────── */
-  --sidebar: #142e2b;
-  --sidebar-foreground: #eff4ec;
-  --sidebar-muted: #acbbb0;
-  --sidebar-border: #24453b;
-  --sidebar-accent: #ddca8a;
-
-  /* ══ DOMAIN: price movement ════════════════════════════════════════
-     Colour is never the only channel — RelativeMove also emits an
-     explicit +/- sign. Do not remove it. */
-  --move-up: #347a58;
-  --move-up-surface: #e9f2e9;
-  --move-down: #a3624e;
-  --move-down-surface: #f7e9e2;
-  --move-flat: #71807b;
-
-  /* ══ DOMAIN: workflow status ═══════════════════════════════════════
-     Keys mirror the database literals exactly.
-       investigation : open | in_progress | completed
-       job           : pending | running | succeeded | failed | cancelled | done
-       delivery      : captured
-       derived       : overdue
-     docs/mvp.md:44 requires delivery and data-quality status to stay
-     distinguishable from investigation status. Today's CSS collapses
-     .completed/.done/.captured into one rule; these stay separable. */
-  --status-open: #86753f;
-  --status-open-surface: #f1f0df;
-  --status-in-progress: #56798b;
-  --status-in-progress-surface: #e8eff1;
-  --status-completed: #47724a;
-  --status-completed-surface: #e9f2e9;
-  --status-pending: #71807b;
-  --status-pending-surface: #edf1e8;
-  --status-running: #56798b;
-  --status-running-surface: #e8eff1;
-  --status-succeeded: #47724a;
-  --status-succeeded-surface: #e9f2e9;
-  --status-done: #47724a;
-  --status-done-surface: #e9f2e9;
-  --status-captured: #437657;
-  --status-captured-surface: #eef1eb;
-  --status-failed: #a25e44;
-  --status-failed-surface: #f7e9e2;
-  --status-cancelled: #71807b;
-  --status-cancelled-surface: #edf1e8;
-  --status-overdue: #a25e44;
-  --status-overdue-surface: #f7e9e2;
-
-  /* ══ DOMAIN: data quality ══════════════════════════════════════════
-     docs/mvp.md:32 — bad inputs must never become a silent non-event. */
-  --quality-fail: #a25e44;
-  --quality-fail-surface: #f9eee8;
-  --quality-fail-border: #ead4c6;
-
-  /* ══ DOMAIN: epistemic status ══════════════════════════════════════
-     The fact/hypothesis split is the product's core claim
-     (docs/decisions.md:18). It must never rely on hue alone — keep the
-     left border, the eyebrow label, and the surface tint together. */
-  --fact: #183632;
-  --fact-surface: #ffffff;
-  --fact-border: #e1e7df;
-  --hypothesis: #77713f;
-  --hypothesis-surface: #f6f4e9;
-  --hypothesis-border: #bdac6f;
-
-  /* ── notices ───────────────────────────────────────────────────── */
-  --notice: #77713f;
-  --notice-surface: #f6f4e9;
-  --notice-border: #e3e4cb;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --radius: 0.5rem;
+    --up: oklch(0.55 0.17 150);
+    --down: oklch(0.58 0.22 27);
+    --warning: oklch(0.72 0.17 70);
+    --warning-foreground: oklch(0.3 0.1 70);
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #10201d;
-    --foreground: #e6ece3;
-    --card: #162a26;
-    --card-foreground: #e6ece3;
-    --muted: #1d332e;
-    --muted-foreground: #9fb5a4;
-    --border: #264039;
-    --input: #264039;
-    --ring: #ddca8a;
-
-    --primary: #6aa98a;
-    --primary-foreground: #10201d;
-    --primary-hover: #7cbb9b;
-    --accent: #ddca8a;
-    --accent-foreground: #10201d;
-    --destructive: #d08a72;
-    --destructive-foreground: #10201d;
-
-    --sidebar: #0c1917;
-    --sidebar-foreground: #e6ece3;
-    --sidebar-muted: #8fa798;
-    --sidebar-border: #1d332e;
-    --sidebar-accent: #ddca8a;
-
-    --move-up: #6fbf94;
-    --move-up-surface: #1b3a2c;
-    --move-down: #d79479;
-    --move-down-surface: #3a241d;
-    --move-flat: #9fb5a4;
-
-    --status-open: #cbbc83;
-    --status-open-surface: #322d1c;
-    --status-in-progress: #93b6c6;
-    --status-in-progress-surface: #1d2f36;
-    --status-completed: #7fb583;
-    --status-completed-surface: #1b3324;
-    --status-pending: #9fb5a4;
-    --status-pending-surface: #1d332e;
-    --status-running: #93b6c6;
-    --status-running-surface: #1d2f36;
-    --status-succeeded: #7fb583;
-    --status-succeeded-surface: #1b3324;
-    --status-done: #7fb583;
-    --status-done-surface: #1b3324;
-    --status-captured: #7aab8c;
-    --status-captured-surface: #1a2e28;
-    --status-failed: #d79479;
-    --status-failed-surface: #3a241d;
-    --status-cancelled: #9fb5a4;
-    --status-cancelled-surface: #1d332e;
-    --status-overdue: #d79479;
-    --status-overdue-surface: #3a241d;
-
-    --quality-fail: #d79479;
-    --quality-fail-surface: #33201a;
-    --quality-fail-border: #4d3026;
-
-    --fact: #e6ece3;
-    --fact-surface: #162a26;
-    --fact-border: #264039;
-    --hypothesis: #cbbc83;
-    --hypothesis-surface: #2b2819;
-    --hypothesis-border: #5c5430;
-
-    --notice: #cbbc83;
-    --notice-surface: #2b2819;
-    --notice-border: #443f26;
-  }
+.dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+    --up: oklch(0.72 0.17 150);
+    --down: oklch(0.7 0.19 27);
+    --warning: oklch(0.8 0.15 75);
+    --warning-foreground: oklch(0.9 0.08 75);
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   MAPPING — stable infrastructure. Do not edit this when restyling.
-   `inline` is required: plain @theme would bake the resolved value in and
-   silently break dark mode.
-   ════════════════════════════════════════════════════════════════════════ */
-@theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary-hover: var(--primary-hover);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-muted: var(--sidebar-muted);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent: var(--sidebar-accent);
-
-  --color-move-up: var(--move-up);
-  --color-move-up-surface: var(--move-up-surface);
-  --color-move-down: var(--move-down);
-  --color-move-down-surface: var(--move-down-surface);
-  --color-move-flat: var(--move-flat);
-
-  --color-status-open: var(--status-open);
-  --color-status-open-surface: var(--status-open-surface);
-  --color-status-in-progress: var(--status-in-progress);
-  --color-status-in-progress-surface: var(--status-in-progress-surface);
-  --color-status-completed: var(--status-completed);
-  --color-status-completed-surface: var(--status-completed-surface);
-  --color-status-pending: var(--status-pending);
-  --color-status-pending-surface: var(--status-pending-surface);
-  --color-status-running: var(--status-running);
-  --color-status-running-surface: var(--status-running-surface);
-  --color-status-succeeded: var(--status-succeeded);
-  --color-status-succeeded-surface: var(--status-succeeded-surface);
-  --color-status-done: var(--status-done);
-  --color-status-done-surface: var(--status-done-surface);
-  --color-status-captured: var(--status-captured);
-  --color-status-captured-surface: var(--status-captured-surface);
-  --color-status-failed: var(--status-failed);
-  --color-status-failed-surface: var(--status-failed-surface);
-  --color-status-cancelled: var(--status-cancelled);
-  --color-status-cancelled-surface: var(--status-cancelled-surface);
-  --color-status-overdue: var(--status-overdue);
-  --color-status-overdue-surface: var(--status-overdue-surface);
-
-  --color-quality-fail: var(--quality-fail);
-  --color-quality-fail-surface: var(--quality-fail-surface);
-  --color-quality-fail-border: var(--quality-fail-border);
-
-  --color-fact: var(--fact);
-  --color-fact-surface: var(--fact-surface);
-  --color-fact-border: var(--fact-border);
-  --color-hypothesis: var(--hypothesis);
-  --color-hypothesis-surface: var(--hypothesis-surface);
-  --color-hypothesis-border: var(--hypothesis-border);
-
-  --color-notice: var(--notice);
-  --color-notice-surface: var(--notice-surface);
-  --color-notice-border: var(--notice-border);
-
-  --font-sans: Arial, Helvetica, sans-serif;
-  --font-serif: Georgia, serif;
-}
-
-/* ════════════════════════════════════════════════════════════════════════
-   BASE — document defaults. Everything else is a utility on the element
-   that needs it; there are no shared semantic classes to hunt through.
-   ════════════════════════════════════════════════════════════════════════ */
 @layer base {
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
-  }
-
+  * {
+    @apply border-border outline-ring/50;
+    }
   body {
-    margin: 0;
-    background: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-sans);
-    font-size: 14px;
-    line-height: 1.6;
-  }
-
-  /* Deliberate, high-contrast focus ring carried over from the original
-     stylesheet. Preflight removes outlines; this puts one back. Do not
-     replace it with a subtler default -- it is an accessibility feature
-     and no test covers it. */
-  a:focus-visible,
-  button:focus-visible,
-  input:focus-visible,
-  textarea:focus-visible,
-  select:focus-visible,
-  summary:focus-visible,
-  [tabindex]:focus-visible {
-    outline: 3px solid var(--ring);
-    outline-offset: 3px;
-  }
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans;
+    }
+}
+@layer utilities {
+  .tnum { font-variant-numeric: tabular-nums; }
 }

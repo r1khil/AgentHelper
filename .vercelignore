@@ -1,0 +1,9 @@
+.git
+.next
+node_modules
+.deploy
+docs
+example files
+drizzle/meta
+tsconfig.tsbuildinfo
+*.test.ts

@@ -28,3 +28,8 @@ next-env.d.ts
 
 # Local dev-server config (ports vary by machine)
 .claude/launch.json
+
+# Local deploy bundles
+.deploy/
+.vercel
+.env*

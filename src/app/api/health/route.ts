@@ -1,3 +1,3 @@
 export function GET() {
-  return Response.json({ status: "ok", service: "agenthelper" });
+  return Response.json({ ok: true, time: new Date().toISOString() });
 }
