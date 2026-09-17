@@ -8,7 +8,8 @@ import { db } from "@/db/client";
 import { invitations, profiles } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { ROLES, usernameToEmail } from "@/lib/constants";
+import { ROLES } from "@/lib/constants";
+import { createPasswordAccount, passwordAccountSchema } from "@/lib/members";
 
 const roleSchema = z.enum(ROLES as [string, ...string[]]);
 const teamSchema = z.string().uuid().nullable();
@@ -50,35 +51,18 @@ export async function revokeInvitation(fd: FormData) {
 
 export async function createTestAccount(fd: FormData) {
   await requireAdmin();
-  const parsed = z
-    .object({
-      username: z.string().trim().toLowerCase().regex(/^[a-z0-9._-]{3,32}$/, "3-32 chars: letters, digits, . _ -"),
-      password: z.string().min(8).max(72),
-      fullName: z.string().trim().min(1).max(120),
-      role: roleSchema,
-      teamId: teamSchema,
-    })
-    .safeParse({ username: fd.get("username"), password: fd.get("password"), fullName: fd.get("fullName"), role: fd.get("role"), teamId: teamFrom(fd) });
-  if (!parsed.success) back(parsed.error.issues[0]?.message ?? "Check the account fields");
-  const { username, password, fullName, role, teamId } = parsed.data;
-  const email = usernameToEmail(username);
-  const supabase = createSupabaseAdmin();
-  const { data, error } = await supabase.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { username, full_name: fullName },
+  const parsed = passwordAccountSchema.safeParse({
+    username: fd.get("username"),
+    password: fd.get("password"),
+    fullName: fd.get("fullName"),
+    role: fd.get("role"),
+    teamId: teamFrom(fd),
   });
-  if (error || !data.user) back(error?.message ?? "Could not create the account");
-  const authUser = data.user;
-  try {
-    await db.insert(profiles).values({ id: authUser.id, email, username, fullName, role: role as (typeof ROLES)[number], kind: "password", teamId });
-  } catch (e) {
-    await supabase.auth.admin.deleteUser(authUser.id);
-    back(e instanceof Error ? e.message : "Could not create the profile");
-  }
+  if (!parsed.success) back(parsed.error.issues[0]?.message ?? "Check the account fields");
+  const result = await createPasswordAccount({ db, supabase: createSupabaseAdmin() }, parsed.data);
+  if (!result.ok) back(result.error);
   revalidatePath("/admin");
-  back(`Created ${username}`, true);
+  back(`Created ${parsed.data.username}`, true);
 }
 
 export async function updateMember(fd: FormData) {

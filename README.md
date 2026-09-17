@@ -44,6 +44,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/close?date=2026-
 - `npm run smoke:providers AAPL` hits Yahoo, EDGAR and Finnhub live
 - `npx tsx scripts/find-move.ts NVDA 4` lists recent sessions that met the 4 pp rule
 - `npx tsx scripts/upload-model.ts NVDA model.xlsx` uploads a model without the browser
+- `npx tsx scripts/create-test-account.ts <username> <password> --name "Full Name" --team tech` creates a username account without the Admin page; it goes through first-sign-in setup like any new member
 
 ## Docs
 
