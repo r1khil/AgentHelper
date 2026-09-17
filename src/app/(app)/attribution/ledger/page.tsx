@@ -69,7 +69,7 @@ export default async function LedgerPage({ searchParams }: PageProps<"/attributi
             : "Trades, cash and benchmark inputs behind the attribution pages."
         }
         actions={
-          <Button variant="outline" size="sm" render={<Link href="/attribution" />}>
+          <Button nativeButton={false} variant="outline" size="sm" render={<Link href="/attribution" />}>
             <ArrowLeft />
             Attribution
           </Button>
