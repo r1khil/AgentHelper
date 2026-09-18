@@ -60,6 +60,8 @@ export function buildPaths(rootId: string, items: DriveItem[]): PathedItem[] {
   return out.sort((a, b) => a.path.localeCompare(b.path));
 }
 
+const ARCHIVE_FOLDER = /(^|\/)(old|past|former|archive[sd]?|exited|closed)\b[^/]*(\/|$)/i;
+
 const NOISE = /\b(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|holdings|holding|group|the|sa|nv|ag)\b/g;
 
 export function normalizeName(s: string) {
@@ -171,9 +173,10 @@ export function classifyTree(rootId: string, items: DriveItem[], holdings: Holdi
         } else {
           const paren = parenthesizedTicker(p.name);
           if (paren) {
-            // Looks like a company folder but matches no active holding: worth showing the admin.
+            // Looks like a company folder but matches no active holding: worth showing the admin, unless it sits
+            // under an archive folder (Old Holdings, Past Pitches) where that is expected.
             ticker = paren.toUpperCase();
-            unmatched.add(p.path);
+            if (!ARCHIVE_FOLDER.test(p.path.split("/").slice(0, -1).join("/"))) unmatched.add(p.path);
           }
         }
       }

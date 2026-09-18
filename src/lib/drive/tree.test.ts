@@ -97,6 +97,9 @@ describe("classifyTree", () => {
       folder("deeper", "Earnings Updates", "deep"),
       folder("sem", "Fall 2025", "deeper"),
       file("f5", "Q3 FY2026 Earnings Update.pdf", "sem"),
+      folder("old", "Old Holdings", "sub"),
+      folder("oldco", "Comcast Corporation (CMCSA)", "old"),
+      file("f6", "CMCSA pitch.pdf", "oldco"),
     ];
     const { items: out, unmatched } = classifyTree(ROOT, items, holdings, teams);
     const by = Object.fromEntries(out.map((o) => [o.id, o]));
@@ -110,6 +113,7 @@ describe("classifyTree", () => {
     expect(by.f4).toMatchObject({ teamId: null, holdingId: null, kind: "other" });
     expect(by.f5).toMatchObject({ teamId: "t-fig", holdingId: "h-nvda", ticker: "NVDA", kind: "earnings_update" });
     expect(by.cur).toMatchObject({ holdingId: null, ticker: null });
+    expect(by.f6).toMatchObject({ holdingId: null, ticker: "CMCSA" });
     expect(unmatched).toEqual(["FIG/Unknown Co (ZZZ)", "Loose/Dup Co (DUP)"]);
   });
 });
