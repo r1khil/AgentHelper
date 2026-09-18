@@ -7,6 +7,12 @@ export function fmtWeight(v: number) {
   return `${(v * 100).toFixed(1)}%`;
 }
 
+export function fmtBps(v: number, digits = 1) {
+  const n = v * 10_000;
+  const s = n.toFixed(digits);
+  return `${n > 0 && Number(s) !== 0 ? "+" : ""}${s} bps`;
+}
+
 export function fmtSigned(v: number, digits = 2, unit = "%") {
   const n = v * 100;
   const s = n.toFixed(digits);

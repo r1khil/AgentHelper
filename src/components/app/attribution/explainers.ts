@@ -1,14 +1,15 @@
 /** Plain-language definitions shown in tooltips on the attribution pages. */
 export const EXPLAIN = {
   portfolio: "The Fund's total return over the period, including cash and reinvested dividends. Deposits and withdrawals are excluded.",
-  benchmark: "What the S&P 500 returned, built from its sector weights and the 11 Select Sector SPDR ETFs so it can be compared sector by sector.",
-  active: "Portfolio return minus benchmark return. Positive means the Fund beat the index. Allocation, selection and interaction add up to this number.",
-  allocation: "The result of sector bets. Positive when the Fund was overweight sectors that beat the index, or underweight sectors that lagged it. Holding cash shows up here.",
-  selection: "The result of stock picking. Positive when the Fund's holdings in a sector beat that sector's ETF, measured at the index's sector weight.",
-  interaction: "The combined effect of sizing and picking: positive when the Fund was overweight a sector where its picks also beat the sector. Usually small.",
+  index: "The S&P 500 index's price return over the period, from official closes. The same basis as the internal sheet and the major-movement rule.",
+  benchmark: "The sector benchmark: saved S&P 500 sector weights applied to the 11 Select Sector SPDR ETFs, built so the active return can be split sector by sector. It tracks the index closely but not exactly, because the sector ETFs cap their largest holdings.",
+  active: "Portfolio return minus the S&P 500's return. Positive means the Fund beat the index.",
+  allocation: "Measured against the sector benchmark. The result of sector bets. Positive when the Fund was overweight sectors that beat the index, or underweight sectors that lagged it. Holding cash shows up here.",
+  selection: "Measured against the sector benchmark. The result of stock picking. Positive when the Fund's holdings in a sector beat that sector's ETF, measured at the index's sector weight.",
+  interaction: "Measured against the sector benchmark. The combined effect of sizing and picking: positive when the Fund was overweight a sector where its picks also beat the sector. Usually small.",
 
-  effectsChart: "Each bar splits a sector's impact on active return into allocation, selection and interaction. Bars to the right helped against the index; bars to the left hurt. Sectors are sorted from most helpful to least.",
-  cumulativeChart: "Growth of the Fund and the benchmark from the start of the period, both starting at 0%. The gap between the lines is the active return.",
+  effectsChart: "Each bar splits a sector's impact on active return into allocation, selection and interaction. Bars to the right helped against the sector benchmark; bars to the left hurt. Sectors are sorted from most helpful to least.",
+  cumulativeChart: "Growth of the Fund and the S&P 500 from the start of the period, both starting at 0%. The gap between the lines is the active return.",
 
   sectors: "GICS sectors. Each holding is assigned one on the Ledger page. Cash and unclassified holdings have no benchmark, so their whole effect counts as allocation.",
   avgWeight: "Average share of the Fund held in this sector across the period, measured at the start of each day.",
@@ -17,7 +18,7 @@ export const EXPLAIN = {
   sectorReturn: "Return of the Fund's holdings in this sector over the period.",
   benchReturn: "Return of the sector's Select Sector SPDR ETF, used as the index's return for this sector.",
   contribution: "How many points of the Fund's total return came from here: roughly weight times return, compounded daily. All contributions add up to the portfolio return.",
-  totalEffect: "Allocation plus selection plus interaction for this sector. The column adds up to the active return.",
+  totalEffect: "Allocation plus selection plus interaction for this sector. The column adds up to the active return against the sector benchmark.",
 
   holdingWeight: "Average share of the Fund in this holding over the period. Zero-weight days before a purchase or after a sale are included.",
   holdingReturn: "Total return of the holding while the Fund owned it, including reinvested dividends and any gap between trade price and that day's close.",

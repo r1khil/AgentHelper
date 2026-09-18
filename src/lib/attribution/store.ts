@@ -6,7 +6,7 @@ import type { Db } from "@/lib/prices";
 import type { AttributionSeries } from "./attribution";
 import { buildBenchmarkDays } from "./benchmark";
 import { adjustForSplits, buildPortfolioDays, latestPositions } from "./ledger";
-import { BENCHMARK_REFERENCE, benchmarkSymbols, defaultSector, type GicsSector } from "./sectors";
+import { BENCHMARK_REFERENCE, INDEX_REFERENCE, benchmarkSymbols, defaultSector, type GicsSector } from "./sectors";
 import type { BenchmarkQuality, BenchmarkWeightSet, CashFlow, DateSeries, LedgerQuality, Split, Trade } from "./types";
 
 /** Days of closes kept before inception so first-day returns have a prior close. */
@@ -22,6 +22,8 @@ export type LoadedSeries = {
   /** Reference index total return by date, for the methodology footnote. */
   reference: Map<string, number>;
   referenceDividends: Map<string, number>;
+  /** S&P 500 index closes by date, for the headline comparison. */
+  index: Map<string, number>;
   quality: { ledger: LedgerQuality; benchmark: BenchmarkQuality };
   /** The raw inputs the series was built from (references, not copies), for data lineage. */
   inputs: { prices: DateSeries; dividends: DateSeries; splits: Split[]; days: string[] };
@@ -73,6 +75,7 @@ export async function loadSeries(db: Db, overrides?: { trades?: Trade[]; cashFlo
     weightSets,
     reference: new Map(),
     referenceDividends: new Map(),
+    index: new Map(),
     quality: { ledger: { stale: [], unpriced: [], oversold: [] }, benchmark: { beforeFirstWeights: false, staleEtf: [] } },
     inputs: { prices: new Map(), dividends: new Map(), splits: [], days: [] },
   };
@@ -117,6 +120,7 @@ export async function loadSeries(db: Db, overrides?: { trades?: Trade[]; cashFlo
     weightSets,
     reference,
     referenceDividends: dividends.get(BENCHMARK_REFERENCE) ?? new Map(),
+    index: prices.get(INDEX_REFERENCE) ?? new Map(),
     quality: { ledger: portfolio.quality, benchmark: benchmark.quality },
     inputs: { prices, dividends, splits, days },
   };
