@@ -299,6 +299,9 @@ export const chats = pgTable("chats", {
   title: text("title").notNull().default("New chat"),
   createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  /** idle | running | error — whether the agent is still answering the last question. */
+  runStatus: text("run_status").notNull().default("idle"),
+  runStartedAt: timestamp("run_started_at", { withTimezone: true }),
   ...timestamps,
 });
 
