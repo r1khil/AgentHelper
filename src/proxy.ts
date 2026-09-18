@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/not-invited", "/auth/callback", "/auth/google/callback", "/api/cron", "/api/health", "/api/version"];
+// /api/drive/webhook receives Google Drive push notifications; it authenticates with its own per-channel token.
+const PUBLIC_PATHS = ["/login", "/not-invited", "/auth/callback", "/auth/google/callback", "/api/cron", "/api/health", "/api/version", "/api/drive/webhook"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
