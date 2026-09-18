@@ -5,7 +5,7 @@ import { generateText } from "ai";
 import { db } from "@/db/client";
 import { earnings, evidenceItems, holdings } from "@/db/schema";
 import { conceptFacts, filingUrlForFact, getCompanyFacts, getFilingText, listFilingDocuments, listFilings } from "@/lib/providers/edgar";
-import { agentConfigured, agentModelFor, agentModelId } from "@/lib/agent/model";
+import { agentConfigured, chatModel, agentModelId } from "@/lib/agent/model";
 import type { Actuals } from "@/lib/earnings";
 
 const CONCEPTS: { label: string; concepts: string[]; unit: string }[] = [
@@ -79,7 +79,7 @@ export async function gatherEarningsResults(earningsId: string) {
     const prompt = `Company: ${h.companyName} (${h.ticker}). Report date: ${e.reportDate}. ${e.fiscalPeriod ? `Fiscal period: ${e.fiscalPeriod}.` : ""}\n\nXBRL FACTS:\n${xbrlLines.join("\n") || "(none)"}\n\nPRESS RELEASE TEXT:\n${releaseText || "(none)"}`;
     const modelId = await agentModelId();
     try {
-      const { text } = await generateText({ model: agentModelFor(modelId), instructions, prompt, maxRetries: 2 });
+      const { text } = await generateText({ model: chatModel(modelId), instructions, prompt, maxRetries: 2 });
       const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
       const parsed = JSON.parse(json) as { rows?: Actuals["rows"]; missing?: string[] };
       const valid = new Set(sources.map((s) => s.id));

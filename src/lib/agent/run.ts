@@ -1,7 +1,7 @@
 import "server-only";
 import { consumeStream, convertToModelMessages, createIdGenerator, isStepCount, streamText, toUIMessageStream, type UIMessage } from "ai";
 import { saveMessages, setRunStatus } from "@/lib/chats";
-import { agentModelFor, agentModelId } from "@/lib/agent/model";
+import { chatModel, agentModelId } from "@/lib/agent/model";
 import { buildInstructions } from "@/lib/agent/instructions";
 import { makeTools } from "@/lib/agent/tools";
 import { uncitedFactCount } from "@/lib/agent/citations";
@@ -23,7 +23,7 @@ export async function runAgentTurn(opts: { chat: { id: string; teamId: string; h
   const instructions = await buildInstructions(chat.teamId, { holdingId: chat.holdingId, userName: user.fullName, userRole: user.role });
 
   const result = streamText({
-    model: agentModelFor(modelId),
+    model: chatModel(modelId),
     instructions,
     messages: await convertToModelMessages(compactHistory(messages), { tools, ignoreIncompleteToolCalls: true }),
     tools,

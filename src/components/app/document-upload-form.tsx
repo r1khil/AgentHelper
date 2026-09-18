@@ -48,7 +48,7 @@ export function DocumentUploadForm({ holdingId, disabledReason }: { holdingId: s
       });
       const json = (await res.json()) as { ok: boolean; error?: string; textError?: string | null };
       if (!json.ok) throw new Error(json.error ?? "Upload failed");
-      toast.success(json.textError ? `Added to the Drive (text not extracted: ${json.textError})` : "Added to the Drive and indexed for the agent");
+      toast.success(json.textError ? `Added to the Drive (text not extracted: ${json.textError})` : "Added to the Drive. The summary appears here once the file has been read.");
       if (fileRef.current) fileRef.current.value = "";
       router.refresh();
     } catch (err) {

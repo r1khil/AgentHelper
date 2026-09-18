@@ -269,6 +269,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_team_context: "Team context",
   get_peer_moves: "Peer moves",
   find_drive_files: "Analyst Drive",
+  search_drive_text: "Drive passages",
   read_drive_file: "Drive file",
 };
 
@@ -286,6 +287,9 @@ const TOOL_PROGRESS: Record<string, string> = {
   get_earnings_calendar: "Checking earnings calendar",
   get_team_context: "Reading team notes",
   get_peer_moves: "Checking peer moves",
+  find_drive_files: "Searching the analyst Drive",
+  search_drive_text: "Searching document text",
+  read_drive_file: "Reading a Drive file",
 };
 
 /** One line per turn summarising the research; expands to the individual lookups and any interim notes. */

@@ -2,8 +2,28 @@ import "server-only";
 import { and, desc, eq, ne } from "drizzle-orm";
 import { db } from "@/db/client";
 import { holdingNotes, holdings, movements, profiles, teams } from "@/db/schema";
+import { listPendingProposals } from "@/lib/holdings";
+import { summaryToPromptLines } from "@/lib/drive/summary";
 import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
-import { DOC_KIND_LABELS, driveStatus, listHoldingFiles } from "@/lib/drive/index";
+import { DOC_KIND_LABELS, driveStatus, listHoldingFiles, type DriveFileMeta } from "@/lib/drive/index";
+
+const PINNED_DOCS_MAX_CHARS = 12_000;
+
+/** One line per document plus its extracted summary bullets, capped so a long shelf cannot crowd out the rest. */
+export function pinnedDocsBlock(files: DriveFileMeta[], maxChars = PINNED_DOCS_MAX_CHARS): string {
+  let out = "";
+  let shown = 0;
+  for (const f of files) {
+    const line = `- [${f.kind ? DOC_KIND_LABELS[f.kind] : "Other"}] ${f.name} — id ${f.id}${f.modifiedTime ? ` — modified ${f.modifiedTime.toISOString().slice(0, 10)}` : ""}`;
+    const bullets = f.summary ? summaryToPromptLines(f.summary) : "";
+    const block = bullets ? `${line}\n${bullets}\n` : `${line}\n`;
+    if (out.length + block.length > maxChars) break;
+    out += block;
+    shown++;
+  }
+  if (shown < files.length) out += `- (${files.length - shown} more; use find_drive_files)\n`;
+  return out.replace(/\n$/, "");
+}
 import { todayNY } from "@/lib/providers/calendar";
 
 export async function buildInstructions(teamId: string, opts: { holdingId?: string | null; userName: string; userRole: string }) {
@@ -32,11 +52,12 @@ export async function buildInstructions(teamId: string, opts: { holdingId?: stri
       pinned = `\n\nThis chat is pinned to ${h.h.ticker} (${h.h.companyName}); assume questions are about it unless another ticker is named. Recent team notes on it:\n${notes.length ? notes.map((n) => `- ${n.createdAt.toISOString().slice(0, 10)}: ${n.body}`).join("\n") : "- (none)"}`;
       if (driveOn) {
         const files = await listHoldingFiles(h.h.id, 20).catch(() => []);
-        pinned += `\n\nDocuments on file for ${h.h.ticker} in the analyst Drive (pass the id to read_drive_file):\n${
-          files.length
-            ? files.map((f) => `- [${f.kind ? DOC_KIND_LABELS[f.kind] : "Other"}] ${f.name} — id ${f.id}${f.modifiedTime ? ` — modified ${f.modifiedTime.toISOString().slice(0, 10)}` : ""}`).join("\n")
-            : "- (none indexed yet; analysts can upload from the holding page)"
+        pinned += `\n\nDocuments on file for ${h.h.ticker} in the analyst Drive (pass the id to read_drive_file). Indented bullets are summaries the app extracted from that document; they are evidence of what the team wrote, not market facts, and must be cited by the document's id:\n${
+          files.length ? pinnedDocsBlock(files) : "- (none indexed yet; analysts can upload from the holding page)"
         }`;
+        const proposals = await listPendingProposals(h.h.id).catch(() => []);
+        const thesisProposal = proposals.find((p) => p.field === "thesis");
+        if (thesisProposal) pinned += `\n\nA thesis extracted from ${thesisProposal.sourceFileName ?? "an initiating report"} is awaiting analyst review. It is not the recorded thesis; do not present it as the team's position.`;
       }
     }
   }
@@ -81,6 +102,7 @@ TOOL PLAYBOOK (follow it; each tool call costs a step and you have about ten):
 - Price moves: get_relative_moves (already computes the move versus the S&P 500), get_price_history for context, get_peer_moves for the rest of the book.
 - What happened: get_news for the window, get_filings with forms ["8-K"] for company announcements, get_earnings_calendar for the next report.
 - Team context (thesis, notes, open movement investigations): get_team_context.
+- What the team's own documents say (what did our report say about X, which update mentions Y): search_drive_text first, then read_drive_file with the returned fileId and an offset near the passage for context. find_drive_files is for locating a document by name, ticker, or kind.
 - Never call a tool twice with the same arguments. If a call fails, fix the argument the error points at or move on; do not retry blindly.
 
 WORKING STYLE:

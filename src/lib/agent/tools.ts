@@ -14,6 +14,9 @@ import { relativeMovePp } from "@/lib/movement/math";
 import { sourceId, type Source } from "@/lib/providers/types";
 import { DriveNotConnected, driveConfigured } from "@/lib/drive/auth";
 import { driveStatus, getFileText, listHoldingFiles, searchIndex, type DriveFileMeta } from "@/lib/drive/index";
+import { searchChunks } from "@/lib/drive/search";
+import { embeddingConfigured } from "@/lib/agent/embeddings";
+import { listPendingProposals } from "@/lib/holdings";
 import { searchFullText } from "@/lib/drive/read";
 import { windowText } from "@/lib/drive/text";
 
@@ -37,6 +40,14 @@ function fail<T>(e: unknown, data: T): ToolResult<T> {
 
 function driveSource(f: Pick<DriveFileMeta, "id" | "name" | "webViewLink" | "modifiedTime">): Source {
   return src("drive", f.name, f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`, "Analyst Drive", f.modifiedTime?.toISOString());
+}
+
+/** Throws a DriveNotConnected with the right explanation unless the Drive index is usable. */
+async function assertDriveReady() {
+  const status = await driveStatus();
+  if (!status.configured) throw new DriveNotConnected("The analyst Drive is not configured on this deployment.");
+  if (!status.connected || !status.rootFolderId) throw new DriveNotConnected();
+  if (status.needsReconnect) throw new DriveNotConnected("The analyst Drive connection needs to be renewed by an admin.");
 }
 
 export function makeTools(ctx: { teamId: string; userId: string }) {
@@ -319,18 +330,20 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
           const notes = await db.select().from(holdingNotes).where(eq(holdingNotes.holdingId, r.h.id)).orderBy(desc(holdingNotes.createdAt)).limit(5);
           const mv = await db.select().from(movements).where(eq(movements.holdingId, r.h.id)).orderBy(desc(movements.sessionDate)).limit(5);
           const files = driveOn ? await listHoldingFiles(r.h.id, 10).catch(() => []) : [];
+          const pendingThesis = (await listPendingProposals(r.h.id).catch(() => [])).find((p) => p.field === "thesis");
           out.push({
             ticker: r.h.ticker,
             company: r.h.companyName,
             owner: r.ownerName,
             thesis: r.h.thesis,
             thesisUpdatedAt: r.h.thesisUpdatedAt,
+            pendingThesisProposal: pendingThesis ? { fileName: pendingThesis.sourceFileName, note: "Extracted by the app from the initiating report; awaiting analyst review. Not the recorded thesis." } : null,
             notes: notes.map((n) => ({ at: n.createdAt, body: n.body })),
             movements: mv.map((m) => ({ sessionDate: m.sessionDate, relativePp: m.relativeMovePp, status: m.status, update: m.updateText })),
             driveFiles: files.map((f) => {
               const s = driveSource(f);
               sources.push(s);
-              return { fileId: f.id, name: f.name, kind: f.kind, path: f.path, modifiedTime: f.modifiedTime, sourceId: s.id };
+              return { fileId: f.id, name: f.name, kind: f.kind, path: f.path, modifiedTime: f.modifiedTime, docDate: f.docDate, summary: f.summary, sourceId: s.id };
             }),
           });
         }
@@ -340,7 +353,7 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
 
     find_drive_files: tool({
       description:
-        "Search the team's own documents in the Owl Fund analyst Google Drive: initiating coverage reports (where the recorded thesis lives), earnings updates, the Excel model, and other notes. Returns file ids for read_drive_file.",
+        "Locate the team's own documents in the Owl Fund analyst Google Drive by name, ticker, or kind: initiating coverage reports (where the recorded thesis lives), earnings updates, the Excel model, and other notes. Returns file ids for read_drive_file. For questions about what a document says, use search_drive_text.",
       inputSchema: z.object({
         ticker: tickerArg.optional(),
         query: z.string().min(2).optional().describe("Words in the file name or folder path; also searched inside file contents"),
@@ -349,10 +362,7 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
       }),
       execute: async ({ ticker, query, kind, limit }): Promise<ToolResult<unknown>> => {
         try {
-          const status = await driveStatus();
-          if (!status.configured) throw new DriveNotConnected("The analyst Drive is not configured on this deployment.");
-          if (!status.connected || !status.rootFolderId) throw new DriveNotConnected();
-          if (status.needsReconnect) throw new DriveNotConnected("The analyst Drive connection needs to be renewed by an admin.");
+          await assertDriveReady();
           let rows = await searchIndex({ ticker, query, kind, limit });
           if (query && rows.length < limit) {
             const ids = await searchFullText(query).catch(() => [] as string[]);
@@ -368,6 +378,38 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
             },
             sources,
           };
+        } catch (e) {
+          return fail(e, null);
+        }
+      },
+    }),
+
+    search_drive_text: tool({
+      description:
+        "Search inside the text of the team's own documents in the analyst Drive by meaning (a question or phrase), across initiating coverage reports, earnings updates, models, and notes. Returns the best-matching passages with file ids; open a file with read_drive_file for more context.",
+      inputSchema: z.object({
+        query: z.string().min(3).describe("A question or phrase, e.g. 'what did we say about pricing pressure'"),
+        ticker: tickerArg.optional(),
+        kind: z.enum(["initiating_coverage", "earnings_update", "model", "other"]).optional(),
+        limit: z.number().int().min(1).max(12).default(6),
+      }),
+      execute: async ({ query, ticker, kind, limit }): Promise<ToolResult<unknown>> => {
+        try {
+          await assertDriveReady();
+          if (!embeddingConfigured()) throw new Error("Semantic search over Drive documents is not configured (OPENROUTER_EMBEDDING_MODEL). Use find_drive_files and read_drive_file instead.");
+          const hits = await searchChunks({ query, ticker, kind, limit });
+          const sources: Source[] = [];
+          const byFile = new Map<string, Source>();
+          const passages = hits.map((h) => {
+            let s = byFile.get(h.fileId);
+            if (!s) {
+              s = driveSource(h.meta);
+              byFile.set(h.fileId, s);
+              sources.push(s);
+            }
+            return { fileId: h.fileId, name: h.meta.name, kind: h.meta.kind, ticker: h.meta.ticker, docDate: h.meta.docDate, seq: h.seq, score: h.score, text: h.text, sourceId: s.id };
+          });
+          return { data: { passages, note: passages.length ? undefined : "No passages matched in the indexed documents. Newly added files are embedded within a few minutes of sync." }, sources };
         } catch (e) {
           return fail(e, null);
         }
