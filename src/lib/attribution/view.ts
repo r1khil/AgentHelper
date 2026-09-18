@@ -55,10 +55,10 @@ export function qualityNotices(loaded: LoadedSeries, period: ResolvedPeriod, opt
 export function sectorEffectPoints(result: { sectors: { key: keyof typeof SECTOR_LABELS | "cash" | "unclassified"; allocation: number; selection: number; interaction: number; total: number }[] }) {
   return result.sectors.map((s) => ({
     sector: s.key === "cash" ? "Cash" : s.key === "unclassified" ? "Unclassified" : SECTOR_LABELS[s.key],
-    allocation: s.allocation * 100,
-    selection: s.selection * 100,
-    interaction: s.interaction * 100,
-    total: s.total * 100,
+    allocation: s.allocation * 10_000,
+    selection: s.selection * 10_000,
+    interaction: s.interaction * 10_000,
+    total: s.total * 10_000,
   }));
 }
 

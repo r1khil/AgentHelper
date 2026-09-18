@@ -22,7 +22,7 @@ export function CumulativeActiveChart({ data, portfolioLabel, benchmarkLabel }: 
               formatter={(v, name) => [signed(Number(v)), name === "portfolio" ? portfolioLabel : benchmarkLabel]}
               labelFormatter={(label, payload) => {
                 const p = payload?.[0]?.payload as CumulativeChartPoint | undefined;
-                return p && p.benchmark !== null ? `${label} · active ${(p.portfolio - p.benchmark > 0 ? "+" : "") + (p.portfolio - p.benchmark).toFixed(2)}pp` : String(label);
+                return p && p.benchmark !== null ? `${label} · active ${((p.portfolio - p.benchmark) * 100 > 0 ? "+" : "") + ((p.portfolio - p.benchmark) * 100).toFixed(1)} bps` : String(label);
               }}
               contentStyle={{ fontSize: 12, borderRadius: 8, background: "var(--popover)", borderColor: "var(--border)", color: "var(--popover-foreground)" }}
               itemStyle={{ color: "var(--popover-foreground)" }}

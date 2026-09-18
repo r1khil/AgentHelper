@@ -9,7 +9,7 @@ import { ContributorsTable, type TeamLookup } from "@/components/app/attribution
 import { CumulativeActiveChart } from "@/components/app/attribution/cumulative-active-chart";
 import { DataQualityNotices } from "@/components/app/attribution/data-quality-notice";
 import { EXPLAIN } from "@/components/app/attribution/explainers";
-import { fmtSigned } from "@/components/app/attribution/format";
+import { BPS_NOTE, fmtSigned } from "@/components/app/attribution/format";
 import { Explained } from "@/components/app/attribution/info-tip";
 import { PeriodSelector } from "@/components/app/attribution/period-selector";
 import { SectorEffectsChart } from "@/components/app/attribution/sector-effects-chart";
@@ -88,10 +88,10 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
           <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             <StatTile label="Portfolio" value={result.portfolioReturn} explain={EXPLAIN.portfolio} />
             <StatTile label="Benchmark" value={result.benchmarkReturn} explain={EXPLAIN.benchmark} />
-            <StatTile label="Active return" value={result.activeReturn} unit="pp" emphasis explain={EXPLAIN.active} />
-            <StatTile label="Allocation" value={result.effects?.allocation ?? null} unit="pp" hint="Sector weights" explain={EXPLAIN.allocation} />
-            <StatTile label="Selection" value={result.effects?.selection ?? null} unit="pp" hint="Picks within sectors" explain={EXPLAIN.selection} />
-            <StatTile label="Interaction" value={result.effects?.interaction ?? null} unit="pp" hint="Weight × pick" explain={EXPLAIN.interaction} />
+            <StatTile label="Active return" value={result.activeReturn} unit="bps" emphasis explain={EXPLAIN.active} />
+            <StatTile label="Allocation" value={result.effects?.allocation ?? null} unit="bps" hint="Sector weights" explain={EXPLAIN.allocation} />
+            <StatTile label="Selection" value={result.effects?.selection ?? null} unit="bps" hint="Picks within sectors" explain={EXPLAIN.selection} />
+            <StatTile label="Interaction" value={result.effects?.interaction ?? null} unit="bps" hint="Weight × pick" explain={EXPLAIN.interaction} />
           </div>
 
           <div className="mb-6 grid gap-4 lg:grid-cols-2">
@@ -109,7 +109,7 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
             </Card>
           </div>
 
-          <SectionTitle aside="pp = percentage points of return">Sectors</SectionTitle>
+          <SectionTitle aside={BPS_NOTE}>Sectors</SectionTitle>
           <div className="mb-6"><SectorTable result={result} breakdownQuery={transparency ? { basePath: "/attribution", period: period.key, from, to } : undefined} /></div>
 
           {showAll ? (

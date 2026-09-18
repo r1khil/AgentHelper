@@ -5,7 +5,7 @@ import type { HoldingRow } from "@/lib/attribution/attribution";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
 import { Move } from "../move";
 import { EXPLAIN } from "./explainers";
-import { fmtWeight, pct } from "./format";
+import { bps, fmtWeight, pct } from "./format";
 import { Explained } from "./info-tip";
 
 export type TeamLookup = Map<string, { name: string; slug: string }>;
@@ -35,7 +35,7 @@ export function ContributorsTable({ rows, teams, showTeam = true }: { rows: Hold
                 <TableCell className="text-muted-foreground">{showTeam ? (team?.name ?? "—") : h.sector ? SECTOR_LABELS[h.sector] : "Unclassified"}</TableCell>
                 <TableCell className="tnum text-right">{fmtWeight(h.avgWeight)}</TableCell>
                 <TableCell className="text-right"><Move value={pct(h.ret)} unit="%" digits={2} /></TableCell>
-                <TableCell className="text-right"><Move value={pct(h.contribution)} unit="pp" digits={2} /></TableCell>
+                <TableCell className="text-right"><Move value={bps(h.contribution)} unit=" bps" digits={1} /></TableCell>
               </TableRow>
             );
           })}

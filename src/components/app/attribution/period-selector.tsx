@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { PERIOD_LABELS, type PeriodKey } from "@/lib/attribution/periods";
 
-const PRESETS: PeriodKey[] = ["mtd", "qtd", "ytd", "1y", "itd"];
+const PRESETS: PeriodKey[] = ["1d", "7d", "mtd", "qtd", "ytd", "1y", "itd"];
 
 export function PeriodSelector({ basePath, active, from, to }: { basePath: string; active: PeriodKey; from?: string; to?: string }) {
   return (
