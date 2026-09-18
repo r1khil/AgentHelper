@@ -17,9 +17,11 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  vector,
 } from "drizzle-orm/pg-core";
 import { GICS_SECTORS } from "../lib/attribution/sectors";
 import type { JobProgressEvent } from "../lib/jobs/progress-types";
+import type { DocSummary } from "../lib/drive/summary";
 
 // Supabase-managed auth schema; referenced for the profiles FK only.
 const auth = pgSchema("auth");
@@ -42,6 +44,7 @@ export const tradeSideEnum = pgEnum("trade_side", ["buy", "sell"]);
 export const tradeKindEnum = pgEnum("trade_kind", ["opening", "trade"]);
 export const cashFlowKindEnum = pgEnum("cash_flow_kind", ["deposit", "withdrawal", "fee", "interest"]);
 export const driveDocKindEnum = pgEnum("drive_doc_kind", ["initiating_coverage", "earnings_update", "model", "other"]);
+export const holdingProposalStatusEnum = pgEnum("holding_proposal_status", ["pending", "accepted", "dismissed"]);
 export const securityEventKindEnum = pgEnum("security_event_kind", ["dividend", "split"]);
 export const sectorSourceEnum = pgEnum("sector_source", ["yahoo", "default", "manual"]);
 
@@ -460,6 +463,16 @@ export const driveConnection = pgTable(
     lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
     syncStartedAt: timestamp("sync_started_at", { withTimezone: true }),
     lastError: text("last_error"),
+    // Change notifications (Drive changes.watch) and the changes.list cursor.
+    startPageToken: text("start_page_token"),
+    channelId: text("channel_id"),
+    channelResourceId: text("channel_resource_id"),
+    channelSecret: text("channel_secret"),
+    channelExpiration: timestamp("channel_expiration", { withTimezone: true }),
+    watchError: text("watch_error"),
+    changeNotifiedAt: timestamp("change_notified_at", { withTimezone: true }),
+    lastChangeSyncAt: timestamp("last_change_sync_at", { withTimezone: true }),
+    ingestStartedAt: timestamp("ingest_started_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [check("drive_connection_single", sql`${t.id} = 1`)],
@@ -487,9 +500,69 @@ export const driveFiles = pgTable(
     text: text("text"),
     textModifiedTime: timestamp("text_modified_time", { withTimezone: true }),
     textError: text("text_error"),
+    // Structured summary extracted by the app, keyed on modified_time like the text cache.
+    summary: jsonb("summary").$type<DocSummary>(),
+    summaryModel: text("summary_model"),
+    summaryVersion: smallint("summary_version"),
+    summaryModifiedTime: timestamp("summary_modified_time", { withTimezone: true }),
+    summaryError: text("summary_error"),
+    summarizedAt: timestamp("summarized_at", { withTimezone: true }),
+    docDate: date("doc_date"),
+    // Embedding bookkeeping; the chunks live in drive_chunks.
+    embedModel: text("embed_model"),
+    embedModifiedTime: timestamp("embed_modified_time", { withTimezone: true }),
+    embedError: text("embed_error"),
+    embeddedAt: timestamp("embedded_at", { withTimezone: true }),
+    ingestAttempts: smallint("ingest_attempts").notNull().default(0),
+    ingestAttemptedAt: timestamp("ingest_attempted_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [index("drive_files_holding").on(t.holdingId), index("drive_files_parent").on(t.parentId), index("drive_files_ticker").on(t.ticker)],
+);
+
+export const driveChunks = pgTable(
+  "drive_chunks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    fileId: text("file_id")
+      .notNull()
+      .references(() => driveFiles.id, { onDelete: "cascade" }),
+    holdingId: uuid("holding_id").references(() => holdings.id, { onDelete: "set null" }),
+    ticker: text("ticker"),
+    seq: integer("seq").notNull(),
+    text: text("text").notNull(),
+    embedding: vector("embedding", { dimensions: 1536 }).notNull(),
+    model: text("model").notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("drive_chunks_file_seq").on(t.fileId, t.seq),
+    index("drive_chunks_holding").on(t.holdingId),
+    index("drive_chunks_ticker").on(t.ticker),
+    index("drive_chunks_embedding").using("hnsw", t.embedding.op("vector_cosine_ops")),
+  ],
+);
+
+// Values the app extracted from a team document and proposes for a holding field; nothing changes until accepted.
+export const holdingProposals = pgTable(
+  "holding_proposals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    holdingId: uuid("holding_id")
+      .notNull()
+      .references(() => holdings.id, { onDelete: "cascade" }),
+    field: text("field").$type<"thesis">().notNull(),
+    proposed: text("proposed").notNull(),
+    rationale: text("rationale"),
+    sourceFileId: text("source_file_id").references(() => driveFiles.id, { onDelete: "set null" }),
+    sourceFileName: text("source_file_name"),
+    sourceModifiedTime: timestamp("source_modified_time", { withTimezone: true }),
+    status: holdingProposalStatusEnum("status").notNull().default("pending"),
+    decidedBy: uuid("decided_by").references(() => profiles.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("holding_proposals_one_pending").on(t.holdingId, t.field).where(sql`${t.status} = 'pending'`), index("holding_proposals_holding").on(t.holdingId)],
 );
 
 export type Team = typeof teams.$inferSelect;
@@ -508,4 +581,6 @@ export type CashFlowRow = typeof cashFlows.$inferSelect;
 export type Role = Profile["role"];
 export type DriveFile = typeof driveFiles.$inferSelect;
 export type DriveConnection = typeof driveConnection.$inferSelect;
+export type DriveChunk = typeof driveChunks.$inferSelect;
+export type HoldingProposal = typeof holdingProposals.$inferSelect;
 export type DriveDocKind = DriveFile["kind"] & string;

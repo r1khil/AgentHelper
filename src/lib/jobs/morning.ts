@@ -8,7 +8,7 @@ import { gatherMovementEvidence } from "./evidence";
 import { queueNotification, sendPendingNotifications } from "./notify";
 import { refreshEarningsCalendar } from "./earnings";
 import { backfillIndustries, refreshBellwethers } from "./bellwethers";
-import { runDriveSync } from "./drive";
+import { ensureDriveWatch, runDriveSync } from "./drive";
 import { purgeStagedUploads } from "@/lib/storage";
 import { createJobReporter } from "./progress";
 
@@ -115,8 +115,10 @@ export async function runMorningJob(): Promise<MorningJobResult> {
 
   progress.step("sync Google Drive index");
   try {
-    const r = await runDriveSync({ reason: "morning" });
-    result.drive = { status: r.status, reason: r.reason, files: r.files, matched: r.matched, unmatched: r.unmatched.length, purgedStaged: await purgeStagedUploads().catch(() => 0) };
+    const watch = await ensureDriveWatch();
+    const r = await runDriveSync({ reason: "morning", ingest: { budgetMs: 150_000, maxFiles: 25 } });
+    const ingest = r.ingest ? { status: r.ingest.status, considered: r.ingest.considered, summarized: r.ingest.summarized, embedded: r.ingest.embedded, proposals: r.ingest.proposals, failed: r.ingest.failed.length, remaining: r.ingest.remaining } : undefined;
+    result.drive = { status: r.status, reason: r.reason, files: r.files, matched: r.matched, unmatched: r.unmatched.length, ingest, watch: { status: watch.status, reason: watch.reason }, purgedStaged: await purgeStagedUploads().catch(() => 0) };
   } catch (e) {
     result.drive = { error: e instanceof Error ? e.message : String(e) };
     progress.warn("drive sync failed", { error: result.drive.error });
