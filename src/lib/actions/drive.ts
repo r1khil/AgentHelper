@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -18,15 +19,17 @@ import { runDriveIngest, type IngestResult } from "@/lib/jobs/ingest";
 import { ALLOWED_UPLOAD_EXTENSIONS, MAX_UPLOAD_BYTES } from "@/lib/drive/uploads";
 import { createStagedUploadUrl } from "@/lib/storage";
 
-function ingestSummary(r: IngestResult | undefined) {
-  if (!r) return "";
-  if (r.status !== "ok") return ` Ingest ${r.status}${r.reason ? `: ${r.reason}` : ""}.`;
-  return ` Ingested ${r.considered} file${r.considered === 1 ? "" : "s"}: ${r.summarized} summarized, ${r.embedded} embedded${r.proposals ? `, ${r.proposals} thesis proposal${r.proposals === 1 ? "" : "s"}` : ""}${r.failed.length ? `, ${r.failed.length} failed` : ""}${r.remaining ? `; ${r.remaining} still pending` : ""}.`;
-}
-
 function syncSummary(r: DriveSyncResult) {
   if (r.status !== "ok") return `Drive sync ${r.status}${r.reason ? `: ${r.reason}` : ""}`;
-  return `Drive sync: ${r.files} files in ${r.folders} folders, ${r.matched} matched to holdings${r.unmatched.length ? `; unmatched folders: ${r.unmatched.slice(0, 5).join(", ")}${r.unmatched.length > 5 ? "…" : ""}` : ""}.${ingestSummary(r.ingest)}`;
+  return `Drive sync: ${r.files} files in ${r.folders} folders, ${r.matched} matched to holdings${r.unmatched.length ? `; unmatched folders: ${r.unmatched.slice(0, 5).join(", ")}${r.unmatched.length > 5 ? "…" : ""}` : ""}. Reading files continues in the background.`;
+}
+
+/** Reading files takes minutes; it runs after the redirect so the admin page never waits on it. */
+function ingestInBackground(reason: string, opts: { budgetMs: number; maxFiles: number }) {
+  after(async () => {
+    const r: IngestResult = await runDriveIngest({ reason, ...opts });
+    if (r.status !== "ok") console.warn(`[drive] ingest (${reason}) ${r.status}${r.reason ? `: ${r.reason}` : ""}`);
+  });
 }
 
 function back(message: string, ok: boolean): never {
@@ -46,7 +49,8 @@ export async function setDriveRoot(fd: FormData) {
       message = `"${f.name}" is not a folder`;
     } else {
       await db.update(driveConnection).set({ rootFolderId: id, rootFolderName: f.name, lastError: null, lastSyncAt: null }).where(eq(driveConnection.id, 1));
-      const r = await runDriveSync({ reason: "root set", ingest: { budgetMs: 120_000, maxFiles: 10 } });
+      const r = await runDriveSync({ reason: "root set" });
+      ingestInBackground("root set", { budgetMs: 240_000, maxFiles: 20 });
       ok = r.status !== "failed";
       const w = await ensureDriveWatch({ force: true });
       message = `Root folder set to "${f.name}". ${syncSummary(r)}${w.status === "ok" ? " Live updates on." : w.reason ? ` Live updates off: ${w.reason}.` : ""}`;
@@ -59,7 +63,8 @@ export async function setDriveRoot(fd: FormData) {
 
 export async function syncDriveNow() {
   await requireAdmin();
-  const r = await runDriveSync({ reason: "admin", ingest: { budgetMs: 120_000, maxFiles: 10 } });
+  const r = await runDriveSync({ reason: "admin" });
+  if (r.status === "ok") ingestInBackground("admin", { budgetMs: 240_000, maxFiles: 20 });
   back(syncSummary(r), r.status !== "failed");
 }
 
@@ -73,8 +78,8 @@ export async function renewDriveWatchNow() {
 /** Summarize and embed matched files that are not current yet, within one function's budget. */
 export async function ingestDriveNow() {
   await requireAdmin();
-  const r = await runDriveIngest({ reason: "admin", budgetMs: 240_000, maxFiles: 40 });
-  back(ingestSummary(r).trim() || "Nothing to ingest.", r.status !== "failed");
+  ingestInBackground("admin", { budgetMs: 240_000, maxFiles: 40 });
+  back("Reading files in the background; the counts above update as it goes. A run already in progress is left alone.", true);
 }
 
 /** Revokes our own token and clears the index. Nothing in Drive changes. */
