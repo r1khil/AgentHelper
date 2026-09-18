@@ -8,6 +8,8 @@ import { gatherMovementEvidence } from "./evidence";
 import { queueNotification, sendPendingNotifications } from "./notify";
 import { refreshEarningsCalendar } from "./earnings";
 import { backfillIndustries, refreshBellwethers } from "./bellwethers";
+import { runDriveSync } from "./drive";
+import { purgeStagedUploads } from "@/lib/storage";
 
 export type MorningJobResult = {
   date: string;
@@ -17,13 +19,14 @@ export type MorningJobResult = {
   earnings: Record<string, unknown>;
   bellwethers: Record<string, unknown>;
   email: Record<string, number>;
+  drive: Record<string, unknown>;
 };
 
 /** Morning sweep: finish pending evidence, remind, flag overdue, refresh earnings, retry email. */
 export async function runMorningJob(): Promise<MorningJobResult> {
   const [jobRow] = await db.insert(jobRuns).values({ job: "morning" }).returning({ id: jobRuns.id });
   const date = todayNY();
-  const result: MorningJobResult = { date, evidenceFinished: 0, reminders: 0, overdue: 0, earnings: {}, bellwethers: {}, email: {} };
+  const result: MorningJobResult = { date, evidenceFinished: 0, reminders: 0, overdue: 0, earnings: {}, bellwethers: {}, email: {}, drive: {} };
 
   const pending = await db.select({ id: movements.id }).from(movements).where(and(eq(movements.evidenceStatus, "pending"), ne(movements.status, "completed"))).limit(20);
   for (const p of pending) {
@@ -97,6 +100,13 @@ export async function runMorningJob(): Promise<MorningJobResult> {
   } catch (e) {
     result.email = { error: 1 };
     void e;
+  }
+
+  try {
+    const r = await runDriveSync({ reason: "morning" });
+    result.drive = { status: r.status, reason: r.reason, files: r.files, matched: r.matched, unmatched: r.unmatched.length, purgedStaged: await purgeStagedUploads().catch(() => 0) };
+  } catch (e) {
+    result.drive = { error: e instanceof Error ? e.message : String(e) };
   }
 
   await db.update(jobRuns).set({ finishedAt: new Date(), ok: true, summary: result as unknown as Record<string, unknown> }).where(eq(jobRuns.id, jobRow.id));

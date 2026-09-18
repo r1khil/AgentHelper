@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   check,
   date,
@@ -11,6 +12,7 @@ import {
   pgSchema,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -38,6 +40,7 @@ export const gicsSectorEnum = pgEnum("gics_sector", GICS_SECTORS);
 export const tradeSideEnum = pgEnum("trade_side", ["buy", "sell"]);
 export const tradeKindEnum = pgEnum("trade_kind", ["opening", "trade"]);
 export const cashFlowKindEnum = pgEnum("cash_flow_kind", ["deposit", "withdrawal", "fee", "interest"]);
+export const driveDocKindEnum = pgEnum("drive_doc_kind", ["initiating_coverage", "earnings_update", "model", "other"]);
 export const securityEventKindEnum = pgEnum("security_event_kind", ["dividend", "split"]);
 export const sectorSourceEnum = pgEnum("sector_source", ["yahoo", "default", "manual"]);
 
@@ -437,6 +440,53 @@ export const notifications = pgTable("notifications", {
   ...timestamps,
 });
 
+// Google Drive connection (admin's account, read-all + add-only) and the index of the shared folder.
+export const driveConnection = pgTable(
+  "drive_connection",
+  {
+    id: smallint("id").primaryKey().default(1),
+    accountEmail: text("account_email").notNull(),
+    refreshTokenEnc: text("refresh_token_enc").notNull(),
+    scopes: text("scopes").array().notNull(),
+    rootFolderId: text("root_folder_id"),
+    rootFolderName: text("root_folder_name"),
+    connectedBy: uuid("connected_by").references(() => profiles.id, { onDelete: "set null" }),
+    connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+    syncStartedAt: timestamp("sync_started_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    ...timestamps,
+  },
+  (t) => [check("drive_connection_single", sql`${t.id} = 1`)],
+);
+
+export const driveFiles = pgTable(
+  "drive_files",
+  {
+    id: text("id").primaryKey(), // Google Drive file id
+    name: text("name").notNull(),
+    mimeType: text("mime_type").notNull(),
+    parentId: text("parent_id"),
+    path: text("path").notNull(), // relative to the root folder
+    isFolder: boolean("is_folder").notNull().default(false),
+    size: bigint("size", { mode: "number" }),
+    modifiedTime: timestamp("modified_time", { withTimezone: true }),
+    webViewLink: text("web_view_link"),
+    md5: text("md5"),
+    ticker: text("ticker"),
+    holdingId: uuid("holding_id").references(() => holdings.id, { onDelete: "set null" }),
+    kind: driveDocKindEnum("kind"),
+    createdByApp: boolean("created_by_app").notNull().default(false),
+    uploadedBy: uuid("uploaded_by").references(() => profiles.id, { onDelete: "set null" }),
+    indexedAt: timestamp("indexed_at", { withTimezone: true }).notNull().defaultNow(),
+    text: text("text"),
+    textModifiedTime: timestamp("text_modified_time", { withTimezone: true }),
+    textError: text("text_error"),
+    ...timestamps,
+  },
+  (t) => [index("drive_files_holding").on(t.holdingId), index("drive_files_parent").on(t.parentId), index("drive_files_ticker").on(t.ticker)],
+);
+
 export type Team = typeof teams.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
 export type Holding = typeof holdings.$inferSelect;
@@ -451,3 +501,6 @@ export type Bellwether = typeof sectorBellwethers.$inferSelect;
 export type TradeRow = typeof trades.$inferSelect;
 export type CashFlowRow = typeof cashFlows.$inferSelect;
 export type Role = Profile["role"];
+export type DriveFile = typeof driveFiles.$inferSelect;
+export type DriveConnection = typeof driveConnection.$inferSelect;
+export type DriveDocKind = DriveFile["kind"] & string;

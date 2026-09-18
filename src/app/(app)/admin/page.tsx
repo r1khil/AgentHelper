@@ -6,6 +6,8 @@ import { requireAdmin } from "@/lib/auth";
 import { ROLES, ROLE_LABELS } from "@/lib/constants";
 import { createTestAccount, inviteMember, removeMember, revokeInvitation, updateMember } from "@/lib/actions/admin";
 import { runBellwethersNow, runCloseNow, runMorningNow, runPricesNow } from "@/lib/actions/jobs";
+import { disconnectDrive, setDriveRoot, syncDriveNow } from "@/lib/actions/drive";
+import { driveStatus } from "@/lib/drive/index";
 import { jobRuns } from "@/db/schema";
 import { fmtDateTime } from "@/lib/format";
 import { emailConfigured } from "@/lib/jobs/notify";
@@ -26,6 +28,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const me = await requireAdmin();
   const { ok, error } = await searchParams;
   const runs = await db.select().from(jobRuns).orderBy(desc(jobRuns.startedAt)).limit(12);
+  const [drive, lastDriveRun] = await Promise.all([driveStatus(), db.select().from(jobRuns).where(eq(jobRuns.job, "drive_sync")).orderBy(desc(jobRuns.startedAt)).limit(1).then((r) => r[0] ?? null)]);
+  const driveUnmatched = ((lastDriveRun?.summary as { unmatched?: string[] } | undefined)?.unmatched ?? []).slice(0, 12);
+  const driveLabel = !drive.configured ? "off" : !drive.connected ? "not connected" : drive.needsReconnect ? "reconnect needed" : `on (${drive.fileCount} files)`;
   const [allTeams, members, pending] = await Promise.all([
     db.select().from(teams).orderBy(asc(teams.sortOrder)),
     db
@@ -58,7 +63,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       {ok && <Notice tone="ok">{ok}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
 
-      <SectionTitle aside={`Agent: ${agentConfigured() ? agentModelId() : "off"} · News: ${finnhubConfigured() ? "on" : "off"} · Email: ${emailConfigured() ? "on" : "log only"}`}>Jobs</SectionTitle>
+      <SectionTitle aside={`Agent: ${agentConfigured() ? agentModelId() : "off"} · News: ${finnhubConfigured() ? "on" : "off"} · Email: ${emailConfigured() ? "on" : "log only"} · Drive: ${driveLabel}`}>Jobs</SectionTitle>
       <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <Card className="p-4">
           <form action={runCloseNow} className="grid gap-2">
@@ -110,6 +115,85 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               )}
             </TableBody>
           </Table>
+        </Card>
+      </div>
+
+      <SectionTitle aside={drive.connected ? `connected as ${drive.accountEmail}` : drive.configured ? "not connected" : "set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, DRIVE_TOKEN_KEY"}>Google Drive</SectionTitle>
+      <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <Card className="p-4">
+          <p className="text-sm">
+            The agent reads the Fund&rsquo;s document folder (initiating reports, earnings updates, models) and files analyst uploads into it. Permissions are read everything plus add new files only: the app never edits or deletes what you put there.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button render={<a href="/api/google/connect" />} size="sm" variant={drive.connected && !drive.needsReconnect ? "outline" : "default"} disabled={!drive.configured}>
+              {drive.connected ? "Reconnect Google" : "Connect Google Drive"}
+            </Button>
+            {drive.connected && (
+              <form action={disconnectDrive}>
+                <Button type="submit" size="sm" variant="ghost" className="text-destructive">
+                  Disconnect
+                </Button>
+              </form>
+            )}
+          </div>
+          {drive.connected && (
+            <form action={setDriveRoot} className="mt-4 grid gap-2 border-t pt-3">
+              <Label htmlFor="drive-root">Root folder (URL or id)</Label>
+              <div className="flex items-center gap-2">
+                <Input id="drive-root" name="root" placeholder="https://drive.google.com/drive/folders/…" defaultValue={drive.rootFolderId ?? ""} required />
+                <Button type="submit" size="sm" variant="outline">
+                  Save
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Layout expected inside it: one folder per sector team, then one folder per company named like &ldquo;American Express (AXP)&rdquo;.</p>
+            </form>
+          )}
+        </Card>
+        <Card className="p-4 text-sm">
+          {!drive.connected ? (
+            <p className="text-muted-foreground">{drive.configured ? "Connect the Fund's Google account to start." : "Add the three Drive variables to the environment, redeploy, then connect."}</p>
+          ) : (
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5">
+              <dt className="text-muted-foreground">Account</dt>
+              <dd>{drive.accountEmail}</dd>
+              <dt className="text-muted-foreground">Root folder</dt>
+              <dd>
+                {drive.rootFolderId ? (
+                  <a href={`https://drive.google.com/drive/folders/${drive.rootFolderId}`} target="_blank" rel="noreferrer" className="hover:underline">
+                    {drive.rootFolderName ?? drive.rootFolderId}
+                  </a>
+                ) : (
+                  <span className="text-warning-foreground">not set</span>
+                )}
+              </dd>
+              <dt className="text-muted-foreground">Indexed</dt>
+              <dd className="tnum">
+                {drive.fileCount} files, {drive.matchedCount} matched to holdings
+              </dd>
+              <dt className="text-muted-foreground">Last sync</dt>
+              <dd className="tnum">{drive.lastSyncAt ? fmtDateTime(drive.lastSyncAt) : "never"}</dd>
+              {drive.lastError && (
+                <>
+                  <dt className="text-destructive">Error</dt>
+                  <dd className="text-destructive">{drive.lastError}</dd>
+                </>
+              )}
+              {driveUnmatched.length > 0 && (
+                <>
+                  <dt className="text-muted-foreground">Unmatched folders</dt>
+                  <dd className="text-xs text-muted-foreground">{driveUnmatched.join(" · ")}</dd>
+                </>
+              )}
+            </dl>
+          )}
+          {drive.connected && drive.rootFolderId && (
+            <form action={syncDriveNow} className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
+              <span className="text-xs text-muted-foreground">Also refreshes on its own before agent chats (every 10 minutes at most) and in the morning sweep.</span>
+              <Button type="submit" size="sm" variant="outline">
+                Sync now
+              </Button>
+            </form>
+          )}
         </Card>
       </div>
 
@@ -282,7 +366,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 }
 
 function summarize(summary: Record<string, unknown>) {
-  const s = summary as { status?: string; reason?: string; qualified?: string[]; created?: string[]; sessionDate?: string; reminders?: number; overdue?: number; evidenceFinished?: number };
+  const s = summary as { status?: string; reason?: string; qualified?: string[]; created?: string[]; sessionDate?: string; reminders?: number; overdue?: number; evidenceFinished?: number; files?: number; matched?: number; unmatched?: string[]; error?: string };
+  if (s.files !== undefined) return `${s.reason ?? ""} · ${s.files} files, ${s.matched} matched${s.unmatched?.length ? `, ${s.unmatched.length} unmatched` : ""}`;
+  if (s.error) return `${s.reason ?? ""} · ${s.error}`;
   if (s.sessionDate) return `${s.sessionDate} ${s.status ?? ""}${s.reason ? ` (${s.reason})` : ""}${s.qualified?.length ? ` · qualified ${s.qualified.join(", ")}` : ""}`;
   if (s.reminders !== undefined) return `reminders ${s.reminders}, overdue ${s.overdue}, evidence ${s.evidenceFinished}`;
   return "";

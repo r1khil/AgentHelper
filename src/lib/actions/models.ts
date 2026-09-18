@@ -11,6 +11,7 @@ import { readWorkbook } from "@/lib/excel/read";
 import { patchXlsx } from "@/lib/excel/patch";
 import { deleteModelFile, downloadModelFile, moveModelFile, signModelUpload, uploadModelFile } from "@/lib/storage";
 import { MAX_MODEL_BYTES, parseStagedModelPath, stagedModelPath, validateModelFile } from "@/lib/models/upload";
+import { mirrorModelToDrive } from "@/lib/drive/mirror";
 import { getCompanyFacts, listConcepts } from "@/lib/providers/edgar";
 import { buildProposals, reportedPeriodEnds, suggestConcepts, type ConceptSuggestion } from "@/lib/models/proposals";
 
@@ -84,6 +85,7 @@ export async function finalizeModelUpload(input: unknown): Promise<FinalizeUploa
   const finalPath = `${holdingId}/v${version}-${Date.now()}.${staged.ext}`;
   await moveModelFile(path, finalPath);
   const [m] = await db.insert(models).values({ holdingId, version, storagePath: finalPath, fileName, sheets, uploadedBy: h.user.id }).returning({ id: models.id });
+  await mirrorModel({ holdingId, buffer, ext: staged.ext, uploadedBy: h.user.id });
   revalidatePath(`/t/${h.slug}/models`);
   redirect(`/t/${h.slug}/models/${m.id}`);
 }
@@ -213,6 +215,7 @@ export async function writeApproved(fd: FormData) {
     .values({ holdingId: r.h.id, version, parentId: r.m.id, storagePath: path, fileName: r.m.fileName.replace(/(\.xls[xm])$/i, `-v${version}$1`), sheets, uploadedBy: r.user.id })
     .returning({ id: models.id });
   await db.insert(modelWrites).values({ modelId: r.m.id, fromVersion: r.m.version, toVersion: version, proposalIds: approved.map((a) => a.p.id), writtenBy: r.user.id });
+  await mirrorModel({ holdingId: r.h.id, buffer: patched, ext, uploadedBy: r.user.id });
   // Carry mappings forward to the new version so the next quarter starts from them.
   const mappings = await db.select().from(modelMappings).where(eq(modelMappings.modelId, r.m.id));
   for (const m of mappings) {
@@ -220,6 +223,15 @@ export async function writeApproved(fd: FormData) {
   }
   revalidatePath(`/t/${r.slug}/models`);
   redirect(`/t/${r.slug}/models/${nm.id}?ok=${encodeURIComponent(`Wrote ${approved.length} value${approved.length === 1 ? "" : "s"} into version ${version}`)}`);
+}
+
+/** Best-effort copy to the Fund's Drive; a Drive problem never blocks the model flow. */
+async function mirrorModel(p: { holdingId: string; buffer: Buffer; ext: "xlsx" | "xlsm"; uploadedBy: string }) {
+  try {
+    await mirrorModelToDrive(p);
+  } catch (e) {
+    console.warn("[drive] model mirror failed", e instanceof Error ? e.message : e);
+  }
 }
 
 // ---- helpers called from the client mapping editor ----
