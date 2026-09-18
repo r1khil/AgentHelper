@@ -146,15 +146,32 @@ export async function getBarsRange(symbol: string, from: string, to?: string): P
   );
 }
 
-/** Yahoo's sector label for a company; null for ETFs and funds. */
-export async function getSectorProfile(symbol: string): Promise<string | null> {
-  return cached(`yahoo:sector:${symbol}`, 60 * 60 * 24 * 7, async () => {
+export type SectorProfile = { sector: string | null; industry: string | null };
+
+/** Yahoo's sector and industry labels for a company; both null for ETFs and funds. */
+export async function getSectorProfile(symbol: string): Promise<SectorProfile> {
+  return cached(`yahoo:profile:${symbol}`, 60 * 60 * 24 * 7, async () => {
     try {
       const res = await spaced(HOST, GAP_MS, () => retry(() => yf().quoteSummary(symbol, { modules: ["assetProfile"] }), 2));
-      return res.assetProfile?.sector ?? null;
+      return { sector: res.assetProfile?.sector ?? null, industry: res.assetProfile?.industry ?? null };
     } catch {
-      return null;
+      return { sector: null, industry: null };
     }
+  });
+}
+
+export type FundHolding = { symbol: string; name: string; weightPct: number };
+
+/** Top constituents of a fund as Yahoo reports them (usually ten), heaviest first. */
+export async function getFundTopHoldings(symbol: string): Promise<FundHolding[]> {
+  return cached(`yahoo:topholdings:${symbol}`, 60 * 60 * 24 * 7, async () => {
+    const res = await spaced(HOST, GAP_MS, () => retry(() => yf().quoteSummary(symbol, { modules: ["topHoldings"] })));
+    const out: FundHolding[] = [];
+    for (const h of res.topHoldings?.holdings ?? []) {
+      if (!h.symbol) continue;
+      out.push({ symbol: h.symbol, name: h.holdingName || h.symbol, weightPct: (h.holdingPercent ?? 0) * 100 });
+    }
+    return out.sort((a, b) => b.weightPct - a.weightPct);
   });
 }
 

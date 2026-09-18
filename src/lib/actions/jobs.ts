@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { runCloseJob } from "@/lib/jobs/close";
 import { runMorningJob } from "@/lib/jobs/morning";
 import { runPricesJob } from "@/lib/jobs/prices";
+import { backfillIndustries, refreshBellwethers } from "@/lib/jobs/bellwethers";
 
 export async function runCloseNow(fd: FormData) {
   await requireAdmin();
@@ -30,4 +31,14 @@ export async function runPricesNow() {
   revalidatePath("/attribution", "layout");
   const failed = Object.keys(r.failed);
   redirect(`/admin?${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Prices job: ${r.status}${r.reason ? ` (${r.reason})` : ""}; updated ${r.updated.length}${failed.length ? `; failed ${failed.join(", ")}` : ""}${r.remaining.length ? `; remaining ${r.remaining.length}` : ""}`)}`);
+}
+
+export async function runBellwethersNow() {
+  await requireAdmin();
+  const industries = await backfillIndustries();
+  const r = await refreshBellwethers();
+  revalidatePath("/admin");
+  revalidatePath("/t/[team]/earnings", "page");
+  const failed = Object.keys(r.errors);
+  redirect(`/admin?ok=${encodeURIComponent(`Bellwethers: ${r.tickers} names across ${r.etfs} sector ETFs, ${r.dated} with a report date; industries filled ${industries.filled}/${industries.checked}${failed.length ? `; failed ${failed.join(", ")}` : ""}`)}`);
 }

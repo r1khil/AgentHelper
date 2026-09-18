@@ -5,7 +5,7 @@ import { invitations, profiles, teams } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { ROLES, ROLE_LABELS } from "@/lib/constants";
 import { createTestAccount, inviteMember, removeMember, revokeInvitation, updateMember } from "@/lib/actions/admin";
-import { runCloseNow, runMorningNow, runPricesNow } from "@/lib/actions/jobs";
+import { runBellwethersNow, runCloseNow, runMorningNow, runPricesNow } from "@/lib/actions/jobs";
 import { jobRuns } from "@/db/schema";
 import { fmtDateTime } from "@/lib/format";
 import { emailConfigured } from "@/lib/jobs/notify";
@@ -78,6 +78,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           </form>
           <form action={runPricesNow} className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
             <span className="text-sm">Price history (attribution closes, dividends, splits)</span>
+            <Button type="submit" size="sm" variant="outline">Run</Button>
+          </form>
+          <form action={runBellwethersNow} className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
+            <span className="text-sm">Sector bellwethers (ETF constituents, earnings dates, industries)</span>
             <Button type="submit" size="sm" variant="outline">Run</Button>
           </form>
         </Card>
