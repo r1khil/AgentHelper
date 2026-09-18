@@ -9,6 +9,7 @@ const teams: TeamRef[] = [
   { id: "t-fig", name: "FIG" },
   { id: "t-tech", name: "Information Technology" },
   { id: "t-ind", name: "Industrials" },
+  { id: "t-cc", name: "Consumer & Communication Services" },
 ];
 const holdings: HoldingRef[] = [
   { id: "h-axp", ticker: "AXP", companyName: "American Express Company", teamId: "t-fig" },
@@ -38,7 +39,9 @@ describe("matchTeam", () => {
   it("matches sector folders loosely", () => {
     expect(matchTeam("FIG", teams)?.id).toBe("t-fig");
     expect(matchTeam("Information Technology (Tech)", teams)?.id).toBe("t-tech");
+    expect(matchTeam("6. Information Technology Coverage", teams)?.id).toBe("t-tech");
     expect(matchTeam("Random", teams)).toBeNull();
+    expect(matchTeam("1. Consumer & Communications Coverage", teams)?.id).toBe("t-cc");
   });
 });
 
@@ -88,6 +91,15 @@ describe("classifyTree", () => {
       folder("s2", "Loose", ROOT),
       folder("c3", "Dup Co (DUP)", "s2"),
       file("f4", "readme.txt", ROOT, "text/plain"),
+      folder("sub", "1) Communication Services", "s1"),
+      folder("cur", "Current Holdings", "sub"),
+      folder("deep", "NVIDIA Corporation (NVDA)", "cur"),
+      folder("deeper", "Earnings Updates", "deep"),
+      folder("sem", "Fall 2025", "deeper"),
+      file("f5", "Q3 FY2026 Earnings Update.pdf", "sem"),
+      folder("old", "Old Holdings", "sub"),
+      folder("oldco", "Comcast Corporation (CMCSA)", "old"),
+      file("f6", "CMCSA pitch.pdf", "oldco"),
     ];
     const { items: out, unmatched } = classifyTree(ROOT, items, holdings, teams);
     const by = Object.fromEntries(out.map((o) => [o.id, o]));
@@ -99,6 +111,9 @@ describe("classifyTree", () => {
     expect(by.f3).toMatchObject({ holdingId: null, ticker: "ZZZ", kind: "other" });
     expect(by.c3).toMatchObject({ holdingId: null, ticker: "DUP" });
     expect(by.f4).toMatchObject({ teamId: null, holdingId: null, kind: "other" });
-    expect(unmatched).toEqual(["FIG/Unknown Co (ZZZ)", "Loose", "Loose/Dup Co (DUP)"]);
+    expect(by.f5).toMatchObject({ teamId: "t-fig", holdingId: "h-nvda", ticker: "NVDA", kind: "earnings_update" });
+    expect(by.cur).toMatchObject({ holdingId: null, ticker: null });
+    expect(by.f6).toMatchObject({ holdingId: null, ticker: "CMCSA" });
+    expect(unmatched).toEqual(["FIG/Unknown Co (ZZZ)", "Loose/Dup Co (DUP)"]);
   });
 });
