@@ -131,8 +131,8 @@ export async function ensureSecurity(db: Db, rawTicker: string): Promise<Securit
   if (existing) return existing;
   const company = await lookupCompany(ticker);
   if (!company) return null;
-  const yahooSector = await getSectorProfile(ticker);
-  const guess = defaultSector(ticker, yahooSector);
+  const profile = await getSectorProfile(ticker);
+  const guess = defaultSector(ticker, profile.sector);
   const [covering] = await db
     .select({ teamId: holdings.teamId, name: holdings.companyName })
     .from(holdings)
@@ -146,7 +146,8 @@ export async function ensureSecurity(db: Db, rawTicker: string): Promise<Securit
       name: covering?.name ?? company.name,
       sector: (guess?.sector ?? null) as GicsSector | null,
       sectorSource: guess?.source ?? null,
-      yahooSector,
+      yahooSector: profile.sector,
+      industry: profile.industry,
       teamId: covering?.teamId ?? null,
     })
     .onConflictDoNothing()

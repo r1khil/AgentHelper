@@ -62,3 +62,33 @@ export async function getEarningsCalendar(symbol: string): Promise<EarningsDate[
       .sort((a, b) => (a.date < b.date ? -1 : 1));
   });
 }
+
+/** Every earnings event Finnhub lists in a date range, keyed by symbol. Empty when Finnhub is off. */
+export async function getEarningsCalendarRange(fromISO: string, toISO: string): Promise<Map<string, EarningsDate[]>> {
+  if (!finnhubConfigured()) return new Map();
+  const rows = await cached(
+    `finnhub:earnings-range:${fromISO}:${toISO}`,
+    60 * 60 * 6,
+    async () => {
+      const res = await fh<FhEarnings>("/calendar/earnings", { from: fromISO, to: toISO });
+      return (res.earningsCalendar ?? []).map((e) => ({
+        symbol: e.symbol,
+        date: e.date,
+        hour: e.hour || undefined,
+        isEstimate: true,
+        epsEstimate: e.epsEstimate ?? undefined,
+        revenueEstimate: e.revenueEstimate ?? undefined,
+        fiscalPeriod: e.year && e.quarter ? `Q${e.quarter} FY${e.year}` : undefined,
+        sourceUrl: "https://finnhub.io/",
+      }));
+    },
+    { db: false },
+  );
+  const out = new Map<string, EarningsDate[]>();
+  for (const { symbol, ...e } of rows) {
+    if (!symbol) continue;
+    out.set(symbol, [...(out.get(symbol) ?? []), e]);
+  }
+  for (const list of out.values()) list.sort((a, b) => (a.date < b.date ? -1 : 1));
+  return out;
+}
