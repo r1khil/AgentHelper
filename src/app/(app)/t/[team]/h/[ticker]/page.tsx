@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { loadTeam } from "@/lib/teams";
-import { getHolding, listNotes, listTeamMembers } from "@/lib/holdings";
+import { getHolding, listNotes, listPendingProposals, listTeamMembers } from "@/lib/holdings";
 import { marketSnapshot } from "@/lib/market";
 import { getDailyBars, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { listFilings } from "@/lib/providers/edgar";
@@ -10,6 +10,8 @@ import { addNote, deleteNote, exitHolding, updateOwner, updateThesis } from "@/l
 import { canManageTeam } from "@/lib/auth";
 import { DOC_KIND_LABELS, driveStatus, listHoldingFiles } from "@/lib/drive/index";
 import { DocumentUploadForm } from "@/components/app/document-upload-form";
+import { DocumentSummary } from "@/components/app/document-summary";
+import { ThesisProposal } from "@/components/app/thesis-proposal";
 import { fmtDate, fmtMoney, relativeTime } from "@/lib/format";
 import { PageHeader, SectionTitle } from "@/components/app/page-header";
 import { Move } from "@/components/app/move";
@@ -27,15 +29,16 @@ export async function generateMetadata({ params }: { params: Promise<{ ticker: s
   return { title: ticker.toUpperCase() };
 }
 
-export default async function HoldingPage({ params }: { params: Promise<{ team: string; ticker: string }> }) {
+export default async function HoldingPage({ params, searchParams }: { params: Promise<{ team: string; ticker: string }>; searchParams: Promise<{ error?: string }> }) {
   const { team: slug, ticker } = await params;
+  const { error: flash } = await searchParams;
   const { team, user } = await loadTeam(slug);
   const row = await getHolding(team.id, ticker);
   if (!row) notFound();
   const { h, ownerName } = row;
 
   const { since, today } = newsWindow();
-  const [members, notes, market, bars, spxBars, filings, news, drive, docs] = await Promise.all([
+  const [members, notes, market, bars, spxBars, filings, news, drive, docs, proposals] = await Promise.all([
     listTeamMembers(team.id),
     listNotes(h.id),
     marketSnapshot([h.ticker]),
@@ -45,7 +48,9 @@ export default async function HoldingPage({ params }: { params: Promise<{ team: 
     finnhubConfigured() ? getCompanyNews(h.ticker, since, today).catch(() => []) : Promise.resolve([]),
     driveStatus().catch(() => null),
     listHoldingFiles(h.id, 30).catch(() => []),
+    listPendingProposals(h.id).catch(() => []),
   ]);
+  const thesisProposal = !h.thesis?.trim() ? proposals.find((p) => p.field === "thesis") : undefined;
   const driveReady = Boolean(drive?.connected && drive.rootFolderId && !drive.needsReconnect);
   const driveNote = !drive?.configured ? "Google Drive is not set up on this deployment." : !drive.connected || !drive.rootFolderId ? "Ask an admin to connect Google Drive from the Admin page." : drive.needsReconnect ? "Google Drive needs to be reconnected by an admin." : undefined;
 
@@ -96,6 +101,8 @@ export default async function HoldingPage({ params }: { params: Promise<{ team: 
 
           <Card className="p-4">
             <SectionTitle aside={h.thesisUpdatedAt ? `Updated ${relativeTime(h.thesisUpdatedAt)}` : undefined}>Thesis</SectionTitle>
+            {flash && <p className="mb-2 text-sm text-destructive">{flash}</p>}
+            {thesisProposal && <ThesisProposal proposal={thesisProposal} />}
             <form action={updateThesis} className="grid gap-2">
               <input type="hidden" name="holdingId" value={h.id} />
               <Textarea name="thesis" defaultValue={h.thesis ?? ""} rows={5} placeholder="The team's position, in its own words. The agent reads this for context but never edits it." />
@@ -172,14 +179,19 @@ export default async function HoldingPage({ params }: { params: Promise<{ team: 
             ) : (
               <ul className="mb-3 space-y-2">
                 {docs.map((d) => (
-                  <li key={d.id} className="flex items-baseline gap-2 text-sm">
-                    <Badge variant="outline" className="w-28 shrink-0 justify-center text-[0.7rem]">
-                      {d.kind ? DOC_KIND_LABELS[d.kind] : "Other"}
-                    </Badge>
-                    <a href={d.webViewLink ?? `https://drive.google.com/file/d/${d.id}/view`} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate hover:underline" title={d.path}>
-                      {d.name}
-                    </a>
-                    <span className="tnum shrink-0 text-xs text-muted-foreground">{d.modifiedTime ? relativeTime(d.modifiedTime) : ""}</span>
+                  <li key={d.id} className="text-sm">
+                    <div className="flex items-baseline gap-2">
+                      <Badge variant="outline" className="w-28 shrink-0 justify-center text-[0.7rem]">
+                        {d.kind ? DOC_KIND_LABELS[d.kind] : "Other"}
+                      </Badge>
+                      <a href={d.webViewLink ?? `https://drive.google.com/file/d/${d.id}/view`} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate hover:underline" title={d.path}>
+                        {d.name}
+                      </a>
+                      <span className="tnum shrink-0 text-xs text-muted-foreground">{d.modifiedTime ? relativeTime(d.modifiedTime) : ""}</span>
+                    </div>
+                    <div className="pl-30">
+                      <DocumentSummary summary={d.summary} summaryError={d.summaryError} summaryModel={d.summaryModel} summarizedAt={d.summarizedAt} />
+                    </div>
                   </li>
                 ))}
               </ul>

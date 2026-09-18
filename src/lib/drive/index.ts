@@ -1,7 +1,7 @@
 import "server-only";
 import { and, count, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { driveFiles, type DriveDocKind, type DriveFile } from "@/db/schema";
+import { driveFiles, holdingProposals, type DriveDocKind, type DriveFile } from "@/db/schema";
 import { DriveNotConnected, driveConfigured, loadConnection } from "./auth";
 import { fetchAndExtract } from "./extract";
 import { capText } from "./text";
@@ -35,8 +35,40 @@ const metaColumns = {
   indexedAt: driveFiles.indexedAt,
   textModifiedTime: driveFiles.textModifiedTime,
   textError: driveFiles.textError,
+  summary: driveFiles.summary,
+  summaryModel: driveFiles.summaryModel,
+  summaryVersion: driveFiles.summaryVersion,
+  summaryModifiedTime: driveFiles.summaryModifiedTime,
+  summaryError: driveFiles.summaryError,
+  summarizedAt: driveFiles.summarizedAt,
+  docDate: driveFiles.docDate,
+  embedModel: driveFiles.embedModel,
+  embedModifiedTime: driveFiles.embedModifiedTime,
+  embedError: driveFiles.embedError,
+  embeddedAt: driveFiles.embeddedAt,
+  ingestAttempts: driveFiles.ingestAttempts,
+  ingestAttemptedAt: driveFiles.ingestAttemptedAt,
   createdAt: driveFiles.createdAt,
 };
+
+export type IngestStats = { matched: number; withText: number; summarized: number; embedded: number; pending: number; errored: number; pendingProposals: number };
+
+/** Ingestion progress across the index, one query. "pending" counts matched files whose summary is not current. */
+export async function ingestStats(): Promise<IngestStats> {
+  const [c] = await db
+    .select({
+      matched: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null)`.mapWith(Number),
+      withText: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and ${driveFiles.textModifiedTime} = ${driveFiles.modifiedTime} and ${driveFiles.text} is not null)`.mapWith(Number),
+      summarized: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and ${driveFiles.summaryModifiedTime} = ${driveFiles.modifiedTime} and ${driveFiles.summary} is not null)`.mapWith(Number),
+      embedded: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and ${driveFiles.embedModifiedTime} = ${driveFiles.modifiedTime})`.mapWith(Number),
+      pending: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and (${driveFiles.summaryModifiedTime} is distinct from ${driveFiles.modifiedTime}) and not (${driveFiles.textModifiedTime} = ${driveFiles.modifiedTime} and ${driveFiles.textError} is not null))`.mapWith(Number),
+      errored: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and ((${driveFiles.textError} is not null and ${driveFiles.textModifiedTime} = ${driveFiles.modifiedTime}) or (${driveFiles.summaryError} is not null and ${driveFiles.summaryModifiedTime} = ${driveFiles.modifiedTime}) or (${driveFiles.embedError} is not null and ${driveFiles.embedModifiedTime} = ${driveFiles.modifiedTime})))`.mapWith(Number),
+    })
+    .from(driveFiles)
+    .where(eq(driveFiles.isFolder, false));
+  const [p] = await db.select({ n: count() }).from(holdingProposals).where(eq(holdingProposals.status, "pending"));
+  return { matched: c?.matched ?? 0, withText: c?.withText ?? 0, summarized: c?.summarized ?? 0, embedded: c?.embedded ?? 0, pending: c?.pending ?? 0, errored: c?.errored ?? 0, pendingProposals: p?.n ?? 0 };
+}
 
 export type DriveStatus = {
   configured: boolean;
@@ -49,6 +81,8 @@ export type DriveStatus = {
   lastError?: string | null;
   fileCount: number;
   matchedCount: number;
+  ingest?: IngestStats;
+  watch?: { active: boolean; expiration: Date | null; error: string | null; lastChangeSyncAt: Date | null };
 };
 
 export async function driveStatus(): Promise<DriveStatus> {
@@ -70,6 +104,13 @@ export async function driveStatus(): Promise<DriveStatus> {
     lastError: conn.lastError,
     fileCount: c?.files ?? 0,
     matchedCount: c?.matched ?? 0,
+    ingest: await ingestStats(),
+    watch: {
+      active: Boolean(conn.channelId && conn.channelExpiration && conn.channelExpiration.getTime() > Date.now()),
+      expiration: conn.channelExpiration,
+      error: conn.watchError,
+      lastChangeSyncAt: conn.lastChangeSyncAt,
+    },
   };
 }
 

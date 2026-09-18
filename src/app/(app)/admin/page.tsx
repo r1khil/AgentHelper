@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { ROLES, ROLE_LABELS } from "@/lib/constants";
 import { createTestAccount, inviteMember, removeMember, revokeInvitation, updateMember } from "@/lib/actions/admin";
 import { runBellwethersNow, runCloseNow, runMorningNow, runPricesNow } from "@/lib/actions/jobs";
-import { disconnectDrive, setDriveRoot, syncDriveNow } from "@/lib/actions/drive";
+import { disconnectDrive, ingestDriveNow, renewDriveWatchNow, setDriveRoot, syncDriveNow } from "@/lib/actions/drive";
 import { driveStatus } from "@/lib/drive/index";
 import { jobRuns } from "@/db/schema";
 import { fmtDateTime } from "@/lib/format";
@@ -172,6 +172,29 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               </dd>
               <dt className="text-muted-foreground">Last sync</dt>
               <dd className="tnum">{drive.lastSyncAt ? fmtDateTime(drive.lastSyncAt) : "never"}</dd>
+              {drive.ingest && (
+                <>
+                  <dt className="text-muted-foreground">Read by the app</dt>
+                  <dd className="tnum">
+                    {drive.ingest.summarized} summarized, {drive.ingest.embedded} embedded of {drive.ingest.matched} matched
+                    {drive.ingest.pending ? `; ${drive.ingest.pending} pending` : ""}
+                    {drive.ingest.errored ? <span className="text-warning-foreground">; {drive.ingest.errored} with errors</span> : null}
+                    {drive.ingest.pendingProposals ? `; ${drive.ingest.pendingProposals} thesis proposal${drive.ingest.pendingProposals === 1 ? "" : "s"} awaiting review` : ""}
+                  </dd>
+                </>
+              )}
+              {drive.watch && (
+                <>
+                  <dt className="text-muted-foreground">Live updates</dt>
+                  <dd>
+                    {drive.watch.active ? (
+                      <span className="tnum">on, channel valid until {drive.watch.expiration ? fmtDateTime(drive.watch.expiration) : "?"}{drive.watch.lastChangeSyncAt ? `; last change applied ${fmtDateTime(drive.watch.lastChangeSyncAt)}` : ""}</span>
+                    ) : (
+                      <span className="text-warning-foreground">off{drive.watch.error ? `: ${drive.watch.error}` : ""}</span>
+                    )}
+                  </dd>
+                </>
+              )}
               {drive.lastError && (
                 <>
                   <dt className="text-destructive">Error</dt>
@@ -187,12 +210,26 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             </dl>
           )}
           {drive.connected && drive.rootFolderId && (
-            <form action={syncDriveNow} className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
-              <span className="text-xs text-muted-foreground">Also refreshes on its own before agent chats (every 10 minutes at most) and in the morning sweep.</span>
-              <Button type="submit" size="sm" variant="outline">
-                Sync now
-              </Button>
-            </form>
+            <div className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
+              <span className="text-xs text-muted-foreground">With live updates on, Drive tells the app about changes as they happen; the morning sweep still does a full crawl and renews the channel. Reading files (summaries, search index) continues in the background a few at a time.</span>
+              <div className="flex shrink-0 gap-2">
+                <form action={renewDriveWatchNow}>
+                  <Button type="submit" size="sm" variant="outline">
+                    Renew live updates
+                  </Button>
+                </form>
+                <form action={ingestDriveNow}>
+                  <Button type="submit" size="sm" variant="outline">
+                    Read files now
+                  </Button>
+                </form>
+                <form action={syncDriveNow}>
+                  <Button type="submit" size="sm" variant="outline">
+                    Sync now
+                  </Button>
+                </form>
+              </div>
+            </div>
           )}
         </Card>
       </div>
