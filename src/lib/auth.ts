@@ -42,6 +42,11 @@ export function isFundWide(user: Pick<Profile, "role">) {
   return user.role === "exec" || user.role === "admin";
 }
 
+/** Transparency mode is an exec/admin preference; the role check here makes a stale flag on a demoted user harmless. */
+export function transparencyEnabled(user: Pick<Profile, "role" | "transparencyMode">) {
+  return isFundWide(user) && user.transparencyMode;
+}
+
 export function canAccessTeam(user: Pick<Profile, "role" | "teamId">, teamId: string) {
   return isFundWide(user) || user.teamId === teamId;
 }

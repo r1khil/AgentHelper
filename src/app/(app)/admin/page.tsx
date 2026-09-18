@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { asc, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { invitations, profiles, teams } from "@/db/schema";
-import { requireAdmin } from "@/lib/auth";
+import { requireRole, transparencyEnabled } from "@/lib/auth";
 import { ROLES, ROLE_LABELS } from "@/lib/constants";
 import { createTestAccount, inviteMember, removeMember, revokeInvitation, setAgentModel, updateMember } from "@/lib/actions/admin";
 import { runBellwethersNow, runCloseNow, runMorningNow, runPricesNow } from "@/lib/actions/jobs";
@@ -10,6 +10,8 @@ import { disconnectDrive, ingestDriveNow, renewDriveWatchNow, setDriveRoot, sync
 import { driveStatus } from "@/lib/drive/index";
 import { jobRuns } from "@/db/schema";
 import { fmtDateTime } from "@/lib/format";
+import { JobRunsLive } from "@/components/app/admin/job-runs-live";
+import type { JobRunView } from "@/app/api/admin/job-runs/route";
 import { emailConfigured } from "@/lib/jobs/notify";
 import { finnhubConfigured } from "@/lib/providers/finnhub";
 import { AGENT_MODELS, agentConfigured, agentModelId } from "@/lib/agent/model";
@@ -23,11 +25,26 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Admin" };
+// Jobs started from this page run inside its server actions; give them the same budget as the cron routes.
+export const maxDuration = 300;
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const me = await requireAdmin();
+  // Execs see everything an admin sees; only admins can change anything (the server actions enforce this too).
+  const me = await requireRole("exec", "admin");
+  const canMutate = me.role === "admin";
   const { ok, error } = await searchParams;
-  const runs = await db.select().from(jobRuns).orderBy(desc(jobRuns.startedAt)).limit(12);
+  const transparency = transparencyEnabled(me);
+  const runRows = await db.select().from(jobRuns).orderBy(desc(jobRuns.startedAt)).limit(12);
+  const runs: JobRunView[] = runRows.map((r) => ({
+    id: r.id,
+    job: r.job,
+    startedAt: r.startedAt.toISOString(),
+    finishedAt: r.finishedAt?.toISOString() ?? null,
+    ok: r.ok,
+    summary: r.summary,
+    current: r.progress.at(-1) ?? null,
+    progress: transparency ? r.progress : null,
+  }));
   const [drive, lastDriveRun] = await Promise.all([driveStatus(), db.select().from(jobRuns).where(eq(jobRuns.job, "drive_sync")).orderBy(desc(jobRuns.startedAt)).limit(1).then((r) => r[0] ?? null)]);
   const currentModelId = await agentModelId();
   const currentModel = AGENT_MODELS.find((m) => m.id === currentModelId);
@@ -64,9 +81,11 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <PageHeader title="Admin" description="Members, invitations, test accounts, and scheduled jobs." />
       {ok && <Notice tone="ok">{ok}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
+      {!canMutate && <Notice tone="info">View only. Changes here are made by an admin.</Notice>}
 
       <SectionTitle aside={`Agent: ${agentConfigured() ? "on" : "off"} · News: ${finnhubConfigured() ? "on" : "off"} · Email: ${emailConfigured() ? "on" : "log only"} · Drive: ${driveLabel}`}>Jobs</SectionTitle>
       <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        {canMutate ? (
         <Card className="p-4">
           <form action={runCloseNow} className="grid gap-2">
             <Label htmlFor="job-date">Close check (movements)</Label>
@@ -92,31 +111,18 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <Button type="submit" size="sm" variant="outline">Run</Button>
           </form>
         </Card>
+        ) : (
+        <Card className="p-4 text-sm">
+          <ul className="grid gap-2">
+            <li>Close check (movements). Scheduled nightly at 23:00 UTC on Vercel.</li>
+            <li className="border-t pt-2">Morning sweep (reminders, earnings, email). Scheduled at 14:00 UTC.</li>
+            <li className="border-t pt-2">Price history (attribution closes, dividends, splits). Scheduled at 23:30 UTC.</li>
+            <li className="border-t pt-2">Sector bellwethers (ETF constituents, earnings dates, industries). Runs inside the morning sweep.</li>
+          </ul>
+        </Card>
+        )}
         <Card className="overflow-x-auto p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Job</TableHead>
-                <TableHead>Started</TableHead>
-                <TableHead>Result</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {runs.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="text-muted-foreground">No runs yet.</TableCell></TableRow>
-              ) : (
-                runs.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.job}</TableCell>
-                    <TableCell className="tnum text-muted-foreground">{fmtDateTime(r.startedAt)}</TableCell>
-                    <TableCell className="max-w-md truncate text-xs text-muted-foreground" title={JSON.stringify(r.summary)}>
-                      {r.finishedAt ? (r.ok ? "ok" : "failed") : "running"} · {summarize(r.summary)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <JobRunsLive initial={runs} transparency={transparency} />
         </Card>
       </div>
 
@@ -145,6 +151,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <p className="text-sm">
             The agent reads the Fund&rsquo;s document folder (initiating reports, earnings updates, models) and files analyst uploads into it. Permissions are read everything plus add new files only: the app never edits or deletes what you put there.
           </p>
+          {canMutate && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button render={<a href="/api/google/connect" />} size="sm" variant={drive.connected && !drive.needsReconnect ? "outline" : "default"} disabled={!drive.configured}>
               {drive.connected ? "Reconnect Google" : "Connect Google Drive"}
@@ -157,7 +164,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               </form>
             )}
           </div>
-          {drive.connected && (
+          )}
+          {canMutate && drive.connected && (
             <form action={setDriveRoot} className="mt-4 grid gap-2 border-t pt-3">
               <Label htmlFor="drive-root">Root folder (URL or id)</Label>
               <div className="flex items-center gap-2">
@@ -230,7 +238,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               )}
             </dl>
           )}
-          {drive.connected && drive.rootFolderId && (
+          {canMutate && drive.connected && drive.rootFolderId && (
             <div className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
               <span className="text-xs text-muted-foreground">With live updates on, Drive tells the app about changes as they happen; the morning sweep still does a full crawl and renews the channel. Reading files (summaries, search index) continues in the background a few at a time.</span>
               <div className="flex shrink-0 gap-2">
@@ -268,7 +276,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             </TableRow>
           </TableHeader>
           <TableBody>
-            {members.map(({ p }) => (
+            {members.map(({ p, teamName }) => (
               <TableRow key={p.id}>
                 <TableCell className="font-medium">
                   {p.fullName}
@@ -292,22 +300,29 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                     </span>
                   )}
                 </TableCell>
-                <TableCell colSpan={2}>
-                  <form action={updateMember} className="flex flex-wrap items-center gap-2">
-                    <input type="hidden" name="id" value={p.id} />
-                    <NativeSelect name="role" defaultValue={p.role} className="w-40">
-                      {roleOptions}
-                    </NativeSelect>
-                    <NativeSelect name="teamId" defaultValue={p.teamId ?? ""} className="w-56">
-                      {teamOptions}
-                    </NativeSelect>
-                    <Button type="submit" size="sm" variant="outline">
-                      Save
-                    </Button>
-                  </form>
-                </TableCell>
+                {canMutate ? (
+                  <TableCell colSpan={2}>
+                    <form action={updateMember} className="flex flex-wrap items-center gap-2">
+                      <input type="hidden" name="id" value={p.id} />
+                      <NativeSelect name="role" defaultValue={p.role} className="w-40">
+                        {roleOptions}
+                      </NativeSelect>
+                      <NativeSelect name="teamId" defaultValue={p.teamId ?? ""} className="w-56">
+                        {teamOptions}
+                      </NativeSelect>
+                      <Button type="submit" size="sm" variant="outline">
+                        Save
+                      </Button>
+                    </form>
+                  </TableCell>
+                ) : (
+                  <>
+                    <TableCell className="text-muted-foreground">{ROLE_LABELS[p.role]}</TableCell>
+                    <TableCell className="text-muted-foreground">{teamName ?? "Fund-wide"}</TableCell>
+                  </>
+                )}
                 <TableCell className="text-right">
-                  {p.id !== me.id && (
+                  {canMutate && p.id !== me.id && (
                     <form action={removeMember}>
                       <input type="hidden" name="id" value={p.id} />
                       <Button type="submit" size="sm" variant="ghost" className="text-destructive">
@@ -324,6 +339,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div>
+          {canMutate && (
+          <>
           <SectionTitle>Invite a member (Google sign-in)</SectionTitle>
           <Card className="p-4">
             <form action={inviteMember} className="grid gap-3">
@@ -350,6 +367,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               </Button>
             </form>
           </Card>
+          </>
+          )}
 
           {pending.length > 0 && (
             <>
@@ -366,12 +385,14 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                         <TableCell className="text-muted-foreground">{ROLE_LABELS[i.role]}</TableCell>
                         <TableCell className="text-muted-foreground">{allTeams.find((t) => t.id === i.teamId)?.name ?? "Fund-wide"}</TableCell>
                         <TableCell className="text-right">
-                          <form action={revokeInvitation}>
-                            <input type="hidden" name="id" value={i.id} />
-                            <Button type="submit" size="sm" variant="ghost">
-                              Revoke
-                            </Button>
-                          </form>
+                          {canMutate && (
+                            <form action={revokeInvitation}>
+                              <input type="hidden" name="id" value={i.id} />
+                              <Button type="submit" size="sm" variant="ghost">
+                                Revoke
+                              </Button>
+                            </form>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -382,6 +403,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           )}
         </div>
 
+        {canMutate && (
         <div>
           <SectionTitle>Create a test account (username + password)</SectionTitle>
           <Card className="p-4">
@@ -418,18 +440,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             </form>
           </Card>
         </div>
+        )}
       </div>
     </>
   );
-}
-
-function summarize(summary: Record<string, unknown>) {
-  const s = summary as { status?: string; reason?: string; qualified?: string[]; created?: string[]; sessionDate?: string; reminders?: number; overdue?: number; evidenceFinished?: number; files?: number; matched?: number; unmatched?: string[]; error?: string };
-  if (s.files !== undefined) return `${s.reason ?? ""} · ${s.files} files, ${s.matched} matched${s.unmatched?.length ? `, ${s.unmatched.length} unmatched` : ""}`;
-  if (s.error) return `${s.reason ?? ""} · ${s.error}`;
-  if (s.sessionDate) return `${s.sessionDate} ${s.status ?? ""}${s.reason ? ` (${s.reason})` : ""}${s.qualified?.length ? ` · qualified ${s.qualified.join(", ")}` : ""}`;
-  if (s.reminders !== undefined) return `reminders ${s.reminders}, overdue ${s.overdue}, evidence ${s.evidenceFinished}`;
-  return "";
 }
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
@@ -441,13 +455,15 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor: string; c
   );
 }
 
-function Notice({ tone, children }: { tone: "ok" | "error"; children: React.ReactNode }) {
+function Notice({ tone, children }: { tone: "ok" | "error" | "info"; children: React.ReactNode }) {
   return (
     <div
       className={
         tone === "ok"
           ? "mb-4 rounded-md border border-up/30 bg-up/5 px-3 py-2 text-sm"
-          : "mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          : tone === "info"
+            ? "mb-4 rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+            : "mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
       }
     >
       {children}

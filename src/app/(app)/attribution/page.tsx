@@ -20,7 +20,7 @@ import { computeAttribution } from "@/lib/attribution/attribution";
 import { loadAttributionSeries } from "@/lib/attribution/load";
 import { BENCHMARK_REFERENCE } from "@/lib/attribution/sectors";
 import { periodFromQuery, qualityNotices, referenceReturn, sectorEffectPoints } from "@/lib/attribution/view";
-import { listAccessibleTeams, requireRole } from "@/lib/auth";
+import { listAccessibleTeams, requireRole, transparencyEnabled } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Fund attribution" };
@@ -65,6 +65,7 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
   const top = result.holdings.slice(0, 5);
   const bottom = result.holdings.slice(-5).reverse().filter((h) => !top.includes(h));
   const spy = referenceReturn(loaded, period);
+  const transparency = transparencyEnabled(user);
 
   return (
     <>
@@ -109,7 +110,7 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
           </div>
 
           <SectionTitle aside="pp = percentage points of return">Sectors</SectionTitle>
-          <div className="mb-6"><SectorTable result={result} /></div>
+          <div className="mb-6"><SectorTable result={result} breakdownQuery={transparency ? { basePath: "/attribution", period: period.key, from, to } : undefined} /></div>
 
           {showAll ? (
             <>
@@ -136,6 +137,7 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
             Brinson-Fachler by GICS sector, daily, Carino-linked. Benchmark is saved S&amp;P 500 sector weights applied to Select Sector SPDR total returns
             {loaded.weightSets.length ? ` (weights as of ${fmtDate(loaded.weightSets.at(-1)!.asOf)})` : ""}. Dividends reinvest on the ex-date.
             {spy !== null && ` ${BENCHMARK_REFERENCE} total return over the period: ${fmtSigned(spy)}.`}
+            {transparency && " Transparency mode is on: expand a sector row to see the daily working and the stored rows behind it."}
           </p>
         </>
       )}

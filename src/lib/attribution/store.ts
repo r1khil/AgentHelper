@@ -23,6 +23,8 @@ export type LoadedSeries = {
   reference: Map<string, number>;
   referenceDividends: Map<string, number>;
   quality: { ledger: LedgerQuality; benchmark: BenchmarkQuality };
+  /** The raw inputs the series was built from (references, not copies), for data lineage. */
+  inputs: { prices: DateSeries; dividends: DateSeries; splits: Split[]; days: string[] };
 };
 
 function put(series: DateSeries, ticker: string, date: string, value: number) {
@@ -72,6 +74,7 @@ export async function loadSeries(db: Db, overrides?: { trades?: Trade[]; cashFlo
     reference: new Map(),
     referenceDividends: new Map(),
     quality: { ledger: { stale: [], unpriced: [], oversold: [] }, benchmark: { beforeFirstWeights: false, staleEtf: [] } },
+    inputs: { prices: new Map(), dividends: new Map(), splits: [], days: [] },
   };
   if (!inception) return empty;
 
@@ -101,7 +104,7 @@ export async function loadSeries(db: Db, overrides?: { trades?: Trade[]; cashFlo
   // A what-if replay (validating an edit) must see ledger dates that have no close yet.
   if (overrides) for (const d of [...tradeList.map((t) => t.date), ...flowList.map((f) => f.date)]) daySet.add(d);
   const days = [...daySet].sort();
-  if (!days.length) return { ...empty, reference };
+  if (!days.length) return { ...empty, reference, inputs: { prices, dividends, splits, days } };
 
   const portfolio = buildPortfolioDays({ trades: adjustForSplits(tradeList, splits), cashFlows: flowList, prices, dividends, days });
   const benchmark = buildBenchmarkDays(weightSets, prices, dividends, days);
@@ -115,6 +118,7 @@ export async function loadSeries(db: Db, overrides?: { trades?: Trade[]; cashFlo
     reference,
     referenceDividends: dividends.get(BENCHMARK_REFERENCE) ?? new Map(),
     quality: { ledger: portfolio.quality, benchmark: benchmark.quality },
+    inputs: { prices, dividends, splits, days },
   };
 }
 

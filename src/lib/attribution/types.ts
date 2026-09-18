@@ -18,6 +18,8 @@ export type DayPosition = {
   pnl: number;
   sharesEnd: number;
   valueEnd: number;
+  /** How the day's close was obtained: a real close, the prior close carried forward, or the trade price (no close at all). */
+  priced: "close" | "carried" | "trade";
 };
 
 export type PortfolioDay = {
@@ -47,6 +49,10 @@ export type BenchmarkDay = {
   weights: Record<GicsSector, number>;
   returns: Record<GicsSector, number>;
   ret: number;
+  /** `asOf` of the saved weight set in effect (after drift) on this day. */
+  weightSetAsOf: string;
+  /** Sector ETFs with no close this day whose prior close was carried forward. */
+  staleEtfs: string[];
 };
 
 export type BenchmarkQuality = {

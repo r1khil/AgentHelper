@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { loadTeam } from "@/lib/teams";
+import { transparencyEnabled } from "@/lib/auth";
 import { effectiveRunStatus, getChat, loadMessages } from "@/lib/chats";
 import { listTeamHoldings } from "@/lib/holdings";
 import { deleteChat } from "@/lib/actions/chats";
@@ -14,7 +15,7 @@ export const metadata: Metadata = { title: "Agent" };
 
 export default async function ChatPage({ params }: { params: Promise<{ team: string; chatId: string }> }) {
   const { team: slug, chatId } = await params;
-  const { team } = await loadTeam(slug);
+  const { team, user } = await loadTeam(slug);
   const chat = await getChat(chatId);
   if (!chat || chat.teamId !== team.id) notFound();
   const [messages, holdings] = await Promise.all([loadMessages(chat.id), listTeamHoldings(team.id)]);
@@ -40,7 +41,7 @@ export default async function ChatPage({ params }: { params: Promise<{ team: str
           </Button>
         </form>
       </div>
-      <ChatPanel chatId={chat.id} initialMessages={messages} initialRunStatus={effectiveRunStatus(chat)} tickers={tickers} configured={agentConfigured()} />
+      <ChatPanel chatId={chat.id} initialMessages={messages} initialRunStatus={effectiveRunStatus(chat)} tickers={tickers} configured={agentConfigured()} transparency={transparencyEnabled(user)} />
     </>
   );
 }

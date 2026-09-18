@@ -1,3 +1,5 @@
+import { currentTrace } from "@/lib/trace/context";
+import { hostFromKey } from "@/lib/trace/events";
 
 type Entry = { payload: unknown; expiresAt: number };
 const memory = new Map<string, Entry>();
@@ -28,11 +30,59 @@ async function dbSet(key: string, entry: Entry) {
   }
 }
 
+/** Approximate serialized size, only computed when a trace is listening. Large payloads are sampled, not measured. */
+const BYTES_CAP = 2_000_000;
+function approxBytes(payload: unknown): number | undefined {
+  try {
+    if (typeof payload === "string") return payload.length;
+    const s = JSON.stringify(payload);
+    return s === undefined ? undefined : Math.min(s.length, BYTES_CAP);
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Cache a provider call. Memory first, then the provider_cache table, then the network.
  * The DB layer is optional so providers work in scripts and tests without a database.
+ * When a transparency trace is active, each lookup reports which layer answered it.
  */
 export async function cached<T>(key: string, ttlSeconds: number, fn: () => Promise<T>, opts: { db?: boolean } = {}): Promise<T> {
+  const trace = currentTrace();
+  if (!trace) return cachedUntraced(key, ttlSeconds, fn, opts);
+
+  const host = hostFromKey(key);
+  const now = Date.now();
+  const mem = memory.get(key);
+  if (mem && mem.expiresAt > now) {
+    trace.emit({ t: "fetch", host, key, layer: "memory", ms: 0, bytes: approxBytes(mem.payload), ttlSeconds, ok: true });
+    return mem.payload as T;
+  }
+  if (opts.db !== false && process.env.DATABASE_URL) {
+    const t0 = Date.now();
+    const hit = await dbGet(key);
+    if (hit && hit.expiresAt > now) {
+      memory.set(key, hit);
+      trace.emit({ t: "fetch", host, key, layer: "db", ms: Date.now() - t0, bytes: approxBytes(hit.payload), ttlSeconds, ok: true });
+      return hit.payload as T;
+    }
+  }
+  const t0 = Date.now();
+  let payload: T;
+  try {
+    payload = await fn();
+  } catch (e) {
+    trace.emit({ t: "fetch", host, key, layer: "network", ms: Date.now() - t0, ttlSeconds, ok: false, error: e instanceof Error ? e.message : String(e) });
+    throw e;
+  }
+  trace.emit({ t: "fetch", host, key, layer: "network", ms: Date.now() - t0, bytes: approxBytes(payload), ttlSeconds, ok: true });
+  const entry = { payload, expiresAt: now + ttlSeconds * 1000 };
+  memory.set(key, entry);
+  if (opts.db !== false && process.env.DATABASE_URL) await dbSet(key, entry);
+  return payload;
+}
+
+async function cachedUntraced<T>(key: string, ttlSeconds: number, fn: () => Promise<T>, opts: { db?: boolean }): Promise<T> {
   const now = Date.now();
   const mem = memory.get(key);
   if (mem && mem.expiresAt > now) return mem.payload as T;

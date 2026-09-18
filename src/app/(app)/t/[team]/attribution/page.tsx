@@ -17,7 +17,7 @@ import { computeTeamAttribution } from "@/lib/attribution/attribution";
 import { loadAttributionSeries, loadTeamSectors } from "@/lib/attribution/load";
 import { ETF_BY_SECTOR, SECTOR_LABELS } from "@/lib/attribution/sectors";
 import { periodFromQuery, qualityNotices, sectorEffectPoints } from "@/lib/attribution/view";
-import { canManageTeam, isFundWide } from "@/lib/auth";
+import { canManageTeam, isFundWide, transparencyEnabled } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
 import { loadTeam } from "@/lib/teams";
 
@@ -52,6 +52,7 @@ export default async function TeamAttributionPage({ params, searchParams }: Page
   const notices = qualityNotices(loaded, period, { canEdit }).filter((n) => !n.text.startsWith("No sector set") || [...teamTickers].some((t) => n.text.includes(t)));
   if (!sectors.length) notices.unshift({ text: "No GICS sectors are assigned to this team, so it has no benchmark.", href: canEdit ? "/attribution/ledger?tab=securities" : undefined, action: "Assign sectors" });
   const selection = result.effects ? result.effects.selection + result.effects.interaction : null;
+  const transparency = transparencyEnabled(user);
 
   return (
     <>
@@ -95,7 +96,7 @@ export default async function TeamAttributionPage({ params, searchParams }: Page
           </div>
 
           <SectionTitle aside="pp = percentage points of return">Sectors</SectionTitle>
-          <div className="mb-6"><SectorTable result={result} /></div>
+          <div className="mb-6"><SectorTable result={result} breakdownQuery={transparency ? { basePath: base, team: team.slug, period: period.key, from, to } : undefined} /></div>
 
           <SectionTitle><Explained label="Holdings by contribution">{EXPLAIN.contributors}</Explained></SectionTitle>
           <div className="mb-6"><ContributorsTable rows={result.holdings} teams={teams} showTeam={false} /></div>
@@ -103,6 +104,7 @@ export default async function TeamAttributionPage({ params, searchParams }: Page
           <p className="text-xs text-muted-foreground">
             The team&apos;s holdings are scaled to 100% and compared with the S&amp;P 500 weights of its sectors, using Select Sector SPDR total returns. Weights and
             contributions here are shares of the team&apos;s capital; Contribution to Fund is in points of the whole Fund&apos;s return.
+            {transparency && " Transparency mode is on: expand a sector row to see the daily working and the stored rows behind it."}
           </p>
         </>
       )}

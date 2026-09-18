@@ -1,7 +1,7 @@
 import { brinsonDay } from "./brinson";
-import { carinoCoefficients, compound, priorGrowth } from "./linking";
+import { carinoDetail, compound, priorGrowth } from "./linking";
 import { GICS_SECTORS, type BucketKey, type GicsSector } from "./sectors";
-import type { BenchmarkDay, BucketInput, Effects, PortfolioDay, SecurityMeta } from "./types";
+import type { BenchmarkDay, BucketInput, DayPosition, Effects, PortfolioDay, SecurityMeta } from "./types";
 
 export type AttributionSeries = {
   portfolio: PortfolioDay[];
@@ -47,13 +47,63 @@ export type AttributionResult = {
   teams: TeamRow[];
   cashContribution: number;
   cumulative: CumulativePoint[];
+  /** Per-day working behind every sector row; only built when requested (transparency mode). */
+  breakdown?: AttributionBreakdown;
 };
+
+export type BreakdownPosition = {
+  ticker: string;
+  weight: number;
+  ret: number;
+  contribution: number;
+  /** Dollar P&L for the day (fund level, not renormalised), when known. */
+  pnl: number | null;
+  priced: DayPosition["priced"] | null;
+};
+
+/** One sector on one day: the Brinson inputs, the raw one-day effects, and how Carino scaled them. */
+export type SectorDayBreakdown = {
+  date: string;
+  /** Sector weight in the sleeve and its one-day return (contribution / weight). */
+  wp: number;
+  rp: number;
+  /** Portfolio growth before this day; daily contributions are scaled by it. */
+  growth: number;
+  contributionRaw: number;
+  contributionScaled: number;
+  positions: BreakdownPosition[];
+  bench: {
+    wb: number;
+    rb: number;
+    /** Whole-benchmark return that day. */
+    Rb: number;
+    /** `rb` was borrowed from `rp` (sector absent from the benchmark) or `rp` from `rb` (sector not held). */
+    borrowed: "rb" | "rp" | null;
+    raw: Effects;
+    coef: number;
+    scaled: Effects;
+  } | null;
+};
+
+export type SectorBreakdown = { key: BucketKey; days: SectorDayBreakdown[]; sums: Effects & { contribution: number } };
+
+export type AttributionBreakdown = {
+  linking: {
+    Rp: number;
+    Rb: number | null;
+    K: number | null;
+    days: { date: string; rp: number; rb: number | null; k: number | null; coef: number | null; growth: number }[];
+  };
+  sectors: SectorBreakdown[];
+};
+
+export type AttributionOptions = { breakdown?: boolean };
 
 /** One day, already expressed as weights that sum to 1 and contributions that sum to `rp`. */
 type SleeveDay = {
   date: string;
   rp: number;
-  positions: { ticker: string; weight: number; ret: number; contribution: number }[];
+  positions: { ticker: string; weight: number; ret: number; contribution: number; pnl?: number; priced?: DayPosition["priced"] }[];
   cash: { weight: number; contribution: number } | null;
   bench: { weights: Partial<Record<GicsSector, number>>; returns: Record<GicsSector, number>; ret: number } | null;
 };
@@ -62,12 +112,14 @@ function bucketOf(meta: Map<string, SecurityMeta>, ticker: string): BucketKey {
   return meta.get(ticker)?.sector ?? "unclassified";
 }
 
-function attribute(days: SleeveDay[], meta: Map<string, SecurityMeta>, range: { start: string; end: string }): AttributionResult {
+function attribute(days: SleeveDay[], meta: Map<string, SecurityMeta>, range: { start: string; end: string }, opts: AttributionOptions = {}): AttributionResult {
   const hasBench = days.length > 0 && days.every((d) => d.bench);
   const rps = days.map((d) => d.rp);
   const growth = priorGrowth(rps);
-  const coef = hasBench ? carinoCoefficients(days.map((d) => ({ rp: d.rp, rb: d.bench!.ret }))) : [];
+  const carino = hasBench ? carinoDetail(days.map((d) => ({ rp: d.rp, rb: d.bench!.ret }))) : null;
+  const coef = carino?.coef ?? [];
   const n = days.length;
+  const breakdown = opts.breakdown ? new Map<BucketKey, SectorDayBreakdown[]>() : null;
 
   type SectorAcc = Effects & { wp: number; wb: number; contribution: number; rpGrowth: number; rbGrowth: number; held: boolean; inBench: boolean };
   const sectors = new Map<BucketKey, SectorAcc>();
@@ -126,6 +178,26 @@ function attribute(days: SleeveDay[], meta: Map<string, SecurityMeta>, range: { 
       if (v.w > 0) { acc.rpGrowth *= 1 + v.c / v.w; acc.held = true; }
     }
 
+    const positionsOf = (k: BucketKey): BreakdownPosition[] =>
+      day.positions
+        .filter((p) => bucketOf(meta, p.ticker) === k)
+        .map((p) => ({ ticker: p.ticker, weight: p.weight, ret: p.ret, contribution: p.contribution, pnl: p.pnl ?? null, priced: p.priced ?? null }));
+    const pushDay = (k: BucketKey, bench: SectorDayBreakdown["bench"]) => {
+      if (!breakdown) return;
+      const v = port[k];
+      const row: SectorDayBreakdown = {
+        date: day.date,
+        wp: v?.w ?? 0,
+        rp: v && v.w !== 0 ? v.c / v.w : (bench?.rb ?? 0),
+        growth: growth[i],
+        contributionRaw: v?.c ?? 0,
+        contributionScaled: (v?.c ?? 0) * growth[i],
+        positions: k === "cash" ? [] : positionsOf(k),
+        bench,
+      };
+      breakdown.set(k, [...(breakdown.get(k) ?? []), row]);
+    };
+
     if (hasBench && day.bench) {
       const benchInput: Partial<Record<BucketKey, BucketInput>> = {};
       for (const s of GICS_SECTORS) {
@@ -138,13 +210,27 @@ function attribute(days: SleeveDay[], meta: Map<string, SecurityMeta>, range: { 
         acc.inBench = true;
       }
       const effects = brinsonDay(portInput, benchInput, day.bench.ret);
-      for (const [k, e] of Object.entries(effects) as [BucketKey, Effects][]) {
+      for (const [k, e] of Object.entries(effects) as [BucketKey, (typeof effects)[BucketKey] & Effects][]) {
         const acc = sectorAcc(k);
         acc.allocation += e.allocation * coef[i];
         acc.selection += e.selection * coef[i];
         acc.interaction += e.interaction * coef[i];
+        if (breakdown) {
+          const raw = { allocation: e.allocation, selection: e.selection, interaction: e.interaction };
+          pushDay(k, {
+            wb: e.wb,
+            rb: e.rb,
+            Rb: day.bench.ret,
+            borrowed: e.wb === 0 ? "rb" : e.wp === 0 ? "rp" : null,
+            raw,
+            coef: coef[i],
+            scaled: { allocation: raw.allocation * coef[i], selection: raw.selection * coef[i], interaction: raw.interaction * coef[i] },
+          });
+        }
       }
       gb *= 1 + day.bench.ret;
+    } else if (breakdown) {
+      for (const k of Object.keys(port) as BucketKey[]) pushDay(k, null);
     }
     gp *= 1 + day.rp;
     cumulative.push({ date: day.date, portfolio: gp - 1, benchmark: hasBench ? gb - 1 : null, active: hasBench ? gp - gb : null });
@@ -176,6 +262,32 @@ function attribute(days: SleeveDay[], meta: Map<string, SecurityMeta>, range: { 
   const portfolioReturn = compound(rps);
   const benchmarkReturn = hasBench ? gb - 1 : null;
 
+  const breakdownOut: AttributionBreakdown | undefined = breakdown
+    ? {
+        linking: {
+          Rp: portfolioReturn,
+          Rb: carino ? carino.Rb : null,
+          K: carino ? carino.K : null,
+          days: days.map((d, i) => ({ date: d.date, rp: d.rp, rb: carino ? d.bench!.ret : null, k: carino ? carino.k[i] : null, coef: carino ? carino.coef[i] : null, growth: growth[i] })),
+        },
+        sectors: order
+          .filter((k) => breakdown.has(k))
+          .map((key) => {
+            const rows = breakdown.get(key)!;
+            const sums = rows.reduce(
+              (s, r) => ({
+                allocation: s.allocation + (r.bench?.scaled.allocation ?? 0),
+                selection: s.selection + (r.bench?.scaled.selection ?? 0),
+                interaction: s.interaction + (r.bench?.scaled.interaction ?? 0),
+                contribution: s.contribution + r.contributionScaled,
+              }),
+              { allocation: 0, selection: 0, interaction: 0, contribution: 0 },
+            );
+            return { key, days: rows, sums };
+          }),
+      }
+    : undefined;
+
   return {
     start: range.start,
     end: range.end,
@@ -201,6 +313,7 @@ function attribute(days: SleeveDay[], meta: Map<string, SecurityMeta>, range: { 
       .sort((a, b) => b.contribution - a.contribution),
     cashContribution,
     cumulative,
+    ...(breakdownOut ? { breakdown: breakdownOut } : {}),
   };
 }
 
@@ -209,7 +322,7 @@ function inRange<T extends { date: string }>(days: T[], range: { start: string; 
 }
 
 /** Fund-level attribution over (start, end]. */
-export function computeAttribution(series: AttributionSeries, range: { start: string; end: string }): AttributionResult {
+export function computeAttribution(series: AttributionSeries, range: { start: string; end: string }, opts: AttributionOptions = {}): AttributionResult {
   const benchByDate = new Map(series.benchmark.map((b) => [b.date, b]));
   const days: SleeveDay[] = inRange(series.portfolio, range).map((d) => ({
     date: d.date,
@@ -218,7 +331,7 @@ export function computeAttribution(series: AttributionSeries, range: { start: st
     cash: { weight: d.cashWeight, contribution: d.cashContribution },
     bench: benchByDate.get(d.date) ?? null,
   }));
-  return attribute(days, series.meta, range);
+  return attribute(days, series.meta, range, opts);
 }
 
 export type TeamAttributionResult = AttributionResult & {
@@ -236,6 +349,7 @@ export function computeTeamAttribution(
   range: { start: string; end: string },
   teamId: string,
   teamSectors: GicsSector[],
+  opts: AttributionOptions = {},
 ): TeamAttributionResult {
   const benchByDate = new Map(series.benchmark.map((b) => [b.date, b]));
   const fundDays = inRange(series.portfolio, range);
@@ -268,12 +382,12 @@ export function computeTeamAttribution(
     days.push({
       date: d.date,
       rp: C / W,
-      positions: mine.map((p) => ({ ticker: p.ticker, weight: p.weight / W, ret: p.ret, contribution: p.contribution / W })),
+      positions: mine.map((p) => ({ ticker: p.ticker, weight: p.weight / W, ret: p.ret, contribution: p.contribution / W, pnl: p.pnl, priced: p.priced })),
       cash: null,
       bench,
     });
   });
 
-  const result = attribute(days, series.meta, range);
+  const result = attribute(days, series.meta, range, opts);
   return { ...result, fundContribution, avgFundWeight: fundDays.length ? fundWeight / fundDays.length : 0 };
 }

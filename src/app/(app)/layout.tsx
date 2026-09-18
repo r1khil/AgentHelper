@@ -8,7 +8,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <Sidebar
-        user={{ fullName: user.fullName, role: user.role, teamId: user.teamId, email: user.email, username: user.username }}
+        user={{ fullName: user.fullName, role: user.role, teamId: user.teamId, email: user.email, username: user.username, transparencyMode: user.transparencyMode }}
         teams={teams}
         signOut={signOut}
       />

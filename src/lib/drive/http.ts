@@ -1,5 +1,6 @@
 import "server-only";
 import { spaced } from "@/lib/providers/limiter";
+import { currentTrace } from "@/lib/trace/context";
 import { DriveNotConnected, getAccessToken, markReconnectNeeded } from "./auth";
 
 export class DriveError extends Error {
@@ -31,18 +32,36 @@ async function parseError(res: Response) {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Path only: query strings can carry search terms and ids we do not need to echo. */
+function pathOf(url: string) {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
+  }
+}
+
 /**
  * Authenticated fetch against Google APIs: bearer token, one forced refresh on 401, backoff on 429/5xx,
  * and per-host spacing. Every Drive call in the app goes through here.
  */
 export async function driveFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const trace = currentTrace();
   return spaced("drive", 50, async () => {
     let forceRefresh = false;
     let refreshed = false;
     for (let attempt = 0; ; attempt++) {
       const token = await getAccessToken(forceRefresh);
       forceRefresh = false;
-      const res = await fetch(url, { ...init, headers: { ...(init.headers as Record<string, string> | undefined), authorization: `Bearer ${token}` } });
+      const t0 = Date.now();
+      let res: Response;
+      try {
+        res = await fetch(url, { ...init, headers: { ...(init.headers as Record<string, string> | undefined), authorization: `Bearer ${token}` } });
+      } catch (e) {
+        trace?.emit({ t: "fetch", host: "drive", url: pathOf(url), layer: "network", ms: Date.now() - t0, ok: false, error: e instanceof Error ? e.message : String(e) });
+        throw e;
+      }
+      trace?.emit({ t: "fetch", host: "drive", url: pathOf(url), layer: "network", ms: Date.now() - t0, ok: res.ok, status: res.status });
       if (res.ok) return res;
       if (res.status === 401) {
         if (!refreshed) {

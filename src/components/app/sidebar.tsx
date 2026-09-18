@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useTransition } from "react";
 import {
   ChartColumn,
   ChartNoAxesCombined,
@@ -11,6 +12,7 @@ import {
   Home,
   LogOut,
   Menu,
+  ScanEye,
   Settings,
   Sparkles,
   Table2,
@@ -22,6 +24,8 @@ import type { Role, Team } from "@/db/schema";
 import { OwlMark } from "./owl-mark";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { setTransparencyMode } from "@/lib/actions/preferences";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export type SidebarUser = { fullName: string; role: Role; teamId: string | null; email: string; username: string | null };
+export type SidebarUser = { fullName: string; role: Role; teamId: string | null; email: string; username: string | null; transparencyMode: boolean };
 
 type Props = { user: SidebarUser; teams: Team[]; signOut: () => Promise<void> };
 
@@ -148,13 +152,14 @@ function SidebarBody({ user, teams, signOut }: Props) {
         ))}
       </nav>
 
-      {user.role === "admin" && (
+      {fundWide && (
         <nav className="mt-4 px-3">
           <NavItem href="/admin" label="Admin" icon={Settings} active={isActive("/admin")} />
         </nav>
       )}
 
       <div className="mt-auto border-t p-3">
+        {fundWide && <TransparencyToggle on={user.transparencyMode} />}
         <DropdownMenu>
           <DropdownMenuTrigger
             render={<button className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left hover:bg-sidebar-accent" />}
@@ -182,6 +187,29 @@ function SidebarBody({ user, teams, signOut }: Props) {
         </DropdownMenu>
       </div>
     </>
+  );
+}
+
+/** Exec/admin only: reveals how the agent, attribution and jobs are computed. Persisted on the profile. */
+function TransparencyToggle({ on }: { on: boolean }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return (
+    <label className="mb-1 flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-sidebar-accent" title="Show how answers, attribution and jobs are computed">
+      <ScanEye className="size-4 shrink-0 text-muted-foreground" />
+      <span className="min-w-0 flex-1 text-sm">Transparency</span>
+      <Switch
+        checked={on}
+        disabled={pending}
+        aria-label="Transparency mode"
+        onCheckedChange={(next) =>
+          startTransition(async () => {
+            await setTransparencyMode(next);
+            router.refresh();
+          })
+        }
+      />
+    </label>
   );
 }
 
