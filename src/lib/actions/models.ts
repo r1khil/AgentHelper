@@ -9,7 +9,8 @@ import { holdings, modelMappings, modelProposals, modelWrites, models, teams } f
 import { requireTeamAccess } from "@/lib/auth";
 import { readWorkbook } from "@/lib/excel/read";
 import { patchXlsx } from "@/lib/excel/patch";
-import { downloadModelFile, uploadModelFile } from "@/lib/storage";
+import { deleteModelFile, downloadModelFile, moveModelFile, signModelUpload, uploadModelFile } from "@/lib/storage";
+import { MAX_MODEL_BYTES, parseStagedModelPath, stagedModelPath, validateModelFile } from "@/lib/models/upload";
 import { getCompanyFacts, listConcepts } from "@/lib/providers/edgar";
 import { buildProposals, reportedPeriodEnds, suggestConcepts, type ConceptSuggestion } from "@/lib/models/proposals";
 
@@ -20,27 +21,69 @@ async function loadModel(modelId: string) {
   return { ...row, user, path: `/t/${row.slug}/models/${row.m.id}` };
 }
 
-export async function uploadModel(fd: FormData) {
-  const holdingId = String(fd.get("holdingId") ?? "");
-  const file = fd.get("file");
-  const [h] = await db.select({ h: holdings, slug: teams.slug }).from(holdings).innerJoin(teams, eq(teams.id, holdings.teamId)).where(eq(holdings.id, holdingId)).limit(1);
-  if (!h) return;
-  const user = await requireTeamAccess(h.h.teamId);
-  if (!(file instanceof File) || !file.name) redirect(`/t/${h.slug}/models?error=Choose+an+.xlsx+file`);
-  if (!/\.(xlsx|xlsm)$/i.test(file.name)) redirect(`/t/${h.slug}/models?error=Only+.xlsx+or+.xlsm+files`);
-  if (file.size > 50 * 1024 * 1024) redirect(`/t/${h.slug}/models?error=File+is+larger+than+50MB`);
-  const buffer = Buffer.from(await file.arrayBuffer());
+async function loadHolding(holdingId: string) {
+  const [row] = await db.select({ h: holdings, slug: teams.slug }).from(holdings).innerJoin(teams, eq(teams.id, holdings.teamId)).where(eq(holdings.id, holdingId)).limit(1);
+  if (!row) return null;
+  const user = await requireTeamAccess(row.h.teamId);
+  return { ...row, user };
+}
+
+// ---- model upload: sign → browser PUTs to the bucket → finalize (see components/app/models/upload-model-form.tsx) ----
+
+export type UploadUrlResult = { ok: true; path: string; token: string } | { ok: false; error: string };
+export type FinalizeUploadResult = { ok: false; error: string };
+
+const uploadUrlSchema = z.object({ holdingId: z.string().uuid(), fileName: z.string().trim().min(1).max(255), size: z.number().int().nonnegative() });
+const finalizeSchema = z.object({ holdingId: z.string().uuid(), path: z.string().min(1).max(200), fileName: z.string().trim().min(1).max(255) });
+
+const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+export async function createModelUploadUrl(input: unknown): Promise<UploadUrlResult> {
+  const parsed = uploadUrlSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Choose an .xlsx file" };
+  const { holdingId, fileName, size } = parsed.data;
+  const check = validateModelFile(fileName, size);
+  if (!check.ok) return check;
+  const h = await loadHolding(holdingId);
+  if (!h) return { ok: false, error: "Holding not found" };
+  try {
+    return { ok: true, ...(await signModelUpload(stagedModelPath(holdingId, check.ext))) };
+  } catch (e) {
+    return { ok: false, error: errMsg(e) };
+  }
+}
+
+/** Reads the staged workbook, moves it to its versioned path and records the model row; redirects to the new model. */
+export async function finalizeModelUpload(input: unknown): Promise<FinalizeUploadResult> {
+  const parsed = finalizeSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Upload details were incomplete" };
+  const { holdingId, path, fileName } = parsed.data;
+  const staged = parseStagedModelPath(path, holdingId);
+  if (!staged) return { ok: false, error: "Unrecognised upload" };
+  const h = await loadHolding(holdingId);
+  if (!h) return { ok: false, error: "Holding not found" };
+  let buffer: Buffer;
+  try {
+    buffer = await downloadModelFile(path);
+  } catch (e) {
+    return { ok: false, error: `Upload did not complete: ${errMsg(e)}` };
+  }
+  const fail = async (error: string): Promise<FinalizeUploadResult> => {
+    await deleteModelFile(path).catch(() => {});
+    return { ok: false, error };
+  };
+  if (buffer.length > MAX_MODEL_BYTES) return fail("File is larger than 50MB");
   let sheets;
   try {
     sheets = (await readWorkbook(buffer)).sheets;
   } catch (e) {
-    redirect(`/t/${h.slug}/models?error=${encodeURIComponent(`Could not read workbook: ${e instanceof Error ? e.message : String(e)}`)}`);
+    return fail(`Could not read workbook: ${errMsg(e)}`);
   }
   const existing = await db.select({ version: models.version }).from(models).where(eq(models.holdingId, holdingId));
   const version = existing.length ? Math.max(...existing.map((v) => v.version)) + 1 : 1;
-  const path = `${holdingId}/v${version}-${Date.now()}.${file.name.toLowerCase().endsWith(".xlsm") ? "xlsm" : "xlsx"}`;
-  await uploadModelFile(path, buffer, file.type || undefined);
-  const [m] = await db.insert(models).values({ holdingId, version, storagePath: path, fileName: file.name, sheets, uploadedBy: user.id }).returning({ id: models.id });
+  const finalPath = `${holdingId}/v${version}-${Date.now()}.${staged.ext}`;
+  await moveModelFile(path, finalPath);
+  const [m] = await db.insert(models).values({ holdingId, version, storagePath: finalPath, fileName, sheets, uploadedBy: h.user.id }).returning({ id: models.id });
   revalidatePath(`/t/${h.slug}/models`);
   redirect(`/t/${h.slug}/models/${m.id}`);
 }

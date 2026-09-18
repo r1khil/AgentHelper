@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Upload } from "lucide-react";
 import { loadTeam } from "@/lib/teams";
 import { listTeamModels } from "@/lib/models";
-import { uploadModel } from "@/lib/actions/models";
 import { relativeTime } from "@/lib/format";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { UploadModelForm } from "@/components/app/models/upload-model-form";
 
 export const metadata: Metadata = { title: "Models" };
 
@@ -46,14 +43,7 @@ export default async function ModelsPage({ params, searchParams }: { params: Pro
                   <span className="text-muted-foreground">No model uploaded.</span>
                 )}
               </div>
-              <form action={uploadModel} className="flex items-center gap-2">
-                <input type="hidden" name="holdingId" value={holding.id} />
-                <Input type="file" name="file" accept=".xlsx,.xlsm" required className="w-56" />
-                <Button type="submit" size="sm" variant="outline">
-                  <Upload />
-                  {latest ? "New version" : "Upload"}
-                </Button>
-              </form>
+              <UploadModelForm holdingId={holding.id} hasModel={!!latest} />
             </Card>
           ))}
         </div>
