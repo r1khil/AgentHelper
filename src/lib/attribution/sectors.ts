@@ -43,10 +43,14 @@ export const ETF_BY_SECTOR: Record<GicsSector, string> = {
   communication_services: "XLC",
 };
 
+/** Fund whose published sector weights seed the sector benchmark, and whose closes define valuation days. */
 export const BENCHMARK_REFERENCE = "SPY";
+/** The index the headline comparison is made against, on a price-return basis like the major-movement rule. */
+export const INDEX_REFERENCE = "^GSPC";
+export const INDEX_LABEL = "S&P 500";
 
 export function benchmarkSymbols(): string[] {
-  return [...Object.values(ETF_BY_SECTOR), BENCHMARK_REFERENCE];
+  return [...Object.values(ETF_BY_SECTOR), BENCHMARK_REFERENCE, INDEX_REFERENCE];
 }
 
 // Yahoo's assetProfile.sector uses Morningstar-style names.

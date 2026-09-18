@@ -9,7 +9,7 @@ import { ContributorsTable, type TeamLookup } from "@/components/app/attribution
 import { CumulativeActiveChart } from "@/components/app/attribution/cumulative-active-chart";
 import { DataQualityNotices } from "@/components/app/attribution/data-quality-notice";
 import { EXPLAIN } from "@/components/app/attribution/explainers";
-import { BPS_NOTE, fmtSigned } from "@/components/app/attribution/format";
+import { BPS_NOTE, fmtBps, fmtSigned } from "@/components/app/attribution/format";
 import { Explained } from "@/components/app/attribution/info-tip";
 import { PeriodSelector } from "@/components/app/attribution/period-selector";
 import { SectorEffectsChart } from "@/components/app/attribution/sector-effects-chart";
@@ -18,8 +18,8 @@ import { StatTile } from "@/components/app/attribution/stat-tile";
 import { TeamTable } from "@/components/app/attribution/team-table";
 import { computeAttribution } from "@/lib/attribution/attribution";
 import { loadAttributionSeries } from "@/lib/attribution/load";
-import { BENCHMARK_REFERENCE } from "@/lib/attribution/sectors";
-import { periodFromQuery, qualityNotices, referenceReturn, sectorEffectPoints } from "@/lib/attribution/view";
+import { INDEX_LABEL } from "@/lib/attribution/sectors";
+import { indexCumulative, indexReturn, periodFromQuery, qualityNotices, sectorEffectPoints } from "@/lib/attribution/view";
 import { listAccessibleTeams, requireRole, transparencyEnabled } from "@/lib/auth";
 import { fmtDate } from "@/lib/format";
 
@@ -64,7 +64,12 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
   const showAll = query.all === "1";
   const top = result.holdings.slice(0, 5);
   const bottom = result.holdings.slice(-5).reverse().filter((h) => !top.includes(h));
-  const spy = referenceReturn(loaded, period);
+  const spx = indexReturn(loaded, period);
+  const active = spx === null ? null : result.portfolioReturn - spx;
+  if (spx === null && result.days > 0) {
+    notices.push({ text: `${INDEX_LABEL} index closes for this period have not been stored yet. The headline comparison appears after the next price run.` });
+  }
+  const spxSeries = indexCumulative(loaded, period, result.cumulative.map((c) => c.date));
   const transparency = transparencyEnabled(user);
 
   return (
@@ -87,12 +92,18 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
         <>
           <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             <StatTile label="Portfolio" value={result.portfolioReturn} explain={EXPLAIN.portfolio} />
-            <StatTile label="Benchmark" value={result.benchmarkReturn} explain={EXPLAIN.benchmark} />
-            <StatTile label="Active return" value={result.activeReturn} unit="bps" emphasis explain={EXPLAIN.active} />
-            <StatTile label="Allocation" value={result.effects?.allocation ?? null} unit="bps" hint="Sector weights" explain={EXPLAIN.allocation} />
-            <StatTile label="Selection" value={result.effects?.selection ?? null} unit="bps" hint="Picks within sectors" explain={EXPLAIN.selection} />
-            <StatTile label="Interaction" value={result.effects?.interaction ?? null} unit="bps" hint="Weight × pick" explain={EXPLAIN.interaction} />
+            <StatTile label={INDEX_LABEL} value={spx} explain={EXPLAIN.index} />
+            <StatTile label="Active return" value={active} unit="bps" emphasis hint={`vs ${INDEX_LABEL}`} explain={EXPLAIN.active} />
+            <StatTile label="Allocation" value={result.effects?.allocation ?? null} unit="bps" hint="Sector weights · vs sector benchmark" explain={EXPLAIN.allocation} />
+            <StatTile label="Selection" value={result.effects?.selection ?? null} unit="bps" hint="Picks within sectors · vs sector benchmark" explain={EXPLAIN.selection} />
+            <StatTile label="Interaction" value={result.effects?.interaction ?? null} unit="bps" hint="Weight × pick · vs sector benchmark" explain={EXPLAIN.interaction} />
           </div>
+          {result.benchmarkReturn !== null && result.activeReturn !== null && (
+            <p className="-mt-3 mb-6 text-xs text-muted-foreground">
+              <Explained label="Sector benchmark">{EXPLAIN.benchmark}</Explained> returned {fmtSigned(result.benchmarkReturn)} over the period. Allocation, selection and interaction are
+              measured against it and add up to {fmtBps(result.activeReturn)} of active return on that basis.
+            </p>
+          )}
 
           <div className="mb-6 grid gap-4 lg:grid-cols-2">
             <Card className="p-4">
@@ -100,11 +111,11 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
               {result.effects ? <SectorEffectsChart data={sectorEffectPoints(result)} /> : <div className="text-sm text-muted-foreground">Add S&amp;P 500 sector weights to see allocation and selection.</div>}
             </Card>
             <Card className="p-4">
-              <SectionTitle><Explained label="Fund vs benchmark">{EXPLAIN.cumulativeChart}</Explained></SectionTitle>
+              <SectionTitle><Explained label={`Fund vs ${INDEX_LABEL}`}>{EXPLAIN.cumulativeChart}</Explained></SectionTitle>
               <CumulativeActiveChart
                 portfolioLabel="Owl Fund"
-                benchmarkLabel="Benchmark"
-                data={result.cumulative.map((c) => ({ date: c.date, portfolio: c.portfolio * 100, benchmark: c.benchmark === null ? null : c.benchmark * 100 }))}
+                benchmarkLabel={INDEX_LABEL}
+                data={result.cumulative.map((c, i) => ({ date: c.date, portfolio: c.portfolio * 100, benchmark: spxSeries[i] === null ? null : spxSeries[i] * 100 }))}
               />
             </Card>
           </div>
@@ -134,9 +145,9 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
           <div className="mb-6"><TeamTable rows={result.teams} teams={teams} cashContribution={result.cashContribution} query={queryString} /></div>
 
           <p className="text-xs text-muted-foreground">
-            Brinson-Fachler by GICS sector, daily, Carino-linked. Benchmark is saved S&amp;P 500 sector weights applied to Select Sector SPDR total returns
-            {loaded.weightSets.length ? ` (weights as of ${fmtDate(loaded.weightSets.at(-1)!.asOf)})` : ""}. Dividends reinvest on the ex-date.
-            {spy !== null && ` ${BENCHMARK_REFERENCE} total return over the period: ${fmtSigned(spy)}.`}
+            Headline comparison is against the S&amp;P 500 index on a price-return basis, the same as the major-movement rule. Allocation and selection are
+            Brinson-Fachler by GICS sector, daily, Carino-linked, against a sector benchmark of saved S&amp;P 500 sector weights applied to Select Sector SPDR total returns
+            {loaded.weightSets.length ? ` (weights as of ${fmtDate(loaded.weightSets.at(-1)!.asOf)})` : ""}. Fund dividends reinvest on the ex-date.
             {transparency && " Transparency mode is on: expand a sector row to see the daily working and the stored rows behind it."}
           </p>
         </>

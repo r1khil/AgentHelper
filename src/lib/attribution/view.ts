@@ -62,6 +62,25 @@ export function sectorEffectPoints(result: { sectors: { key: keyof typeof SECTOR
   }));
 }
 
+/** S&P 500 index price return over (start, end]. Null until closes for both ends are stored. */
+export function indexReturn(loaded: Pick<LoadedSeries, "index">, period: Pick<ResolvedPeriod, "start" | "end">): number | null {
+  const base = loaded.index.get(period.start);
+  const end = loaded.index.get(period.end);
+  if (base === undefined || end === undefined || base <= 0) return null;
+  return end / base - 1;
+}
+
+/** Cumulative index return at each date from the period's base close; null where a close is missing. */
+export function indexCumulative(loaded: Pick<LoadedSeries, "index">, period: Pick<ResolvedPeriod, "start">, dates: string[]): (number | null)[] {
+  const base = loaded.index.get(period.start);
+  return dates.map((d) => {
+    if (base === undefined || base <= 0) return null;
+    if (d === period.start) return 0;
+    const close = loaded.index.get(d);
+    return close === undefined ? null : close / base - 1;
+  });
+}
+
 /** SPY total return over the period, shown beside the constructed benchmark as a sanity check. */
 export function referenceReturn(loaded: LoadedSeries, period: ResolvedPeriod): number | null {
   const base = loaded.reference.get(period.start);
