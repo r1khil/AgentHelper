@@ -51,7 +51,7 @@ export default async function EarningsPage({ params, searchParams }: PageProps<"
     notices.push(
       <>
         Sector bellwethers appear after the next morning sweep.{" "}
-        {user.role === "admin" && (
+        {isFundWide(user) && (
           <Link href="/admin" className="underline">
             Run it now from the Admin page.
           </Link>

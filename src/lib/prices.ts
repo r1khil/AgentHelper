@@ -41,7 +41,10 @@ export type SyncPricesResult = { updated: string[]; failed: Record<string, strin
  * One provider call per symbol: a full backfill when history is short, otherwise a one-week
  * top-up. A newly seen split forces a full refetch because Yahoo restates earlier closes.
  */
-export async function syncPrices(db: Db, opts: { symbols: string[]; from: string; budgetMs?: number }): Promise<SyncPricesResult> {
+export async function syncPrices(
+  db: Db,
+  opts: { symbols: string[]; from: string; budgetMs?: number; onProgress?: (e: { symbol: string; i: number; n: number; bars?: number; error?: string }) => void },
+): Promise<SyncPricesResult> {
   const started = Date.now();
   const budget = opts.budgetMs ?? 240_000;
   const result: SyncPricesResult = { updated: [], failed: {}, remaining: [] };
@@ -77,8 +80,10 @@ export async function syncPrices(db: Db, opts: { symbols: string[]; from: string
       await upsertCloses(db, symbol, range.bars);
       await upsertEvents(db, symbol, range);
       result.updated.push(symbol);
+      opts.onProgress?.({ symbol, i: i + 1, n: symbols.length, bars: range.bars.length });
     } catch (e) {
       result.failed[symbol] = e instanceof Error ? e.message : String(e);
+      opts.onProgress?.({ symbol, i: i + 1, n: symbols.length, error: result.failed[symbol] });
     }
   }
   return result;

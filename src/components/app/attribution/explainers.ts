@@ -29,4 +29,18 @@ export const EXPLAIN = {
   teamSelection: "Stock picking: how the team's holdings did against their sector ETFs. Includes the interaction effect.",
   teamAllocation: "How the team spread its capital across its sectors compared with the index. Zero for a team with a single sector.",
   fundContribution: "Points of the whole Fund's return that came from this team's holdings.",
+
+  // Transparency mode: the per-day working behind a sector row.
+  breakdown: "Transparency mode. Expands the row to show the daily Brinson-Fachler inputs, the Carino scaling, the holdings behind the sector, and the stored price rows that fed the numbers.",
+  wp: "Sector weight in the portfolio at the start of the day: prior value plus buys at cost, over prior NAV plus external flows.",
+  wb: "Sector weight in the benchmark that day: the saved S&P 500 weight, drifted by sector returns since the weight set's as-of date.",
+  rp: "The Fund's return in this sector that day: the sector's contribution divided by its weight. Borrowed from the benchmark when the sector was not held.",
+  rb: "The sector ETF's total return that day (close plus dividend over the prior close). Borrowed from the portfolio when the sector is not in the benchmark, such as cash.",
+  Rb: "The whole benchmark's return that day: the sum of sector weight times sector ETF return.",
+  rawEffect: "One-day Brinson-Fachler effects computed from the four numbers to the left. Allocation = (wp − wb)(rb − Rb), selection = wb(rp − rb), interaction = (wp − wb)(rp − rb).",
+  coef: "Carino coefficient k/K for the day. Multiplying each day's effects by it makes the daily effects add up exactly to the period's compounded active return.",
+  scaledEffect: "The raw effects times the day's Carino coefficient. These columns sum to the sector row above.",
+  growth: "Portfolio growth before this day. Daily contributions are multiplied by it so they add up to the compounded period return.",
+  priced: "How each holding was valued that day: a stored close, the prior close carried forward (no close stored), or the trade price (no close stored at all yet).",
+  lineage: "The stored rows behind this sector for the period: daily closes per ticker, dividend and split events, the sector ETF's closes, and which saved benchmark weight set was in effect on which days.",
 } as const;

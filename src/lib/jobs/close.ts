@@ -9,6 +9,7 @@ import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
 import { gatherMovementEvidence } from "./evidence";
 import { queueNotification, sendPendingNotifications } from "./notify";
 import { upsertCloses } from "@/lib/prices";
+import { createJobReporter } from "./progress";
 
 export type CloseJobResult = {
   sessionDate: string;
@@ -33,7 +34,10 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
   const sessionDate = opts.sessionDate ?? todayNY();
   const base: CloseJobResult = { sessionDate, status: "ok", tickers: 0, qualified: [], created: [], dataQuality: {}, evidencePending: 0, notifications: 0 };
   const [jobRow] = await db.insert(jobRuns).values({ job: "close", summary: { sessionDate } }).returning({ id: jobRuns.id });
+  const progress = createJobReporter(jobRow.id);
   const finish = async (r: CloseJobResult) => {
+    progress.step(r.status === "failed" ? "failed" : r.status === "skipped" ? "skipped" : "finished", r.reason ? { reason: r.reason } : undefined);
+    await progress.close();
     await db.update(jobRuns).set({ finishedAt: new Date(), ok: r.status !== "failed", summary: r as unknown as Record<string, unknown> }).where(eq(jobRuns.id, jobRow.id));
     await db
       .insert(movementRuns)
@@ -42,11 +46,14 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
     return r;
   };
 
+  progress.step("check session", { sessionDate, force: Boolean(opts.force) });
   if (!isTradingDay(sessionDate)) return finish({ ...base, status: "skipped", reason: `${sessionDate} is not a trading day` });
 
   const [existing] = await db.select().from(movementRuns).where(eq(movementRuns.sessionDate, sessionDate)).limit(1);
   if (existing?.status === "ok" && !opts.force) {
     const r: CloseJobResult = { ...base, status: "skipped", reason: "already completed for this session" };
+    progress.step("skipped", { reason: r.reason });
+    await progress.close();
     await db.update(jobRuns).set({ finishedAt: new Date(), ok: true, summary: r as unknown as Record<string, unknown> }).where(eq(jobRuns.id, jobRow.id));
     return r;
   }
@@ -55,6 +62,7 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
   const span = Math.max(12, Math.ceil((Date.now() - Date.parse(sessionDate)) / 86400000) + 15);
 
   // Benchmark first. No bar for the session means data is not ready: skip visibly.
+  progress.step("fetch S&P 500 bars", { symbol: SPX_SYMBOL, days: span });
   let spxBars;
   try {
     spxBars = await getDailyBars(SPX_SYMBOL, span);
@@ -73,9 +81,10 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
     .where(eq(holdings.status, "active"));
   const tickers = [...new Set(active.map((a) => a.h.ticker))];
   const result: CloseJobResult = { ...base, tickers: tickers.length };
+  progress.step("load holdings", { holdings: active.length, tickers: tickers.length });
 
   const barsByTicker = new Map<string, { close: number; prevClose: number } | { error: string }>();
-  for (const t of tickers) {
+  for (const [idx, t] of tickers.entries()) {
     try {
       const bars = await getDailyBars(t, span);
       await upsertCloses(db, t, bars);
@@ -85,8 +94,11 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
     } catch (e) {
       barsByTicker.set(t, { error: e instanceof Error ? e.message : String(e) });
     }
+    const b = barsByTicker.get(t)!;
+    progress.item("bars", idx + 1, tickers.length, { ticker: t, ...("error" in b ? { error: b.error } : { close: b.close, prevClose: b.prevClose }) });
   }
 
+  progress.step("evaluate movements", { threshold: MOVEMENT_THRESHOLD_PP });
   for (const { h, teamSlug } of active) {
     const b = barsByTicker.get(h.ticker)!;
     if ("error" in b) {
@@ -100,6 +112,7 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
     const rel = relativeMovePp(b, spx);
     if (!qualifies(rel)) continue;
     result.qualified.push(h.ticker);
+    progress.step("qualified", { ticker: h.ticker, relativeMovePp: Number(rel.toFixed(2)) });
     const owner = h.ownerId ?? (await fallbackLead(h.teamId));
     const inserted = await db
       .insert(movements)
@@ -141,19 +154,24 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
     }
 
     if (Date.now() - started < BUDGET_MS) {
+      progress.step("gather evidence", { ticker: h.ticker });
       try {
         await gatherMovementEvidence(id);
-      } catch {
+      } catch (e) {
         result.evidencePending++;
+        progress.warn("evidence deferred", { ticker: h.ticker, error: e instanceof Error ? e.message : String(e) });
       }
     } else {
       result.evidencePending++;
+      progress.warn("evidence deferred", { ticker: h.ticker, reason: "time budget" });
     }
   }
 
+  progress.step("send notifications", { queued: result.notifications });
   try {
     await sendPendingNotifications();
-  } catch {
+  } catch (e) {
+    progress.warn("notifications deferred", { error: e instanceof Error ? e.message : String(e) });
     // Morning job retries.
   }
   return finish(result);
