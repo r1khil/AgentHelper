@@ -52,12 +52,13 @@ export function buildBenchmarkDays(
 
     const returns = zeros();
     let ret = 0;
+    const staleEtfs: string[] = [];
     for (const s of GICS_SECTORS) {
       const etf = ETF_BY_SECTOR[s];
       const p0 = prev.get(s);
       let close = etfPrices.get(etf)?.get(date);
       if (close === undefined) {
-        if (weights[s] > 0) quality.staleEtf.push({ ticker: etf, date });
+        if (weights[s] > 0) { quality.staleEtf.push({ ticker: etf, date }); staleEtfs.push(etf); }
         close = p0;
       }
       const div = etfDividends.get(etf)?.get(date) ?? 0;
@@ -65,7 +66,7 @@ export function buildBenchmarkDays(
       if (close !== undefined) prev.set(s, close);
       ret += weights[s] * returns[s];
     }
-    out.push({ date, weights: { ...weights }, returns, ret });
+    out.push({ date, weights: { ...weights }, returns, ret, weightSetAsOf: sets[idx].asOf, staleEtfs });
 
     const next = zeros();
     for (const s of GICS_SECTORS) next[s] = (weights[s] * (1 + returns[s])) / (1 + ret);

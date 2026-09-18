@@ -19,6 +19,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { GICS_SECTORS } from "../lib/attribution/sectors";
+import type { JobProgressEvent } from "../lib/jobs/progress-types";
 
 // Supabase-managed auth schema; referenced for the profiles FK only.
 const auth = pgSchema("auth");
@@ -80,6 +81,8 @@ export const profiles = pgTable("profiles", {
   // First-sign-in setup. Null until the member finishes the onboarding steps.
   boundaryAcknowledgedAt: timestamp("boundary_acknowledged_at", { withTimezone: true }),
   onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
+  // Exec/admin preference: show how the agent, attribution and jobs are computed. Role is enforced server-side.
+  transparencyMode: boolean("transparency_mode").notNull().default(false),
   ...timestamps,
 });
 
@@ -424,6 +427,8 @@ export const jobRuns = pgTable("job_runs", {
   finishedAt: timestamp("finished_at", { withTimezone: true }),
   ok: boolean("ok"),
   summary: jsonb("summary").$type<Record<string, unknown>>().notNull().default({}),
+  /** Step events appended while the job runs; see src/lib/jobs/progress.ts. */
+  progress: jsonb("progress").$type<JobProgressEvent[]>().notNull().default([]),
 });
 
 export const notifications = pgTable("notifications", {

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
+import type { AgentUIMessage, TraceEvent } from "@/lib/trace/events";
+import { buildTraceView, FetchRows, latestLabel, StepDivider, TraceHeader, type TraceView } from "./trace-panel";
 import { ArrowUp, ChevronRight, ExternalLink, Loader2, Wrench } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -23,6 +25,8 @@ const SUGGESTIONS = [
 ];
 
 const POLL_MS = 2500;
+/** Trace events kept per turn; a long research turn is a few hundred. */
+const TRACE_CAP = 2000;
 
 const isStillWorking = (e: Error) => e.message.includes("still working");
 
@@ -33,6 +37,7 @@ export function ChatPanel({
   tickers,
   configured,
   modelId,
+  transparency = false,
 }: {
   chatId: string;
   initialMessages: UIMessage[];
@@ -40,6 +45,8 @@ export function ChatPanel({
   tickers: string[];
   configured: boolean;
   modelId: string;
+  /** Exec/admin transparency mode: the server streams a live trace and this panel renders it. */
+  transparency?: boolean;
 }) {
   const transport = useMemo(
     () =>
@@ -52,15 +59,28 @@ export function ChatPanel({
   // True while the server is still answering but this page is not attached to the stream
   // (the analyst navigated away and came back, or pressed stop). We poll until it finishes.
   const [catchingUp, setCatchingUp] = useState(initialRunStatus === "running");
-  const { messages, sendMessage, setMessages, status, error, stop } = useChat({
+  // Live trace of the current turn (transparency mode only). Transient parts: never in `messages`, never persisted.
+  const [trace, setTrace] = useState<TraceEvent[]>([]);
+  const { messages, sendMessage, setMessages, status, error, stop } = useChat<AgentUIMessage>({
     id: chatId,
-    messages: initialMessages,
+    messages: initialMessages as AgentUIMessage[],
     transport,
     // A "still working" 409 means another tab or an earlier visit started a run: catch up instead of erroring.
     onError: (e) => {
       if (isStillWorking(e)) setCatchingUp(true);
     },
+    onData: (part) => {
+      if (part.type === "data-trace") setTrace((prev) => (prev.length >= TRACE_CAP ? prev : [...prev, part.data]));
+    },
   });
+  const traceView = useMemo(() => (transparency && trace.length > 0 ? buildTraceView(trace) : null), [transparency, trace]);
+  // Tick the elapsed clock while the trace is live.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!traceView || traceView.finished) return;
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, [traceView]);
   const [input, setInput] = useState("");
   const [runError, setRunError] = useState<string | null>(initialRunStatus === "error" ? "The previous answer did not finish. Ask again." : null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -82,7 +102,7 @@ export function ChatPanel({
         const data = (await res.json()) as { runStatus: RunStatus; messages: UIMessage[] };
         if (cancelled) return;
         if (data.runStatus !== "running") {
-          setMessages(data.messages);
+          setMessages(data.messages as AgentUIMessage[]);
           setCatchingUp(false);
           if (data.runStatus === "error") setRunError("The previous answer did not finish. Ask again.");
         }
@@ -105,6 +125,7 @@ export function ChatPanel({
     if (!text || busy) return;
     setInput("");
     setRunError(null);
+    setTrace([]);
     void sendMessage({ text });
   }, [input, busy, sendMessage]);
 
@@ -142,11 +163,16 @@ export function ChatPanel({
             </div>
           )}
           {messages.map((m) => (
-            <Message key={m.id} message={m} sources={sources} live={m === last && status === "streaming"} />
+            <Message key={m.id} message={m} sources={sources} live={m === last && status === "streaming"} trace={m === last && m.role === "assistant" ? traceView : null} now={now} />
           ))}
           {status === "submitted" && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="size-3.5 animate-spin" /> Thinking…
+            </div>
+          )}
+          {traceView && (status === "submitted" || last?.role !== "assistant") && (
+            <div className="rounded-md border bg-muted/30 px-2.5 py-1.5 text-xs">
+              <TraceHeader view={traceView} now={now} />
             </div>
           )}
           {catchingUp && (
@@ -224,7 +250,7 @@ export function ChatPanel({
   );
 }
 
-function Message({ message, sources, live }: { message: UIMessage; sources: Map<string, Source>; live: boolean }) {
+function Message({ message, sources, live, trace, now }: { message: UIMessage; sources: Map<string, Source>; live: boolean; trace: TraceView | null; now: number }) {
   const isUser = message.role === "user";
   const meta = (message.metadata ?? {}) as { uncited?: number };
 
@@ -242,7 +268,7 @@ function Message({ message, sources, live }: { message: UIMessage; sources: Map<
   return (
     <div className="flex justify-start">
       <div className="w-full space-y-2">
-        {activity.length > 0 && <ActivityRow parts={activity} live={live && answer.length === 0} />}
+        {(activity.length > 0 || trace) && <ActivityRow parts={activity} live={live && answer.length === 0} trace={trace} now={now} />}
         {answer.map((p, i) => (
           <Prose key={i} text={p.text} sources={sources} />
         ))}
@@ -290,16 +316,59 @@ const TOOL_PROGRESS: Record<string, string> = {
   get_peer_moves: "Checking peer moves",
 };
 
-/** One line per turn summarising the research; expands to the individual lookups and any interim notes. */
-function ActivityRow({ parts, live }: { parts: Part[]; live: boolean }) {
+/**
+ * One line per turn summarising the research; expands to the individual lookups and any interim notes.
+ * With a transparency trace, the expansion also shows each model step and every provider call under each lookup.
+ */
+function ActivityRow({ parts, live, trace, now }: { parts: Part[]; live: boolean; trace: TraceView | null; now: number }) {
   const [open, setOpen] = useState(false);
   const { lookups, sources, failed, current } = summarizeActivity(parts);
   const running = live && (current !== null || lookups === 0);
+  const liveDetail = running && trace ? latestLabel(trace) : null;
   const label = running
     ? current
-      ? `${TOOL_PROGRESS[current] ?? current}…`
-      : "Working…"
+      ? `${TOOL_PROGRESS[current] ?? current}…${liveDetail ? ` ${liveDetail}` : ""}`
+      : `Working…${liveDetail ? ` ${liveDetail}` : ""}`
     : `Researched · ${lookups} lookup${lookups === 1 ? "" : "s"} · ${sources} source${sources === 1 ? "" : "s"}${failed ? ` · ${failed} failed` : ""}`;
+
+  // Insert a step divider before the first lookup of each model step; narration stays with the step it was written in.
+  const rows: React.ReactNode[] = [];
+  let currentStep = -1;
+  const seenSteps = new Set<number>();
+  parts.forEach((p, i) => {
+    if (isToolPart(p)) {
+      const step = trace?.stepOfCall.get(p.toolCallId);
+      if (step !== undefined && step !== currentStep) {
+        currentStep = step;
+        seenSteps.add(step);
+        rows.push(<StepDivider key={`step-${step}`} n={step} view={trace!} />);
+      }
+      rows.push(
+        <div key={p.toolCallId ?? i} className="space-y-0.5">
+          <ToolCard part={p} />
+          {trace && <FetchRows events={trace.fetchesByCall.get(p.toolCallId) ?? []} end={trace.toolEnd.get(p.toolCallId)} />}
+        </div>,
+      );
+    } else if (p.type === "text" && p.text.trim()) {
+      rows.push(
+        <p key={i} className="whitespace-pre-wrap px-0.5 italic text-muted-foreground">
+          {p.text}
+        </p>,
+      );
+    }
+  });
+  if (trace) {
+    // Steps with no tool call (the written answer, or a step still in flight) go at the end.
+    for (const n of [...trace.steps.keys()].sort((a, b) => a - b)) if (!seenSteps.has(n)) rows.push(<StepDivider key={`step-${n}`} n={n} view={trace} />);
+    if (trace.looseFetches.length > 0) {
+      rows.push(
+        <div key="loose" className="space-y-0.5">
+          <div className="px-0.5 text-[11px] text-muted-foreground">Outside any lookup</div>
+          <FetchRows events={trace.looseFetches} />
+        </div>,
+      );
+    }
+  }
 
   return (
     <div className="rounded-md border bg-muted/30 text-xs">
@@ -313,17 +382,15 @@ function ActivityRow({ parts, live }: { parts: Part[]; live: boolean }) {
         <span className="min-w-0 flex-1 truncate">{label}</span>
         <ChevronRight className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-90")} />
       </button>
+      {trace && !open && (
+        <div className="border-t px-2.5 py-1">
+          <TraceHeader view={trace} now={now} />
+        </div>
+      )}
       {open && (
         <div className="space-y-1.5 border-t px-2.5 py-2">
-          {parts.map((p, i) =>
-            isToolPart(p) ? (
-              <ToolCard key={p.toolCallId ?? i} part={p} />
-            ) : p.type === "text" && p.text.trim() ? (
-              <p key={i} className="whitespace-pre-wrap px-0.5 italic text-muted-foreground">
-                {p.text}
-              </p>
-            ) : null,
-          )}
+          {trace && <TraceHeader view={trace} now={now} />}
+          {rows}
         </div>
       )}
     </div>

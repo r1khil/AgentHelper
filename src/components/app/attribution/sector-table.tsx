@@ -6,15 +6,23 @@ import { Move } from "../move";
 import { EXPLAIN } from "./explainers";
 import { fmtWeight, pct } from "./format";
 import { Explained } from "./info-tip";
+import { SectorBreakdownRow } from "./sector-breakdown-row";
+import type { BreakdownQuery } from "./sector-breakdown";
 
-export function SectorTable({ result }: { result: AttributionResult }) {
+/**
+ * `breakdownQuery` is passed only in transparency mode (exec/admin preference): each row then
+ * expands to its per-day working, fetched on demand.
+ */
+export function SectorTable({ result, breakdownQuery }: { result: AttributionResult; breakdownQuery?: BreakdownQuery }) {
   const hasBench = result.effects !== null;
   const dash = <span className="text-muted-foreground">—</span>;
+  const cols = (hasBench ? 11 : 4) + (breakdownQuery ? 1 : 0);
   return (
     <Card className="overflow-x-auto p-0">
       <Table>
         <TableHeader>
           <TableRow>
+            {breakdownQuery && <TableHead className="w-6 px-2"><Explained label="">{EXPLAIN.breakdown}</Explained></TableHead>}
             <TableHead><Explained label="Sector">{EXPLAIN.sectors}</Explained></TableHead>
             <TableHead className="text-right"><Explained align="right" label="Avg wt">{EXPLAIN.avgWeight}</Explained></TableHead>
             {hasBench && <TableHead className="text-right"><Explained align="right" label="Bench wt">{EXPLAIN.benchWeight}</Explained></TableHead>}
@@ -29,8 +37,9 @@ export function SectorTable({ result }: { result: AttributionResult }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {result.sectors.map((r) => (
-            <TableRow key={r.key}>
+          {result.sectors.map((r) => {
+            const cells = (
+              <>
               <TableCell className="font-medium">{bucketLabel(r.key)}</TableCell>
               <TableCell className="tnum text-right">{fmtWeight(r.avgPortfolioWeight)}</TableCell>
               {hasBench && <TableCell className="tnum text-right">{fmtWeight(r.avgBenchmarkWeight)}</TableCell>}
@@ -51,11 +60,20 @@ export function SectorTable({ result }: { result: AttributionResult }) {
               {hasBench && <TableCell className="text-right"><Move value={pct(r.selection)} unit="pp" digits={2} /></TableCell>}
               {hasBench && <TableCell className="text-right"><Move value={pct(r.interaction)} unit="pp" digits={2} /></TableCell>}
               {hasBench && <TableCell className="text-right font-medium"><Move value={pct(r.total)} unit="pp" digits={2} /></TableCell>}
-            </TableRow>
-          ))}
+              </>
+            );
+            return breakdownQuery ? (
+              <SectorBreakdownRow key={r.key} sector={r.key} query={breakdownQuery} colSpan={cols}>
+                {cells}
+              </SectorBreakdownRow>
+            ) : (
+              <TableRow key={r.key}>{cells}</TableRow>
+            );
+          })}
         </TableBody>
         <TableFooter>
           <TableRow>
+            {breakdownQuery && <TableCell />}
             <TableCell className="font-medium">Total</TableCell>
             <TableCell className="tnum text-right">100.0%</TableCell>
             {hasBench && <TableCell className="tnum text-right">100.0%</TableCell>}

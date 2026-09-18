@@ -10,6 +10,7 @@ import { refreshEarningsCalendar } from "./earnings";
 import { backfillIndustries, refreshBellwethers } from "./bellwethers";
 import { runDriveSync } from "./drive";
 import { purgeStagedUploads } from "@/lib/storage";
+import { createJobReporter } from "./progress";
 
 export type MorningJobResult = {
   date: string;
@@ -25,15 +26,19 @@ export type MorningJobResult = {
 /** Morning sweep: finish pending evidence, remind, flag overdue, refresh earnings, retry email. */
 export async function runMorningJob(): Promise<MorningJobResult> {
   const [jobRow] = await db.insert(jobRuns).values({ job: "morning" }).returning({ id: jobRuns.id });
+  const progress = createJobReporter(jobRow.id);
   const date = todayNY();
   const result: MorningJobResult = { date, evidenceFinished: 0, reminders: 0, overdue: 0, earnings: {}, bellwethers: {}, email: {}, drive: {} };
 
   const pending = await db.select({ id: movements.id }).from(movements).where(and(eq(movements.evidenceStatus, "pending"), ne(movements.status, "completed"))).limit(20);
-  for (const p of pending) {
+  progress.step("finish pending evidence", { movements: pending.length });
+  for (const [i, p] of pending.entries()) {
     try {
       await gatherMovementEvidence(p.id);
       result.evidenceFinished++;
-    } catch {
+      progress.item("evidence", i + 1, pending.length, { movementId: p.id });
+    } catch (e) {
+      progress.item("evidence", i + 1, pending.length, { movementId: p.id, error: e instanceof Error ? e.message : String(e) });
       // stays pending
     }
   }
@@ -45,6 +50,7 @@ export async function runMorningJob(): Promise<MorningJobResult> {
     .innerJoin(holdings, eq(holdings.id, movements.holdingId))
     .innerJoin(teams, eq(teams.id, holdings.teamId))
     .where(and(ne(movements.status, "completed"), isNull(movements.dataQuality)));
+  progress.step("reminders and overdue", { open: open.length });
 
   for (const { m, h, teamSlug } of open) {
     if (!m.dueAt) continue;
@@ -81,34 +87,43 @@ export async function runMorningJob(): Promise<MorningJobResult> {
     }
   }
 
+  progress.step("refresh earnings calendar", { reminders: result.reminders, overdue: result.overdue });
   try {
     result.earnings = await refreshEarningsCalendar();
   } catch (e) {
     result.earnings = { error: e instanceof Error ? e.message : String(e) };
+    progress.warn("earnings calendar failed", { error: result.earnings.error });
   }
 
   // Sector bellwethers and industries come after the holdings so they never crowd them out.
+  progress.step("refresh bellwethers and industries");
   try {
     const industries = await backfillIndustries();
     result.bellwethers = { ...(await refreshBellwethers()), industries };
   } catch (e) {
     result.bellwethers = { error: e instanceof Error ? e.message : String(e) };
+    progress.warn("bellwethers failed", { error: result.bellwethers.error });
   }
 
+  progress.step("send pending email");
   try {
     result.email = await sendPendingNotifications();
   } catch (e) {
     result.email = { error: 1 };
-    void e;
+    progress.warn("email failed", { error: e instanceof Error ? e.message : String(e) });
   }
 
+  progress.step("sync Google Drive index");
   try {
     const r = await runDriveSync({ reason: "morning" });
     result.drive = { status: r.status, reason: r.reason, files: r.files, matched: r.matched, unmatched: r.unmatched.length, purgedStaged: await purgeStagedUploads().catch(() => 0) };
   } catch (e) {
     result.drive = { error: e instanceof Error ? e.message : String(e) };
+    progress.warn("drive sync failed", { error: result.drive.error });
   }
 
+  progress.step("finished", { evidenceFinished: result.evidenceFinished, reminders: result.reminders, overdue: result.overdue });
+  await progress.close();
   await db.update(jobRuns).set({ finishedAt: new Date(), ok: true, summary: result as unknown as Record<string, unknown> }).where(eq(jobRuns.id, jobRow.id));
   return result;
 }

@@ -6,6 +6,7 @@ import { DriveNotConnected, driveConfigured, loadConnection } from "@/lib/drive/
 import { upsertIndexRows, type DriveFileInsert } from "@/lib/drive/index";
 import { listChildren } from "@/lib/drive/read";
 import { FOLDER_MIME, classifyTree, type DriveItem } from "@/lib/drive/tree";
+import { createJobReporter } from "./progress";
 
 export type DriveSyncResult = { status: "ok" | "skipped" | "failed"; reason?: string; files: number; folders: number; matched: number; unmatched: string[]; removed: number };
 
@@ -26,16 +27,19 @@ export async function runDriveSync(opts: { reason?: string } = {}): Promise<Driv
   if (!conn.rootFolderId) return { ...result, status: "skipped", reason: "no root folder" };
 
   const [jobRow] = await db.insert(jobRuns).values({ job: "drive_sync", summary: { reason: opts.reason ?? "manual" } }).returning({ id: jobRuns.id });
+  const progress = createJobReporter(jobRow.id);
   await db.update(driveConnection).set({ syncStartedAt: new Date() }).where(eq(driveConnection.id, 1));
   try {
     const items: DriveItem[] = [];
     let frontier = [conn.rootFolderId];
     for (let depth = 1; depth <= MAX_DEPTH && frontier.length && items.length < MAX_ITEMS; depth++) {
+      progress.step("list folder level", { depth, folders: frontier.length, itemsSoFar: items.length });
       const children = await listChildren(frontier);
       items.push(...children);
       frontier = children.filter((c) => c.mimeType === FOLDER_MIME).map((c) => c.id);
     }
 
+    progress.step("classify folders into teams and holdings", { items: items.length });
     const hs = await db.select({ id: holdings.id, ticker: holdings.ticker, companyName: holdings.companyName, teamId: holdings.teamId }).from(holdings).where(eq(holdings.status, "active"));
     const ts = await db.select({ id: teams.id, name: teams.name }).from(teams);
     const { items: classified, unmatched } = classifyTree(conn.rootFolderId, items, hs, ts);
@@ -66,8 +70,10 @@ export async function runDriveSync(opts: { reason?: string } = {}): Promise<Driv
         indexedAt: now,
       };
     });
+    progress.step("upsert index rows", { rows: rows.length });
     await upsertIndexRows(rows);
     const ids = rows.map((r) => r.id);
+    progress.step("prune removed files");
     const removed = ids.length ? await db.delete(driveFiles).where(notInArray(driveFiles.id, ids)).returning({ id: driveFiles.id }) : await db.delete(driveFiles).returning({ id: driveFiles.id });
 
     result.files = rows.filter((r) => !r.isFolder).length;
@@ -76,11 +82,15 @@ export async function runDriveSync(opts: { reason?: string } = {}): Promise<Driv
     result.unmatched = unmatched;
     result.removed = removed.length;
 
+    progress.step("finished", { files: result.files, folders: result.folders, matched: result.matched, unmatched: result.unmatched.length, removed: result.removed });
+    await progress.close();
     await db.update(driveConnection).set({ lastSyncAt: now, syncStartedAt: null, lastError: null }).where(eq(driveConnection.id, 1));
     await db.update(jobRuns).set({ finishedAt: new Date(), ok: true, summary: { ...result, reason: opts.reason ?? "manual" } }).where(eq(jobRuns.id, jobRow.id));
     return result;
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    progress.error("failed", { error: message });
+    await progress.close();
     // A DriveNotConnected error already recorded "reconnect: …" on the connection row.
     await db.update(driveConnection).set(e instanceof DriveNotConnected ? { syncStartedAt: null } : { syncStartedAt: null, lastError: message }).where(eq(driveConnection.id, 1));
     await db.update(jobRuns).set({ finishedAt: new Date(), ok: false, summary: { error: message, reason: opts.reason ?? "manual" } }).where(eq(jobRuns.id, jobRow.id));

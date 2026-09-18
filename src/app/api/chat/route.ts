@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { createUIMessageStreamResponse, type UIMessage } from "ai";
-import { getCurrentUser, canAccessTeam } from "@/lib/auth";
+import { getCurrentUser, canAccessTeam, transparencyEnabled } from "@/lib/auth";
 import { effectiveRunStatus, getChat, loadMessages, maybeTitleChat, saveMessages, setRunStatus } from "@/lib/chats";
 import { agentConfigured } from "@/lib/agent/model";
 import { runAgentTurn } from "@/lib/agent/run";
@@ -30,7 +30,8 @@ export async function POST(req: Request) {
   if (prior.length === 0 && firstText && "text" in firstText) await maybeTitleChat(chat.id, firstText.text);
 
   await ensureDriveIndexFresh();
-  const { clientStream, persisted } = await runAgentTurn({ chat, user, messages });
+  // Transparency mode (exec/admin preference) streams a live trace of steps and provider calls to this browser only.
+  const { clientStream, persisted } = await runAgentTurn({ chat, user, messages, trace: transparencyEnabled(user) });
   // The run finishes and is saved even if the browser leaves; `after` keeps the function alive until then.
   after(persisted);
   return createUIMessageStreamResponse({ stream: clientStream });

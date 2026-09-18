@@ -117,9 +117,10 @@ export function buildPortfolioDays(input: {
       let prevClose = lastClose.get(ticker);
       if (prevClose === undefined && sharesStart > 0) prevClose = lastCloseBefore(prices.get(ticker), date);
       let close = prices.get(ticker)?.get(date);
+      let priced: DayPosition["priced"] = "close";
       if (close === undefined) {
-        if (prevClose !== undefined) { close = prevClose; quality.stale.push({ ticker, date }); }
-        else { close = lastPrice ?? 0; if (!quality.unpriced.includes(ticker)) quality.unpriced.push(ticker); }
+        if (prevClose !== undefined) { close = prevClose; priced = "carried"; quality.stale.push({ ticker, date }); }
+        else { close = lastPrice ?? 0; priced = "trade"; if (!quality.unpriced.includes(ticker)) quality.unpriced.push(ticker); }
       }
       const startValue = sharesStart * (prevClose ?? close);
 
@@ -145,6 +146,7 @@ export function buildPortfolioDays(input: {
         pnl,
         sharesEnd,
         valueEnd,
+        priced,
       });
 
       if (sharesEnd > 0) shares.set(ticker, sharesEnd);
