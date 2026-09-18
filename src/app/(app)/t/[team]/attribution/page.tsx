@@ -18,6 +18,7 @@ import { loadAttributionSeries, loadTeamSectors } from "@/lib/attribution/load";
 import { ETF_BY_SECTOR, SECTOR_LABELS } from "@/lib/attribution/sectors";
 import { periodFromQuery, qualityNotices, sectorEffectPoints } from "@/lib/attribution/view";
 import { canManageTeam, isFundWide, transparencyEnabled } from "@/lib/auth";
+import { BPS_NOTE } from "@/components/app/attribution/format";
 import { fmtDate } from "@/lib/format";
 import { loadTeam } from "@/lib/teams";
 
@@ -74,10 +75,10 @@ export default async function TeamAttributionPage({ params, searchParams }: Page
           <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             <StatTile label="Team return" value={result.portfolioReturn} explain={EXPLAIN.teamReturn} />
             <StatTile label="Sector benchmark" value={result.benchmarkReturn} explain={EXPLAIN.teamBenchmark} />
-            <StatTile label="Active return" value={result.activeReturn} unit="pp" emphasis explain={EXPLAIN.active} />
-            <StatTile label="Selection" value={selection} unit="pp" hint="Picks vs sector ETF" explain={EXPLAIN.teamSelection} />
-            <StatTile label="Allocation" value={result.effects?.allocation ?? null} unit="pp" hint="Mix across team sectors" explain={EXPLAIN.teamAllocation} />
-            <StatTile label="Contribution to Fund" value={result.fundContribution} unit="pp" hint={`${(result.avgFundWeight * 100).toFixed(1)}% of the Fund`} explain={EXPLAIN.fundContribution} />
+            <StatTile label="Active return" value={result.activeReturn} unit="bps" emphasis explain={EXPLAIN.active} />
+            <StatTile label="Selection" value={selection} unit="bps" hint="Picks vs sector ETF" explain={EXPLAIN.teamSelection} />
+            <StatTile label="Allocation" value={result.effects?.allocation ?? null} unit="bps" hint="Mix across team sectors" explain={EXPLAIN.teamAllocation} />
+            <StatTile label="Contribution to Fund" value={result.fundContribution} unit="bps" hint={`${(result.avgFundWeight * 100).toFixed(1)}% of the Fund`} explain={EXPLAIN.fundContribution} />
           </div>
 
           <div className="mb-6 grid gap-4 lg:grid-cols-2">
@@ -95,7 +96,7 @@ export default async function TeamAttributionPage({ params, searchParams }: Page
             </Card>
           </div>
 
-          <SectionTitle aside="pp = percentage points of return">Sectors</SectionTitle>
+          <SectionTitle aside={BPS_NOTE}>Sectors</SectionTitle>
           <div className="mb-6"><SectorTable result={result} breakdownQuery={transparency ? { basePath: base, team: team.slug, period: period.key, from, to } : undefined} /></div>
 
           <SectionTitle><Explained label="Holdings by contribution">{EXPLAIN.contributors}</Explained></SectionTitle>

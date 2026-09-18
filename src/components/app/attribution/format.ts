@@ -1,5 +1,7 @@
-/** Engine values are fractions; the UI shows percent and percentage points. */
+/** Engine values are fractions; the UI shows returns in percent and effects/contributions in basis points. */
 export const pct = (v: number | null | undefined) => (v === null || v === undefined ? null : v * 100);
+export const bps = (v: number | null | undefined) => (v === null || v === undefined ? null : v * 10_000);
+export const BPS_NOTE = "bps = basis points (100 bps = 1 percentage point)";
 
 export function fmtWeight(v: number) {
   return `${(v * 100).toFixed(1)}%`;

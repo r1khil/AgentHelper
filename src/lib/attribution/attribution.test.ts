@@ -338,6 +338,9 @@ describe("resolvePeriod", () => {
   });
   it("1Y lands on a trading day", () => {
     expect(resolvePeriod("1y", base).start).toBe("2025-09-16");
+    expect(resolvePeriod("1d", base)).toMatchObject({ start: "2026-09-15", end: "2026-09-16", clamped: false });
+    // Sep 9 is a Wednesday, so the trailing week starts at that close.
+    expect(resolvePeriod("7d", base)).toMatchObject({ start: "2026-09-09", end: "2026-09-16", clamped: false });
   });
   it("clamps to inception", () => {
     expect(resolvePeriod("ytd", { inception: "2026-09-10", latest: "2026-09-16" })).toMatchObject({ start: "2026-09-10", clamped: true });

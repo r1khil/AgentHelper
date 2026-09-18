@@ -10,9 +10,9 @@ const SERIES = [
   { key: "interaction", label: "Interaction", color: "var(--series-3)" },
 ] as const;
 
-const pp = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(2)}pp`;
+const bps = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)} bps`;
 
-/** Effects per sector in percentage points, stacked around zero and sorted by total. */
+/** Effects per sector in basis points, stacked around zero and sorted by total. */
 export function SectorEffectsChart({ data }: { data: SectorEffectPoint[] }) {
   if (!data.length) return <div className="text-sm text-muted-foreground">No effects for this period.</div>;
   const rows = [...data].sort((a, b) => b.total - a.total);
@@ -22,13 +22,13 @@ export function SectorEffectsChart({ data }: { data: SectorEffectPoint[] }) {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rows} layout="vertical" stackOffset="sign" margin={{ top: 4, right: 12, bottom: 0, left: 0 }} barCategoryGap={8}>
             <CartesianGrid horizontal={false} stroke="var(--border)" />
-            <XAxis type="number" tickFormatter={(v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}`} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+            <XAxis type="number" tickFormatter={(v: number) => `${v > 0 ? "+" : ""}${v.toFixed(0)}`} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
             <YAxis type="category" dataKey="sector" width={148} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} interval={0} />
             <ReferenceLine x={0} stroke="var(--muted-foreground)" />
             <Tooltip
               cursor={{ fill: "var(--muted)", opacity: 0.5 }}
-              formatter={(v, name) => [pp(Number(v)), SERIES.find((s) => s.key === name)?.label ?? String(name)]}
-              labelFormatter={(label, payload) => `${label} · total ${pp(Number(payload?.[0]?.payload?.total ?? 0))}`}
+              formatter={(v, name) => [bps(Number(v)), SERIES.find((s) => s.key === name)?.label ?? String(name)]}
+              labelFormatter={(label, payload) => `${label} · total ${bps(Number(payload?.[0]?.payload?.total ?? 0))}`}
               contentStyle={{ fontSize: 12, borderRadius: 8, background: "var(--popover)", borderColor: "var(--border)", color: "var(--popover-foreground)" }}
               itemStyle={{ color: "var(--popover-foreground)" }}
             />
@@ -45,7 +45,7 @@ export function SectorEffectsChart({ data }: { data: SectorEffectPoint[] }) {
             {s.label}
           </span>
         ))}
-        <span className="ml-auto">Percentage points of active return</span>
+        <span className="ml-auto">Basis points of active return</span>
       </div>
     </div>
   );

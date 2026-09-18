@@ -1,10 +1,12 @@
 import { DateTime } from "luxon";
 import { NY, isTradingDay, previousTradingDay } from "../providers/calendar";
 
-export const PERIOD_KEYS = ["mtd", "qtd", "ytd", "1y", "itd", "custom"] as const;
+export const PERIOD_KEYS = ["1d", "7d", "mtd", "qtd", "ytd", "1y", "itd", "custom"] as const;
 export type PeriodKey = (typeof PERIOD_KEYS)[number];
 
 export const PERIOD_LABELS: Record<PeriodKey, string> = {
+  "1d": "1D",
+  "7d": "7D",
   mtd: "MTD",
   qtd: "QTD",
   ytd: "YTD",
@@ -41,6 +43,10 @@ export function resolvePeriod(key: PeriodKey, opts: { from?: string; to?: string
 
   let start: string;
   switch (key) {
+    // Last completed session: measured from the previous session's close.
+    case "1d": start = previousTradingDay(end); break;
+    // Trailing calendar week.
+    case "7d": start = onOrBefore(e.minus({ days: 7 }).toISODate()!); break;
     case "mtd": start = previousTradingDay(e.startOf("month").toISODate()!); break;
     case "qtd": start = previousTradingDay(e.startOf("quarter").toISODate()!); break;
     case "ytd": start = previousTradingDay(e.startOf("year").toISODate()!); break;

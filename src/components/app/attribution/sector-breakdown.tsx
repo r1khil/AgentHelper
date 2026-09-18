@@ -26,7 +26,7 @@ type Payload = {
 const DEFAULT_ROWS = 20;
 const w = (v: number) => `${(v * 100).toFixed(2)}%`;
 const r = (v: number) => `${(v * 100).toFixed(3)}%`;
-const pp = (v: number, d = 4) => `${(v * 100).toFixed(d)} pp`;
+const bps = (v: number, d = 2) => `${(v * 10_000).toFixed(d)} bps`;
 const f = (v: number, d = 4) => v.toFixed(d);
 const PRICED: Record<string, { label: string; warn: boolean }> = {
   close: { label: "close", warn: false },
@@ -103,15 +103,15 @@ function FormulaBlock({ row, days }: { row: SectorRow; days: SectorDayBreakdown[
       <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[auto_1fr]">
         <dt className="font-medium">Allocation</dt>
         <dd className="tnum">
-          Σ<sub>t</sub> coef<sub>t</sub> · (wp<sub>t</sub> − wb<sub>t</sub>)(rb<sub>t</sub> − Rb<sub>t</sub>) = <Move value={row.allocation * 100} unit=" pp" digits={3} />
+          Σ<sub>t</sub> coef<sub>t</sub> · (wp<sub>t</sub> − wb<sub>t</sub>)(rb<sub>t</sub> − Rb<sub>t</sub>) = <Move value={row.allocation * 10_000} unit=" bps" digits={1} />
         </dd>
         <dt className="font-medium">Selection</dt>
         <dd className="tnum">
-          Σ<sub>t</sub> coef<sub>t</sub> · wb<sub>t</sub> (rp<sub>t</sub> − rb<sub>t</sub>) = <Move value={row.selection * 100} unit=" pp" digits={3} />
+          Σ<sub>t</sub> coef<sub>t</sub> · wb<sub>t</sub> (rp<sub>t</sub> − rb<sub>t</sub>) = <Move value={row.selection * 10_000} unit=" bps" digits={1} />
         </dd>
         <dt className="font-medium">Interaction</dt>
         <dd className="tnum">
-          Σ<sub>t</sub> coef<sub>t</sub> · (wp<sub>t</sub> − wb<sub>t</sub>)(rp<sub>t</sub> − rb<sub>t</sub>) = <Move value={row.interaction * 100} unit=" pp" digits={3} />
+          Σ<sub>t</sub> coef<sub>t</sub> · (wp<sub>t</sub> − wb<sub>t</sub>)(rp<sub>t</sub> − rb<sub>t</sub>) = <Move value={row.interaction * 10_000} unit=" bps" digits={1} />
         </dd>
       </dl>
       {example && b && (
@@ -123,13 +123,13 @@ function FormulaBlock({ row, days }: { row: SectorRow; days: SectorDayBreakdown[
           </div>
           <ul className="grid gap-0.5 tnum">
             <li>
-              ({w(example.wp)} − {w(b.wb)}) × ({r(b.rb)} − {r(b.Rb)}) = {pp(b.raw.allocation)} × {f(b.coef, 5)} = <Move value={b.scaled.allocation * 100} unit=" pp" digits={4} />
+              ({w(example.wp)} − {w(b.wb)}) × ({r(b.rb)} − {r(b.Rb)}) = {bps(b.raw.allocation)} × {f(b.coef, 5)} = <Move value={b.scaled.allocation * 10_000} unit=" bps" digits={2} />
             </li>
             <li>
-              {w(b.wb)} × ({r(example.rp)} − {r(b.rb)}) = {pp(b.raw.selection)} × {f(b.coef, 5)} = <Move value={b.scaled.selection * 100} unit=" pp" digits={4} />
+              {w(b.wb)} × ({r(example.rp)} − {r(b.rb)}) = {bps(b.raw.selection)} × {f(b.coef, 5)} = <Move value={b.scaled.selection * 10_000} unit=" bps" digits={2} />
             </li>
             <li>
-              ({w(example.wp)} − {w(b.wb)}) × ({r(example.rp)} − {r(b.rb)}) = {pp(b.raw.interaction)} × {f(b.coef, 5)} = <Move value={b.scaled.interaction * 100} unit=" pp" digits={4} />
+              ({w(example.wp)} − {w(b.wb)}) × ({r(example.rp)} − {r(b.rb)}) = {bps(b.raw.interaction)} × {f(b.coef, 5)} = <Move value={b.scaled.interaction * 10_000} unit=" bps" digits={2} />
             </li>
           </ul>
         </div>
@@ -147,7 +147,7 @@ function CarinoBlock({ linking }: { linking: AttributionBreakdown["linking"] }) 
       </p>
       <p className="text-muted-foreground">
         Each day&apos;s coefficient is k<sub>t</sub> / K with k<sub>t</sub> from that day&apos;s rp and rb. Check: Σ coef<sub>t</sub> (rp<sub>t</sub> − rb<sub>t</sub>) ={" "}
-        <span className="tnum">{pp(linked, 4)}</span>, the period&apos;s active return.
+        <span className="tnum">{bps(linked, 2)}</span>, the period&apos;s active return.
       </p>
     </Block>
   );

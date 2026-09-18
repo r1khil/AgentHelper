@@ -5,7 +5,7 @@ import type { TeamRow } from "@/lib/attribution/attribution";
 import { Move } from "../move";
 import type { TeamLookup } from "./contributors-table";
 import { EXPLAIN } from "./explainers";
-import { fmtWeight, pct } from "./format";
+import { bps, fmtWeight, pct } from "./format";
 import { Explained } from "./info-tip";
 
 export function TeamTable({ rows, teams, cashContribution, query }: { rows: TeamRow[]; teams: TeamLookup; cashContribution: number; query: string }) {
@@ -30,7 +30,7 @@ export function TeamTable({ rows, teams, cashContribution, query }: { rows: Team
                 </TableCell>
                 <TableCell className="tnum text-right">{fmtWeight(t.avgWeight)}</TableCell>
                 <TableCell className="text-right"><Move value={pct(t.ret)} unit="%" digits={2} /></TableCell>
-                <TableCell className="text-right"><Move value={pct(t.contribution)} unit="pp" digits={2} /></TableCell>
+                <TableCell className="text-right"><Move value={bps(t.contribution)} unit=" bps" digits={1} /></TableCell>
               </TableRow>
             );
           })}
@@ -39,7 +39,7 @@ export function TeamTable({ rows, teams, cashContribution, query }: { rows: Team
               <TableCell className="font-medium">Cash, fees and interest</TableCell>
               <TableCell />
               <TableCell />
-              <TableCell className="text-right"><Move value={pct(cashContribution)} unit="pp" digits={2} /></TableCell>
+              <TableCell className="text-right"><Move value={bps(cashContribution)} unit=" bps" digits={1} /></TableCell>
             </TableRow>
           )}
         </TableBody>

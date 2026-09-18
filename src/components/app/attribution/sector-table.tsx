@@ -4,7 +4,7 @@ import type { AttributionResult } from "@/lib/attribution/attribution";
 import { ETF_BY_SECTOR, bucketLabel } from "@/lib/attribution/sectors";
 import { Move } from "../move";
 import { EXPLAIN } from "./explainers";
-import { fmtWeight, pct } from "./format";
+import { bps, fmtWeight, pct } from "./format";
 import { Explained } from "./info-tip";
 import { SectorBreakdownRow } from "./sector-breakdown-row";
 import type { BreakdownQuery } from "./sector-breakdown";
@@ -43,7 +43,7 @@ export function SectorTable({ result, breakdownQuery }: { result: AttributionRes
               <TableCell className="font-medium">{bucketLabel(r.key)}</TableCell>
               <TableCell className="tnum text-right">{fmtWeight(r.avgPortfolioWeight)}</TableCell>
               {hasBench && <TableCell className="tnum text-right">{fmtWeight(r.avgBenchmarkWeight)}</TableCell>}
-              {hasBench && <TableCell className="text-right"><Move value={pct(r.avgPortfolioWeight - r.avgBenchmarkWeight)} unit="pp" /></TableCell>}
+              {hasBench && <TableCell className="text-right"><Move value={bps(r.avgPortfolioWeight - r.avgBenchmarkWeight)} unit=" bps" digits={0} /></TableCell>}
               <TableCell className="text-right">{r.portfolioReturn === null ? dash : <Move value={pct(r.portfolioReturn)} unit="%" digits={2} />}</TableCell>
               {hasBench && (
                 <TableCell className="text-right">
@@ -55,11 +55,11 @@ export function SectorTable({ result, breakdownQuery }: { result: AttributionRes
                   )}
                 </TableCell>
               )}
-              <TableCell className="text-right"><Move value={pct(r.contribution)} unit="pp" digits={2} /></TableCell>
-              {hasBench && <TableCell className="text-right"><Move value={pct(r.allocation)} unit="pp" digits={2} /></TableCell>}
-              {hasBench && <TableCell className="text-right"><Move value={pct(r.selection)} unit="pp" digits={2} /></TableCell>}
-              {hasBench && <TableCell className="text-right"><Move value={pct(r.interaction)} unit="pp" digits={2} /></TableCell>}
-              {hasBench && <TableCell className="text-right font-medium"><Move value={pct(r.total)} unit="pp" digits={2} /></TableCell>}
+              <TableCell className="text-right"><Move value={bps(r.contribution)} unit=" bps" digits={1} /></TableCell>
+              {hasBench && <TableCell className="text-right"><Move value={bps(r.allocation)} unit=" bps" digits={1} /></TableCell>}
+              {hasBench && <TableCell className="text-right"><Move value={bps(r.selection)} unit=" bps" digits={1} /></TableCell>}
+              {hasBench && <TableCell className="text-right"><Move value={bps(r.interaction)} unit=" bps" digits={1} /></TableCell>}
+              {hasBench && <TableCell className="text-right font-medium"><Move value={bps(r.total)} unit=" bps" digits={1} /></TableCell>}
               </>
             );
             return breakdownQuery ? (
@@ -80,11 +80,11 @@ export function SectorTable({ result, breakdownQuery }: { result: AttributionRes
             {hasBench && <TableCell />}
             <TableCell className="text-right"><Move value={pct(result.portfolioReturn)} unit="%" digits={2} /></TableCell>
             {hasBench && <TableCell className="text-right"><Move value={pct(result.benchmarkReturn)} unit="%" digits={2} /></TableCell>}
-            <TableCell className="text-right"><Move value={pct(result.portfolioReturn)} unit="pp" digits={2} /></TableCell>
-            {hasBench && <TableCell className="text-right"><Move value={pct(result.effects!.allocation)} unit="pp" digits={2} /></TableCell>}
-            {hasBench && <TableCell className="text-right"><Move value={pct(result.effects!.selection)} unit="pp" digits={2} /></TableCell>}
-            {hasBench && <TableCell className="text-right"><Move value={pct(result.effects!.interaction)} unit="pp" digits={2} /></TableCell>}
-            {hasBench && <TableCell className="text-right font-medium"><Move value={pct(result.activeReturn)} unit="pp" digits={2} /></TableCell>}
+            <TableCell className="text-right"><Move value={bps(result.portfolioReturn)} unit=" bps" digits={1} /></TableCell>
+            {hasBench && <TableCell className="text-right"><Move value={bps(result.effects!.allocation)} unit=" bps" digits={1} /></TableCell>}
+            {hasBench && <TableCell className="text-right"><Move value={bps(result.effects!.selection)} unit=" bps" digits={1} /></TableCell>}
+            {hasBench && <TableCell className="text-right"><Move value={bps(result.effects!.interaction)} unit=" bps" digits={1} /></TableCell>}
+            {hasBench && <TableCell className="text-right font-medium"><Move value={bps(result.activeReturn)} unit=" bps" digits={1} /></TableCell>}
           </TableRow>
         </TableFooter>
       </Table>
