@@ -7,6 +7,7 @@ import { clearTokenCache, driveConfigured, driveRedirectUri, exchangeCode } from
 import { sealSecret } from "@/lib/drive/crypto";
 import { hasRequiredScopes } from "@/lib/drive/oauth";
 import { about } from "@/lib/drive/read";
+import { ensureDriveWatch } from "@/lib/jobs/drive";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,8 @@ export async function GET(req: NextRequest) {
     };
     await db.insert(driveConnection).values({ id: 1, ...values }).onConflictDoUpdate({ target: driveConnection.id, set: values });
     clearTokenCache();
+    // A reconnect keeps the root folder; re-register the notification channel under the fresh token.
+    await ensureDriveWatch({ force: true }).catch(() => undefined);
     revalidatePath("/admin");
     const res = NextResponse.redirect(`${origin}/admin?ok=${encodeURIComponent(`Connected Google Drive as ${account.emailAddress}. Now set the root folder.`)}`);
     res.cookies.delete({ name: "drive_oauth_state", path: "/api/google" });

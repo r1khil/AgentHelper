@@ -13,13 +13,20 @@ import { driveStatus } from "@/lib/drive/index";
 import { parseFolderId } from "@/lib/drive/oauth";
 import { getFile } from "@/lib/drive/read";
 import { FOLDER_MIME } from "@/lib/drive/tree";
-import { runDriveSync, type DriveSyncResult } from "@/lib/jobs/drive";
+import { ensureDriveWatch, runDriveSync, stopDriveWatch, type DriveSyncResult } from "@/lib/jobs/drive";
+import { runDriveIngest, type IngestResult } from "@/lib/jobs/ingest";
 import { ALLOWED_UPLOAD_EXTENSIONS, MAX_UPLOAD_BYTES } from "@/lib/drive/uploads";
 import { createStagedUploadUrl } from "@/lib/storage";
 
+function ingestSummary(r: IngestResult | undefined) {
+  if (!r) return "";
+  if (r.status !== "ok") return ` Ingest ${r.status}${r.reason ? `: ${r.reason}` : ""}.`;
+  return ` Ingested ${r.considered} file${r.considered === 1 ? "" : "s"}: ${r.summarized} summarized, ${r.embedded} embedded${r.proposals ? `, ${r.proposals} thesis proposal${r.proposals === 1 ? "" : "s"}` : ""}${r.failed.length ? `, ${r.failed.length} failed` : ""}${r.remaining ? `; ${r.remaining} still pending` : ""}.`;
+}
+
 function syncSummary(r: DriveSyncResult) {
   if (r.status !== "ok") return `Drive sync ${r.status}${r.reason ? `: ${r.reason}` : ""}`;
-  return `Drive sync: ${r.files} files in ${r.folders} folders, ${r.matched} matched to holdings${r.unmatched.length ? `; unmatched folders: ${r.unmatched.slice(0, 5).join(", ")}${r.unmatched.length > 5 ? "…" : ""}` : ""}`;
+  return `Drive sync: ${r.files} files in ${r.folders} folders, ${r.matched} matched to holdings${r.unmatched.length ? `; unmatched folders: ${r.unmatched.slice(0, 5).join(", ")}${r.unmatched.length > 5 ? "…" : ""}` : ""}.${ingestSummary(r.ingest)}`;
 }
 
 function back(message: string, ok: boolean): never {
@@ -39,9 +46,10 @@ export async function setDriveRoot(fd: FormData) {
       message = `"${f.name}" is not a folder`;
     } else {
       await db.update(driveConnection).set({ rootFolderId: id, rootFolderName: f.name, lastError: null, lastSyncAt: null }).where(eq(driveConnection.id, 1));
-      const r = await runDriveSync({ reason: "root set" });
+      const r = await runDriveSync({ reason: "root set", ingest: { budgetMs: 120_000, maxFiles: 10 } });
       ok = r.status !== "failed";
-      message = `Root folder set to "${f.name}". ${syncSummary(r)}`;
+      const w = await ensureDriveWatch({ force: true });
+      message = `Root folder set to "${f.name}". ${syncSummary(r)}${w.status === "ok" ? " Live updates on." : w.reason ? ` Live updates off: ${w.reason}.` : ""}`;
     }
   } catch (e) {
     message = e instanceof Error ? e.message : String(e);
@@ -51,15 +59,32 @@ export async function setDriveRoot(fd: FormData) {
 
 export async function syncDriveNow() {
   await requireAdmin();
-  const r = await runDriveSync({ reason: "admin" });
+  const r = await runDriveSync({ reason: "admin", ingest: { budgetMs: 120_000, maxFiles: 10 } });
   back(syncSummary(r), r.status !== "failed");
+}
+
+/** Register (or re-register) the Drive change-notification channel for this deployment. */
+export async function renewDriveWatchNow() {
+  await requireAdmin();
+  const w = await ensureDriveWatch({ force: true });
+  back(w.status === "ok" ? `Live updates on${w.expiration ? ` until ${w.expiration.toISOString().slice(0, 16).replace("T", " ")} UTC` : ""}.` : `Live updates ${w.status}${w.reason ? `: ${w.reason}` : ""}`, w.status === "ok");
+}
+
+/** Summarize and embed matched files that are not current yet, within one function's budget. */
+export async function ingestDriveNow() {
+  await requireAdmin();
+  const r = await runDriveIngest({ reason: "admin", budgetMs: 240_000, maxFiles: 40 });
+  back(ingestSummary(r).trim() || "Nothing to ingest.", r.status !== "failed");
 }
 
 /** Revokes our own token and clears the index. Nothing in Drive changes. */
 export async function disconnectDrive() {
   await requireAdmin();
   const conn = await loadConnection();
-  if (conn) await revokeStoredToken(conn);
+  if (conn) {
+    await stopDriveWatch().catch(() => undefined);
+    await revokeStoredToken(conn);
+  }
   await db.delete(driveFiles);
   await db.delete(driveConnection);
   clearTokenCache();

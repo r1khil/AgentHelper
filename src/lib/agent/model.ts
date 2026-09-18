@@ -11,9 +11,17 @@ export function agentModelId() {
   return process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
 }
 
-export function agentModel() {
+/** The OpenRouter provider shared by chat, summarization, and embeddings. */
+export function openrouterProvider() {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
-  const openrouter = createOpenRouter({ apiKey, headers: { "HTTP-Referer": process.env.APP_URL ?? "", "X-Title": "Owl Fund Workspace" } });
-  return openrouter.chat(agentModelId());
+  return createOpenRouter({ apiKey, headers: { "HTTP-Referer": process.env.APP_URL ?? "", "X-Title": "Owl Fund Workspace" } });
+}
+
+export function chatModel(id: string) {
+  return openrouterProvider().chat(id);
+}
+
+export function agentModel() {
+  return chatModel(agentModelId());
 }

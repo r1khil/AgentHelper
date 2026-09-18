@@ -5,6 +5,7 @@ import { effectiveRunStatus, getChat, loadMessages, maybeTitleChat, saveMessages
 import { agentConfigured } from "@/lib/agent/model";
 import { runAgentTurn } from "@/lib/agent/run";
 import { ensureDriveIndexFresh } from "@/lib/jobs/drive";
+import { ensureDriveIngested } from "@/lib/jobs/ingest";
 
 export const maxDuration = 300;
 
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
   if (prior.length === 0 && firstText && "text" in firstText) await maybeTitleChat(chat.id, firstText.text);
 
   await ensureDriveIndexFresh();
+  after(() => ensureDriveIngested());
   const { clientStream, persisted } = await runAgentTurn({ chat, user, messages });
   // The run finishes and is saved even if the browser leaves; `after` keeps the function alive until then.
   after(persisted);

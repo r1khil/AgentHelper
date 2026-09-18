@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { holdingNotes, holdings, profiles } from "@/db/schema";
+import { holdingNotes, holdingProposals, holdings, profiles } from "@/db/schema";
 
 export async function listTeamHoldings(teamId: string, status: "active" | "exited" | "all" = "active") {
   const where = status === "all" ? eq(holdings.teamId, teamId) : and(eq(holdings.teamId, teamId), eq(holdings.status, status));
@@ -31,6 +31,15 @@ export async function listNotes(holdingId: string) {
     .leftJoin(profiles, eq(profiles.id, holdingNotes.authorId))
     .where(eq(holdingNotes.holdingId, holdingId))
     .orderBy(desc(holdingNotes.createdAt));
+}
+
+/** App-extracted values awaiting an analyst's decision (one pending per field). */
+export async function listPendingProposals(holdingId: string) {
+  return db
+    .select()
+    .from(holdingProposals)
+    .where(and(eq(holdingProposals.holdingId, holdingId), eq(holdingProposals.status, "pending")))
+    .orderBy(desc(holdingProposals.createdAt));
 }
 
 export async function listTeamMembers(teamId: string) {

@@ -1,11 +1,13 @@
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { holdings, teams } from "@/db/schema";
 import { canAccessTeam, getCurrentUser } from "@/lib/auth";
 import { effectiveMime } from "@/lib/drive/extract";
-import { getFileText, upsertIndexRows } from "@/lib/drive/index";
+import { upsertIndexRows } from "@/lib/drive/index";
+import { ingestFile } from "@/lib/jobs/ingest";
 import { ensureHoldingFolders, itemToRow, uploadFile } from "@/lib/drive/writes";
 import { downloadModelFile, removeStagedFile, STAGING_PREFIX } from "@/lib/storage";
 
@@ -37,15 +39,11 @@ export async function POST(req: Request) {
     const folder = await ensureHoldingFolders({ id: row.h.id, ticker: row.h.ticker, companyName: row.h.companyName, teamName: row.teamName });
     const item = await uploadFile({ name: fileName, mimeType: mime, parentId: folder.folderId, data });
     await upsertIndexRows([{ ...itemToRow(item, { parentId: folder.folderId, path: `${folder.path}/${item.name}`, isFolder: false, holdingId: row.h.id, ticker: row.h.ticker }), kind, uploadedBy: user.id }]);
-    let textError: string | null = null;
-    try {
-      await getFileText(item.id);
-    } catch (e) {
-      textError = e instanceof Error ? e.message : String(e);
-    }
     await removeStagedFile(stagedPath).catch(() => undefined);
     revalidatePath(`/t/${row.slug}/h/${row.h.ticker}`);
-    return Response.json({ ok: true, fileId: item.id, webViewLink: item.webViewLink ?? null, textError });
+    // Text, summary, and embeddings are produced after the response so the upload returns quickly.
+    after(() => ingestFile(item.id, { reason: "upload" }));
+    return Response.json({ ok: true, fileId: item.id, webViewLink: item.webViewLink ?? null, textError: null });
   } catch (e) {
     return Response.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 502 });
   }

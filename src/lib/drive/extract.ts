@@ -1,38 +1,10 @@
 import "server-only";
 import { readWorkbook } from "@/lib/excel/read";
+import { GOOGLE, DOCX_MIME, MAX_DOWNLOAD_BYTES, PPTX_MIME, XLSM_MIME, XLSX_MIME, effectiveMime } from "./mime";
 import { downloadFile, exportFile } from "./read";
 import { pptxToText, workbookToText } from "./text";
 
-export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-export const XLSM_MIME = "application/vnd.ms-excel.sheet.macroEnabled.12";
-export const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-export const PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-export const MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024;
-
-const GOOGLE = {
-  doc: "application/vnd.google-apps.document",
-  sheet: "application/vnd.google-apps.spreadsheet",
-  slides: "application/vnd.google-apps.presentation",
-};
-
-const BY_EXT: Record<string, string> = {
-  pdf: "application/pdf",
-  docx: DOCX_MIME,
-  pptx: PPTX_MIME,
-  xlsx: XLSX_MIME,
-  xlsm: XLSM_MIME,
-  txt: "text/plain",
-  md: "text/markdown",
-  csv: "text/csv",
-  json: "application/json",
-};
-
-/** Content type to parse with, falling back to the file extension when Drive reports a generic type. */
-export function effectiveMime(mimeType: string, name: string) {
-  if (mimeType && mimeType !== "application/octet-stream" && !mimeType.startsWith("application/x-")) return mimeType;
-  const ext = name.toLowerCase().split(".").pop() ?? "";
-  return BY_EXT[ext] ?? mimeType;
-}
+export { XLSX_MIME, XLSM_MIME, DOCX_MIME, PPTX_MIME, MAX_DOWNLOAD_BYTES, effectiveMime, isExtractableMime } from "./mime";
 
 /** Plain text from a downloaded file. Throws with an "unsupported: <mime>" message for types we do not parse. */
 export async function extractText(buffer: Buffer, mimeType: string, name: string): Promise<string> {
