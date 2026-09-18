@@ -65,9 +65,12 @@ const NOISE = /\b(inc|incorporated|corp|corporation|co|company|ltd|limited|plc|h
 export function normalizeName(s: string) {
   return s
     .toLowerCase()
+    .replace(/^\s*\d+\s*[.)]\s*/, "") // "1. Consumer…" / "2) Energy" numbering
     .replace(/\([^)]*\)/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
     .replace(NOISE, " ")
+    .replace(/\bcoverage\b/g, " ")
+    .replace(/\b([a-z]{4,})s\b/g, "$1") // communications → communication
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -137,9 +140,10 @@ export function inferKind(name: string, mimeType: string): DriveDocKind {
 }
 
 /**
- * Walk each item's ancestor chain from the root down. The depth-1 folder names the team (sector); the first folder
- * that resolves to a holding assigns the ticker to everything beneath it. Folders that carry a "(TICKER)" but match
- * no holding keep the ticker so the files surface as soon as the holding is added.
+ * Walk each item's ancestor chain from the root down. The depth-1 folder names the team (sector); the first folder at
+ * any depth that resolves to a holding assigns the ticker to everything beneath it. Folders that carry a "(TICKER)"
+ * but match no active holding keep the ticker so the files surface as soon as the holding is added, and are reported
+ * as unmatched. Structural folders (sub-sectors, "Current Holdings", semesters) are simply passed through.
  */
 export function classifyTree(rootId: string, items: DriveItem[], holdings: HoldingRef[], teams: TeamRef[]): { items: ClassifiedItem[]; unmatched: string[] } {
   const pathed = buildPaths(rootId, items);
@@ -166,8 +170,11 @@ export function classifyTree(rootId: string, items: DriveItem[], holdings: Holdi
           teamId = teamId ?? h.teamId;
         } else {
           const paren = parenthesizedTicker(p.name);
-          if (paren) ticker = paren.toUpperCase();
-          if (p.depth <= 2) unmatched.add(p.path);
+          if (paren) {
+            // Looks like a company folder but matches no active holding: worth showing the admin.
+            ticker = paren.toUpperCase();
+            unmatched.add(p.path);
+          }
         }
       }
     }

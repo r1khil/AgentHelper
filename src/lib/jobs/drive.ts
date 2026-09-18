@@ -9,8 +9,9 @@ import { FOLDER_MIME, classifyTree, type DriveItem } from "@/lib/drive/tree";
 
 export type DriveSyncResult = { status: "ok" | "skipped" | "failed"; reason?: string; files: number; folders: number; matched: number; unmatched: string[]; removed: number };
 
-const MAX_DEPTH = 6;
-const MAX_ITEMS = 5000;
+// The Fund's Drive nests sector → sub-sector → Current Holdings → company → document type → semester → file.
+const MAX_DEPTH = 12;
+const MAX_ITEMS = 20000;
 
 /**
  * Rebuild the index of the root folder: breadth-first listing (one request per depth level, never outside the
