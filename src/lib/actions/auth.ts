@@ -1,9 +1,17 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { usernameToEmail } from "@/lib/constants";
+import {
+  GOOGLE_CALLBACK_PATH,
+  GOOGLE_OAUTH_COOKIE,
+  GOOGLE_OAUTH_TTL_SECONDS,
+  googleAuthorizeUrl,
+  googleOAuthConfigured,
+  newGoogleOAuthState,
+} from "@/lib/google-oauth";
 
 function safeNext(next: FormDataEntryValue | null) {
   const s = typeof next === "string" ? next : "";
@@ -18,9 +26,26 @@ async function appOrigin() {
 }
 
 export async function signInWithGoogle(formData: FormData) {
-  const supabase = await createSupabaseServer();
   const next = safeNext(formData.get("next"));
   const origin = await appOrigin();
+
+  if (googleOAuthConfigured()) {
+    // Own-domain flow: Google's consent screen names this app, not the
+    // Supabase project host. See src/lib/google-oauth.ts.
+    const state = newGoogleOAuthState(next, `${origin}${GOOGLE_CALLBACK_PATH}`);
+    const cookieStore = await cookies();
+    cookieStore.set(GOOGLE_OAUTH_COOKIE, JSON.stringify(state), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: origin.startsWith("https://"),
+      path: "/",
+      maxAge: GOOGLE_OAUTH_TTL_SECONDS,
+    });
+    redirect(googleAuthorizeUrl(process.env.GOOGLE_CLIENT_ID!, state));
+  }
+
+  // Fallback: Supabase-hosted OAuth (consent screen shows <ref>.supabase.co).
+  const supabase = await createSupabaseServer();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: { redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}` },

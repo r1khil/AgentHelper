@@ -30,6 +30,10 @@ Next.js 16 (App Router), TypeScript, Tailwind v4, shadcn/ui, Supabase (Postgres,
 
 Sign-in is by invitation only: Google for real members, username + password for test accounts created on the Admin page.
 
+### Google sign-in branding
+
+With `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` set, the app runs the Google OAuth flow itself and hands the ID token to Supabase, so the redirect URI (and the host Google prints on its consent screen) is the app's own origin rather than `<ref>.supabase.co`. Add `<APP_URL>/auth/google/callback` (and `http://localhost:3000/auth/google/callback` for dev) to the OAuth client's authorized redirect URIs, and set the app name under Google Auth Platform → Branding. Google only prints that name instead of the domain once the brand is verified, or for an Internal (Workspace-only) app.
+
 ## Scheduled jobs
 
 `vercel.json` runs two crons: the close check at 23:00 UTC on weekdays and the morning sweep (pending evidence, reminders, overdue notices, earnings calendar, email retries) at 14:00 UTC. Both endpoints accept `Authorization: Bearer $CRON_SECRET` and can be run from the Admin page, with a date for backfills:
