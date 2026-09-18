@@ -4,7 +4,7 @@ import { db } from "@/db/client";
 import { invitations, profiles, teams } from "@/db/schema";
 import { requireRole, transparencyEnabled } from "@/lib/auth";
 import { ROLES, ROLE_LABELS } from "@/lib/constants";
-import { createTestAccount, inviteMember, removeMember, revokeInvitation, updateMember } from "@/lib/actions/admin";
+import { createTestAccount, inviteMember, removeMember, revokeInvitation, setAgentModel, updateMember } from "@/lib/actions/admin";
 import { runBellwethersNow, runCloseNow, runMorningNow, runPricesNow } from "@/lib/actions/jobs";
 import { disconnectDrive, ingestDriveNow, renewDriveWatchNow, setDriveRoot, syncDriveNow } from "@/lib/actions/drive";
 import { driveStatus } from "@/lib/drive/index";
@@ -14,7 +14,7 @@ import { JobRunsLive } from "@/components/app/admin/job-runs-live";
 import type { JobRunView } from "@/app/api/admin/job-runs/route";
 import { emailConfigured } from "@/lib/jobs/notify";
 import { finnhubConfigured } from "@/lib/providers/finnhub";
-import { agentConfigured, agentModelId } from "@/lib/agent/model";
+import { AGENT_MODELS, agentConfigured, agentModelId } from "@/lib/agent/model";
 import { PageHeader, SectionTitle } from "@/components/app/page-header";
 import { NativeSelect } from "@/components/app/native-select";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     progress: transparency ? r.progress : null,
   }));
   const [drive, lastDriveRun] = await Promise.all([driveStatus(), db.select().from(jobRuns).where(eq(jobRuns.job, "drive_sync")).orderBy(desc(jobRuns.startedAt)).limit(1).then((r) => r[0] ?? null)]);
+  const currentModelId = await agentModelId();
+  const currentModel = AGENT_MODELS.find((m) => m.id === currentModelId);
   const driveUnmatched = ((lastDriveRun?.summary as { unmatched?: string[] } | undefined)?.unmatched ?? []).slice(0, 12);
   const driveLabel = !drive.configured ? "off" : !drive.connected ? "not connected" : drive.needsReconnect ? "reconnect needed" : `on (${drive.fileCount} files)`;
   const [allTeams, members, pending] = await Promise.all([
@@ -81,7 +83,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       {error && <Notice tone="error">{error}</Notice>}
       {!canMutate && <Notice tone="info">View only. Changes here are made by an admin.</Notice>}
 
-      <SectionTitle aside={`Agent: ${agentConfigured() ? agentModelId() : "off"} · News: ${finnhubConfigured() ? "on" : "off"} · Email: ${emailConfigured() ? "on" : "log only"} · Drive: ${driveLabel}`}>Jobs</SectionTitle>
+      <SectionTitle aside={`Agent: ${agentConfigured() ? "on" : "off"} · News: ${finnhubConfigured() ? "on" : "off"} · Email: ${emailConfigured() ? "on" : "log only"} · Drive: ${driveLabel}`}>Jobs</SectionTitle>
       <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         {canMutate ? (
         <Card className="p-4">
@@ -123,6 +125,25 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <JobRunsLive initial={runs} transparency={transparency} />
         </Card>
       </div>
+
+      <SectionTitle aside={agentConfigured() ? `using ${currentModel?.label ?? currentModelId}` : "set OPENROUTER_API_KEY"}>Research agent</SectionTitle>
+      <Card className="mb-8 p-4">
+        <form action={setAgentModel} className="flex flex-wrap items-end gap-2">
+          <div className="grid gap-1">
+            <Label htmlFor="agent-model">Model</Label>
+            <NativeSelect id="agent-model" name="model" defaultValue={currentModelId} className="w-72">
+              {AGENT_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+              {!currentModel && <option value={currentModelId}>{currentModelId} (from environment)</option>}
+            </NativeSelect>
+          </div>
+          <Button type="submit" size="sm" variant="outline">Save</Button>
+          <p className="basis-full text-xs text-muted-foreground">Applies to the next chat turn, draft feedback, and earnings extraction. All three are free OpenRouter models.</p>
+        </form>
+      </Card>
 
       <SectionTitle aside={drive.connected ? `connected as ${drive.accountEmail}` : drive.configured ? "not connected" : "set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, DRIVE_TOKEN_KEY"}>Google Drive</SectionTitle>
       <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">

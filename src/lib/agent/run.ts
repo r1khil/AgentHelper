@@ -1,7 +1,7 @@
 import "server-only";
 import { consumeStream, convertToModelMessages, createIdGenerator, createUIMessageStream, isStepCount, streamText, toUIMessageStream, type UIMessage } from "ai";
 import { saveMessages, setRunStatus } from "@/lib/chats";
-import { agentModel, agentModelId } from "@/lib/agent/model";
+import { chatModel, agentModelId } from "@/lib/agent/model";
 import { buildInstructions } from "@/lib/agent/instructions";
 import { makeTools } from "@/lib/agent/tools";
 import { uncitedFactCount } from "@/lib/agent/citations";
@@ -32,12 +32,13 @@ export async function runAgentTurn(opts: {
   const sink = opts.trace ? createTraceSink() : null;
   const baseTools = makeTools({ teamId: chat.teamId, userId: user.id });
   const tools = sink ? instrumentTools(baseTools, sink) : baseTools;
+  const modelId = await agentModelId();
   const instructions = await buildInstructions(chat.teamId, { holdingId: chat.holdingId, userName: user.fullName, userRole: user.role });
   const t0 = Date.now();
-  sink?.emit({ t: "run.start", chatId: chat.id, modelId: agentModelId(), maxSteps: MAX_STEPS });
+  sink?.emit({ t: "run.start", chatId: chat.id, modelId, maxSteps: MAX_STEPS });
 
   const result = streamText({
-    model: agentModel(),
+    model: chatModel(modelId),
     instructions,
     messages: await convertToModelMessages(compactHistory(messages), { tools, ignoreIncompleteToolCalls: true }),
     tools,
@@ -92,7 +93,7 @@ export async function runAgentTurn(opts: {
       onEnd: async ({ messages: all, responseMessage }) => {
         try {
           if (responseMessage.role === "assistant") {
-            responseMessage.metadata = { ...(responseMessage.metadata as object | undefined), uncited: uncitedFactCount(responseMessage), model: agentModelId() };
+            responseMessage.metadata = { ...(responseMessage.metadata as object | undefined), uncited: uncitedFactCount(responseMessage), model: modelId };
           }
           await saveMessages(chat.id, all);
           await setRunStatus(chat.id, "idle");

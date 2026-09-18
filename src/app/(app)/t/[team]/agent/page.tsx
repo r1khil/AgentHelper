@@ -6,7 +6,7 @@ import { effectiveRunStatus, listChats } from "@/lib/chats";
 import { listTeamHoldings } from "@/lib/holdings";
 import { createChat } from "@/lib/actions/chats";
 import { relativeTime } from "@/lib/format";
-import { agentConfigured, agentModelId } from "@/lib/agent/model";
+import { agentConfigured } from "@/lib/agent/model";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { NativeSelect } from "@/components/app/native-select";
@@ -24,7 +24,7 @@ export default async function AgentIndex({ params }: { params: Promise<{ team: s
     <>
       <PageHeader
         title="Research agent"
-        description={agentConfigured() ? `Evidence with sources. Model: ${agentModelId()}.` : "Not configured: set OPENROUTER_API_KEY."}
+        description={agentConfigured() ? "Evidence with sources." : "Not configured: set OPENROUTER_API_KEY."}
         actions={
           <form action={createChat} className="flex items-center gap-2">
             <input type="hidden" name="teamId" value={team.id} />

@@ -10,6 +10,8 @@ import { requireAdmin } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { ROLES } from "@/lib/constants";
 import { createPasswordAccount, passwordAccountSchema } from "@/lib/members";
+import { AGENT_MODELS, AGENT_MODEL_SETTING, isAgentModelId } from "@/lib/agent/model";
+import { setSetting } from "@/lib/settings";
 
 const roleSchema = z.enum(ROLES as [string, ...string[]]);
 const teamSchema = z.string().uuid().nullable();
@@ -97,4 +99,13 @@ export async function resetTestPassword(fd: FormData) {
   const { error } = await createSupabaseAdmin().auth.admin.updateUserById(id, { password });
   if (error) back(error.message);
   back("Password updated", true);
+}
+
+export async function setAgentModel(fd: FormData) {
+  const me = await requireAdmin();
+  const id = String(fd.get("model") ?? "");
+  if (!isAgentModelId(id)) back("Pick one of the listed models", false);
+  await setSetting(AGENT_MODEL_SETTING, id, me.id);
+  revalidatePath("/admin");
+  back(`Research agent switched to ${AGENT_MODELS.find((m) => m.id === id)?.label ?? id}`, true);
 }

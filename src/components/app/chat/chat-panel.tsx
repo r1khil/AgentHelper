@@ -36,7 +36,6 @@ export function ChatPanel({
   initialRunStatus,
   tickers,
   configured,
-  modelId,
   transparency = false,
 }: {
   chatId: string;
@@ -44,7 +43,6 @@ export function ChatPanel({
   initialRunStatus: RunStatus;
   tickers: string[];
   configured: boolean;
-  modelId: string;
   /** Exec/admin transparency mode: the server streams a live trace and this panel renders it. */
   transparency?: boolean;
 }) {
@@ -219,7 +217,7 @@ export function ChatPanel({
             )}
           </div>
           <div className="mt-1.5 text-[11px] text-muted-foreground">
-            {modelId} · a red &ldquo;unverified&rdquo; chip means the model cited something it never retrieved.
+            A red &ldquo;unverified&rdquo; chip means the model cited something it never retrieved.
           </div>
         </form>
       </div>

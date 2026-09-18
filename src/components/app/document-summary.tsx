@@ -26,7 +26,7 @@ function Row({ label, items }: { label: string; items: string[] }) {
 }
 
 /** What the app extracted from a document. Server component; a plain <details> so it needs no JS. */
-export function DocumentSummary({ summary, summaryError, summaryModel, summarizedAt }: Props) {
+export function DocumentSummary({ summary, summaryError, summarizedAt }: Props) {
   if (!summary || isEmptySummary(summary)) {
     if (summaryError) return <p className="mt-1 text-xs text-muted-foreground">Summary unavailable: {summaryError}</p>;
     if (summary?.evidenceNote) return <p className="mt-1 text-xs text-muted-foreground">{summary.evidenceNote}</p>;
@@ -51,7 +51,7 @@ export function DocumentSummary({ summary, summaryError, summaryModel, summarize
         <Row label="Risks" items={summary.risks} />
         {summary.evidenceNote && <p className="text-xs text-muted-foreground">{summary.evidenceNote}</p>}
         <p className="text-[0.7rem] text-muted-foreground">
-          Extracted by the app{summaryModel ? ` (${summaryModel})` : ""}
+          Extracted by the app
           {summarizedAt ? ` · ${relativeTime(summarizedAt)}` : ""}. Check the document before relying on a figure.
         </p>
       </dl>

@@ -7,7 +7,7 @@ import { transparencyEnabled } from "@/lib/auth";
 import { effectiveRunStatus, getChat, loadMessages } from "@/lib/chats";
 import { listTeamHoldings } from "@/lib/holdings";
 import { deleteChat } from "@/lib/actions/chats";
-import { agentConfigured, agentModelId } from "@/lib/agent/model";
+import { agentConfigured } from "@/lib/agent/model";
 import { ChatPanel } from "@/components/app/chat/chat-panel";
 import { Button } from "@/components/ui/button";
 
@@ -41,7 +41,7 @@ export default async function ChatPage({ params }: { params: Promise<{ team: str
           </Button>
         </form>
       </div>
-      <ChatPanel chatId={chat.id} initialMessages={messages} initialRunStatus={effectiveRunStatus(chat)} tickers={tickers} configured={agentConfigured()} modelId={agentModelId()} transparency={transparencyEnabled(user)} />
+      <ChatPanel chatId={chat.id} initialMessages={messages} initialRunStatus={effectiveRunStatus(chat)} tickers={tickers} configured={agentConfigured()} transparency={transparencyEnabled(user)} />
     </>
   );
 }

@@ -584,3 +584,11 @@ export type DriveConnection = typeof driveConnection.$inferSelect;
 export type DriveChunk = typeof driveChunks.$inferSelect;
 export type HoldingProposal = typeof holdingProposals.$inferSelect;
 export type DriveDocKind = DriveFile["kind"] & string;
+
+// Fund-wide settings chosen on the Admin page (for example which model the research agent uses).
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedBy: uuid("updated_by").references(() => profiles.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
