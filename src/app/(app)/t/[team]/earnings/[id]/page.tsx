@@ -140,7 +140,7 @@ export default async function EarningsDetail({ params }: { params: Promise<{ tea
                   ))}
                 </ul>
               )}
-              <p className="mt-2 text-xs text-muted-foreground">Extracted {relativeTime(actuals.extractedAt)}{actuals.model ? ` by ${actuals.model}` : ""} from the sources below. Check every number against the release before relying on it.</p>
+              <p className="mt-2 text-xs text-muted-foreground">Extracted {relativeTime(actuals.extractedAt)} from the sources below. Check every number against the release before relying on it.</p>
               {evidence.length > 0 && (
                 <ul className="mt-3 space-y-1.5 border-t pt-3 text-sm">
                   {evidence.map((ev) => (

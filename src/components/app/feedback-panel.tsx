@@ -15,7 +15,6 @@ export function FeedbackPanel({ feedback }: { feedback: Feedback }) {
     <div className="rounded-md border bg-muted/30 p-3 text-sm">
       <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
         <span>Agent feedback on your draft · {relativeTime(feedback.at)}</span>
-        <span>{feedback.model}</span>
       </div>
       {empty ? (
         <p className="text-muted-foreground">No flags. That means the text is consistent with the gathered evidence, not that it is right.</p>

@@ -1,7 +1,7 @@
 import "server-only";
 import { consumeStream, convertToModelMessages, createIdGenerator, isStepCount, streamText, toUIMessageStream, type UIMessage } from "ai";
 import { saveMessages, setRunStatus } from "@/lib/chats";
-import { agentModel, agentModelId } from "@/lib/agent/model";
+import { agentModelFor, agentModelId } from "@/lib/agent/model";
 import { buildInstructions } from "@/lib/agent/instructions";
 import { makeTools } from "@/lib/agent/tools";
 import { uncitedFactCount } from "@/lib/agent/citations";
@@ -19,10 +19,11 @@ const FINAL_STEP = MAX_STEPS - 1;
 export async function runAgentTurn(opts: { chat: { id: string; teamId: string; holdingId: string | null }; user: { id: string; fullName: string; role: string }; messages: UIMessage[] }) {
   const { chat, user, messages } = opts;
   const tools = makeTools({ teamId: chat.teamId, userId: user.id });
+  const modelId = await agentModelId();
   const instructions = await buildInstructions(chat.teamId, { holdingId: chat.holdingId, userName: user.fullName, userRole: user.role });
 
   const result = streamText({
-    model: agentModel(),
+    model: agentModelFor(modelId),
     instructions,
     messages: await convertToModelMessages(compactHistory(messages), { tools, ignoreIncompleteToolCalls: true }),
     tools,
@@ -48,7 +49,7 @@ export async function runAgentTurn(opts: { chat: { id: string; teamId: string; h
       onEnd: async ({ messages: all, responseMessage }) => {
         try {
           if (responseMessage.role === "assistant") {
-            responseMessage.metadata = { ...(responseMessage.metadata as object | undefined), uncited: uncitedFactCount(responseMessage), model: agentModelId() };
+            responseMessage.metadata = { ...(responseMessage.metadata as object | undefined), uncited: uncitedFactCount(responseMessage), model: modelId };
           }
           await saveMessages(chat.id, all);
           await setRunStatus(chat.id, "idle");

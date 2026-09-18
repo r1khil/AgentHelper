@@ -5,7 +5,7 @@ import { generateText } from "ai";
 import { db } from "@/db/client";
 import { earnings, evidenceItems, holdings } from "@/db/schema";
 import { conceptFacts, filingUrlForFact, getCompanyFacts, getFilingText, listFilingDocuments, listFilings } from "@/lib/providers/edgar";
-import { agentConfigured, agentModel, agentModelId } from "@/lib/agent/model";
+import { agentConfigured, agentModelFor, agentModelId } from "@/lib/agent/model";
 import type { Actuals } from "@/lib/earnings";
 
 const CONCEPTS: { label: string; concepts: string[]; unit: string }[] = [
@@ -77,8 +77,9 @@ export async function gatherEarningsResults(earningsId: string) {
   if (agentConfigured() && (releaseText || xbrlLines.length)) {
     const instructions = `You extract reported financial results into a table. Use ONLY the press release text and XBRL facts given. Every cell must come from those sources; write null when a value is absent. Never estimate or fill from memory. Prior guidance means guidance the company gave for this period in an earlier quarter, only if the release restates it. Respond with JSON only: {"rows":[{"metric":"Revenue","actual":"$57.0B","priorYear":"$35.1B","priorGuidance":null,"estimate":null,"sourceId":"release","note":null}],"missing":["..."]}. Keep units and periods explicit in the strings. Include at least Revenue, Operating income, Net income, Diluted EPS, and any segment or guidance figures the release highlights (max 12 rows). sourceId must be one of: ${sources.map((s) => s.id).join(", ")}.`;
     const prompt = `Company: ${h.companyName} (${h.ticker}). Report date: ${e.reportDate}. ${e.fiscalPeriod ? `Fiscal period: ${e.fiscalPeriod}.` : ""}\n\nXBRL FACTS:\n${xbrlLines.join("\n") || "(none)"}\n\nPRESS RELEASE TEXT:\n${releaseText || "(none)"}`;
+    const modelId = await agentModelId();
     try {
-      const { text } = await generateText({ model: agentModel(), instructions, prompt, maxRetries: 2 });
+      const { text } = await generateText({ model: agentModelFor(modelId), instructions, prompt, maxRetries: 2 });
       const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
       const parsed = JSON.parse(json) as { rows?: Actuals["rows"]; missing?: string[] };
       const valid = new Set(sources.map((s) => s.id));
@@ -86,7 +87,7 @@ export async function gatherEarningsResults(earningsId: string) {
         rows: (parsed.rows ?? []).slice(0, 14).map((r) => ({ metric: String(r.metric), actual: r.actual ?? null, priorYear: r.priorYear ?? null, priorGuidance: r.priorGuidance ?? null, estimate: r.estimate ?? null, sourceId: r.sourceId && valid.has(String(r.sourceId)) ? String(r.sourceId) : null, note: r.note ?? undefined })),
         sources,
         extractedAt: new Date().toISOString(),
-        model: agentModelId(),
+        model: modelId,
         missing: [...missing, ...(parsed.missing ?? []).map(String)].slice(0, 10),
       };
     } catch (err) {

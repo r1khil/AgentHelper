@@ -32,14 +32,12 @@ export function ChatPanel({
   initialRunStatus,
   tickers,
   configured,
-  modelId,
 }: {
   chatId: string;
   initialMessages: UIMessage[];
   initialRunStatus: RunStatus;
   tickers: string[];
   configured: boolean;
-  modelId: string;
 }) {
   const transport = useMemo(
     () =>
@@ -193,7 +191,7 @@ export function ChatPanel({
             )}
           </div>
           <div className="mt-1.5 text-[11px] text-muted-foreground">
-            {modelId} · a red &ldquo;unverified&rdquo; chip means the model cited something it never retrieved.
+            A red &ldquo;unverified&rdquo; chip means the model cited something it never retrieved.
           </div>
         </form>
       </div>

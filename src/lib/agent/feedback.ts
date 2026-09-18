@@ -1,6 +1,6 @@
 import "server-only";
 import { generateText } from "ai";
-import { agentConfigured, agentModel, agentModelId } from "./model";
+import { agentConfigured, agentModelFor, agentModelId } from "./model";
 import type { Feedback } from "@/db/schema";
 
 /**
@@ -17,7 +17,8 @@ Respond with JSON only, shape: {"unsupported":[],"missing":[],"alternatives":[],
 
   const prompt = `RECORDED THESIS:\n${input.thesis?.trim() || "(none recorded)"}\n\n${input.expectations ? `STUDENT'S PRE-EARNINGS EXPECTATIONS (locked before the report):\n${input.expectations}\n\n` : ""}EVIDENCE AVAILABLE TO THE STUDENT:\n${input.evidence || "(none gathered)"}\n\nSTUDENT'S TEXT:\n${input.studentText}`;
 
-  const { text } = await generateText({ model: agentModel(), instructions, prompt, maxRetries: 2 });
+  const modelId = await agentModelId();
+  const { text } = await generateText({ model: agentModelFor(modelId), instructions, prompt, maxRetries: 2 });
   const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
   let parsed: Partial<Feedback> = {};
   try {
@@ -28,7 +29,7 @@ Respond with JSON only, shape: {"unsupported":[],"missing":[],"alternatives":[],
   const arr = (v: unknown) => (Array.isArray(v) ? v.map(String).slice(0, 8) : []);
   return {
     at: new Date().toISOString(),
-    model: agentModelId(),
+    model: modelId,
     onText: input.studentText.slice(0, 200),
     unsupported: arr(parsed.unsupported),
     missing: arr(parsed.missing),
