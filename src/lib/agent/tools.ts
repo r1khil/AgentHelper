@@ -11,6 +11,10 @@ import { finnhubConfigured, getCompanyNews, getEarningsCalendar } from "@/lib/pr
 import { NY } from "@/lib/providers/calendar";
 import { relativeMovePp } from "@/lib/movement/math";
 import { sourceId, type Source } from "@/lib/providers/types";
+import { DriveNotConnected, driveConfigured } from "@/lib/drive/auth";
+import { driveStatus, getFileText, listHoldingFiles, searchIndex, type DriveFileMeta } from "@/lib/drive/index";
+import { searchFullText } from "@/lib/drive/read";
+import { windowText } from "@/lib/drive/text";
 
 export type ToolResult<T> = { data: T; sources: Source[]; error?: string };
 
@@ -28,6 +32,10 @@ async function cikFor(ticker: string) {
 
 function fail<T>(e: unknown, data: T): ToolResult<T> {
   return { data, sources: [], error: e instanceof Error ? e.message : String(e) };
+}
+
+function driveSource(f: Pick<DriveFileMeta, "id" | "name" | "webViewLink" | "modifiedTime">): Source {
+  return src("drive", f.name, f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`, "Analyst Drive", f.modifiedTime?.toISOString());
 }
 
 export function makeTools(ctx: { teamId: string; userId: string }) {
@@ -262,10 +270,13 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
           .leftJoin(profiles, eq(profiles.id, holdings.ownerId))
           .where(and(eq(holdings.teamId, ctx.teamId), eq(holdings.status, "active")));
         const subset = ticker ? rows.filter((r) => r.h.ticker === ticker.toUpperCase()) : rows;
+        const driveOn = driveConfigured();
+        const sources: Source[] = [];
         const out = [];
         for (const r of subset) {
           const notes = await db.select().from(holdingNotes).where(eq(holdingNotes.holdingId, r.h.id)).orderBy(desc(holdingNotes.createdAt)).limit(5);
           const mv = await db.select().from(movements).where(eq(movements.holdingId, r.h.id)).orderBy(desc(movements.sessionDate)).limit(5);
+          const files = driveOn ? await listHoldingFiles(r.h.id, 10).catch(() => []) : [];
           out.push({
             ticker: r.h.ticker,
             company: r.h.companyName,
@@ -274,9 +285,70 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
             thesisUpdatedAt: r.h.thesisUpdatedAt,
             notes: notes.map((n) => ({ at: n.createdAt, body: n.body })),
             movements: mv.map((m) => ({ sessionDate: m.sessionDate, relativePp: m.relativeMovePp, status: m.status, update: m.updateText })),
+            driveFiles: files.map((f) => {
+              const s = driveSource(f);
+              sources.push(s);
+              return { fileId: f.id, name: f.name, kind: f.kind, path: f.path, modifiedTime: f.modifiedTime, sourceId: s.id };
+            }),
           });
         }
-        return { data: { holdings: out }, sources: [] };
+        return { data: { holdings: out, analystDrive: driveOn ? "Use find_drive_files / read_drive_file for the documents" : "not configured" }, sources };
+      },
+    }),
+
+    find_drive_files: tool({
+      description:
+        "Search the team's own documents in the Owl Fund analyst Google Drive: initiating coverage reports (where the recorded thesis lives), earnings updates, the Excel model, and other notes. Returns file ids for read_drive_file.",
+      inputSchema: z.object({
+        ticker: tickerArg.optional(),
+        query: z.string().min(2).optional().describe("Words in the file name or folder path; also searched inside file contents"),
+        kind: z.enum(["initiating_coverage", "earnings_update", "model", "other"]).optional(),
+        limit: z.number().int().min(1).max(25).default(10),
+      }),
+      execute: async ({ ticker, query, kind, limit }): Promise<ToolResult<unknown>> => {
+        try {
+          const status = await driveStatus();
+          if (!status.configured) throw new DriveNotConnected("The analyst Drive is not configured on this deployment.");
+          if (!status.connected || !status.rootFolderId) throw new DriveNotConnected();
+          if (status.needsReconnect) throw new DriveNotConnected("The analyst Drive connection needs to be renewed by an admin.");
+          let rows = await searchIndex({ ticker, query, kind, limit });
+          if (query && rows.length < limit) {
+            const ids = await searchFullText(query).catch(() => [] as string[]);
+            const seen = new Set(rows.map((r) => r.id));
+            const fresh = ids.filter((i) => !seen.has(i));
+            if (fresh.length) rows = [...rows, ...(await searchIndex({ ticker, kind, ids: fresh, limit: limit - rows.length }))];
+          }
+          const sources = rows.map(driveSource);
+          return {
+            data: {
+              files: rows.map((r, i) => ({ fileId: r.id, name: r.name, kind: r.kind, ticker: r.ticker, path: r.path, mimeType: r.mimeType, modifiedTime: r.modifiedTime, size: r.size, sourceId: sources[i].id })),
+              note: rows.length ? undefined : "No matching files in the analyst Drive index.",
+            },
+            sources,
+          };
+        } catch (e) {
+          return fail(e, null);
+        }
+      },
+    }),
+
+    read_drive_file: tool({
+      description:
+        "Read the extracted text of a file in the analyst Drive by id (from find_drive_files or the pinned holding's document list). Handles PDF, Word, PowerPoint, Excel, and Google Docs/Sheets/Slides. Returns a bounded window of text; page with offset.",
+      inputSchema: z.object({
+        fileId: z.string().min(5),
+        offset: z.number().int().min(0).default(0).describe("Character offset to start from, for paging"),
+        maxChars: z.number().int().min(500).max(20000).default(10000),
+      }),
+      execute: async ({ fileId, offset, maxChars }): Promise<ToolResult<unknown>> => {
+        try {
+          const { meta, text } = await getFileText(fileId);
+          const w = windowText(text, offset, maxChars);
+          const s = driveSource(meta);
+          return { data: { fileId, name: meta.name, kind: meta.kind, path: meta.path, modifiedTime: meta.modifiedTime, ...w, sourceId: s.id }, sources: [s] };
+        } catch (e) {
+          return fail(e, null);
+        }
       },
     }),
 

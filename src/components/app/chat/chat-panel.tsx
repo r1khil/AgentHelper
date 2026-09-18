@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 const SUGGESTIONS = [
   "What moved {T} today versus the S&P 500, and what filings or news are in the window?",
   "Summarize the last 10-Q for {T}: revenue, margins, and guidance, with sources.",
+  "Summarize the team's initiating coverage report on {T}: recorded thesis, key drivers, and what would break it, with citations.",
   "When does {T} report next? Pull the prior quarter's release and the key questions the team noted.",
   "Explain how to read the segment disclosure in {T}'s latest 10-K.",
 ];
@@ -181,6 +182,8 @@ const TOOL_LABELS: Record<string, string> = {
   get_earnings_calendar: "Earnings calendar",
   get_team_context: "Team context",
   get_peer_moves: "Peer moves",
+  find_drive_files: "Analyst Drive",
+  read_drive_file: "Drive file",
 };
 
 function ToolCard({ part }: { part: ToolPart }) {

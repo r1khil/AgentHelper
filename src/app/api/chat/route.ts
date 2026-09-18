@@ -5,6 +5,7 @@ import { agentConfigured, agentModel } from "@/lib/agent/model";
 import { buildInstructions } from "@/lib/agent/instructions";
 import { makeTools } from "@/lib/agent/tools";
 import { uncitedFactCount } from "@/lib/agent/citations";
+import { ensureDriveIndexFresh } from "@/lib/jobs/drive";
 
 export const maxDuration = 300;
 
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
   const firstText = incoming.parts.find((p) => p.type === "text");
   if (prior.length === 0 && firstText && "text" in firstText) await maybeTitleChat(chat.id, firstText.text);
 
+  await ensureDriveIndexFresh();
   const tools = makeTools({ teamId: chat.teamId, userId: user.id });
   const instructions = await buildInstructions(chat.teamId, { holdingId: chat.holdingId, userName: user.fullName, userRole: user.role });
 

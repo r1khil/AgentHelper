@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const config: NextConfig = {
   poweredByHeader: false,
-  serverExternalPackages: ["exceljs", "yahoo-finance2", "postgres"],
+  serverExternalPackages: ["exceljs", "yahoo-finance2", "postgres", "unpdf", "mammoth"],
   async headers() {
     return [
       {

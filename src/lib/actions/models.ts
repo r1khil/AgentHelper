@@ -10,6 +10,7 @@ import { requireTeamAccess } from "@/lib/auth";
 import { readWorkbook } from "@/lib/excel/read";
 import { patchXlsx } from "@/lib/excel/patch";
 import { downloadModelFile, uploadModelFile } from "@/lib/storage";
+import { mirrorModelToDrive } from "@/lib/drive/mirror";
 import { getCompanyFacts, listConcepts } from "@/lib/providers/edgar";
 import { buildProposals, reportedPeriodEnds, suggestConcepts, type ConceptSuggestion } from "@/lib/models/proposals";
 
@@ -38,9 +39,11 @@ export async function uploadModel(fd: FormData) {
   }
   const existing = await db.select({ version: models.version }).from(models).where(eq(models.holdingId, holdingId));
   const version = existing.length ? Math.max(...existing.map((v) => v.version)) + 1 : 1;
-  const path = `${holdingId}/v${version}-${Date.now()}.${file.name.toLowerCase().endsWith(".xlsm") ? "xlsm" : "xlsx"}`;
+  const ext = file.name.toLowerCase().endsWith(".xlsm") ? "xlsm" : "xlsx";
+  const path = `${holdingId}/v${version}-${Date.now()}.${ext}`;
   await uploadModelFile(path, buffer, file.type || undefined);
   const [m] = await db.insert(models).values({ holdingId, version, storagePath: path, fileName: file.name, sheets, uploadedBy: user.id }).returning({ id: models.id });
+  await mirrorModel({ holdingId, buffer, ext, uploadedBy: user.id });
   revalidatePath(`/t/${h.slug}/models`);
   redirect(`/t/${h.slug}/models/${m.id}`);
 }
@@ -170,6 +173,7 @@ export async function writeApproved(fd: FormData) {
     .values({ holdingId: r.h.id, version, parentId: r.m.id, storagePath: path, fileName: r.m.fileName.replace(/(\.xls[xm])$/i, `-v${version}$1`), sheets, uploadedBy: r.user.id })
     .returning({ id: models.id });
   await db.insert(modelWrites).values({ modelId: r.m.id, fromVersion: r.m.version, toVersion: version, proposalIds: approved.map((a) => a.p.id), writtenBy: r.user.id });
+  await mirrorModel({ holdingId: r.h.id, buffer: patched, ext, uploadedBy: r.user.id });
   // Carry mappings forward to the new version so the next quarter starts from them.
   const mappings = await db.select().from(modelMappings).where(eq(modelMappings.modelId, r.m.id));
   for (const m of mappings) {
@@ -177,6 +181,15 @@ export async function writeApproved(fd: FormData) {
   }
   revalidatePath(`/t/${r.slug}/models`);
   redirect(`/t/${r.slug}/models/${nm.id}?ok=${encodeURIComponent(`Wrote ${approved.length} value${approved.length === 1 ? "" : "s"} into version ${version}`)}`);
+}
+
+/** Best-effort copy to the Fund's Drive; a Drive problem never blocks the model flow. */
+async function mirrorModel(p: { holdingId: string; buffer: Buffer; ext: "xlsx" | "xlsm"; uploadedBy: string }) {
+  try {
+    await mirrorModelToDrive(p);
+  } catch (e) {
+    console.warn("[drive] model mirror failed", e instanceof Error ? e.message : e);
+  }
 }
 
 // ---- helpers called from the client mapping editor ----

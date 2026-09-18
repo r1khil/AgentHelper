@@ -8,6 +8,8 @@ import { listFilings } from "@/lib/providers/edgar";
 import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
 import { addNote, deleteNote, exitHolding, updateOwner, updateThesis } from "@/lib/actions/holdings";
 import { canManageTeam } from "@/lib/auth";
+import { DOC_KIND_LABELS, driveStatus, listHoldingFiles } from "@/lib/drive/index";
+import { DocumentUploadForm } from "@/components/app/document-upload-form";
 import { fmtDate, fmtMoney, relativeTime } from "@/lib/format";
 import { PageHeader, SectionTitle } from "@/components/app/page-header";
 import { Move } from "@/components/app/move";
@@ -33,7 +35,7 @@ export default async function HoldingPage({ params }: { params: Promise<{ team: 
   const { h, ownerName } = row;
 
   const { since, today } = newsWindow();
-  const [members, notes, market, bars, spxBars, filings, news] = await Promise.all([
+  const [members, notes, market, bars, spxBars, filings, news, drive, docs] = await Promise.all([
     listTeamMembers(team.id),
     listNotes(h.id),
     marketSnapshot([h.ticker]),
@@ -41,7 +43,11 @@ export default async function HoldingPage({ params }: { params: Promise<{ team: 
     getDailyBars(SPX_SYMBOL, 90).catch(() => []),
     h.cik ? listFilings(h.cik, { forms: MATERIAL_FORMS, limit: 8 }).catch(() => []) : Promise.resolve([]),
     finnhubConfigured() ? getCompanyNews(h.ticker, since, today).catch(() => []) : Promise.resolve([]),
+    driveStatus().catch(() => null),
+    listHoldingFiles(h.id, 30).catch(() => []),
   ]);
+  const driveReady = Boolean(drive?.connected && drive.rootFolderId && !drive.needsReconnect);
+  const driveNote = !drive?.configured ? "Google Drive is not set up on this deployment." : !drive.connected || !drive.rootFolderId ? "Ask an admin to connect Google Drive from the Admin page." : drive.needsReconnect ? "Google Drive needs to be reconnected by an admin." : undefined;
 
   const m = market.rows[h.ticker];
   const chart = rebase(bars, spxBars);
@@ -157,6 +163,28 @@ export default async function HoldingPage({ params }: { params: Promise<{ team: 
               </Button>
             </form>
             {!ownerName && <p className="mt-2 text-xs text-warning-foreground">No owner. Movement alerts fall back to the lead analyst.</p>}
+          </Card>
+
+          <Card className="p-4">
+            <SectionTitle aside={driveReady ? `${docs.length} in the Fund's Drive` : undefined}>Documents</SectionTitle>
+            {docs.length === 0 ? (
+              <p className="mb-3 text-sm text-muted-foreground">{driveReady ? "Nothing filed for this holding yet. The agent reads these documents for context." : "The agent reads the team's initiating report, earnings updates, and model from the Fund's Drive."}</p>
+            ) : (
+              <ul className="mb-3 space-y-2">
+                {docs.map((d) => (
+                  <li key={d.id} className="flex items-baseline gap-2 text-sm">
+                    <Badge variant="outline" className="w-28 shrink-0 justify-center text-[0.7rem]">
+                      {d.kind ? DOC_KIND_LABELS[d.kind] : "Other"}
+                    </Badge>
+                    <a href={d.webViewLink ?? `https://drive.google.com/file/d/${d.id}/view`} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate hover:underline" title={d.path}>
+                      {d.name}
+                    </a>
+                    <span className="tnum shrink-0 text-xs text-muted-foreground">{d.modifiedTime ? relativeTime(d.modifiedTime) : ""}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {h.status === "active" && <DocumentUploadForm holdingId={h.id} disabledReason={driveNote} />}
           </Card>
 
           <Card className="p-4">

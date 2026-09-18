@@ -10,8 +10,8 @@ The agent pulls prices, SEC filings, XBRL financials, news, and earnings dates, 
 
 | Area | What the app does | What the student does |
 | --- | --- | --- |
-| Holdings | Live quote and day move vs the S&P 500, filings, news, notes, owner | Writes and maintains the thesis |
-| Research agent | Chat with tools for quotes, price history, relative moves, EDGAR filings and documents, XBRL facts, news, earnings calendar, team context. Every claim carries a `[src:ID]` chip | Asks questions, judges the evidence |
+| Holdings | Live quote and day move vs the S&P 500, filings, news, notes, owner, documents (uploads are filed into the Fund's Google Drive) | Writes and maintains the thesis |
+| Research agent | Chat with tools for quotes, price history, relative moves, EDGAR filings and documents, XBRL facts, news, earnings calendar, team context, and the team's own documents in the Fund's Google Drive (initiating reports, earnings updates, models). Every claim carries a `[src:ID]` chip | Asks questions, judges the evidence |
 | Major movements | Nightly close check: any holding whose daily return differs from the S&P 500 by 4 pp or more opens an investigation with evidence and a noon-next-day deadline, and emails the owner and lead | Writes the update, asks for feedback, marks it complete |
 | Earnings | Tracks the next report date (confirmed vs estimated); locks the student's expectations at the report; gathers the 8-K, press release and XBRL actuals with sources | Records expectations before, writes the reflection after |
 | Model historicals | Reads an uploaded Excel model, maps line items to XBRL concepts, proposes the other periods with period, unit, filing and derivation, and writes approved values into a new file version without touching formulas | Maps the anchor period, approves or rejects each proposal |
@@ -30,9 +30,26 @@ Next.js 16 (App Router), TypeScript, Tailwind v4, shadcn/ui, Supabase (Postgres,
 
 Sign-in is by invitation only: Google for real members, username + password for test accounts created on the Admin page.
 
+## Google Drive
+
+The agent reads the Fund's document folder in Google Drive and files analyst uploads into it. Access is **read everything + add new files only**: the app requests the `drive.readonly` and `drive.file` scopes, so Google itself refuses any edit or deletion of files the app did not create, and the app's only write module (`src/lib/drive/writes.ts`) can create folders, upload files, and replace the content of its own model copies. A unit test fails if that surface grows.
+
+Expected folder layout: one folder per sector team, then one folder per company named like `American Express (AXP)`, with the initiating coverage report, earnings updates, and the current model inside. Company folders are matched to holdings by the `(TICKER)` in their name (a company-name match is the fallback); the Admin page lists folders it could not match.
+
+Setup (one time, by the admin whose account owns the folder):
+
+1. Google Cloud console, project `owl-fund-workspace`: enable the **Google Drive API** (free; no billing needed).
+2. OAuth consent screen: user type **Internal** (so the token does not expire weekly), scopes `…/auth/drive.readonly` and `…/auth/drive.file`.
+3. Credentials → the existing OAuth client used for sign-in → Authorized redirect URIs: add `http://localhost:3000/api/google/callback` (or whatever port `next dev` uses) and `https://owlfund-workspace.vercel.app/api/google/callback`.
+4. Environment: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, and `DRIVE_TOKEN_KEY` (`openssl rand -base64 32`). The key encrypts the stored refresh token and **must be the same value locally and on Vercel** because both talk to the same database. Production: `vercel env add <NAME> production`, then redeploy.
+5. Apply `drizzle/0005_drive.sql` (`npx tsx scripts/apply-sql.ts drizzle/0005_drive.sql`).
+6. Admin page → **Connect Google Drive** → paste the folder URL → Save. The first sync runs immediately; the index refreshes on its own before agent chats (at most every 10 minutes), in the morning sweep, and from **Sync now**.
+
+Text is extracted lazily the first time the agent opens a file (PDF, Word, PowerPoint, Excel, and Google Docs/Sheets/Slides) and cached until the file changes in Drive. Uploads from a holding page go browser → Supabase Storage (signed URL) → server → Drive, so files up to 50MB work within Vercel's request limits.
+
 ## Scheduled jobs
 
-`vercel.json` runs two crons: the close check at 23:00 UTC on weekdays and the morning sweep (pending evidence, reminders, overdue notices, earnings calendar, email retries) at 14:00 UTC. Both endpoints accept `Authorization: Bearer $CRON_SECRET` and can be run from the Admin page, with a date for backfills:
+`vercel.json` runs the close check at 23:00 UTC on weekdays, the price history job at 23:30 UTC, and the morning sweep (pending evidence, reminders, overdue notices, earnings calendar, email retries, Drive index refresh) at 14:00 UTC. Both endpoints accept `Authorization: Bearer $CRON_SECRET` and can be run from the Admin page, with a date for backfills:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/close?date=2026-08-28"
@@ -42,6 +59,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/close?date=2026-
 
 - `npm run typecheck`, `npm run lint`, `npm test`
 - `npm run smoke:providers AAPL` hits Yahoo, EDGAR and Finnhub live
+- `npx tsx --conditions=react-server scripts/drive-smoke.ts` checks the Drive index tables and queries (no Google call)
 - `npx tsx scripts/find-move.ts NVDA 4` lists recent sessions that met the 4 pp rule
 - `npx tsx scripts/upload-model.ts NVDA model.xlsx` uploads a model without the browser
 - `npx tsx scripts/create-test-account.ts <username> <password> --name "Full Name" --team tech` creates a username account without the Admin page; it goes through first-sign-in setup like any new member
