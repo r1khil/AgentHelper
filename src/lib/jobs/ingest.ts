@@ -28,6 +28,22 @@ export type IngestResult = {
 const DEFAULT_BUDGET_MS = 200_000;
 const MAX_ATTEMPTS = 3;
 const RETRY_AFTER_MS = 6 * 3600_000;
+/** A run older than this is assumed dead (function killed) and its lock is ignored. */
+const INGEST_LOCK_STALE_MS = 6 * 60_000;
+
+/** Atomically claim the ingest lock unless a run started recently. */
+async function claimIngestLock(): Promise<boolean> {
+  const claimed = await db
+    .update(driveConnection)
+    .set({ ingestStartedAt: new Date() })
+    .where(and(eq(driveConnection.id, 1), or(isNull(driveConnection.ingestStartedAt), lt(driveConnection.ingestStartedAt, new Date(Date.now() - INGEST_LOCK_STALE_MS)))))
+    .returning({ id: driveConnection.id });
+  return claimed.length > 0;
+}
+
+async function releaseIngestLock() {
+  await db.update(driveConnection).set({ ingestStartedAt: null }).where(eq(driveConnection.id, 1)).catch(() => undefined);
+}
 
 function maxFilesDefault() {
   const n = Number(process.env.DRIVE_INGEST_MAX_FILES);
@@ -44,7 +60,8 @@ const msg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 /**
  * Work through files that still need text, a summary, or embeddings, newest first, until the budget or the file cap
  * runs out. Resumable: every step records what version it covered, so the next run picks up where this one stopped.
- * Records a job_runs row ("drive_ingest"). Never touches Drive beyond reading file content.
+ * One run at a time across the deployment (a second caller gets "skipped: already running"). Records a job_runs row
+ * ("drive_ingest"). Never touches Drive beyond reading file content.
  */
 export async function runDriveIngest(opts: { reason: string; budgetMs?: number; maxFiles?: number; fileIds?: string[] }): Promise<IngestResult> {
   const started = Date.now();
@@ -56,6 +73,7 @@ export async function runDriveIngest(opts: { reason: string; budgetMs?: number; 
   if (!conn?.rootFolderId) return done({ ...result, status: "skipped", reason: "not connected" });
   if (conn.lastError?.startsWith("reconnect:")) return done({ ...result, status: "skipped", reason: "needs reconnect" });
 
+  if (!(await claimIngestLock())) return done({ ...result, status: "skipped", reason: "already running" });
   const budgetMs = opts.budgetMs ?? DEFAULT_BUDGET_MS;
   const deadline = started + budgetMs;
   const cfg = ingestConfig();
@@ -83,6 +101,8 @@ export async function runDriveIngest(opts: { reason: string; budgetMs?: number; 
     const message = msg(e);
     await db.update(jobRuns).set({ finishedAt: new Date(), ok: false, summary: { ...done(result), error: message, reason: opts.reason } }).where(eq(jobRuns.id, jobRow.id));
     return done({ ...result, status: "failed", reason: message });
+  } finally {
+    await releaseIngestLock();
   }
 }
 
@@ -109,17 +129,7 @@ export async function ensureDriveIngested() {
   if (g.__driveIngestCheckedAt && Date.now() - g.__driveIngestCheckedAt < 5 * 60_000) return;
   g.__driveIngestCheckedAt = Date.now();
   try {
-    const claimed = await db
-      .update(driveConnection)
-      .set({ ingestStartedAt: new Date() })
-      .where(and(eq(driveConnection.id, 1), or(isNull(driveConnection.ingestStartedAt), lt(driveConnection.ingestStartedAt, new Date(Date.now() - 5 * 60_000)))))
-      .returning({ id: driveConnection.id });
-    if (!claimed.length) return;
-    try {
-      await runDriveIngest({ reason: "lazy", maxFiles: 3, budgetMs: 120_000 });
-    } finally {
-      await db.update(driveConnection).set({ ingestStartedAt: null }).where(eq(driveConnection.id, 1));
-    }
+    await runDriveIngest({ reason: "lazy", maxFiles: 3, budgetMs: 120_000 });
   } catch (e) {
     console.warn("[drive] lazy ingest failed", e);
   }

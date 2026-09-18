@@ -4,16 +4,21 @@ export type CellInfo = { ref: string; col: string; row: number; v: string | numb
 export type SheetInfo = { name: string; rowCount: number; colCount: number; rows: { r: number; cells: CellInfo[] }[] };
 export type WorkbookInfo = { sheets: SheetInfo[] };
 
+/** Excel can hold dates outside JavaScript's range (or garbage serials); render those as null instead of throwing. */
+function isoDate(d: Date): string | null {
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+
 function cellValue(cell: ExcelJS.Cell): { v: CellInfo["v"]; f?: string } {
   const raw = cell.value;
   if (raw === null || raw === undefined) return { v: null };
   if (typeof raw === "number" || typeof raw === "string" || typeof raw === "boolean") return { v: raw };
-  if (raw instanceof Date) return { v: raw.toISOString().slice(0, 10) };
+  if (raw instanceof Date) return { v: isoDate(raw) };
   if (typeof raw === "object") {
     const o = raw as Partial<ExcelJS.CellFormulaValue & ExcelJS.CellRichTextValue & ExcelJS.CellHyperlinkValue & ExcelJS.CellErrorValue & ExcelJS.CellSharedFormulaValue>;
     if ("formula" in o || "sharedFormula" in o) {
       const res = o.result;
-      const v = typeof res === "number" || typeof res === "string" || typeof res === "boolean" ? res : res instanceof Date ? res.toISOString().slice(0, 10) : null;
+      const v = typeof res === "number" || typeof res === "string" || typeof res === "boolean" ? res : res instanceof Date ? isoDate(res) : null;
       return { v, f: o.formula ?? (o.sharedFormula ? `shared:${o.sharedFormula}` : "=") };
     }
     if ("richText" in o && Array.isArray(o.richText)) return { v: o.richText.map((t) => t.text).join("") };
