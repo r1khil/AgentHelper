@@ -100,6 +100,10 @@ export function htmlToText(html: string) {
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<!--[\s\S]*?-->/g, "")
+    // Inline-XBRL metadata (contexts, units, hidden facts) is not readable text.
+    .replace(/<ix:header[\s\S]*?<\/ix:header>/gi, "")
+    .replace(/<ix:hidden[\s\S]*?<\/ix:hidden>/gi, "")
+    .replace(/<div[^>]*style="[^"]*display:\s*none[^"]*"[^>]*>[\s\S]*?<\/div>/gi, "")
     .replace(/<\/(p|div|tr|li|h[1-6]|table|br)>/gi, "\n")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/t[dh]>/gi, "\t")
@@ -119,7 +123,8 @@ export function htmlToText(html: string) {
 }
 
 export async function getFilingText(url: string): Promise<string> {
-  return cached(`edgar:doc:${url}`, 60 * 60 * 24 * 7, async () => {
+  // v2: inline-XBRL metadata is stripped; older cached conversions still contain it.
+  return cached(`edgar:doc:v2:${url}`, 60 * 60 * 24 * 7, async () => {
     const res = await secFetch(url, "text/html,application/xhtml+xml,text/plain");
     const body = await res.text();
     return url.endsWith(".txt") ? body : htmlToText(body);
@@ -151,19 +156,33 @@ export async function listFilingDocuments(cik: string, accession: string): Promi
   });
 }
 
-/** Extract a section by "Item X" heading from 10-K/10-Q text. Returns a bounded window. */
-export function extractItem(text: string, item: string, maxChars = 20000) {
-  const re = new RegExp(`(^|\\n)\\s*item\\s+${item.replace(".", "\\.")}[\\s.:\\-–—]`, "i");
-  const matches = [...text.matchAll(new RegExp(re.source, "gi"))];
-  // Skip the table of contents occurrence: take the last match that has substantial text after it.
-  for (let k = matches.length - 1; k >= 0; k--) {
-    const start = matches[k].index ?? 0;
-    const rest = text.slice(start);
-    const nextItem = rest.slice(20).search(/\n\s*item\s+\d+[a-c]?[\s.:\-–—]/i);
+const ITEM_HEADING_RE = /(^|\n|\t)\s*item\s+(\d+[a-c]?(?:\.\d+)?)[\s.:\-–—]/gi;
+
+/**
+ * Extract a whole section by "Item X" heading from 10-K/10-Q text.
+ * Headings may sit inside a table cell (tab-separated after htmlToText), so tabs count as line starts.
+ * The same item number can appear several times (table of contents, Part I and Part II of a 10-Q);
+ * the longest candidate wins, which is the body section rather than a contents entry or the short
+ * Part II housekeeping item. The caller windows the result; this returns the full section so paging
+ * can be reported honestly.
+ */
+export function extractItem(text: string, item: string, maxChars?: number) {
+  const re = new RegExp(`(^|\\n|\\t)\\s*item\\s+${item.replace(".", "\\.")}(?![\\dA-Ca-c])(?!\\.\\d)[\\s.:\\-–—]`, "gi");
+  let best: string | null = null;
+  for (const m of text.matchAll(re)) {
+    const rest = text.slice(m.index ?? 0);
+    const nextItem = rest.slice(20).search(/(\n|\t)\s*item\s+\d+[a-c]?(?:\.\d+)?[\s.:\-–—]/i);
     const chunk = nextItem > 0 ? rest.slice(0, nextItem + 20) : rest;
-    if (chunk.length > 500) return chunk.slice(0, maxChars);
+    if (chunk.length > 500 && (!best || chunk.length > best.length)) best = chunk;
   }
-  return null;
+  return best && maxChars ? best.slice(0, maxChars) : best;
+}
+
+/** Distinct "Item X" headings present in a filing, in document order (table of contents included). */
+export function listItemHeadings(text: string) {
+  const seen = new Set<string>();
+  for (const m of text.matchAll(ITEM_HEADING_RE)) seen.add(m[2].toUpperCase());
+  return [...seen];
 }
 
 // ---- XBRL company facts ----

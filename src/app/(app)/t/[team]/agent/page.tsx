@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus, Sparkles } from "lucide-react";
+import { Loader2, Plus, Sparkles } from "lucide-react";
 import { loadTeam } from "@/lib/teams";
-import { listChats } from "@/lib/chats";
+import { effectiveRunStatus, listChats } from "@/lib/chats";
 import { listTeamHoldings } from "@/lib/holdings";
 import { createChat } from "@/lib/actions/chats";
 import { relativeTime } from "@/lib/format";
@@ -56,6 +56,12 @@ export default async function AgentIndex({ params }: { params: Promise<{ team: s
                   {authorName ?? "Unknown"} · {relativeTime(c.updatedAt)}
                 </div>
               </div>
+              {effectiveRunStatus(c) === "running" && (
+                <Badge variant="secondary" className="gap-1">
+                  <Loader2 className="size-3 animate-spin" />
+                  Working
+                </Badge>
+              )}
               {ticker && <Badge variant="outline">{ticker}</Badge>}
             </Link>
           ))}
