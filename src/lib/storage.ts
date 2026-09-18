@@ -1,10 +1,8 @@
 import "server-only";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { MODEL_BUCKET as BUCKET, MODEL_CONTENT_TYPES } from "@/lib/models/upload";
 
-const BUCKET = "models";
-const XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
-export async function uploadModelFile(path: string, data: Buffer, contentType = XLSX) {
+export async function uploadModelFile(path: string, data: Buffer, contentType = MODEL_CONTENT_TYPES.xlsx) {
   const { error } = await createSupabaseAdmin().storage.from(BUCKET).upload(path, data, { contentType, upsert: false });
   if (error) throw new Error(`Upload failed: ${error.message}`);
   return path;
@@ -22,21 +20,36 @@ export async function signedModelUrl(path: string, fileName: string) {
   return data.signedUrl;
 }
 
-// ---- staged uploads (browser → Storage → server → Drive) ----
-export const STAGING_PREFIX = "staging/";
-
-export async function createStagedUploadUrl(path: string) {
-  if (!path.startsWith(STAGING_PREFIX)) throw new Error("Staged uploads must live under staging/");
+/** Token the browser uses with `uploadToSignedUrl` to PUT straight into the bucket (valid two hours, no RLS needed). */
+export async function signModelUpload(path: string) {
   const { data, error } = await createSupabaseAdmin().storage.from(BUCKET).createSignedUploadUrl(path);
   if (error || !data) throw new Error(`Could not create upload URL: ${error?.message ?? "unknown"}`);
   return { path: data.path, token: data.token };
 }
 
+export async function moveModelFile(from: string, to: string) {
+  const { error } = await createSupabaseAdmin().storage.from(BUCKET).move(from, to);
+  if (error) throw new Error(`Move failed: ${error.message}`);
+  return to;
+}
+
+export async function deleteModelFile(path: string) {
+  const { error } = await createSupabaseAdmin().storage.from(BUCKET).remove([path]);
+  if (error) throw new Error(`Delete failed: ${error.message}`);
+}
+
+// ---- staged document uploads (browser → Storage → server → Google Drive) ----
+export const STAGING_PREFIX = "staging/";
+
+export async function createStagedUploadUrl(path: string) {
+  if (!path.startsWith(STAGING_PREFIX)) throw new Error("Staged uploads must live under staging/");
+  return signModelUpload(path);
+}
+
 /** Remove the app's own temporary copy after it has been pushed to Drive. Refuses anything outside staging/. */
 export async function removeStagedFile(path: string) {
   if (!path.startsWith(STAGING_PREFIX)) throw new Error("Only staged files can be removed");
-  const { error } = await createSupabaseAdmin().storage.from(BUCKET).remove([path]);
-  if (error) throw new Error(`Could not remove staged file: ${error.message}`);
+  await deleteModelFile(path);
 }
 
 /** Staged folders are named `<epoch ms>-<uuid>`; drop any older than the window (default 24h). */

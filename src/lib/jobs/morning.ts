@@ -7,6 +7,7 @@ import { NY, formatNY, todayNY } from "@/lib/providers/calendar";
 import { gatherMovementEvidence } from "./evidence";
 import { queueNotification, sendPendingNotifications } from "./notify";
 import { refreshEarningsCalendar } from "./earnings";
+import { backfillIndustries, refreshBellwethers } from "./bellwethers";
 import { runDriveSync } from "./drive";
 import { purgeStagedUploads } from "@/lib/storage";
 
@@ -16,6 +17,7 @@ export type MorningJobResult = {
   reminders: number;
   overdue: number;
   earnings: Record<string, unknown>;
+  bellwethers: Record<string, unknown>;
   email: Record<string, number>;
   drive: Record<string, unknown>;
 };
@@ -24,7 +26,7 @@ export type MorningJobResult = {
 export async function runMorningJob(): Promise<MorningJobResult> {
   const [jobRow] = await db.insert(jobRuns).values({ job: "morning" }).returning({ id: jobRuns.id });
   const date = todayNY();
-  const result: MorningJobResult = { date, evidenceFinished: 0, reminders: 0, overdue: 0, earnings: {}, email: {}, drive: {} };
+  const result: MorningJobResult = { date, evidenceFinished: 0, reminders: 0, overdue: 0, earnings: {}, bellwethers: {}, email: {}, drive: {} };
 
   const pending = await db.select({ id: movements.id }).from(movements).where(and(eq(movements.evidenceStatus, "pending"), ne(movements.status, "completed"))).limit(20);
   for (const p of pending) {
@@ -83,6 +85,14 @@ export async function runMorningJob(): Promise<MorningJobResult> {
     result.earnings = await refreshEarningsCalendar();
   } catch (e) {
     result.earnings = { error: e instanceof Error ? e.message : String(e) };
+  }
+
+  // Sector bellwethers and industries come after the holdings so they never crowd them out.
+  try {
+    const industries = await backfillIndustries();
+    result.bellwethers = { ...(await refreshBellwethers()), industries };
+  } catch (e) {
+    result.bellwethers = { error: e instanceof Error ? e.message : String(e) };
   }
 
   try {

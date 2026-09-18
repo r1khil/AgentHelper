@@ -143,6 +143,7 @@ export const securities = pgTable("securities", {
   sector: gicsSectorEnum("sector"),
   sectorSource: sectorSourceEnum("sector_source"),
   yahooSector: text("yahoo_sector"),
+  industry: text("industry"),
   teamId: uuid("team_id").references(() => teams.id, { onDelete: "set null" }),
   ...timestamps,
 });
@@ -221,6 +222,27 @@ export const teamSectors = pgTable("team_sectors", {
   sector: gicsSectorEnum("sector").primaryKey(),
   teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
 });
+
+// Top constituents of each sector SPDR and their next report date: the names that move a sector
+// whether or not the Fund owns them. Refreshed by the morning job.
+export const sectorBellwethers = pgTable(
+  "sector_bellwethers",
+  {
+    ticker: text("ticker").primaryKey(),
+    sector: gicsSectorEnum("sector").notNull(),
+    etf: text("etf").notNull(),
+    name: text("name").notNull(),
+    weightPct: numeric("weight_pct", { precision: 7, scale: 4 }),
+    industry: text("industry"),
+    reportDate: date("report_date"),
+    reportHour: text("report_hour"),
+    dateStatus: dateStatusEnum("date_status"),
+    epsEstimate: numeric("eps_estimate", { precision: 12, scale: 4 }),
+    dateSourceUrl: text("date_source_url"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("sector_bellwethers_sector").on(t.sector)],
+);
 
 export const movementRuns = pgTable("movement_runs", {
   sessionDate: date("session_date").primaryKey(),
@@ -302,6 +324,9 @@ export const chats = pgTable("chats", {
   title: text("title").notNull().default("New chat"),
   createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  /** idle | running | error — whether the agent is still answering the last question. */
+  runStatus: text("run_status").notNull().default("idle"),
+  runStartedAt: timestamp("run_started_at", { withTimezone: true }),
   ...timestamps,
 });
 
@@ -472,6 +497,7 @@ export type Model = typeof models.$inferSelect;
 export type ModelMapping = typeof modelMappings.$inferSelect;
 export type ModelProposal = typeof modelProposals.$inferSelect;
 export type Security = typeof securities.$inferSelect;
+export type Bellwether = typeof sectorBellwethers.$inferSelect;
 export type TradeRow = typeof trades.$inferSelect;
 export type CashFlowRow = typeof cashFlows.$inferSelect;
 export type Role = Profile["role"];

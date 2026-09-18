@@ -17,14 +17,20 @@ export function collectSources(messages: UIMessage[]): Map<string, Source> {
   return map;
 }
 
-/** Heuristic: sentences with digits or % but no citation token. Labeled as a heuristic in the UI. */
+/**
+ * Heuristic: lines (paragraphs, bullets) that state a number but carry no citation token.
+ * Counted per line rather than per sentence because a bullet usually ends with one token that covers it.
+ * Headings, table rows, bold labels, and bare markdown separators are skipped. Labeled as a heuristic in the UI.
+ */
 export function uncitedFactCount(message: UIMessage) {
   let n = 0;
   for (const p of message.parts) {
     if (p.type !== "text") continue;
-    const sentences = p.text.split(/(?<=[.!?])\s+|\n+/);
-    for (const s of sentences) {
-      if (/\d/.test(s) && !/\[src:/.test(s) && s.length > 20 && !/^#|^\|/.test(s.trim())) n++;
+    for (const raw of p.text.split(/\n+/)) {
+      const line = raw.trim();
+      if (line.length <= 20 || !/\d/.test(line) || /\[src:/.test(line)) continue;
+      if (/^(#|\||---|\*\*[^*]+:\*\*$)/.test(line)) continue;
+      n++;
     }
   }
   return n;

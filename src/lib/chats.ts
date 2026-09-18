@@ -39,6 +39,26 @@ export async function saveMessages(chatId: string, messages: UIMessage[]) {
   });
 }
 
+export type RunStatus = "idle" | "running" | "error";
+
+/** A run older than this is treated as dead (the function was killed before it could clear the flag). */
+export const RUN_STALE_MS = 300_000;
+
+export function effectiveRunStatus(chat: { runStatus: string; runStartedAt: Date | null }, now = Date.now()): RunStatus {
+  if (chat.runStatus === "running") {
+    const started = chat.runStartedAt?.getTime() ?? 0;
+    return now - started < RUN_STALE_MS ? "running" : "error";
+  }
+  return chat.runStatus === "error" ? "error" : "idle";
+}
+
+export async function setRunStatus(chatId: string, status: RunStatus) {
+  await db
+    .update(chats)
+    .set({ runStatus: status, runStartedAt: status === "running" ? new Date() : null })
+    .where(eq(chats.id, chatId));
+}
+
 export async function maybeTitleChat(chatId: string, firstUserText: string) {
   const title = firstUserText.replace(/\s+/g, " ").trim().slice(0, 80);
   if (!title) return;

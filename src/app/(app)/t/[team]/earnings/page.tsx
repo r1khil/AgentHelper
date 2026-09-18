@@ -1,29 +1,97 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { loadTeam } from "@/lib/teams";
-import { listTeamEarnings } from "@/lib/earnings";
+import { isFundWide, listAccessibleTeams } from "@/lib/auth";
+import { listBellwethers, listCalendarHoldingEvents, listHoldingIndustries, listTeamEarnings } from "@/lib/earnings";
+import { buildMonthGrid, defaultSelectedDay, filterCalendarEvents, groupByDate, inGrid, industryOptions, parseCalendarQuery, toCalendarEvents } from "@/lib/earnings-calendar";
+import { loadTeamSectors } from "@/lib/attribution/load";
 import { fmtDate, fmtMoney } from "@/lib/format";
 import { todayNY } from "@/lib/providers/calendar";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { StatusBadge } from "@/components/app/status-badge";
+import { EarningsCalendar } from "@/components/app/earnings/earnings-calendar";
+import { EarningsDayList } from "@/components/app/earnings/earnings-day-list";
+import { EarningsScopeToggle } from "@/components/app/earnings/earnings-scope-toggle";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Earnings" };
 
-export default async function EarningsPage({ params }: { params: Promise<{ team: string }> }) {
-  const { team: slug } = await params;
-  const { team } = await loadTeam(slug);
-  const rows = await listTeamEarnings(team.id);
+export default async function EarningsPage({ params, searchParams }: PageProps<"/t/[team]/earnings">) {
+  const [{ team: slug }, sp] = await Promise.all([params, searchParams]);
+  const { team, user } = await loadTeam(slug);
   const today = todayNY();
+  const query = parseCalendarQuery(sp, today);
+  const grid = buildMonthGrid(query.month);
+  const sectors = (await loadTeamSectors()).get(team.id) ?? [];
+  const [rows, holdingEvents, bellwethers, holdingIndustries, accessibleTeams] = await Promise.all([
+    listTeamEarnings(team.id),
+    listCalendarHoldingEvents(grid.start, grid.end),
+    listBellwethers(),
+    listHoldingIndustries(team.id, sectors),
+    listAccessibleTeams(user),
+  ]);
+  const accessibleTeamIds = accessibleTeams.map((t) => t.id);
+  const base = `/t/${team.slug}/earnings`;
+
+  const all = toCalendarEvents(holdingEvents, bellwethers).filter((ev) => inGrid(grid, ev.date));
+  const events = filterCalendarEvents(all, { view: query.view, teamId: team.id, teamSectors: sectors, industry: query.industry });
+  const byDate = groupByDate(events);
+  const selected = query.day && inGrid(grid, query.day) ? query.day : defaultSelectedDay(grid, byDate, today);
+  const industries = industryOptions(holdingIndustries, bellwethers, sectors);
+  const unclassifiedOwn = query.view === "industry" ? all.filter((ev) => ev.kind === "holding" && ev.teamId === team.id && !ev.industry).length : 0;
+
   const upcoming = rows.filter((r) => r.e.status === "upcoming" && r.e.reportDate >= today).sort((a, b) => (a.e.reportDate < b.e.reportDate ? -1 : 1));
   const past = rows.filter((r) => !(r.e.status === "upcoming" && r.e.reportDate >= today));
 
+  const notices: React.ReactNode[] = [];
+  if (bellwethers.length === 0) {
+    notices.push(
+      <>
+        Sector bellwethers appear after the next morning sweep.{" "}
+        {user.role === "admin" && (
+          <Link href="/admin" className="underline">
+            Run it now from the Admin page.
+          </Link>
+        )}
+      </>,
+    );
+  }
+  if (query.view !== "fund" && sectors.length === 0) {
+    notices.push(
+      <>
+        No GICS sectors are assigned to this team, so only its own holdings are shown.{" "}
+        {isFundWide(user) && (
+          <Link href="/attribution/ledger?tab=securities" className="underline">
+            Assign sectors on the ledger.
+          </Link>
+        )}
+      </>,
+    );
+  }
+  if (query.view === "industry" && (!query.industry || !industries.includes(query.industry))) notices.push("Choose an industry above to see its reports.");
+  if (unclassifiedOwn > 0) notices.push(`${unclassifiedOwn} of this team's holdings ${unclassifiedOwn === 1 ? "has" : "have"} no industry yet, so ${unclassifiedOwn === 1 ? "it is" : "they are"} left out of the Industry view.`);
+
   return (
     <>
-      <PageHeader title="Earnings" description="Record your expectations before each report. Afterwards the agent gathers the sourced results and you write the reflection." />
+      <PageHeader
+        title="Earnings"
+        description="Upcoming reports for the Fund's holdings and the names that move each sector. Record your expectations before each report; afterwards the agent gathers the sourced results and you write the reflection."
+        actions={<EarningsScopeToggle base={base} query={query} industries={industries} />}
+      />
+      {notices.length > 0 && (
+        <div className="mb-4 space-y-1">
+          {notices.map((n, i) => (
+            <p key={i} className="text-sm text-muted-foreground">
+              {n}
+            </p>
+          ))}
+        </div>
+      )}
+      <EarningsCalendar base={base} query={query} grid={grid} byDate={byDate} today={today} selected={selected} accessibleTeamIds={accessibleTeamIds} />
+      <EarningsDayList date={selected} events={byDate.get(selected) ?? []} accessibleTeamIds={accessibleTeamIds} />
       {rows.length === 0 ? (
         <EmptyState title="No earnings dates yet">Dates are pulled each morning for every holding. An admin can run the morning sweep now from the Admin page.</EmptyState>
       ) : (

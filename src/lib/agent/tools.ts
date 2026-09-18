@@ -6,7 +6,8 @@ import { DateTime } from "luxon";
 import { db } from "@/db/client";
 import { holdingNotes, holdings, movements, profiles } from "@/db/schema";
 import { getDailyBars, getEarningsDate, getQuote, getQuotes, SPX_SYMBOL } from "@/lib/providers/yahoo";
-import { conceptFacts, extractItem, filingUrlForFact, getCompanyFacts, getFilingText, listConcepts, listFilingDocuments, listFilings, tickerToCik } from "@/lib/providers/edgar";
+import { conceptFacts, extractItem, filingUrlForFact, getCompanyFacts, getFilingText, listFilingDocuments, listFilings, listItemHeadings, tickerToCik, type Fact } from "@/lib/providers/edgar";
+import { resolveKeyFinancials, searchConcepts } from "@/lib/agent/financials";
 import { finnhubConfigured, getCompanyNews, getEarningsCalendar } from "@/lib/providers/finnhub";
 import { NY } from "@/lib/providers/calendar";
 import { relativeMovePp } from "@/lib/movement/math";
@@ -126,27 +127,29 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
 
     read_filing: tool({
       description:
-        "Read the text of an SEC filing document by URL (from get_filings). Optionally extract one Item (e.g. '2.02' for an 8-K earnings item, '7' for 10-K MD&A, '1A' for risk factors). Returns a bounded window of text.",
+        "Read the text of an SEC filing document by URL (from get_filings). Pass `item` to jump to one section. Item numbers differ by form: 10-Q — Item 1 financial statements, Item 2 MD&A (results, margins, outlook), Item 3 market risk; 10-K — Item 1 business, Item 1A risk factors, Item 7 MD&A, Item 8 financial statements; 8-K — Item 2.02 results of operations (the earnings press release is usually exhibit EX-99.1, see list_filing_documents). Returns a window of `maxChars` starting at `offset`; use `offset` to page when `hasMore` is true.",
       inputSchema: z.object({
         url: z.string().url(),
-        item: z.string().optional(),
+        item: z.string().optional().describe("Section to extract, e.g. '2' for 10-Q MD&A, '7' for 10-K MD&A, '1A' for risk factors"),
         offset: z.number().int().min(0).default(0).describe("Character offset to start from, for paging"),
         maxChars: z.number().int().min(500).max(30000).default(12000),
       }),
       execute: async ({ url, item, offset, maxChars }): Promise<ToolResult<unknown>> => {
         try {
-          if (!/^https:\/\/www\.sec\.gov\/Archives\//.test(url)) throw new Error("Only SEC EDGAR archive URLs can be read");
+          if (!/^https:\/\/www\.sec\.gov\/Archives\//.test(url)) throw new Error("Only SEC EDGAR archive URLs (https://www.sec.gov/Archives/...) can be read. Use get_filings to find the document URL; news links cannot be read.");
           const text = await getFilingText(url);
           let body = text;
-          let note: string | undefined;
           if (item) {
-            const ex = extractItem(text, item, maxChars + offset);
-            if (ex) body = ex;
-            else note = `Item ${item} heading not found; returning the document start instead.`;
+            const ex = extractItem(text, item);
+            if (!ex) {
+              const headings = listItemHeadings(text);
+              throw new Error(`Item ${item} was not found in this document. Headings present: ${headings.length ? headings.map((h) => `Item ${h}`).join(", ") : "none (this may be an exhibit or a plain-text document)"}. Reminder: 10-Q MD&A is Item 2, 10-K MD&A is Item 7.`);
+            }
+            body = ex;
           }
           const window = body.slice(offset, offset + maxChars);
-          const s = src("doc", `SEC document ${url.split("/").pop()}`, url, "SEC EDGAR");
-          return { data: { url, item: item ?? null, offset, totalChars: body.length, hasMore: offset + maxChars < body.length, note, text: window, sourceId: s.id }, sources: [s] };
+          const s = src("doc", `SEC document ${url.split("/").pop()}${item ? ` — Item ${item}` : ""}`, url, "SEC EDGAR");
+          return { data: { url, item: item ?? null, offset, totalChars: body.length, hasMore: offset + maxChars < body.length, text: window, sourceId: s.id }, sources: [s] };
         } catch (e) {
           return fail(e, null);
         }
@@ -168,19 +171,45 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
     }),
 
     search_financial_concepts: tool({
-      description: "Search the XBRL concepts a company has reported (e.g. 'revenue', 'operating income', 'shares') to find the exact concept name to pass to get_financials.",
+      description: "Search the XBRL concepts a company has reported (e.g. 'revenue', 'operating income', 'shares') to find the exact concept name to pass to get_financials. For the standard income statement lines prefer get_key_financials, which resolves the names for you.",
       inputSchema: z.object({ ticker: tickerArg, query: z.string().min(2) }),
       execute: async ({ ticker, query }): Promise<ToolResult<unknown>> => {
         try {
           const { cik } = await cikFor(ticker);
           const facts = await getCompanyFacts(cik);
-          const q = query.toLowerCase().split(/\s+/);
-          const hits = listConcepts(facts)
-            .filter((c) => q.every((w) => (c.concept + " " + c.label).toLowerCase().includes(w)))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 25)
-            .map((c) => ({ concept: c.concept, label: c.label, units: c.units, dataPoints: c.count }));
-          return { data: { matches: hits }, sources: [] };
+          return { data: { matches: searchConcepts(facts, query, 15) }, sources: [] };
+        } catch (e) {
+          return fail(e, null);
+        }
+      },
+    }),
+
+    get_key_financials: tool({
+      description:
+        "One call for the standard income statement: revenue, gross profit, operating income, pretax income, net income, diluted EPS and operating cash flow for the last N quarters or fiscal years, from SEC XBRL company facts. Resolves each company's concept names automatically and computes margins (flagged as calculations). Use this first for any question about revenue, margins, earnings or profitability.",
+      inputSchema: z.object({
+        ticker: tickerArg,
+        periodKind: z.enum(["quarter", "annual"]).default("quarter"),
+        periods: z.number().int().min(1).max(12).default(4).describe("How many most-recent periods to return"),
+      }),
+      execute: async ({ ticker, periodKind, periods }): Promise<ToolResult<unknown>> => {
+        try {
+          const { cik, name } = await cikFor(ticker);
+          const facts = await getCompanyFacts(cik);
+          const kf = resolveKeyFinancials(facts, periodKind, periods);
+          const sources: Source[] = [];
+          const byAccession = new Map<string, string>();
+          const rows = kf.rows.map((r) => {
+            let sourceId = byAccession.get(r.accession);
+            if (!sourceId && r.accession) {
+              const s = src("xbrl", `${name} ${r.form} filed ${r.filed} (XBRL financial data)`, filingUrlForFact(cik, { accn: r.accession } as Fact), "SEC EDGAR XBRL", r.filed);
+              sources.push(s);
+              byAccession.set(r.accession, s.id);
+              sourceId = s.id;
+            }
+            return { ...r, sourceId: sourceId ?? null };
+          });
+          return { data: { company: name, periodKind, metrics: kf.metrics, rows, missing: kf.missing, notes: kf.notes }, sources };
         } catch (e) {
           return fail(e, null);
         }
@@ -201,14 +230,27 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
           const { cik, name } = await cikFor(ticker);
           const facts = await getCompanyFacts(cik);
           const meta = facts.facts["us-gaap"]?.[concept] ?? facts.facts["ifrs-full"]?.[concept];
-          if (!meta) throw new Error(`Concept ${concept} not reported by ${name}. Try search_financial_concepts.`);
+          if (!meta) {
+            const close = searchConcepts(facts, concept.replace(/([a-z])([A-Z])/g, "$1 $2"), 5);
+            throw new Error(
+              `Concept ${concept} is not reported by ${name}. ${close.length ? `Closest reported concepts: ${close.map((c) => `${c.concept} ("${c.label}", latest ${c.latestEnd})`).join("; ")}. Call get_financials again with one of these exact names.` : "Use get_key_financials for standard lines or search_financial_concepts to find the name."}`,
+            );
+          }
           const taxonomy = facts.facts["us-gaap"]?.[concept] ? "us-gaap" : "ifrs-full";
           const units = Object.keys(meta.units);
           const u = meta.units[unit] ? unit : units[0];
           let rows = conceptFacts(facts, concept, u, taxonomy);
           if (periodKind !== "any") rows = rows.filter((r) => r.periodKind === periodKind);
-          rows = rows.slice(-limit);
-          const sources = rows.map((f) => src("xbrl", `${name} ${f.form} (${f.fy} ${f.fp}) filed ${f.filed}`, filingUrlForFact(cik, f), "SEC EDGAR XBRL", f.filed));
+          rows = rows.slice(-limit).reverse(); // latest period first
+          // One source per filing, not per row: several rows usually come from the same accession.
+          const sources: Source[] = [];
+          const byAccession = new Map<string, string>();
+          for (const f of rows) {
+            if (byAccession.has(f.accn)) continue;
+            const s = src("xbrl", `${name} ${f.form} filed ${f.filed} (XBRL financial data)`, filingUrlForFact(cik, f), "SEC EDGAR XBRL", f.filed);
+            sources.push(s);
+            byAccession.set(f.accn, s.id);
+          }
           return {
             data: {
               company: name,
@@ -216,7 +258,7 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
               label: meta.label,
               unit: u,
               availableUnits: units,
-              values: rows.map((f, i) => ({ start: f.start ?? null, end: f.end, periodKind: f.periodKind, value: f.val, fy: f.fy, fp: f.fp, form: f.form, filed: f.filed, accession: f.accn, sourceId: sources[i].id })),
+              values: rows.map((f) => ({ start: f.start ?? null, end: f.end, periodKind: f.periodKind, value: f.val, form: f.form, filed: f.filed, accession: f.accn, sourceId: byAccession.get(f.accn) })),
             },
             sources,
           };
@@ -235,9 +277,9 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
           const t = ticker.toUpperCase();
           const to = DateTime.now().setZone(NY).toISODate()!;
           const from = DateTime.now().setZone(NY).minus({ days }).toISODate()!;
-          const items = (await getCompanyNews(t, from, to)).slice(0, 25);
+          const items = (await getCompanyNews(t, from, to)).slice(0, 15);
           const sources = items.map((n) => src("news", n.headline, n.url, n.source, n.publishedAt));
-          return { data: { ticker: t, from, to, items: items.map((n, i) => ({ headline: n.headline, source: n.source, publishedAt: n.publishedAt, summary: n.summary?.slice(0, 300), url: n.url, sourceId: sources[i].id })) }, sources };
+          return { data: { ticker: t, from, to, items: items.map((n, i) => ({ headline: n.headline, source: n.source, publishedAt: n.publishedAt, summary: n.summary?.slice(0, 200), url: n.url, sourceId: sources[i].id })) }, sources };
         } catch (e) {
           return fail(e, null);
         }

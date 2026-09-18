@@ -30,6 +30,10 @@ Next.js 16 (App Router), TypeScript, Tailwind v4, shadcn/ui, Supabase (Postgres,
 
 Sign-in is by invitation only: Google for real members, username + password for test accounts created on the Admin page.
 
+### Google sign-in branding
+
+With `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` set, the app runs the Google OAuth flow itself and hands the ID token to Supabase, so the redirect URI (and the host Google prints on its consent screen) is the app's own origin rather than `<ref>.supabase.co`. Add `<APP_URL>/auth/google/callback` (and `http://localhost:3000/auth/google/callback` for dev) to the OAuth client's authorized redirect URIs, and set the app name under Google Auth Platform → Branding. Google only prints that name instead of the domain once the brand is verified, or for an Internal (Workspace-only) app.
+
 ## Google Drive
 
 The agent reads the Fund's document folder in Google Drive and files analyst uploads into it. Access is **read everything + add new files only**: the app requests the `drive.readonly` and `drive.file` scopes, so Google itself refuses any edit or deletion of files the app did not create, and the app's only write module (`src/lib/drive/writes.ts`) can create folders, upload files, and replace the content of its own model copies. A unit test fails if that surface grows.
@@ -42,7 +46,7 @@ Setup (one time, by the admin whose account owns the folder):
 2. OAuth consent screen: user type **Internal** (so the token does not expire weekly), scopes `…/auth/drive.readonly` and `…/auth/drive.file`.
 3. Credentials → the existing OAuth client used for sign-in → Authorized redirect URIs: add `http://localhost:3000/api/google/callback` (or whatever port `next dev` uses) and `https://owlfund-workspace.vercel.app/api/google/callback`.
 4. Environment: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, and `DRIVE_TOKEN_KEY` (`openssl rand -base64 32`). The key encrypts the stored refresh token and **must be the same value locally and on Vercel** because both talk to the same database. Production: `vercel env add <NAME> production`, then redeploy.
-5. Apply `drizzle/0005_drive.sql` (`npx tsx scripts/apply-sql.ts drizzle/0005_drive.sql`).
+5. Apply `drizzle/0007_drive.sql` (`npx tsx scripts/apply-sql.ts drizzle/0007_drive.sql`).
 6. Admin page → **Connect Google Drive** → paste the folder URL → Save. The first sync runs immediately; the index refreshes on its own before agent chats (at most every 10 minutes), in the morning sweep, and from **Sync now**.
 
 Text is extracted lazily the first time the agent opens a file (PDF, Word, PowerPoint, Excel, and Google Docs/Sheets/Slides) and cached until the file changes in Drive. Uploads from a holding page go browser → Supabase Storage (signed URL) → server → Drive, so files up to 50MB work within Vercel's request limits.
