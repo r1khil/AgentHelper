@@ -1,6 +1,14 @@
 "use client";
 
-import { useId, useMemo, useState, type PointerEvent } from "react";
+import {
+  useId,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type Dispatch,
+  type PointerEvent,
+} from "react";
 import {
   CartesianGrid,
   Line,
@@ -35,6 +43,15 @@ import {
   tone,
 } from "./primitives";
 
+import {
+  emptySelection,
+  intervalPerformance,
+  selectionBounds,
+  selectionReducer,
+  type Selection,
+  type SelectionAction,
+} from "@/lib/charts/selection";
+
 export type ChartSeries = {
   key: string;
   label: string;
@@ -55,6 +72,12 @@ function price(value: number | null | undefined, unit?: string) {
   return value == null
     ? "Unavailable"
     : `${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${unit ? ` ${unit}` : ""}`;
+}
+
+function formatChange(value: number | null, unit?: string) {
+  return value === null
+    ? "Unavailable"
+    : `${signed(value)}${unit ? ` ${unit}` : ""}`;
 }
 
 /** Daily-price comparisons and cumulative-return indices share one interaction contract. */
@@ -82,7 +105,9 @@ function ChartSession({
   const [range, setRange] = useState<TimeRange>(
     ranges && options.includes("3M") ? "3M" : "ALL",
   );
-  const [active, setActive] = useState<number | null>(null);
+  const [selection, dispatch] = useReducer(selectionReducer, emptySelection);
+  const { active } = selection;
+  const bounds = selectionBounds(selection);
   const points = useMemo(
     () => performance(selectRange(data, range)),
     [data, range],
@@ -102,18 +127,27 @@ function ChartSession({
     );
   const start = points[0];
   const end = points.at(-1)!;
-  const selected = points[active ?? points.length - 1];
+  const selected = points[bounds?.[1] ?? active ?? points.length - 1];
+  const baselinePoint = points[bounds?.[0] ?? 0];
   const primary = series[0];
   const value = selected.values[primary.key];
-  const baseline = start.values[primary.key];
-  const change = value != null && baseline != null ? value - baseline : null;
-  const selectedReturn = selected.returns[primary.key] ?? null;
+  const baseline = baselinePoint.values[primary.key];
+  const { change, returnPct: selectedReturn } = intervalPerformance(
+    baselinePoint,
+    selected,
+    primary.key,
+  );
+  const returns = Object.fromEntries(
+    series.map((s) => [
+      s.key,
+      intervalPerformance(baselinePoint, selected, s.key).returnPct,
+    ]),
+  );
   const activeReturn =
     series.length === 2 &&
-    selected.returns[series[0].key] != null &&
-    selected.returns[series[1].key] != null
-      ? (selected.returns[series[0].key]! - selected.returns[series[1].key]!) *
-        100
+    returns[series[0].key] != null &&
+    returns[series[1].key] != null
+      ? (returns[series[0].key]! - returns[series[1].key]!) * 100
       : null;
   return (
     <section aria-label={label} className="min-w-0">
@@ -126,7 +160,7 @@ function ChartSession({
             ranges={options}
             value={range}
             onChange={(next) => {
-              setActive(null);
+              dispatch({ type: "clear" });
               setRange(next);
             }}
           />
@@ -159,12 +193,36 @@ function ChartSession({
           change={change}
         />
         <Metric
-          label="Period return"
+          label={bounds ? "Selected interval return" : "Period return"}
           value={
             selectedReturn === null ? "Unavailable" : percent(selectedReturn)
           }
           change={selectedReturn}
         />
+      </div>
+      <div
+        className="mb-3 flex h-14 items-center justify-between gap-2 text-xs sm:h-8"
+        aria-live="polite"
+      >
+        {bounds ? (
+          <>
+            <span>
+              Selected interval: {exactDate(baselinePoint.date)} –{" "}
+              {exactDate(selected.date)}
+            </span>
+            <button
+              type="button"
+              className="shrink-0 rounded px-2 py-1 text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+              onClick={() => dispatch({ type: "clear" })}
+            >
+              Clear selection
+            </button>
+          </>
+        ) : (
+          <span className="text-muted-foreground">
+            Hold and drag between two dates to compare.
+          </span>
+        )}
       </div>
       <div
         key={range}
@@ -215,6 +273,7 @@ function ChartSession({
                 stroke={s.color}
                 strokeDasharray={s.dashed ? "5 4" : undefined}
                 strokeWidth={s.dashed ? 1.5 : 2}
+                strokeOpacity={bounds ? 0.25 : 1}
                 connectNulls={false}
                 dot={points.length <= 3 ? { r: 3 } : false}
                 activeDot={false}
@@ -224,8 +283,8 @@ function ChartSession({
             <ScrubLayer
               points={points}
               series={series}
-              active={active}
-              onChange={setActive}
+              selection={selection}
+              dispatch={dispatch}
               label={label}
               helpId={helpId}
             />
@@ -235,7 +294,20 @@ function ChartSession({
           <div
             className={`pointer-events-none absolute top-2 z-10 max-w-[calc(100%-4rem)] ${active < points.length / 2 ? "right-3" : "left-16"}`}
           >
-            <ChartTooltip label={exactDate(selected.date)}>
+            <ChartTooltip
+              label={
+                bounds
+                  ? `${exactDate(baselinePoint.date)} – ${exactDate(selected.date)}`
+                  : exactDate(selected.date)
+              }
+            >
+              {bounds && (
+                <div className="text-muted-foreground">
+                  {kind === "price"
+                    ? "Price change · return"
+                    : "Interval return"}
+                </div>
+              )}
               {series.map((s) => (
                 <div
                   key={s.key}
@@ -244,12 +316,24 @@ function ChartSession({
                   <span>{s.label}</span>
                   <span>
                     {kind === "price" && (
-                      <>{price(selected.values[s.key], s.unit)} · </>
+                      <>
+                        {bounds
+                          ? formatChange(
+                              intervalPerformance(
+                                baselinePoint,
+                                selected,
+                                s.key,
+                              ).change,
+                              s.unit,
+                            )
+                          : price(selected.values[s.key], s.unit)}{" "}
+                        ·{" "}
+                      </>
                     )}
-                    <span className={tone(selected.returns[s.key])}>
-                      {selected.returns[s.key] == null
+                    <span className={tone(returns[s.key])}>
+                      {returns[s.key] == null
                         ? "Unavailable"
-                        : percent(selected.returns[s.key]!)}
+                        : percent(returns[s.key]!)}
                     </span>
                   </span>
                 </div>
@@ -268,8 +352,8 @@ function ChartSession({
       </div>
       <ChartLegend series={series} note={note} />
       <p id={helpId} className="mt-2 text-[11px] text-muted-foreground">
-        Hover or drag to inspect · Touch and slide · Focus chart and use ← →,
-        Home or End · Esc resets
+        Hover to inspect · Hold and drag to compare dates · Shift + ← → selects
+        an interval · Esc or Clear selection resets
       </p>
       {kind === "return" && (
         <p className="mt-1 text-[11px] text-muted-foreground">
@@ -344,30 +428,41 @@ function Metric({
   );
 }
 
-/** Public Recharts scales keep pointer, touch and keyboard at the same exact date. */
+/** Public Recharts scales keep pointer, touch and keyboard on actual observations. */
 function ScrubLayer({
   points,
   series,
-  active,
-  onChange,
+  selection,
+  dispatch,
   label,
   helpId,
 }: {
   points: PerformancePoint[];
   series: ChartSeries[];
-  active: number | null;
-  onChange: (index: number | null) => void;
+  selection: Selection;
+  dispatch: Dispatch<SelectionAction>;
   label: string;
   helpId: string;
 }) {
+  const pointer = useRef<number | null>(null);
+  const gradientId = useId();
   const area = usePlotArea();
   const xScale = useXAxisScale();
   const yScale = useYAxisScale();
   const inverse = useXAxisInverseScale();
   if (!area || !xScale || !yScale || !inverse) return null;
-  const point = points[active ?? points.length - 1];
-  const x = xScale(point.time);
-  function scrub(event: PointerEvent<SVGRectElement>) {
+  const { active } = selection;
+  const bounds = selectionBounds(selection);
+  const baseline = points[bounds?.[0] ?? 0];
+  const end = points[bounds?.[1] ?? active ?? points.length - 1];
+  const change = intervalPerformance(baseline, end, series[0].key).returnPct;
+  const color =
+    change === null || change === 0
+      ? series[0].color
+      : change > 0
+        ? "var(--up)"
+        : "var(--down)";
+  function indexAt(event: PointerEvent<SVGRectElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     const pixel =
       area!.x +
@@ -375,45 +470,105 @@ function ScrubLayer({
         area!.width;
     const inverted = inverse!(pixel);
     const time = inverted instanceof Date ? inverted.getTime() : inverted;
-    if (typeof time === "number" && Number.isFinite(time))
-      onChange(nearestPoint(points, time));
+    return typeof time === "number" && Number.isFinite(time)
+      ? nearestPoint(points, time)
+      : null;
   }
+  function release(target: SVGRectElement) {
+    const id = pointer.current;
+    pointer.current = null;
+    if (id !== null && target.hasPointerCapture(id))
+      target.releasePointerCapture(id);
+  }
+  const endpoints = bounds ?? (active === null ? [] : [active]);
   return (
     <g>
-      {active !== null && (
+      {bounds && (
         <g pointerEvents="none">
-          <line
-            x1={x}
-            x2={x}
-            y1={area.y}
-            y2={area.y + area.height}
-            stroke="var(--muted-foreground)"
-            strokeWidth={1}
-            strokeDasharray="3 3"
-          />
-          {series.map(
-            (s) =>
-              point.returns[s.key] != null && (
-                <circle
-                  key={s.key}
-                  cx={x}
-                  cy={yScale(point.returns[s.key])}
-                  r={4}
-                  fill={s.color}
-                  stroke="var(--background)"
-                  strokeWidth={2}
-                />
-              ),
-          )}
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.22} />
+              <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          {series.map((s, seriesIndex) => {
+            // Separate paths at missing observations: never bridge a missing benchmark value.
+            const segments: [number, number][][] = [];
+            let segment: [number, number][] = [];
+            for (const p of points.slice(bounds[0], bounds[1] + 1)) {
+              const value = p.returns[s.key];
+              const x = xScale(p.time);
+              const y = value == null ? undefined : yScale(value);
+              if (x == null || y == null) {
+                if (segment.length) segments.push(segment);
+                segment = [];
+              } else segment.push([x, y]);
+            }
+            if (segment.length) segments.push(segment);
+            return segments.map((coords, i) => {
+              const path = coords
+                .map(([x, y], j) => `${j ? "L" : "M"}${x},${y}`)
+                .join(" ");
+              return (
+                <g key={`${s.key}-${i}`}>
+                  {seriesIndex === 0 && coords.length > 1 && (
+                    <path
+                      d={`${path} L${coords.at(-1)![0]},${area.y + area.height} L${coords[0][0]},${area.y + area.height} Z`}
+                      fill={`url(#${gradientId})`}
+                    />
+                  )}
+                  <path
+                    d={path}
+                    fill="none"
+                    stroke={seriesIndex === 0 ? color : s.color}
+                    strokeWidth={2}
+                    strokeDasharray={s.dashed ? "5 4" : undefined}
+                  />
+                </g>
+              );
+            });
+          })}
         </g>
       )}
+      <g pointerEvents="none">
+        {endpoints.map((index) => (
+          <g key={index}>
+            <line
+              x1={xScale(points[index].time)}
+              x2={xScale(points[index].time)}
+              y1={area.y}
+              y2={area.y + area.height}
+              stroke="var(--muted-foreground)"
+              strokeDasharray="3 3"
+            />
+            {series.map(
+              (s, i) =>
+                points[index].returns[s.key] != null && (
+                  <circle
+                    key={s.key}
+                    cx={xScale(points[index].time)}
+                    cy={yScale(points[index].returns[s.key])}
+                    r={4}
+                    fill={bounds && i === 0 ? color : s.color}
+                    stroke="var(--background)"
+                    strokeWidth={2}
+                  />
+                ),
+            )}
+          </g>
+        ))}
+      </g>
       <rect
         x={area.x}
         y={area.y}
         width={area.width}
         height={area.height}
         fill="transparent"
-        style={{ touchAction: "pan-y", cursor: "crosshair" }}
+        style={{
+          touchAction: "pan-y",
+          cursor: "crosshair",
+          userSelect: "none",
+        }}
         tabIndex={0}
         role="slider"
         aria-label={`${label} date`}
@@ -421,27 +576,70 @@ function ScrubLayer({
         aria-valuemin={0}
         aria-valuemax={points.length - 1}
         aria-valuenow={active ?? points.length - 1}
-        aria-valuetext={`${exactDate(point.date)}; ${series.map((s) => `${s.label}: ${point.returns[s.key] == null ? "unavailable" : percent(point.returns[s.key]!)}`).join("; ")}`}
+        aria-valuetext={`${bounds ? `${exactDate(baseline.date)} to ` : ""}${exactDate(end.date)}; ${series
+          .map((s) => {
+            const value = intervalPerformance(baseline, end, s.key).returnPct;
+            return `${s.label}: ${value == null ? "unavailable" : percent(value)}`;
+          })
+          .join("; ")}`}
         className="outline-none focus-visible:stroke-ring focus-visible:stroke-2"
         onPointerDown={(event) => {
-          event.currentTarget.focus();
+          if (
+            !event.isPrimary ||
+            event.button !== 0 ||
+            pointer.current !== null
+          )
+            return;
+          const index = indexAt(event);
+          if (index === null) return;
+          event.currentTarget.focus({ preventScroll: true });
+          pointer.current = event.pointerId;
           event.currentTarget.setPointerCapture(event.pointerId);
-          scrub(event);
+          dispatch({ type: "start", index });
         }}
-        onPointerMove={scrub}
+        onPointerMove={(event) => {
+          if (
+            !event.isPrimary ||
+            (pointer.current !== null && pointer.current !== event.pointerId)
+          )
+            return;
+          const index = indexAt(event);
+          if (index !== null)
+            dispatch({
+              type: pointer.current === event.pointerId ? "move" : "hover",
+              index,
+            });
+        }}
         onPointerUp={(event) => {
-          scrub(event);
-          if (event.currentTarget.hasPointerCapture(event.pointerId))
-            event.currentTarget.releasePointerCapture(event.pointerId);
+          if (pointer.current !== event.pointerId) return;
+          const index = indexAt(event);
+          dispatch(index === null ? { type: "clear" } : { type: "end", index });
+          release(event.currentTarget);
         }}
-        onPointerLeave={(event) => {
-          if (!event.currentTarget.hasPointerCapture(event.pointerId))
-            onChange(null);
+        onPointerLeave={() => dispatch({ type: "leave" })}
+        onPointerCancel={(event) => {
+          if (pointer.current === event.pointerId) {
+            release(event.currentTarget);
+            dispatch({ type: "clear" });
+          }
         }}
-        onPointerCancel={() => onChange(null)}
-        onBlur={() => onChange(null)}
-        onFocus={() => onChange(points.length - 1)}
+        onLostPointerCapture={() => {
+          pointer.current = null;
+          dispatch({ type: "lost" });
+        }}
+        onBlur={(event) => {
+          release(event.currentTarget);
+          dispatch({ type: "lost" });
+          dispatch({ type: "leave" });
+        }}
+        onFocus={() => dispatch({ type: "hover", index: points.length - 1 })}
         onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            release(event.currentTarget);
+            dispatch({ type: "clear" });
+            return;
+          }
           const index = active ?? points.length - 1;
           const next =
             event.key === "ArrowLeft"
@@ -452,12 +650,16 @@ function ScrubLayer({
                   ? 0
                   : event.key === "End"
                     ? points.length - 1
-                    : event.key === "Escape"
-                      ? null
-                      : undefined;
+                    : undefined;
           if (next !== undefined) {
             event.preventDefault();
-            onChange(next);
+            release(event.currentTarget);
+            dispatch({
+              type: "key",
+              index: next,
+              extend: event.shiftKey,
+              fallback: index,
+            });
           }
         }}
       />
