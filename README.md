@@ -75,3 +75,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/close?date=2026-
 - [docs/product.md](docs/product.md): scope and the learning boundary
 - [docs/original-outline.txt](docs/original-outline.txt): the original proposal
 - [docs/decisions.md](docs/decisions.md): historical decision log
+
+## Economic calendar
+
+The team sidebar includes Economic Calendar next to Earnings. Configure server-only `TRADING_ECONOMICS_API_KEY` with full U.S. calendar access to load the complete provider feed. See [integration, development preview, and coverage acceptance](docs/economic-calendar.md). Live coverage verification is pending credentials; synthetic preview data is available only with `ECONOMIC_CALENDAR_PREVIEW=1` in development at `/dev/economic-calendar`.
