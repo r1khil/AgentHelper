@@ -80,7 +80,7 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
         actions={ledgerButton}
       />
       <div className="mb-4">
-        <PeriodSelector basePath="/attribution" active={period.key} from={from} to={to} />
+        <PeriodSelector basePath="/attribution" active={period.key} from={from} to={to} inception={loaded.inception} latest={loaded.latest} />
       </div>
       <DataQualityNotices notices={notices} />
 

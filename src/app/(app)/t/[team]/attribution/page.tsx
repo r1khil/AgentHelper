@@ -62,7 +62,7 @@ export default async function TeamAttributionPage({ params, searchParams }: Page
         description={`${team.name} vs ${sectors.length ? sectors.map((s) => SECTOR_LABELS[s]).join(", ") : "—"} (${benchmarkName}) · ${fmtDate(period.start)} close through ${fmtDate(period.end)}`}
       />
       <div className="mb-4">
-        <PeriodSelector basePath={base} active={period.key} from={from} to={to} />
+        <PeriodSelector basePath={base} active={period.key} from={from} to={to} inception={loaded.inception} latest={loaded.latest} />
       </div>
       <DataQualityNotices notices={notices} />
 

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { loadTeam } from "@/lib/teams";
 import { getHolding, listNotes, listPendingProposals, listTeamMembers } from "@/lib/holdings";
 import { marketSnapshot } from "@/lib/market";
-import { getDailyBars, SPX_SYMBOL } from "@/lib/providers/yahoo";
+import { getBarsRange, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { listFilings } from "@/lib/providers/edgar";
 import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
 import { addNote, deleteNote, exitHolding, updateOwner, updateThesis } from "@/lib/actions/holdings";
@@ -15,7 +15,8 @@ import { ThesisProposal } from "@/components/app/thesis-proposal";
 import { fmtDate, fmtMoney, relativeTime } from "@/lib/format";
 import { PageHeader, SectionTitle } from "@/components/app/page-header";
 import { Move } from "@/components/app/move";
-import { PriceChart, type ChartPoint } from "@/components/app/price-chart";
+import { PriceChart } from "@/components/app/price-chart";
+import { alignPrices } from "@/lib/charts/series";
 import { NativeSelect } from "@/components/app/native-select";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -42,8 +43,8 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
     listTeamMembers(team.id),
     listNotes(h.id),
     marketSnapshot([h.ticker]),
-    getDailyBars(h.ticker, 90).catch(() => []),
-    getDailyBars(SPX_SYMBOL, 90).catch(() => []),
+    getBarsRange(h.ticker, historyStart()).then((r) => r.bars).catch(() => []),
+    getBarsRange(SPX_SYMBOL, historyStart()).then((r) => r.bars).catch(() => []),
     h.cik ? listFilings(h.cik, { forms: MATERIAL_FORMS, limit: 8 }).catch(() => []) : Promise.resolve([]),
     finnhubConfigured() ? getCompanyNews(h.ticker, since, today).catch(() => []) : Promise.resolve([]),
     driveStatus().catch(() => null),
@@ -55,7 +56,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
   const driveNote = !drive?.configured ? "Google Drive is not set up on this deployment." : !drive.connected || !drive.rootFolderId ? "Ask an admin to connect Google Drive from the Admin page." : drive.needsReconnect ? "Google Drive needs to be reconnected by an admin." : undefined;
 
   const m = market.rows[h.ticker];
-  const chart = rebase(bars, spxBars);
+  const chart = alignPrices(bars, spxBars);
   const manage = canManageTeam(user, team.id);
 
   return (
@@ -95,8 +96,8 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
           <Card className="p-4">
-            <SectionTitle aside="Last 90 sessions">Price vs S&amp;P 500</SectionTitle>
-            <PriceChart data={chart} ticker={h.ticker} />
+            <SectionTitle aside="Daily closes">Price vs S&amp;P 500</SectionTitle>
+            <PriceChart data={chart} ticker={h.ticker} currency={m?.quote?.currency} />
           </Card>
 
           <Card className="p-4">
@@ -250,18 +251,10 @@ function newsWindow() {
   return { since: new Date(now - 7 * 86400000).toISOString().slice(0, 10), today: new Date(now).toISOString().slice(0, 10) };
 }
 
-function rebase(bars: { date: string; close: number }[], spx: { date: string; close: number }[]): ChartPoint[] {
-  if (!bars.length || !spx.length) return [];
-  const spxByDate = new Map(spx.map((b) => [b.date, b.close]));
-  const points: ChartPoint[] = [];
-  let h0: number | null = null;
-  let s0: number | null = null;
-  for (const b of bars) {
-    const s = spxByDate.get(b.date);
-    if (s === undefined) continue;
-    h0 ??= b.close;
-    s0 ??= s;
-    points.push({ date: b.date, holding: 100 * (b.close / h0 - 1), spx: 100 * (s / s0 - 1) });
-  }
-  return points;
+/** A full year plus a calendar cushion for the starting trading session. */
+function historyStart() {
+  const date = new Date();
+  date.setUTCFullYear(date.getUTCFullYear() - 1);
+  date.setUTCDate(date.getUTCDate() - 10);
+  return date.toISOString().slice(0, 10);
 }

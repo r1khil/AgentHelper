@@ -150,3 +150,12 @@
 @layer utilities {
   .tnum { font-variant-numeric: tabular-nums; }
 }
+
+/* Fade the new range without morphing financial observations between prices. */
+@keyframes financial-chart-enter {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .financial-chart-enter { animation: financial-chart-enter 120ms ease-out; }
+}
