@@ -5,7 +5,8 @@ import { holdingNotes, holdings, movements, profiles, teams } from "@/db/schema"
 import { listPendingProposals } from "@/lib/holdings";
 import { summaryToPromptLines } from "@/lib/drive/summary";
 import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
-import { DOC_KIND_LABELS, driveStatus, listHoldingFiles, type DriveFileMeta } from "@/lib/drive/index";
+import { documentLabel } from "@/lib/drive/labels";
+import { driveStatus, listHoldingFiles, type DriveFileMeta } from "@/lib/drive/index";
 
 const PINNED_DOCS_MAX_CHARS = 12_000;
 
@@ -14,7 +15,7 @@ export function pinnedDocsBlock(files: DriveFileMeta[], maxChars = PINNED_DOCS_M
   let out = "";
   let shown = 0;
   for (const f of files) {
-    const line = `- [${f.kind ? DOC_KIND_LABELS[f.kind] : "Other"}] ${f.name} — id ${f.id}${f.modifiedTime ? ` — modified ${f.modifiedTime.toISOString().slice(0, 10)}` : ""}`;
+    const line = `- [${documentLabel(f)}] ${f.name} — id ${f.id}${f.modifiedTime ? ` — modified ${f.modifiedTime.toISOString().slice(0, 10)}` : ""}`;
     const bullets = f.summary ? summaryToPromptLines(f.summary) : "";
     const block = bullets ? `${line}\n${bullets}\n` : `${line}\n`;
     if (out.length + block.length > maxChars) break;

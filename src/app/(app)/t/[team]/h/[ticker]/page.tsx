@@ -8,7 +8,8 @@ import { listFilings } from "@/lib/providers/edgar";
 import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
 import { addNote, deleteNote, exitHolding, updateOwner, updateThesis } from "@/lib/actions/holdings";
 import { canManageTeam } from "@/lib/auth";
-import { DOC_KIND_LABELS, driveStatus, listHoldingFiles } from "@/lib/drive/index";
+import { documentLabel } from "@/lib/drive/labels";
+import { driveStatus, listHoldingFiles } from "@/lib/drive/index";
 import { DocumentUploadForm } from "@/components/app/document-upload-form";
 import { DocumentSummary } from "@/components/app/document-summary";
 import { ThesisProposal } from "@/components/app/thesis-proposal";
@@ -181,15 +182,15 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
                 {docs.map((d) => (
                   <li key={d.id} className="text-sm">
                     <div className="flex items-baseline gap-2">
-                      <Badge variant="outline" className="w-28 shrink-0 justify-center text-[0.7rem]">
-                        {d.kind ? DOC_KIND_LABELS[d.kind] : "Other"}
+                      <Badge variant="outline" className="w-32 shrink-0 justify-center text-[0.7rem]">
+                        {documentLabel(d)}
                       </Badge>
                       <a href={d.webViewLink ?? `https://drive.google.com/file/d/${d.id}/view`} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate hover:underline" title={d.path}>
                         {d.name}
                       </a>
                       <span className="tnum shrink-0 text-xs text-muted-foreground">{d.modifiedTime ? relativeTime(d.modifiedTime) : ""}</span>
                     </div>
-                    <div className="pl-30">
+                    <div className="pl-34">
                       <DocumentSummary summary={d.summary} summaryError={d.summaryError} summaryModel={d.summaryModel} summarizedAt={d.summarizedAt} />
                     </div>
                   </li>
