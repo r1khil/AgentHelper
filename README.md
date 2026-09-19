@@ -78,4 +78,4 @@ curl -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/close?date=2026-
 
 ## Economic calendar
 
-The team sidebar includes Economic Calendar next to Earnings. Configure server-only `TRADING_ECONOMICS_API_KEY` with full U.S. calendar access to load the complete provider feed. See [integration, development preview, and coverage acceptance](docs/economic-calendar.md). Live coverage verification is pending credentials; synthetic preview data is available only with `ECONOMIC_CALENDAR_PREVIEW=1` in development at `/dev/economic-calendar`.
+The team sidebar includes Economic Calendar next to Earnings. Live public agency feeds load without API credentials. Coverage is explicitly partial: private/regional events and consensus estimates still need a fuller provider. See [sources, MarketWatch investigation, and validation](docs/economic-calendar.md). With `ECONOMIC_CALENDAR_PREVIEW=1` in development, `/dev/economic-calendar?live=1` verifies live data; omitting `live=1` shows clearly labeled synthetic fixtures.

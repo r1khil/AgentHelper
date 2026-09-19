@@ -34,9 +34,11 @@ const inputStyle =
 export function EconomicCalendar({
   initialRange,
   preview = false,
+  livePreview = false,
 }: {
   initialRange: CalendarRange;
   preview?: boolean;
+  livePreview?: boolean;
 }) {
   const [range, setRange] = useState(initialRange);
   const [feed, setFeed] = useState<CalendarFeed | null>(null);
@@ -56,13 +58,17 @@ export function EconomicCalendar({
       setLoading(true);
       setNow(Date.now());
       try {
-        const endpoint = preview
-          ? "/api/dev/economic-calendar"
-          : "/api/economic-calendar";
-        const res = await fetch(`${endpoint}?${new URLSearchParams(range)}`, {
-          signal: controller.signal,
-          cache: "no-store",
-        });
+        const endpoint =
+          preview || livePreview
+            ? "/api/dev/economic-calendar"
+            : "/api/economic-calendar";
+        const res = await fetch(
+          `${endpoint}?${new URLSearchParams({ ...range, ...(livePreview ? { live: "1" } : {}) })}`,
+          {
+            signal: controller.signal,
+            cache: "no-store",
+          },
+        );
         if (res.redirected || res.status === 401)
           throw new Error(
             "Your session has expired. Sign in again to refresh the calendar.",
@@ -85,7 +91,7 @@ export function EconomicCalendar({
       }
     }
     void load();
-    const timer = window.setInterval(load, 30_000);
+    const timer = window.setInterval(load, 60_000);
     const onVisible = () => {
       if (document.visibilityState === "visible") void load();
     };
@@ -95,7 +101,7 @@ export function EconomicCalendar({
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [range, refresh, preview]);
+  }, [range, refresh, preview, livePreview]);
 
   // Never display the previous week's data under the newly selected date header.
   const current =
@@ -113,7 +119,8 @@ export function EconomicCalendar({
     now === null ? null : DateTime.fromMillis(now, { zone: NY }).toISODate();
   const released = events.filter(
     (e) =>
-      e.actual !== null && (now === null || Date.parse(e.timestamp) <= now),
+      e.actual !== null &&
+      (now === null || !e.timestamp || Date.parse(e.timestamp) <= now),
   ).length;
   function shift(weeks: number) {
     setRange(
@@ -250,6 +257,61 @@ export function EconomicCalendar({
           </span>
         </div>
       </Card>
+      {livePreview && (
+        <p role="note" className="mb-4 text-sm text-muted-foreground">
+          Local verification view · live public feeds · app authentication
+          remains required on the main route.
+        </p>
+      )}
+      {current?.coverage?.status === "partial" && (
+        <div
+          role="note"
+          className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm"
+        >
+          <strong>Coverage incomplete.</strong> {current.coverage.message}
+        </div>
+      )}
+      {current?.sources && (
+        <details className="mb-4 rounded-lg border px-4 py-3 text-xs text-muted-foreground">
+          <summary className="cursor-pointer font-medium text-foreground">
+            Data sources ·{" "}
+            {current.sources.filter((s) => s.status === "ok").length} of{" "}
+            {current.sources.length} connected
+          </summary>
+          <ul className="mt-2 space-y-1">
+            {current.sources.map((s) => (
+              <li key={s.name}>
+                <a
+                  href={s.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  {s.name}
+                </a>
+                :{" "}
+                {s.status === "ok"
+                  ? `${s.count} records in this range`
+                  : `unavailable (${s.error})`}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2">
+            Data:{" "}
+            <a
+              href="https://xoomar.com/markets/api/calendar"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              XOOMAR
+            </a>{" "}
+            and linked U.S. agencies. Units are shown with each source. Separate
+            measurements of one report can appear as separate records. Estimates
+            remain unavailable until a reliable consensus feed is connected.
+          </p>
+        </details>
+      )}
       {error && (
         <div
           role="alert"
@@ -283,7 +345,7 @@ export function EconomicCalendar({
         <>
           <p className="mb-3 text-xs text-muted-foreground">
             Showing {visible.length} of {events.length} events · All times ET ·
-            Refreshes every 30 seconds while visible
+            Checks every minute · Sources cached for 5 minutes
           </p>
           <div className="space-y-4">
             {days.map((day) => {
@@ -307,7 +369,7 @@ export function EconomicCalendar({
                       <p className="px-4 py-5 text-xs text-muted-foreground">
                         {events.some((e) => e.date === day)
                           ? "No events match your filters."
-                          : "No events returned by the provider for this day."}
+                          : "No events returned by connected sources. Coverage may be incomplete."}
                       </p>
                     ) : (
                       <>
@@ -415,11 +477,12 @@ export function EconomicCalendar({
             })}
           </div>
           <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
-            Estimate is economist consensus, where supplied. — means unavailable
-            or not applicable; a past time alone does not confirm a release.
-            Previous includes provider revisions. Values are shown neutrally:
-            higher does not always mean better. Release updates depend on
-            provider timing.
+            Estimate is economist consensus, where supplied. Public agency feeds
+            do not supply consensus; no forecasts are inferred. — means
+            unavailable or not applicable; a past time alone does not confirm a
+            release. Previous includes provider revisions. Values are shown
+            neutrally: higher does not always mean better. Release updates
+            depend on provider timing.
           </p>
         </>
       )}
@@ -443,8 +506,9 @@ function EventName({ event: e }: { event: EconomicEvent }) {
         </span>
         {e.importance === 3 && <span className="sr-only">High importance</span>}
       </div>
-      {e.source && (
+      {(e.source || e.unit) && (
         <p className="mt-0.5 pl-3.5 text-[10px] text-muted-foreground">
+          {e.unit ? `${e.unit} · ` : ""}
           {e.source}
         </p>
       )}
@@ -454,7 +518,9 @@ function EventName({ event: e }: { event: EconomicEvent }) {
 function Actual({ event, now }: { event: EconomicEvent; now: number | null }) {
   return (
     <>
-      {now !== null && Date.parse(event.timestamp) > now
+      {now !== null &&
+      event.timestamp !== null &&
+      Date.parse(event.timestamp) > now
         ? "—"
         : (event.actual ?? "—")}
     </>

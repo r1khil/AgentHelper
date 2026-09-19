@@ -1,9 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { validateRange } from "@/lib/economic-calendar/dates";
-import {
-  CalendarNotConfigured,
-  getEconomicCalendar,
-} from "@/lib/economic-calendar/service";
+import { getEconomicCalendar } from "@/lib/economic-calendar/service";
 
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
@@ -32,16 +29,14 @@ export async function GET(request: Request) {
     return Response.json(await getEconomicCalendar(range), {
       headers: { "Cache-Control": "private, no-store" },
     });
-  } catch (error) {
+  } catch {
     return Response.json(
       {
         error:
-          error instanceof CalendarNotConfigured
-            ? error.message
-            : "Calendar feed unavailable. Check provider access or try again shortly. No partial results are shown.",
+          "Public calendar sources are unavailable. Try again shortly. No synthetic events have been substituted.",
       },
       {
-        status: error instanceof CalendarNotConfigured ? 503 : 502,
+        status: 502,
         headers: { "Cache-Control": "private, no-store" },
       },
     );

@@ -2,14 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/lib/economic-calendar/service", () => ({
-  CalendarNotConfigured: class extends Error {},
   getEconomicCalendar: vi.fn(),
 }));
 import { getCurrentUser } from "@/lib/auth";
-import {
-  CalendarNotConfigured,
-  getEconomicCalendar,
-} from "@/lib/economic-calendar/service";
+import { getEconomicCalendar } from "@/lib/economic-calendar/service";
 import { GET } from "./route";
 const user = { onboardedAt: new Date() } as Awaited<
   ReturnType<typeof getCurrentUser>
@@ -56,12 +52,6 @@ describe("economic calendar API", () => {
       from: feed.from,
       to: feed.to,
     });
-  });
-  it("reports missing configuration instead of silently substituting fixtures", async () => {
-    vi.mocked(getEconomicCalendar).mockRejectedValue(
-      new CalendarNotConfigured("Not connected"),
-    );
-    expect((await GET(request())).status).toBe(503);
   });
   it("does not leak provider errors or credentials", async () => {
     vi.mocked(getEconomicCalendar).mockRejectedValue(

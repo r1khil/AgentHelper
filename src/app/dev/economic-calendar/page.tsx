@@ -4,11 +4,20 @@ import { calendarWeek } from "@/lib/economic-calendar/dates";
 import { calendarPreviewEnabled } from "@/lib/economic-calendar/preview";
 
 export const dynamic = "force-dynamic";
-export default function Preview() {
+export default async function Preview({
+  searchParams,
+}: {
+  searchParams: Promise<{ live?: string }>;
+}) {
+  const live = (await searchParams).live === "1";
   if (!calendarPreviewEnabled()) notFound();
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
-      <EconomicCalendar initialRange={calendarWeek()} preview />
+      <EconomicCalendar
+        initialRange={calendarWeek()}
+        preview={!live}
+        livePreview={live}
+      />
     </main>
   );
 }
