@@ -6,6 +6,7 @@ The app uses Recharts 3.10.1 with the existing theme tokens. No new runtime depe
 
 - `src/components/charts/performance-chart.tsx`: responsive daily time series, performance metrics, crosshair, exact-date tooltip, pointer capture for drag/touch, keyboard inspection, and an accessible observations table.
 - `src/components/charts/primitives.tsx`: range buttons, tooltip surface, legend, axis typography, and signed formatting.
+- `src/lib/charts/selection.ts`: interval selection state, endpoint ordering, and raw-value interval calculations.
 - `src/lib/charts/series.ts`: normalization, exact-date alignment, calendar ranges, return rebasing, and nearest-observation lookup. These functions do not depend on React or a chart library.
 
 `PriceChart` uses the full shared system. `CumulativeActiveChart` uses the same renderer for both executive and team attribution, with the page's existing period selector remaining authoritative. That selector shares the range-control primitives, hides presets that would clamp to inception, and bounds custom date inputs to the available history. Attribution links continue to navigate the whole report so the chart, tables, and headline metrics stay consistent. `SectorEffectsChart` keeps its signed, stacked categorical bars and shares the tooltip, legend, grid treatment, and typography. A time scrubber would not be meaningful for its sector axis.
@@ -26,9 +27,11 @@ Plots use a calendar-time axis and linear segments through every supplied observ
 
 ## Interaction
 
-Hover or press and drag to snap to the closest observed timestamp. Pointer capture keeps a drag active outside the plot. Touch uses the same Pointer Events handler with vertical page scrolling allowed; cancellation resets inspection. Keyboard users can Tab to the chart and use Left/Right, Home/End, or Escape. The slider's accessible value includes the date and both returns. The expandable table exposes every observation in the selected range.
+Hover snaps to the closest observed timestamp. Press and hold at one observation, then drag to another to compare an interval. Both endpoints receive markers, the selected line and area are highlighted, and the rest of the series dims. The summary and tooltip show chronological start/end values, absolute change, and `100 * (end / start - 1)` for the chosen interval. Both series use the same dates; active return is their return difference in basis points. Dragging backwards selects the same chronological interval. The plot stays rebased to the preset range, so selecting an interval does not move or distort the underlying lines.
 
-The summary shows the latest close by default and clearly switches to the selected close during inspection. Range changes clear inspection and return to the latest close. New series data resets both the range and inspection so navigation cannot leave a stale cursor.
+Pointer capture keeps a drag active outside the plot. Touch uses the same Pointer Events handler with vertical page scrolling allowed; cancellation resets the unfinished selection. A completed interval remains visible after release, until Clear selection, Escape, a new selection, or a preset change. Keyboard users can Tab to the chart and use Left/Right or Home/End, holding Shift to extend an interval. The slider's accessible value includes both dates and returns. The expandable table exposes every observation in the preset range.
+
+The summary shows the latest close by default and switches to the selected close during inspection. Range changes clear selection and return to the latest close. New series data resets both the range and selection so navigation cannot leave a stale cursor.
 
 ## UX references
 
@@ -43,10 +46,9 @@ The implementation follows the requested interaction patterns using the app's ow
 
 ## Validation
 
-- `npm test`: 204 tests pass, including 12 new chart and period-availability tests for alignment, invalid/missing observations, changing baselines, losses, unavailable ranges, month ends/leap years, YTD, irregular-date scrubbing, and retention of dense-series extrema.
-- `npm run lint` and TypeScript checks pass.
-- `npm run build`: production Turbopack build passes after clearing the sandbox-generated cache and allowing the existing Google Fonts download.
-- Browser checks with a temporary synthetic-data harness: 1M versus 1Y recalculation, both series starting at zero, pointer drag, keyboard Home/Arrow/End/Escape, narrow-screen range wrapping and tooltips, dark mode, negative returns, empty/single/two-point data, and a missing benchmark observation. No browser errors or warnings were reported. The harness was removed before the final build.
-- Authenticated live-provider pages and physical-device touch gestures were not exercised; browser checks used synthetic observations and narrow-screen pointer input.
+- `npm test`: 269 tests pass, including interval state transitions, reverse selection, release/cancellation, keyboard extension, raw-endpoint calculations, benchmark comparison, zero/missing baselines, and cumulative-index compounding.
+- `npm run lint`, `npm run typecheck`, and `npm run build` pass.
+- Browser verification with a temporary synthetic-data harness: actual forward/reverse pointer drags, retained interval shading and endpoint markers, exact values for both series, Shift-key selection, Escape, and range reset. No browser errors or warnings. The harness was removed before the production build.
+- Authenticated live-provider pages and physical-device touch gestures were not exercised.
 
-The branch starts at `5ea5b06`. A fresh fetch found no subsequent changes on `origin/main`, so there were no intervening main changes or merge conflicts. Existing attribution tests cover the retained index comparison, page periods, basis-point effects, and cash-flow calculations.
+The original visuals commit is `c105569`. This follow-up incorporates main through `f2b1fe5`, including earnings-document labels and research citations. Those changes were reviewed for interactions; the shared chart changes do not alter document labels, source resolution, chat rendering, or provider retrieval. Their tests pass in the combined application. A fresh fetch before publishing found no additional main commits.
