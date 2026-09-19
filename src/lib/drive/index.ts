@@ -6,19 +6,20 @@ import { DriveNotConnected, driveConfigured, loadConnection } from "./auth";
 import { fetchAndExtract } from "./extract";
 import { capText } from "./text";
 
-export const DOC_KIND_LABELS: Record<DriveDocKind, string> = {
-  initiating_coverage: "Initiating coverage",
-  earnings_update: "Earnings update",
-  model: "Model",
-  other: "Other",
-};
+import { DOC_KIND_LABELS, DOCUMENT_HEADING_CHARS } from "./labels";
+export { DOC_KIND_LABELS } from "./labels";
 export const DOC_KINDS = Object.keys(DOC_KIND_LABELS) as DriveDocKind[];
 
 /** Everything about a file except the cached text (which can be large). */
-export type DriveFileMeta = Omit<DriveFile, "text">;
+export type DriveFileMeta = Omit<DriveFile, "text"> & { documentHeading?: string | null };
+// A bounded excerpt avoids loading full documents on the company page. Ignore stale text.
+export const documentHeadingColumn = sql<string | null>`case
+  when ${driveFiles.kind} = 'earnings_update' and ${driveFiles.textModifiedTime} = ${driveFiles.modifiedTime}
+  then left(${driveFiles.text}, ${DOCUMENT_HEADING_CHARS}) else null end`;
 const metaColumns = {
   id: driveFiles.id,
   name: driveFiles.name,
+  documentHeading: documentHeadingColumn,
   mimeType: driveFiles.mimeType,
   parentId: driveFiles.parentId,
   path: driveFiles.path,
@@ -199,12 +200,12 @@ export async function getFileText(fileId: string): Promise<{ meta: DriveFileMeta
   if (row.isFolder) throw new Error("That id is a folder, not a file.");
   const { text: cached, ...meta } = row;
   const fresh = row.textModifiedTime?.getTime() === row.modifiedTime?.getTime();
-  if (fresh && cached !== null) return { meta, text: cached };
+  if (fresh && cached !== null) return { meta: { ...meta, documentHeading: cached.slice(0, DOCUMENT_HEADING_CHARS) }, text: cached };
   if (fresh && row.textError) throw new Error(row.textError);
   try {
     const text = capText(await fetchAndExtract(row));
     await db.update(driveFiles).set({ text, textModifiedTime: row.modifiedTime, textError: null }).where(eq(driveFiles.id, fileId));
-    return { meta: { ...meta, textError: null, textModifiedTime: row.modifiedTime }, text };
+    return { meta: { ...meta, documentHeading: text.slice(0, DOCUMENT_HEADING_CHARS), textError: null, textModifiedTime: row.modifiedTime }, text };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     if (!(e instanceof DriveNotConnected)) {

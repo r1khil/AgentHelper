@@ -13,6 +13,7 @@ import { NY } from "@/lib/providers/calendar";
 import { relativeMovePp } from "@/lib/movement/math";
 import { sourceId, type Source } from "@/lib/providers/types";
 import { DriveNotConnected, driveConfigured } from "@/lib/drive/auth";
+import { documentLabel } from "@/lib/drive/labels";
 import { driveStatus, getFileText, listHoldingFiles, searchIndex, type DriveFileMeta } from "@/lib/drive/index";
 import { searchChunks } from "@/lib/drive/search";
 import { embeddingConfigured } from "@/lib/agent/embeddings";
@@ -343,7 +344,7 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
             driveFiles: files.map((f) => {
               const s = driveSource(f);
               sources.push(s);
-              return { fileId: f.id, name: f.name, kind: f.kind, path: f.path, modifiedTime: f.modifiedTime, docDate: f.docDate, summary: f.summary, sourceId: s.id };
+              return { fileId: f.id, name: f.name, kind: f.kind, documentType: documentLabel(f), path: f.path, modifiedTime: f.modifiedTime, docDate: f.docDate, summary: f.summary, sourceId: s.id };
             }),
           });
         }
@@ -373,7 +374,7 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
           const sources = rows.map(driveSource);
           return {
             data: {
-              files: rows.map((r, i) => ({ fileId: r.id, name: r.name, kind: r.kind, ticker: r.ticker, path: r.path, mimeType: r.mimeType, modifiedTime: r.modifiedTime, size: r.size, sourceId: sources[i].id })),
+              files: rows.map((r, i) => ({ fileId: r.id, name: r.name, kind: r.kind, documentType: documentLabel(r), ticker: r.ticker, path: r.path, mimeType: r.mimeType, modifiedTime: r.modifiedTime, size: r.size, sourceId: sources[i].id })),
               note: rows.length ? undefined : "No matching files in the analyst Drive index.",
             },
             sources,
@@ -407,7 +408,7 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
               byFile.set(h.fileId, s);
               sources.push(s);
             }
-            return { fileId: h.fileId, name: h.meta.name, kind: h.meta.kind, ticker: h.meta.ticker, docDate: h.meta.docDate, seq: h.seq, score: h.score, text: h.text, sourceId: s.id };
+            return { fileId: h.fileId, name: h.meta.name, kind: h.meta.kind, documentType: documentLabel(h.meta), ticker: h.meta.ticker, docDate: h.meta.docDate, seq: h.seq, score: h.score, text: h.text, sourceId: s.id };
           });
           return { data: { passages, note: passages.length ? undefined : "No passages matched in the indexed documents. Newly added files are embedded within a few minutes of sync." }, sources };
         } catch (e) {
@@ -429,7 +430,7 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
           const { meta, text } = await getFileText(fileId);
           const w = windowText(text, offset, maxChars);
           const s = driveSource(meta);
-          return { data: { fileId, name: meta.name, kind: meta.kind, path: meta.path, modifiedTime: meta.modifiedTime, ...w, sourceId: s.id }, sources: [s] };
+          return { data: { fileId, name: meta.name, kind: meta.kind, documentType: documentLabel(meta), path: meta.path, modifiedTime: meta.modifiedTime, ...w, sourceId: s.id }, sources: [s] };
         } catch (e) {
           return fail(e, null);
         }
