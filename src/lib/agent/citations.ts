@@ -1,16 +1,24 @@
 import type { UIMessage } from "ai";
+import { enrichLegacySource } from "./source-resolution";
+import { isToolPart } from "./turn";
 import type { Source } from "@/lib/providers/types";
 
-export const CITATION_RE = /\[src:\s*([A-Za-z0-9_\-]+(?:\s*,\s*[A-Za-z0-9_\-]+)*)\]/g;
+export const CITATION_RE = /\[src:\s*([A-Za-z0-9_\-]+(?:\s*,\s*(?:src:\s*)?[A-Za-z0-9_\-]+)*)\]/g;
 
 /** Collect every Source returned by tool outputs across messages, keyed by id. */
 export function collectSources(messages: UIMessage[]): Map<string, Source> {
   const map = new Map<string, Source>();
   for (const m of messages) {
     for (const p of m.parts) {
-      if (typeof p.type === "string" && p.type.startsWith("tool-") && "state" in p && p.state === "output-available") {
+      if (isToolPart(p) && p.state === "output-available") {
         const out = (p as { output?: { sources?: Source[] } }).output;
-        for (const s of out?.sources ?? []) map.set(s.id, s);
+        for (const s of Array.isArray(out?.sources) ? out.sources : []) {
+          if (!s || typeof s.id !== "string") continue;
+          // Keep the first retrieved evidence stable when later turns reuse an id.
+          const enriched = enrichLegacySource(s, (out as { data?: unknown }).data);
+          const existing = map.get(s.id);
+          map.set(s.id, existing ? { ...enriched, ...existing, excerpt: existing.excerpt || enriched.excerpt, location: existing.location ?? enriched.location } : enriched);
+        }
       }
     }
   }
