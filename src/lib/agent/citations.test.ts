@@ -23,6 +23,19 @@ describe("uncitedFactCount", () => {
 });
 
 describe("collectSources", () => {
+  it("supports dynamic tools, malformed metadata, and legacy read excerpts without losing the original destination", () => {
+    const original = { id: "drive-1", title: "Transcript", url: "https://drive.google.com/file/d/file_123/view", publisher: "Analyst Drive", retrievedAt: "2026-09-19" };
+    const parts = [
+      { type: "dynamic-tool", toolName: "find_drive_files", state: "output-available", output: { sources: [null, {}, original] } },
+      { type: "tool-read_drive_file", state: "output-available", output: { sources: [original], data: { sourceId: original.id, text: "Revenue grew 8%." } } },
+      { type: "tool-read_drive_file", state: "output-available", output: { sources: [{ ...original, url: "https://example.com/other" }] } },
+      { type: "tool-read_drive_file", state: "output-available", output: { sources: "invalid" } },
+    ];
+    const sources = collectSources([{ id: "a", role: "assistant", parts }] as UIMessage[]);
+    expect(sources.size).toBe(1);
+    expect(sources.get(original.id)).toMatchObject({ url: original.url, excerpt: "Revenue grew 8%." });
+  });
+
   it("keys sources by id across completed tool parts only", () => {
     const m: UIMessage = {
       id: "a",

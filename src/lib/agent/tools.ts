@@ -38,8 +38,8 @@ function fail<T>(e: unknown, data: T): ToolResult<T> {
   return { data, sources: [], error: e instanceof Error ? e.message : String(e) };
 }
 
-function driveSource(f: Pick<DriveFileMeta, "id" | "name" | "webViewLink" | "modifiedTime">): Source {
-  return src("drive", f.name, f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`, "Analyst Drive", f.modifiedTime?.toISOString());
+function driveSource(f: Pick<DriveFileMeta, "id" | "name" | "webViewLink" | "modifiedTime"> & { docDate?: string | null; kind?: string | null }): Source {
+  return { ...src("drive", f.name, f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`, "Analyst Drive", f.docDate ?? undefined), documentId: f.id, sourceType: f.kind?.replaceAll("_", " ") ?? "Internal document" };
 }
 
 /** Throws a DriveNotConnected with the right explanation unless the Drive index is usable. */
@@ -50,7 +50,8 @@ async function assertDriveReady() {
   if (status.needsReconnect) throw new DriveNotConnected("The analyst Drive connection needs to be renewed by an admin.");
 }
 
-export function makeTools(ctx: { teamId: string; userId: string }) {
+export function makeTools(ctx: { teamId: string; userId: string; sources?: Source[] }) {
+  const filingSources = new Map<string, Source>((ctx.sources ?? []).filter((s) => s.id.startsWith("sec-") && s.url?.startsWith("https://www.sec.gov/Archives/")).map((s) => [s.url!, s]));
   const tickerArg = z.string().describe("Ticker symbol, e.g. NVDA");
 
   return {
@@ -129,6 +130,7 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
           const { cik, name } = await cikFor(ticker);
           const filings = await listFilings(cik, { forms, limit, since });
           const sources = filings.map((f) => src("sec", `${name} ${f.form} filed ${f.filedAt}${f.description ? ` — ${f.description}` : ""}`, f.url, "SEC EDGAR", f.filedAt));
+          sources.forEach((s) => filingSources.set(s.url!, s));
           return { data: { cik, company: name, filings: filings.map((f, i) => ({ ...f, sourceId: sources[i].id })) }, sources };
         } catch (e) {
           return fail(e, null);
@@ -159,7 +161,14 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
             body = ex;
           }
           const window = body.slice(offset, offset + maxChars);
-          const s = src("doc", `SEC document ${url.split("/").pop()}${item ? ` — Item ${item}` : ""}`, url, "SEC EDGAR");
+          const filing = filingSources.get(url);
+          const s: Source = {
+            ...src("doc", `${filing?.title ?? `SEC document ${url.split("/").pop()}`}${item ? ` — Item ${item}` : ""}`, url, "SEC EDGAR", filing?.publishedAt),
+            id: sourceId("doc", `${url}:${item ?? ""}:${offset}`),
+            sourceType: filing?.sourceType ?? (/ex-?99|exhibit.?99|xex99/i.test(url) ? "Earnings release" : "SEC filing"),
+            excerpt: window.trim().slice(0, 360),
+            location: { section: item ? `Item ${item}` : undefined, text: window.trim().slice(0, 180), offset },
+          };
           return { data: { url, item: item ?? null, offset, totalChars: body.length, hasMore: offset + maxChars < body.length, text: window, sourceId: s.id }, sources: [s] };
         } catch (e) {
           return fail(e, null);
@@ -172,9 +181,12 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
       inputSchema: z.object({ ticker: tickerArg, accession: z.string() }),
       execute: async ({ ticker, accession }): Promise<ToolResult<unknown>> => {
         try {
-          const { cik } = await cikFor(ticker);
+          const { cik, name } = await cikFor(ticker);
           const docs = await listFilingDocuments(cik, accession);
-          return { data: { accession, documents: docs }, sources: [] };
+          const filing = [...filingSources.values()].find((s) => s.url?.includes(accession.replaceAll("-", "")));
+          const sources = docs.map((d) => ({ ...src("sec", `${name} — ${d.description || d.type || d.name}`, d.url, "SEC EDGAR", filing?.publishedAt), sourceType: /EX-99/i.test(d.type ?? "") ? "Earnings release" : "SEC filing" }));
+          sources.forEach((s) => filingSources.set(s.url!, s));
+          return { data: { accession, documents: docs.map((d, i) => ({ ...d, sourceId: sources[i].id })) }, sources };
         } catch (e) {
           return fail(e, null);
         }
@@ -208,18 +220,28 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
           const { cik, name } = await cikFor(ticker);
           const facts = await getCompanyFacts(cik);
           const kf = resolveKeyFinancials(facts, periodKind, periods);
+          const filingUrls = new Map((await listFilings(cik).catch(() => [])).map((f) => [f.accession, f.url]));
           const sources: Source[] = [];
           const byAccession = new Map<string, string>();
           const rows = kf.rows.map((r) => {
             let sourceId = byAccession.get(r.accession);
             if (!sourceId && r.accession) {
-              const s = src("xbrl", `${name} ${r.form} filed ${r.filed} (XBRL financial data)`, filingUrlForFact(cik, { accn: r.accession } as Fact), "SEC EDGAR XBRL", r.filed);
+              const s = src("xbrl", `${name} ${r.form} filed ${r.filed} (XBRL financial data)`, filingUrls.get(r.accession) ?? filingUrlForFact(cik, { accn: r.accession } as Fact), "SEC EDGAR XBRL", r.filed);
               sources.push(s);
               byAccession.set(r.accession, s.id);
               sourceId = s.id;
             }
             return { ...r, sourceId: sourceId ?? null };
           });
+          for (const s of sources) {
+            s.excerpt = rows.filter((r) => r.sourceId === s.id).map((r) => {
+              const values = Object.entries(r.values).map(([key, value]) => {
+                const metric = kf.metrics.find((m) => m.key === key);
+                return `${metric?.label ?? key}: ${value.value} ${metric?.unit ?? ""}`;
+              });
+              return `XBRL facts for period ended ${r.end}: ${values.join("; ")}`;
+            }).join(". ").slice(0, 360);
+          }
           return { data: { company: name, periodKind, metrics: kf.metrics, rows, missing: kf.missing, notes: kf.notes }, sources };
         } catch (e) {
           return fail(e, null);
@@ -253,12 +275,14 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
           let rows = conceptFacts(facts, concept, u, taxonomy);
           if (periodKind !== "any") rows = rows.filter((r) => r.periodKind === periodKind);
           rows = rows.slice(-limit).reverse(); // latest period first
+          const filingUrls = new Map((await listFilings(cik).catch(() => [])).map((f) => [f.accession, f.url]));
           // One source per filing, not per row: several rows usually come from the same accession.
           const sources: Source[] = [];
           const byAccession = new Map<string, string>();
           for (const f of rows) {
             if (byAccession.has(f.accn)) continue;
-            const s = src("xbrl", `${name} ${f.form} filed ${f.filed} (XBRL financial data)`, filingUrlForFact(cik, f), "SEC EDGAR XBRL", f.filed);
+            const s = src("xbrl", `${name} ${f.form} filed ${f.filed} (XBRL financial data)`, filingUrls.get(f.accn) ?? filingUrlForFact(cik, f), "SEC EDGAR XBRL", f.filed);
+            s.excerpt = rows.filter((r) => r.accn === f.accn).map((r) => `XBRL ${meta.label}, period ended ${r.end}: ${r.val} ${u}`).join("; ").slice(0, 360);
             sources.push(s);
             byAccession.set(f.accn, s.id);
           }
@@ -289,7 +313,7 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
           const to = DateTime.now().setZone(NY).toISODate()!;
           const from = DateTime.now().setZone(NY).minus({ days }).toISODate()!;
           const items = (await getCompanyNews(t, from, to)).slice(0, 15);
-          const sources = items.map((n) => src("news", n.headline, n.url, n.source, n.publishedAt));
+          const sources = items.map((n) => ({ ...src("news", n.headline, n.url, n.source, n.publishedAt), excerpt: n.summary?.slice(0, 360), sourceType: "News" }));
           return { data: { ticker: t, from, to, items: items.map((n, i) => ({ headline: n.headline, source: n.source, publishedAt: n.publishedAt, summary: n.summary?.slice(0, 200), url: n.url, sourceId: sources[i].id })) }, sources };
         } catch (e) {
           return fail(e, null);
@@ -399,14 +423,9 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
           if (!embeddingConfigured()) throw new Error("Semantic search over Drive documents is not configured (OPENROUTER_EMBEDDING_MODEL). Use find_drive_files and read_drive_file instead.");
           const hits = await searchChunks({ query, ticker, kind, limit });
           const sources: Source[] = [];
-          const byFile = new Map<string, Source>();
           const passages = hits.map((h) => {
-            let s = byFile.get(h.fileId);
-            if (!s) {
-              s = driveSource(h.meta);
-              byFile.set(h.fileId, s);
-              sources.push(s);
-            }
+            const s: Source = { ...driveSource(h.meta), id: sourceId("drive", `${h.fileId}:chunk:${h.seq}:${h.text}`), excerpt: h.text.trim().slice(0, 360), location: { text: h.text.trim().slice(0, 180) } };
+            sources.push(s);
             return { fileId: h.fileId, name: h.meta.name, kind: h.meta.kind, ticker: h.meta.ticker, docDate: h.meta.docDate, seq: h.seq, score: h.score, text: h.text, sourceId: s.id };
           });
           return { data: { passages, note: passages.length ? undefined : "No passages matched in the indexed documents. Newly added files are embedded within a few minutes of sync." }, sources };
@@ -428,7 +447,7 @@ export function makeTools(ctx: { teamId: string; userId: string }) {
         try {
           const { meta, text } = await getFileText(fileId);
           const w = windowText(text, offset, maxChars);
-          const s = driveSource(meta);
+          const s: Source = { ...driveSource(meta), id: sourceId("drive", `${fileId}:${meta.modifiedTime?.toISOString()}:${w.offset}`), excerpt: w.text.trim().slice(0, 360), location: { offset: w.offset, text: w.text.trim().slice(0, 180) } };
           return { data: { fileId, name: meta.name, kind: meta.kind, path: meta.path, modifiedTime: meta.modifiedTime, ...w, sourceId: s.id }, sources: [s] };
         } catch (e) {
           return fail(e, null);

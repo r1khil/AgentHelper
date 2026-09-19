@@ -1,7 +1,12 @@
 export type Source = {
   id: string;
   title: string;
-  url: string;
+  url?: string;
+  /** Indexed documents open in the app; ids never serve as URLs. */
+  documentId?: string;
+  sourceType?: string;
+  excerpt?: string;
+  location?: { page?: number; section?: string; text?: string; offset?: number };
   publisher: string;
   publishedAt?: string;
   retrievedAt: string;

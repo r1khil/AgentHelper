@@ -4,7 +4,7 @@ import { saveMessages, setRunStatus } from "@/lib/chats";
 import { chatModel, agentModelId } from "@/lib/agent/model";
 import { buildInstructions } from "@/lib/agent/instructions";
 import { makeTools } from "@/lib/agent/tools";
-import { uncitedFactCount } from "@/lib/agent/citations";
+import { collectSources, uncitedFactCount } from "@/lib/agent/citations";
 import { compactHistory } from "@/lib/agent/turn";
 import { instrumentTools, traceUsage } from "@/lib/agent/trace";
 import { createTraceSink } from "@/lib/trace/context";
@@ -30,7 +30,7 @@ export async function runAgentTurn(opts: {
 }) {
   const { chat, user, messages } = opts;
   const sink = opts.trace ? createTraceSink() : null;
-  const baseTools = makeTools({ teamId: chat.teamId, userId: user.id });
+  const baseTools = makeTools({ teamId: chat.teamId, userId: user.id, sources: [...collectSources(messages).values()] });
   const tools = sink ? instrumentTools(baseTools, sink) : baseTools;
   const modelId = await agentModelId();
   const instructions = await buildInstructions(chat.teamId, { holdingId: chat.holdingId, userName: user.fullName, userRole: user.role });
