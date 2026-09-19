@@ -59,3 +59,13 @@ export function resolvePeriod(key: PeriodKey, opts: { from?: string; to?: string
   if (end < start) end = start;
   return { key, start, end, clamped };
 }
+
+/** Hide presets that would silently shorten to the ledger's inception. */
+export function availablePeriods(bounds: { inception: string; latest: string }): PeriodKey[] {
+  return PERIOD_KEYS.filter((key) => {
+    if (key === "custom") return false;
+    if (key === "itd") return true;
+    const period = resolvePeriod(key, bounds);
+    return !period.clamped && period.start < period.end;
+  });
+}
