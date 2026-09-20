@@ -67,6 +67,10 @@ The prior-value differences may reflect revisions or source methodology; they ha
 
 Reproduce live extraction with `npx tsx scripts/check-economic-calendar.ts 2026-09-14 2026-09-20`; it writes normalized data, source statuses and counts to `/tmp/owl-calendar-coverage-2026-09-14.json`, not the production app. No API key required.
 
+## Source access
+
+BLS rejects automated clients whose User-Agent includes a URL (verified: the original `(+https://github.com/...)` form returned `HTTP 403`), and its usage policy asks for contact details, so set `CALENDAR_CONTACT_EMAIL` in every environment. The header is `OwlFundCalendar/1.0 (<email>)`, or `OwlFundCalendar/1.0` when unset. Each source is fetched with a 10 s timeout, bodies are capped at 5 MB while streaming, and a failed source is not retried for 30 s so client polling cannot hammer an agency that is down. The API route declares a 30 s `maxDuration` to stay above the per-source timeout.
+
 ## Development and validation
 
 `ECONOMIC_CALENDAR_PREVIEW=1 npm run dev -- --webpack --port 3108` enables `/dev/economic-calendar?live=1` for the same live provider service without a local Supabase login. `/dev/economic-calendar` without `live=1` remains a clearly labeled synthetic UI preview. Only the two exact dev paths bypass auth, only with this flag in development; both are unavailable in production. The authenticated production route is unchanged. No live production code imports synthetic events.

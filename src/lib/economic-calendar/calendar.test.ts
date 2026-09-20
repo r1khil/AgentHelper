@@ -9,7 +9,11 @@ import {
   AGENCY_URLS,
 } from "./agency-parsers";
 import { makeEvent, inRange } from "./normalize";
-import { publicCalendarProvider } from "./public-provider";
+import {
+  calendarUserAgent,
+  forgetCalendarFailures,
+  publicCalendarProvider,
+} from "./public-provider";
 import { calendarPreviewEnabled } from "./preview";
 
 const range = { from: "2026-09-14", to: "2026-09-20" };
@@ -31,7 +35,10 @@ const values = {
     },
   ],
 };
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  forgetCalendarFailures();
+});
 describe("calendar dates", () => {
   it("uses Monday through Sunday across year boundaries", () => {
     expect(calendarWeek("2027-01-01")).toEqual({
@@ -215,6 +222,32 @@ describe("public source adapters", () => {
       ),
     ).toBe(true);
     expect(fetcher).toHaveBeenCalledTimes(5);
+  });
+  it("does not retry a failed source on the next poll", async () => {
+    const fetcher = vi.fn(async (url: string | URL | Request) =>
+      String(url).startsWith(AGENCY_URLS.xoomar)
+        ? Response.json(values)
+        : new Response(null, { status: 503 }),
+    );
+    const provider = publicCalendarProvider(
+      fetcher as typeof fetch,
+      async (_key, _seconds, load) => load(),
+    );
+    const other = { from: "2026-09-21", to: "2026-09-27" };
+    await provider.getEvents(other);
+    await provider.getEvents(other);
+    expect(fetcher).toHaveBeenCalledTimes(6); // four failures remembered, XOOMAR fetched twice
+    expect(
+      (await provider.getEvents(other)).sources?.find(
+        (s) => s.name === "BLS schedules",
+      ),
+    ).toMatchObject({ status: "unavailable", error: "HTTP 503" });
+  });
+  it("identifies itself to BLS with a contact email and never a URL", () => {
+    expect(calendarUserAgent({ CALENDAR_CONTACT_EMAIL: " a@b.c " })).toBe(
+      "OwlFundCalendar/1.0 (a@b.c)",
+    );
+    expect(calendarUserAgent({})).toBe("OwlFundCalendar/1.0");
   });
   it("fails visibly when every source fails instead of substituting fixtures", async () => {
     await expect(

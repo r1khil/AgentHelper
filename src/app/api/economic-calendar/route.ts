@@ -3,6 +3,8 @@ import { validateRange } from "@/lib/economic-calendar/dates";
 import { getEconomicCalendar } from "@/lib/economic-calendar/service";
 
 export const dynamic = "force-dynamic";
+// Five sources run in parallel with a 10 s timeout each; keep headroom above that.
+export const maxDuration = 30;
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user)
