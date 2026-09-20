@@ -53,6 +53,35 @@ Setup (one time, by the admin whose account owns the folder):
 
 **Reading files.** Matched files are read after each sync, newest first, a few at a time so no run exceeds a serverless function's budget (**Read files now** on the Admin page works through the backlog). For each file version the app extracts the text (PDF, Word, PowerPoint, Excel, Google Docs/Sheets/Slides), writes a structured summary (one line, the document's own thesis, rating, price target, key numbers, catalysts, risks, date) with `OPENROUTER_SUMMARY_MODEL` (default: the chat model), and embeds the text in chunks (`OPENROUTER_EMBEDDING_MODEL`, 1536 dimensions, `OPENROUTER_EMBEDDINGS=off` to skip). Summaries show on the holding page and in the agent's context; the agent's `search_drive_text` tool searches the chunks by meaning. When a holding has no thesis and its initiating coverage report states one, the app proposes it on the holding page; nothing changes until an analyst accepts. Uploads from a holding page go browser → Supabase Storage (signed URL) → server → Drive, so files up to 50MB work within Vercel's request limits; the upload returns at once and the file is read in the background.
 
+## Automated PR review, merge and deploy
+
+`.github/workflows/auto-review-merge-deploy.yml` runs on every non-draft pull request against `main` from a branch in this repository:
+
+1. **Checks**: `npm run lint`, `npm run typecheck`, `npm test`.
+2. **Claude review**: Claude reads the diff and returns a verdict, a review, and a plain-language summary. The workflow posts the review on the PR (approve or request changes). Claude only has read access: it cannot edit files or post anything itself.
+3. **Merge**: if the checks pass and Claude approved, the PR is squash-merged into `main` and the branch is deleted. Otherwise nothing is merged; push a fix and the run repeats.
+4. **Deploy**: Vercel's Git integration builds `main` on its own. The workflow polls the Vercel API until the production deployment of the merge commit is `READY` (or fails).
+5. **Email**: the summary, PR link, and deploy result go to the team through Resend.
+
+Setup (repository Settings → Secrets and variables → Actions):
+
+| Kind | Name | Value |
+| --- | --- | --- |
+| Secret | `ANTHROPIC_API_KEY` | Anthropic API key used for the review |
+| Secret | `RESEND_API_KEY` | Resend key. To email anyone other than the Resend account owner, verify a sending domain in Resend and set `DEPLOY_NOTIFY_FROM` to an address on it |
+| Secret | `VERCEL_TOKEN` | Optional. Vercel account token (Vercel → Account settings → Tokens) with access to the `owlfund-workspace` project. Without it the email says the deploy was triggered but does not wait for it |
+| Variable | `DEPLOY_NOTIFY_EMAILS` | Comma-separated recipients, e.g. `you@temple.edu, lead@temple.edu` |
+| Variable | `DEPLOY_NOTIFY_FROM` | Optional sender, default `Owl Fund Workspace <onboarding@resend.dev>` |
+
+Also install the [Claude GitHub App](https://github.com/apps/claude) on the repository (the action uses it to read the PR), and under Settings → Actions → General allow GitHub Actions to create and approve pull requests.
+
+Notes:
+
+- Draft PRs are skipped until marked ready; PRs from forks are skipped entirely (they cannot see secrets and should be reviewed by hand).
+- If `main` has branch protection that requires a human approval, the merge step will fail; either drop that rule or let the bot's approval count.
+- Claude requests changes for any PR that adds a migration under `drizzle/`, since those need a manual `apply-sql.ts` run; merge those by hand.
+- The Vercel project and team IDs are hard-coded in the workflow's `env` block; update them if the project is recreated.
+
 ## Scheduled jobs
 
 `vercel.json` runs the close check at 23:00 UTC on weekdays, the price history job at 23:30 UTC, and the morning sweep (pending evidence, reminders, overdue notices, earnings calendar, email retries, Drive channel renewal, crawl, and file reading) at 14:00 UTC. Both endpoints accept `Authorization: Bearer $CRON_SECRET` and can be run from the Admin page, with a date for backfills:
