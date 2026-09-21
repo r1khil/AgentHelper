@@ -22,6 +22,8 @@ import {
 import { GICS_SECTORS } from "../lib/attribution/sectors";
 import type { JobProgressEvent } from "../lib/jobs/progress-types";
 import type { DocSummary } from "../lib/drive/summary";
+import type { Source } from "../lib/providers/types";
+import type { PrepPack } from "../lib/agent/prep-types";
 
 // Supabase-managed auth schema; referenced for the profiles FK only.
 const auth = pgSchema("auth");
@@ -304,6 +306,11 @@ export const earnings = pgTable(
     feedback: jsonb("feedback").$type<Feedback>(),
     reflectionBy: uuid("reflection_by").references(() => profiles.id, { onDelete: "set null" }),
     reflectionAt: timestamp("reflection_at", { withTimezone: true }),
+    /** Agent-built evidence pack for the upcoming report; evidence and questions only, never expectations. */
+    prepPack: jsonb("prep_pack").$type<PrepPack>(),
+    prepPackAt: timestamp("prep_pack_at", { withTimezone: true }),
+    prepPackModel: text("prep_pack_model"),
+    prepPackError: text("prep_pack_error"),
     status: earningsStatusEnum("status").notNull().default("upcoming"),
     ...timestamps,
   },
@@ -636,3 +643,58 @@ export const sellSideParts = pgTable("sell_side_parts", {
   text: text("text"),
   summary: text("summary"),
 }, t => [primaryKey({ columns: [t.callId, t.seq] })]);
+
+// Agent memory. `log` rows summarize one answered question; `fact` rows are cited findings; `lesson`
+// rows are tool-usage knowledge. Facts carry the date of their newest evidence and the last time a
+// later turn agreed with them, so every reader can judge their age.
+export type MemoryScope = "holding" | "team" | "fund";
+export type MemoryKind = "log" | "fact" | "lesson";
+export type MemoryMeta = { question?: string; nextQuestions?: string[]; chatId?: string; earningsId?: string };
+
+export const agentMemories = pgTable(
+  "agent_memories",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    scope: text("scope").$type<MemoryScope>().notNull(),
+    teamId: uuid("team_id").references(() => teams.id, { onDelete: "cascade" }),
+    holdingId: uuid("holding_id").references(() => holdings.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<MemoryKind>().notNull(),
+    body: text("body").notNull(),
+    sources: jsonb("sources").$type<Source[]>().notNull().default([]),
+    meta: jsonb("meta").$type<MemoryMeta>(),
+    sourceChatId: uuid("source_chat_id").references(() => chats.id, { onDelete: "set null" }),
+    embedding: vector("embedding", { dimensions: 1536 }),
+    model: text("model"),
+    /** publishedAt of the newest cited source: when the fact was last true per its evidence. */
+    evidenceAt: timestamp("evidence_at", { withTimezone: true }),
+    /** Last time a later turn's distilled fact matched this row. */
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    useCount: integer("use_count").notNull().default(0),
+    createdBy: text("created_by").notNull().default("agent"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    ...timestamps,
+  },
+  (t) => [index("agent_memories_holding").on(t.holdingId, t.kind, t.createdAt), index("agent_memories_team_scope").on(t.teamId, t.scope), index("agent_memories_embedding").using("hnsw", t.embedding.op("vector_cosine_ops"))],
+);
+export type AgentMemory = typeof agentMemories.$inferSelect;
+
+// Remote MCP servers an admin registered. The auth header value comes from process.env[authEnv]; it is never stored.
+export const mcpServers = pgTable("mcp_servers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull().unique(),
+  url: text("url").notNull(),
+  authEnv: text("auth_env"),
+  enabled: boolean("enabled").notNull().default(true),
+  toolPrefix: text("tool_prefix").notNull(),
+  allowedTools: text("allowed_tools").array(),
+  lastOkAt: timestamp("last_ok_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  /** Tool names seen on the last successful connection, for the Admin page. */
+  toolNames: text("tool_names").array(),
+  createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  ...timestamps,
+});
+export type McpServer = typeof mcpServers.$inferSelect;

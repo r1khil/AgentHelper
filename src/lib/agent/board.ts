@@ -103,14 +103,26 @@ const KIND_LABELS: Record<string, string> = {
   read_drive_file: "Reading a team document",
   find_call_transcripts: "Searching call transcripts",
   read_call_transcript: "Reading a call transcript",
+  remember: "Saving a note to the research log",
+  recall: "Checking the research log",
+  read_web_page: "Reading a web page",
+  get_insider_transactions: "Checking insider filings",
+  get_institutional_holders: "Checking who owns the stock",
+  get_analyst_estimates: "Pulling consensus estimates",
+  compare_peers: "Comparing peers",
 };
+
+/** Human label for a tool step; unknown (external MCP) tools read as "Using <name>". */
+export function toolLabel(name: string) {
+  return KIND_LABELS[name] ?? `Using ${name.replace(/_/g, " ")}`;
+}
 
 /** The one-line research trace under an answer, or the live step label while it is still being written. */
 export function traceLine(turn: Turn, live: boolean): { text: string; working: boolean } {
   const { lookups, sources, failed, current } = summarizeActivity(turn.activity);
   const working = live && (current !== null || lookups === 0 || turn.answerText.length === 0);
   if (working) {
-    const step = current ? (KIND_LABELS[current] ?? current) : lookups === 0 ? "Reading the question" : "Writing the answer";
+    const step = current ? toolLabel(current) : lookups === 0 ? "Reading the question" : "Writing the answer";
     return { text: `${step}… · ${sources} source${sources === 1 ? "" : "s"}`, working: true };
   }
   const parts = [`Searched ${lookups} lookup${lookups === 1 ? "" : "s"}`, `${sources} source${sources === 1 ? "" : "s"}`];
@@ -120,7 +132,7 @@ export function traceLine(turn: Turn, live: boolean): { text: string; working: b
 
 export function stepLabel(turn: Turn): string {
   const { lookups, current } = summarizeActivity(turn.activity);
-  if (current) return `${KIND_LABELS[current] ?? current}…`;
+  if (current) return `${toolLabel(current)}…`;
   return lookups === 0 ? "Reading the question…" : "Writing the answer…";
 }
 

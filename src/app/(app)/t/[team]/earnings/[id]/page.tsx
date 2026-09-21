@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Lock, RefreshCw } from "lucide-react";
 import { loadTeam } from "@/lib/teams";
 import { getEarnings, listEarningsEvidence, type Actuals } from "@/lib/earnings";
-import { gatherResults, lockChecklist, markReviewed, requestEarningsFeedback, saveChecklist, saveReflection } from "@/lib/actions/earnings";
+import { gatherResults, lockChecklist, markReviewed, rebuildPrepPack, requestEarningsFeedback, saveChecklist, saveReflection } from "@/lib/actions/earnings";
+import { canManageTeam } from "@/lib/auth";
+import { PrepPackCard } from "@/components/app/agent/prep-pack-card";
 import { agentConfigured } from "@/lib/agent/model";
 import { fmtDate, fmtDateTime, fmtMoney, relativeTime } from "@/lib/format";
 import { todayNY } from "@/lib/providers/calendar";
@@ -20,9 +22,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export const metadata: Metadata = { title: "Earnings" };
 
-export default async function EarningsDetail({ params }: { params: Promise<{ team: string; id: string }> }) {
-  const { team: slug, id } = await params;
-  const { team } = await loadTeam(slug);
+export default async function EarningsDetail({ params, searchParams }: { params: Promise<{ team: string; id: string }>; searchParams: Promise<{ error?: string }> }) {
+  const [{ team: slug, id }, { error }] = await Promise.all([params, searchParams]);
+  const { team, user } = await loadTeam(slug);
   const row = await getEarnings(id);
   if (!row || row.h.teamId !== team.id) notFound();
   const { e, h } = row;
@@ -31,6 +33,16 @@ export default async function EarningsDetail({ params }: { params: Promise<{ tea
   const locked = Boolean(e.preLockedAt);
   const reported = e.reportDate <= todayNY();
   const sourceById = new Map((actuals?.sources ?? []).map((s) => [s.id, s]));
+  const canManage = canManageTeam(user, team.id);
+  const rebuild = canManage && !reported && agentConfigured() ? (
+    <form action={rebuildPrepPack}>
+      <input type="hidden" name="id" value={e.id} />
+      <Button type="submit" size="xs" variant="ghost" title="Gather the evidence again with the agent (one model run)">
+        <RefreshCw />
+        {e.prepPack ? "Rebuild" : "Build prep pack"}
+      </Button>
+    </form>
+  ) : null;
 
   return (
     <>
@@ -55,6 +67,18 @@ export default async function EarningsDetail({ params }: { params: Promise<{ tea
           </>
         }
       />
+
+      {error && <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error}</div>}
+      {e.prepPack ? (
+        <PrepPackCard pack={e.prepPack} actions={rebuild} className="mb-6" />
+      ) : !reported ? (
+        <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 p-4 text-sm text-muted-foreground">
+          <span>
+            {e.prepPackError ? `The agent could not build the evidence pack yet (${e.prepPackError.replace(/^attempt \d+: /, "").slice(0, 140)}).` : "The agent builds a sourced evidence pack (last quarter, guidance on record, consensus, the team's questions, items to watch) a few trading days before the report."}
+          </span>
+          {rebuild}
+        </Card>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="p-4">

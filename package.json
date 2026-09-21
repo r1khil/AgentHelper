@@ -18,9 +18,14 @@
     "db:seed": "tsx scripts/seed.ts",
     "smoke:providers": "tsx scripts/smoke-providers.ts",
     "changelog:sync": "tsx --conditions=react-server scripts/changelog-smoke.ts",
-    "smoke:agent": "tsx --conditions=react-server scripts/smoke-agent.ts"
+    "smoke:agent": "tsx --conditions=react-server scripts/smoke-agent.ts",
+    "smoke:tools": "tsx --conditions=react-server scripts/smoke-tools.ts",
+    "smoke:mcp": "tsx --conditions=react-server scripts/smoke-mcp.ts",
+    "smoke:prep": "tsx --conditions=react-server scripts/smoke-prep.ts"
   },
   "dependencies": {
+    "@ai-sdk/mcp": "^2.0.52",
+    "@ai-sdk/provider": "^4.0.17",
     "@ai-sdk/react": "^4.0.108",
     "@base-ui/react": "^1.8.0",
     "@openrouter/ai-sdk-provider": "^3.0.0",

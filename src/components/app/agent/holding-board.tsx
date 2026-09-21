@@ -18,6 +18,8 @@ import { ActivityRow } from "@/components/app/chat/chat-panel";
 import { useResearchChat } from "@/components/app/chat/use-research-chat";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { MemoryEntry } from "@/lib/agent/memory/prompt";
+import { ResearchLogCard, suggestionsFor } from "@/components/app/agent/research-log-card";
 
 export type BoardChat = { id: string; title: string; authorName: string | null; questions: number; updatedAt: string; canDelete: boolean };
 export type BoardMarket = { price?: number; changePct?: number; relativePp?: number; asOf?: string };
@@ -34,6 +36,12 @@ type Props = {
   configured: boolean;
   transparency: boolean;
   userName: string;
+  /** The agent's research log for this holding (newest first). */
+  memories: MemoryEntry[];
+  /** Whether this user may remove research-log entries. */
+  canManage: boolean;
+  /** The pre-earnings evidence pack card for the next report, when one has been built. */
+  prepCard?: ReactNode;
 };
 
 const SUGGESTIONS = (t: string) => [
@@ -49,7 +57,14 @@ type ChatState = { messages: UIMessage[]; runStatus: RunStatus };
  * answer on the right. Chat switching stays on the client; the URL's `chat` param follows the selection.
  */
 export function HoldingBoard(props: Props) {
-  const { team, holding, configured, transparency, userName } = props;
+  const { team, holding, configured, transparency, userName, memories, canManage } = props;
+  const suggestions = useMemo(() => suggestionsFor(holding.ticker, memories, SUGGESTIONS), [holding.ticker, memories]);
+  const logCard = (defaultOpen: boolean) => (
+    <>
+      {props.prepCard}
+      <ResearchLogCard entries={memories} canManage={canManage} defaultOpen={defaultOpen} />
+    </>
+  );
   const [chats, setChats] = useState(props.chats);
   const [chatId, setChatId] = useState(props.initialChatId);
   const [cache, setCache] = useState<Record<string, ChatState>>(() => (props.initialChatId ? { [props.initialChatId]: { messages: props.initialMessages, runStatus: props.initialRunStatus } } : {}));
@@ -221,9 +236,11 @@ export function HoldingBoard(props: Props) {
           transparency={transparency}
           autoSend={autoSend?.chatId === chatId ? autoSend.text : null}
           onSent={(text) => onSent(chatId, text)}
+          suggestions={suggestions}
+          logCard={logCard(false)}
         />
       ) : (
-        <EmptyBoard header={header} holding={holding} movement={props.movement} configured={configured} busy={starting || loading !== null} hasChats={chats.length > 0} onAsk={start} />
+        <EmptyBoard header={header} holding={holding} movement={props.movement} configured={configured} busy={starting || loading !== null} hasChats={chats.length > 0} onAsk={start} suggestions={suggestions} logCard={logCard(true)} />
       )}
     </div>
   );
@@ -277,6 +294,8 @@ function EmptyBoard({
   busy,
   hasChats,
   onAsk,
+  suggestions,
+  logCard,
 }: {
   header: ReactNode;
   holding: Props["holding"];
@@ -285,6 +304,8 @@ function EmptyBoard({
   busy: boolean;
   hasChats: boolean;
   onAsk: (text: string) => void;
+  suggestions: string[];
+  logCard: ReactNode;
 }) {
   const [draft, setDraft] = useState("");
   return (
@@ -296,7 +317,7 @@ function EmptyBoard({
             <div className="font-medium">{hasChats ? `New chat about ${holding.ticker}` : `Start a chat about ${holding.ticker}`}</div>
             <div className="text-muted-foreground">Ask anything about this holding. Sources for each answer appear on the right; the answer cites them by number.</div>
             <div className="flex flex-col gap-1.5">
-              {SUGGESTIONS(holding.ticker).map((s) => (
+              {suggestions.map((s) => (
                 <button key={s} type="button" disabled={busy || !configured} onClick={() => onAsk(s)} className="rounded-lg border px-3 py-2 text-left text-[13px] leading-[18px] hover:bg-muted disabled:opacity-60">
                   {s}
                 </button>
@@ -316,6 +337,7 @@ function EmptyBoard({
       }
       right={
         <>
+          {logCard}
           <SourcesHeader sub="Empty until you ask" movement={movement} />
           <EmptySources />
         </>
@@ -383,6 +405,8 @@ function BoardThread({
   transparency,
   autoSend,
   onSent,
+  suggestions,
+  logCard,
 }: {
   chatId: string;
   header: ReactNode;
@@ -393,6 +417,8 @@ function BoardThread({
   transparency: boolean;
   autoSend: string | null;
   onSent: (text: string) => void;
+  suggestions: string[];
+  logCard: ReactNode;
 }) {
   const { messages, status, streaming, busy, catchingUp, runError, requestError, traceView, now, send, stopWatching } = useResearchChat({
     chatId,
@@ -487,7 +513,7 @@ function BoardThread({
                 <div className="font-medium">New chat about {holding.ticker}</div>
                 <div className="text-muted-foreground">Ask anything about this holding. Sources for each answer appear on the right; the answer cites them by number.</div>
                 <div className="flex flex-col gap-1.5">
-                  {SUGGESTIONS(holding.ticker).map((s) => (
+                  {suggestions.map((s) => (
                     <button
                       key={s}
                       type="button"
@@ -586,6 +612,7 @@ function BoardThread({
         }
         right={
           <>
+            {logCard}
             <SourcesHeader sub={sub} movement={movement} />
             {!active || (sources.length === 0 && !live) ? (
               <EmptySources />

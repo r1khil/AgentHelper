@@ -30,6 +30,7 @@ export type TraceEvent = Base &
     | { t: "fetch"; host: string; key?: string; url?: string; layer: TraceLayer; ms: number; bytes?: number; ttlSeconds?: number; ok: boolean; error?: string; status?: number }
     | { t: "wait"; host: string; ms: number }
     | { t: "retry"; attempt: number; backoffMs: number; error: string }
+    | { t: "model.fallback"; from: string; to: string; error: string }
     | { t: "run.end"; ms: number; steps: number; usage: TraceUsage }
   );
 
@@ -37,7 +38,7 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
 /** What callers pass to `sink.emit`: the sink stamps seq, at and step. */
 export type TraceEventInput = DistributiveOmit<TraceEvent, "seq" | "at" | "step">;
 
-export type AgentMetadata = { uncited?: number; model?: string };
+export type AgentMetadata = { uncited?: number; model?: string; /** The answer went through the citation-repair pass. */ repaired?: boolean };
 export type AgentDataParts = { trace: TraceEvent };
 export type AgentUIMessage = UIMessage<AgentMetadata, AgentDataParts>;
 

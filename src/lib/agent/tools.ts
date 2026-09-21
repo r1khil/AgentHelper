@@ -6,9 +6,11 @@ import { and, desc, eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
 import { holdingNotes, holdings, movements, profiles } from "@/db/schema";
-import { getDailyBars, getEarningsDate, getQuote, getQuotes, SPX_SYMBOL } from "@/lib/providers/yahoo";
+import { getDailyBars, getEarningsDate, getEstimates, getHolders, getQuote, getQuotes, SPX_SYMBOL } from "@/lib/providers/yahoo";
+import { getInsiderTransactions, TRANSACTION_CODES } from "@/lib/providers/edgar-form4";
+import { fetchWebPage, safeWebUrl } from "@/lib/agent/web";
 import { conceptFacts, extractItem, filingUrlForFact, getCompanyFacts, getFilingText, listFilingDocuments, listFilings, listItemHeadings, tickerToCik, type Fact } from "@/lib/providers/edgar";
-import { resolveKeyFinancials, searchConcepts } from "@/lib/agent/financials";
+import { resolveKeyFinancials, searchConcepts, type KeyFinancials } from "@/lib/agent/financials";
 import { finnhubConfigured, getCompanyNews, getEarningsCalendar } from "@/lib/providers/finnhub";
 import { NY } from "@/lib/providers/calendar";
 import { relativeMovePp } from "@/lib/movement/math";
@@ -21,6 +23,8 @@ import { embeddingConfigured } from "@/lib/agent/embeddings";
 import { listPendingProposals } from "@/lib/holdings";
 import { searchFullText } from "@/lib/drive/read";
 import { windowText } from "@/lib/drive/text";
+import { MARKET_FACT_TTL_DAYS, rememberMemory, searchMemories } from "@/lib/agent/memory/store";
+import { newestEvidenceDate } from "@/lib/agent/memory/distill";
 
 export type ToolResult<T> = { data: T; sources: Source[]; error?: string };
 
@@ -52,11 +56,93 @@ async function assertDriveReady() {
   if (status.needsReconnect) throw new DriveNotConnected("The analyst Drive connection needs to be renewed by an admin.");
 }
 
-export function makeTools(ctx: { teamId: string; userId: string; sources?: Source[] }) {
+/** Standard income-statement lines for one company with one source per filing; shared by get_key_financials and compare_peers. */
+async function keyFinancialsFor(ticker: string, periodKind: "quarter" | "annual", periods: number) {
+  const { cik, name } = await cikFor(ticker);
+  const facts = await getCompanyFacts(cik);
+  const kf: KeyFinancials = resolveKeyFinancials(facts, periodKind, periods);
+  const filingUrls = new Map((await listFilings(cik).catch(() => [])).map((f) => [f.accession, f.url]));
+  const sources: Source[] = [];
+  const byAccession = new Map<string, string>();
+  const rows = kf.rows.map((r) => {
+    let sourceId = byAccession.get(r.accession);
+    if (!sourceId && r.accession) {
+      const s = src("xbrl", `${name} ${r.form} filed ${r.filed} (XBRL financial data)`, filingUrls.get(r.accession) ?? filingUrlForFact(cik, { accn: r.accession } as Fact), "SEC EDGAR XBRL", r.filed);
+      sources.push(s);
+      byAccession.set(r.accession, s.id);
+      sourceId = s.id;
+    }
+    return { ...r, sourceId: sourceId ?? null };
+  });
+  for (const s of sources) {
+    s.excerpt = rows
+      .filter((r) => r.sourceId === s.id)
+      .map((r) => {
+        const values = Object.entries(r.values).map(([key, value]) => {
+          const metric = kf.metrics.find((m) => m.key === key);
+          return `${metric?.label ?? key}: ${value.value} ${metric?.unit ?? ""}`;
+        });
+        return `XBRL facts for period ended ${r.end}: ${values.join("; ")}`;
+      })
+      .join(". ")
+      .slice(0, 360);
+  }
+  return { cik, company: name, kf, rows, sources };
+}
+
+export function makeTools(ctx: { teamId: string; holdingId?: string | null; userId: string; sources?: Source[] }) {
   const filingSources = new Map<string, Source>((ctx.sources ?? []).filter((s) => s.id.startsWith("sec-") && s.url?.startsWith("https://www.sec.gov/Archives/")).map((s) => [s.url!, s]));
+  /** Every source any tool returned in this conversation, so `remember` can attach real Source objects to a fact. */
+  const seen = new Map<string, Source>((ctx.sources ?? []).map((s) => [s.id, s]));
   const tickerArg = z.string().describe("Ticker symbol, e.g. NVDA");
 
-  return {
+  const tools = {
+    remember: tool({
+      description:
+        "Save something durable for future chats about this holding, team, or the whole fund: a tool-usage lesson (which XBRL concept a company uses, which filing item holds what, which search came back empty), a company fact with the ids of the sources that support it, or a fund-wide fact (a rates decision, an index event) with an expiry. Never save the student's interpretation, thesis, or conclusions, and never save a fact you cannot source.",
+      inputSchema: z.object({
+        kind: z.enum(["fact", "lesson"]),
+        scope: z.enum(["holding", "team", "fund"]).default("holding").describe("holding: this pinned company; team: the sector team; fund: everyone"),
+        body: z.string().min(10).max(600),
+        sourceIds: z.array(z.string()).max(6).default([]).describe("Source ids from this conversation that support a fact"),
+        expiresInDays: z.number().int().min(1).max(730).optional().describe("Facts about a period or price should expire; structural facts and lessons need not"),
+      }),
+      execute: async ({ kind, scope, body, sourceIds, expiresInDays }): Promise<ToolResult<unknown>> => {
+        try {
+          const cited = sourceIds.map((id) => seen.get(id)).filter((s): s is Source => !!s);
+          if (kind === "fact" && cited.length === 0) throw new Error("A fact needs at least one source id returned by a tool in this conversation. Save it as a lesson if it is about how to use the tools.");
+          const effScope = scope === "holding" && !ctx.holdingId ? "team" : scope;
+          const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 86_400_000) : kind === "fact" ? new Date(Date.now() + MARKET_FACT_TTL_DAYS * 86_400_000) : null;
+          const r = await rememberMemory({ scope: effScope, teamId: ctx.teamId, holdingId: effScope === "holding" ? (ctx.holdingId ?? null) : null, kind, body, sources: cited, evidenceAt: kind === "fact" ? (newestEvidenceDate(cited) ?? new Date()) : null, expiresAt, createdBy: `agent:${ctx.userId}` });
+          return { data: { saved: true, id: r.id, merged: r.merged, scope: effScope, note: r.merged ? "An equivalent note already existed; it was marked as verified today." : undefined }, sources: [] };
+        } catch (e) {
+          return fail(e, null);
+        }
+      },
+    }),
+
+    recall: tool({
+      description:
+        "Search what the agent learned in earlier chats: research-log entries (what was asked and found), facts with their citations, and tool lessons, across this holding, the team, and the fund. Use it before re-researching something the team has probably asked before. Every fact carries an evidence date; re-verify one whose evidence predates the latest filing before using its number.",
+      inputSchema: z.object({ query: z.string().min(3), limit: z.number().int().min(1).max(12).default(6) }),
+      execute: async ({ query, limit }): Promise<ToolResult<unknown>> => {
+        try {
+          const hits = await searchMemories({ query, teamId: ctx.teamId, holdingId: ctx.holdingId ?? null, limit });
+          const sources = new Map<string, Source>();
+          for (const h of hits) for (const s of h.sources) sources.set(s.id, s);
+          return {
+            data: {
+              memories: hits.map((h) => ({ id: h.id, kind: h.kind, scope: h.scope, noted: h.createdAt.slice(0, 10), evidenceAt: h.evidenceAt?.slice(0, 10) ?? null, verifiedAt: h.verifiedAt?.slice(0, 10) ?? null, body: h.body, sourceIds: h.sources.map((s) => s.id), question: h.meta?.question, score: h.score })),
+              note: hits.length ? "Cite a remembered fact with the source ids listed for it; say 'per the research log (date)' for log entries." : "Nothing remembered matches; research it with the other tools.",
+            },
+            sources: [...sources.values()],
+          };
+        } catch (e) {
+          return fail(e, null);
+        }
+      },
+    }),
+
     find_call_transcripts: tool({
       description: "Search saved sell-side call transcripts in this team. Filter by company ticker; optional full-text query. Returns source passages. Use read_call_transcript to page the complete call.",
       inputSchema: z.object({ ticker: z.string().optional(), query: z.string().min(2).optional() }),
@@ -229,35 +315,33 @@ export function makeTools(ctx: { teamId: string; userId: string; sources?: Sourc
       }),
       execute: async ({ ticker, periodKind, periods }): Promise<ToolResult<unknown>> => {
         try {
-          const { cik, name } = await cikFor(ticker);
-          const facts = await getCompanyFacts(cik);
-          const kf = resolveKeyFinancials(facts, periodKind, periods);
-          const filingUrls = new Map((await listFilings(cik).catch(() => [])).map((f) => [f.accession, f.url]));
-          const sources: Source[] = [];
-          const byAccession = new Map<string, string>();
-          const rows = kf.rows.map((r) => {
-            let sourceId = byAccession.get(r.accession);
-            if (!sourceId && r.accession) {
-              const s = src("xbrl", `${name} ${r.form} filed ${r.filed} (XBRL financial data)`, filingUrls.get(r.accession) ?? filingUrlForFact(cik, { accn: r.accession } as Fact), "SEC EDGAR XBRL", r.filed);
-              sources.push(s);
-              byAccession.set(r.accession, s.id);
-              sourceId = s.id;
-            }
-            return { ...r, sourceId: sourceId ?? null };
-          });
-          for (const s of sources) {
-            s.excerpt = rows.filter((r) => r.sourceId === s.id).map((r) => {
-              const values = Object.entries(r.values).map(([key, value]) => {
-                const metric = kf.metrics.find((m) => m.key === key);
-                return `${metric?.label ?? key}: ${value.value} ${metric?.unit ?? ""}`;
-              });
-              return `XBRL facts for period ended ${r.end}: ${values.join("; ")}`;
-            }).join(". ").slice(0, 360);
-          }
-          return { data: { company: name, periodKind, metrics: kf.metrics, rows, missing: kf.missing, notes: kf.notes }, sources };
+          const { company, kf, rows, sources } = await keyFinancialsFor(ticker, periodKind, periods);
+          return { data: { company, periodKind, metrics: kf.metrics, rows, missing: kf.missing, notes: kf.notes }, sources };
         } catch (e) {
           return fail(e, null);
         }
+      },
+    }),
+
+    compare_peers: tool({
+      description: "The latest reported income-statement lines for two to five tickers side by side (revenue, operating income, net income, diluted EPS, margins as calculations), from SEC XBRL. Use for 'how does X compare with Y' questions; each company gets its own source.",
+      inputSchema: z.object({ tickers: z.array(tickerArg).min(2).max(5), periodKind: z.enum(["quarter", "annual"]).default("quarter") }),
+      execute: async ({ tickers, periodKind }): Promise<ToolResult<unknown>> => {
+        const sources: Source[] = [];
+        const companies = await Promise.all(
+          [...new Set(tickers.map((t) => t.toUpperCase()))].map(async (t) => {
+            try {
+              const { company, kf, rows, sources: srcs } = await keyFinancialsFor(t, periodKind, 1);
+              const latest = rows[0];
+              if (!latest) return { ticker: t, company, error: "No reported period found" };
+              sources.push(...srcs.filter((x) => x.id === latest.sourceId));
+              return { ticker: t, company, periodEnd: latest.end, form: latest.form, filed: latest.filed, values: latest.values, metrics: kf.metrics.map((m) => ({ key: m.key, label: m.label, unit: m.unit })), missing: kf.missing, sourceId: latest.sourceId };
+            } catch (e) {
+              return { ticker: t, error: e instanceof Error ? e.message : String(e) };
+            }
+          }),
+        );
+        return { data: { periodKind, companies, note: "Periods may not line up across companies (different fiscal calendars); compare the periodEnd dates. Margins must be computed by you and labeled as calculations." }, sources };
       },
     }),
 
@@ -467,6 +551,82 @@ export function makeTools(ctx: { teamId: string; userId: string; sources?: Sourc
       },
     }),
 
+    read_web_page: tool({
+      description:
+        "Read a public web page (a news article from get_news, a company press-release page, an exchange or regulator page) as plain text. Use it when a headline is not enough. It cannot read SEC archive URLs (use read_filing), Google Drive (use read_drive_file), or pages that need a login. Returns a window of maxChars starting at offset; page when hasMore is true. Quote sparingly; filings and releases outrank articles.",
+      inputSchema: z.object({ url: z.string().min(8), offset: z.number().int().min(0).default(0), maxChars: z.number().int().min(500).max(20000).default(8000) }),
+      execute: async ({ url, offset, maxChars }): Promise<ToolResult<unknown>> => {
+        try {
+          const appHost = process.env.APP_URL ? new URL(process.env.APP_URL).hostname : null;
+          const check = safeWebUrl(url, appHost);
+          if (!check.ok) throw new Error(check.reason);
+          const page = await fetchWebPage(check.url);
+          const w = windowText(page.text, offset, maxChars);
+          const host = new URL(page.finalUrl).hostname.replace(/^www\./, "");
+          const s: Source = { ...src("web", page.title ?? host, page.finalUrl, host), id: sourceId("web", `${page.finalUrl}:${w.offset}`), sourceType: "Web page", excerpt: w.text.trim().slice(0, 360), location: { offset: w.offset, text: w.text.trim().slice(0, 180) } };
+          return { data: { url: page.finalUrl, title: page.title, ...w, truncatedDownload: page.truncated, sourceId: s.id }, sources: [s] };
+        } catch (e) {
+          return fail(e, null);
+        }
+      },
+    }),
+
+    get_insider_transactions: tool({
+      description: "Recent insider trades for a ticker from SEC Form 4 filings: who (officer or director), date, transaction code (P purchase, S sale, A award, M option exercise, F tax withholding), shares, price, and shares owned after. Newest filings first.",
+      inputSchema: z.object({ ticker: tickerArg, limit: z.number().int().min(1).max(20).default(8).describe("How many Form 4 filings to read") }),
+      execute: async ({ ticker, limit }): Promise<ToolResult<unknown>> => {
+        try {
+          const { cik, name } = await cikFor(ticker);
+          const filings = await getInsiderTransactions(cik, limit);
+          const sources = filings.map((f) => {
+            const owners = [...new Set(f.transactions.map((t) => t.owner))].join(", ");
+            return { ...src("sec", `${name} Form 4 filed ${f.filedAt}${owners ? ` — ${owners}` : ""}`, f.url, "SEC EDGAR", f.filedAt), sourceType: "Insider filing", excerpt: f.transactions.map((t) => `${t.owner}: ${TRANSACTION_CODES[t.code] ?? t.code} ${t.shares ?? "?"} shares${t.pricePerShare ? ` at $${t.pricePerShare}` : ""} on ${t.date}`).join("; ").slice(0, 360) || undefined };
+          });
+          return {
+            data: {
+              company: name,
+              filings: filings.map((f, i) => ({ filedAt: f.filedAt, accession: f.accession, sourceId: sources[i].id, parseError: f.parseError, transactions: f.transactions.map((t) => ({ ...t, codeLabel: TRANSACTION_CODES[t.code] ?? "Other" })) })),
+              codes: TRANSACTION_CODES,
+              note: filings.length ? "Sales coded S under a 10b5-1 plan are routine; look for open-market purchases (P) and clusters." : "No Form 4 filings found.",
+            },
+            sources,
+          };
+        } catch (e) {
+          return fail(e, null);
+        }
+      },
+    }),
+
+    get_institutional_holders: tool({
+      description: "Ownership breakdown for a ticker (insider and institutional percent held, number of institutions) and the ten largest institutional holders with their latest reported positions, from Yahoo Finance (13F-derived, usually a quarter old).",
+      inputSchema: z.object({ ticker: tickerArg }),
+      execute: async ({ ticker }): Promise<ToolResult<unknown>> => {
+        try {
+          const t = ticker.toUpperCase();
+          const h = await getHolders(t);
+          const s = src("yhold", `${t} holders (Yahoo Finance)`, `https://finance.yahoo.com/quote/${encodeURIComponent(t)}/holders/`, "Yahoo Finance", h.top[0]?.reportDate ?? undefined);
+          return { data: { ticker: t, ...h, sourceId: s.id, note: "13F positions are reported with a lag of up to 45 days after quarter end." }, sources: [s] };
+        } catch (e) {
+          return fail(e, null);
+        }
+      },
+    }),
+
+    get_analyst_estimates: tool({
+      description: "Sell-side consensus for a ticker: EPS and revenue estimates (average, range, analyst count, year-ago, growth) for the current and next quarter and fiscal year, the recommendation mix, and the mean price target, from Yahoo Finance. This is consensus, not company guidance; guidance lives in the earnings release and MD&A.",
+      inputSchema: z.object({ ticker: tickerArg }),
+      execute: async ({ ticker }): Promise<ToolResult<unknown>> => {
+        try {
+          const t = ticker.toUpperCase();
+          const e = await getEstimates(t);
+          const s = src("yest", `${t} analyst estimates (Yahoo Finance)`, `https://finance.yahoo.com/quote/${encodeURIComponent(t)}/analysis/`, "Yahoo Finance");
+          return { data: { ticker: t, ...e, sourceId: s.id, note: "Consensus figures; label them as such and never present them as guidance or as a forecast of your own." }, sources: [s] };
+        } catch (e) {
+          return fail(e, null);
+        }
+      },
+    }),
+
     get_peer_moves: tool({
       description: "Today's price moves for the team's other holdings (peers), each relative to the S&P 500.",
       inputSchema: z.object({}),
@@ -491,6 +651,28 @@ export function makeTools(ctx: { teamId: string; userId: string; sources?: Sourc
       },
     }),
   };
+  return trackSources(tools, seen);
+}
+
+/** Wrap every tool so the Source objects it returns are remembered for `remember` and later turns. */
+function trackSources<T extends Record<string, { execute?: unknown }>>(tools: T, seen: Map<string, Source>): T {
+  const out: Record<string, unknown> = {};
+  for (const [name, t] of Object.entries(tools)) {
+    const exec = t.execute as ((input: unknown, opts: unknown) => Promise<ToolResult<unknown>>) | undefined;
+    if (!exec) {
+      out[name] = t;
+      continue;
+    }
+    out[name] = {
+      ...t,
+      execute: async (input: unknown, opts: unknown) => {
+        const r = await exec(input, opts);
+        if (r && typeof r === "object" && Array.isArray(r.sources)) for (const s of r.sources) if (s && typeof s.id === "string") seen.set(s.id, s);
+        return r;
+      },
+    };
+  }
+  return out as T;
 }
 
 export type AgentTools = ReturnType<typeof makeTools>;

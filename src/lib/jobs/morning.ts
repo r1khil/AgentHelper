@@ -11,6 +11,8 @@ import { backfillIndustries, refreshBellwethers } from "./bellwethers";
 import { ensureDriveWatch, runDriveSync } from "./drive";
 import { purgeStagedUploads } from "@/lib/storage";
 import { createJobReporter } from "./progress";
+import { purgeExpiredMemories } from "@/lib/agent/memory/store";
+import { prepEarnings } from "./earnings-prep";
 
 export type MorningJobResult = {
   date: string;
@@ -21,6 +23,8 @@ export type MorningJobResult = {
   bellwethers: Record<string, unknown>;
   email: Record<string, number>;
   drive: Record<string, unknown>;
+  memories: Record<string, unknown>;
+  prep: Record<string, unknown>;
 };
 
 /** Morning sweep: finish pending evidence, remind, flag overdue, refresh earnings, retry email. */
@@ -28,7 +32,7 @@ export async function runMorningJob(): Promise<MorningJobResult> {
   const [jobRow] = await db.insert(jobRuns).values({ job: "morning" }).returning({ id: jobRuns.id });
   const progress = createJobReporter(jobRow.id);
   const date = todayNY();
-  const result: MorningJobResult = { date, evidenceFinished: 0, reminders: 0, overdue: 0, earnings: {}, bellwethers: {}, email: {}, drive: {} };
+  const result: MorningJobResult = { date, evidenceFinished: 0, reminders: 0, overdue: 0, earnings: {}, bellwethers: {}, email: {}, drive: {}, memories: {}, prep: {} };
 
   const pending = await db.select({ id: movements.id }).from(movements).where(and(eq(movements.evidenceStatus, "pending"), ne(movements.status, "completed"))).limit(20);
   progress.step("finish pending evidence", { movements: pending.length });
@@ -113,6 +117,25 @@ export async function runMorningJob(): Promise<MorningJobResult> {
     progress.warn("email failed", { error: e instanceof Error ? e.message : String(e) });
   }
 
+  // Evidence packs for reports in the next few trading days; a few per run so chat keeps its request budget.
+  progress.step("build earnings prep packs");
+  try {
+    const r = await prepEarnings();
+    result.prep = { candidates: r.candidates, built: r.built, failed: r.failed, window: r.window };
+    if (Object.keys(r.failed).length) progress.warn("some prep packs failed", { failed: r.failed });
+  } catch (e) {
+    result.prep = { error: e instanceof Error ? e.message : String(e) };
+    progress.warn("prep packs failed", { error: result.prep.error });
+  }
+
+  progress.step("purge expired agent memories");
+  try {
+    result.memories = { purged: await purgeExpiredMemories() };
+  } catch (e) {
+    result.memories = { error: e instanceof Error ? e.message : String(e) };
+    progress.warn("memory purge failed", { error: result.memories.error });
+  }
+
   progress.step("sync Google Drive index");
   try {
     const watch = await ensureDriveWatch();
@@ -130,7 +153,7 @@ export async function runMorningJob(): Promise<MorningJobResult> {
   return result;
 }
 
-async function recipientsFor(teamId: string, ownerId: string | null) {
+export async function recipientsFor(teamId: string, ownerId: string | null) {
   const leads = await db.select({ id: profiles.id, email: profiles.email }).from(profiles).where(and(eq(profiles.teamId, teamId), eq(profiles.role, "lead_analyst")));
   const out = new Map(leads.map((l) => [l.id, l]));
   if (ownerId) {

@@ -29,6 +29,8 @@ export function sourceType(source: Source): string {
   if (/release|ex-?99/i.test(source.title)) return "Earnings release";
   if (/presentation|slides|\.pptx/i.test(source.title)) return "Presentation";
   if (source.id.startsWith("xbrl-")) return "XBRL financial data";
+  if (source.id.startsWith("mcp-")) return "External tool";
+  if (source.id.startsWith("web-")) return "Web page";
   if (/SEC/.test(source.publisher)) return "SEC filing";
   if (documentId(source)) return "Internal document";
   return "External source";
