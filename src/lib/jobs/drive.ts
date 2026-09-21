@@ -7,10 +7,11 @@ import { DriveNotConnected, driveConfigured, loadConnection } from "@/lib/drive/
 import { getStartPageToken, listChanges, stopChannel, watchChanges } from "@/lib/drive/changes";
 import { applyChanges } from "@/lib/drive/changes-diff";
 import { upsertIndexRows, type DriveFileInsert } from "@/lib/drive/index";
+import { deleteDriveDocuments, pruneDriveDocuments } from "@/lib/documents/index";
 import { listChildren } from "@/lib/drive/read";
 import { FOLDER_MIME, classifyTree, type DriveItem } from "@/lib/drive/tree";
 import { WATCH_TTL_MS, lazySyncMaxAge, watchNeedsRenewal } from "@/lib/drive/watch-plan";
-import { runDriveIngest, type IngestResult } from "./ingest";
+import { runIngest, type IngestResult } from "./ingest";
 import { createJobReporter } from "./progress";
 
 export type DriveSyncResult = {
@@ -98,6 +99,7 @@ export async function runDriveSync(opts: { reason?: string; ingest?: IngestOpts 
     const ids = rows.map((r) => r.id);
     progress.step("prune removed files");
     const removed = ids.length ? await db.delete(driveFiles).where(notInArray(driveFiles.id, ids)).returning({ id: driveFiles.id }) : await db.delete(driveFiles).returning({ id: driveFiles.id });
+    await pruneDriveDocuments(rows.filter((r) => !r.isFolder).map((r) => r.id));
 
     result.files = rows.filter((r) => !r.isFolder).length;
     result.folders = rows.length - result.files;
@@ -113,7 +115,7 @@ export async function runDriveSync(opts: { reason?: string; ingest?: IngestOpts 
       .where(eq(driveConnection.id, 1));
     await db.update(jobRuns).set({ finishedAt: new Date(), ok: true, summary: { ...result, reason: opts.reason ?? "manual" } }).where(eq(jobRuns.id, jobRow.id));
     // Content work (text, summaries, embeddings) runs after the index is consistent and the sync lock is released.
-    if (opts.ingest) result.ingest = await runDriveIngest({ reason: opts.reason ?? "manual", ...opts.ingest });
+    if (opts.ingest) result.ingest = await runIngest({ reason: opts.reason ?? "manual", kinds: ["drive"], budgetMs: opts.ingest.budgetMs, maxDocs: opts.ingest.maxFiles });
     return result;
   } catch (e) {
     const message = msg(e);
@@ -168,7 +170,10 @@ export async function runIncrementalSync(opts: { reason: string; ingest?: Ingest
       const plan = applyChanges({ rootId, changes: listed.changes, existing, holdings: hs, teams: ts, now: new Date() });
 
       if (plan.upserts.length) await upsertIndexRows(plan.upserts);
-      if (plan.deletes.length) await db.delete(driveFiles).where(inArray(driveFiles.id, plan.deletes));
+      if (plan.deletes.length) {
+        await db.delete(driveFiles).where(inArray(driveFiles.id, plan.deletes));
+        await deleteDriveDocuments(plan.deletes);
+      }
       for (const u of plan.upserts) if (!u.isFolder && u.holdingId) changedFileIds.add(u.id);
       result.changes! += listed.changes.length;
       result.files += plan.upserts.filter((u) => !u.isFolder).length;
@@ -186,7 +191,7 @@ export async function runIncrementalSync(opts: { reason: string; ingest?: Ingest
     }
     await db.update(driveConnection).set({ syncStartedAt: null }).where(eq(driveConnection.id, 1));
     await db.update(jobRuns).set({ finishedAt: new Date(), ok: true, summary: { ...result, reason: opts.reason } }).where(eq(jobRuns.id, jobRow.id));
-    if (opts.ingest && changedFileIds.size) result.ingest = await runDriveIngest({ reason: opts.reason, ...opts.ingest, fileIds: [...changedFileIds] });
+    if (opts.ingest && changedFileIds.size) result.ingest = await runIngest({ reason: opts.reason, kinds: ["drive"], budgetMs: opts.ingest.budgetMs, maxDocs: opts.ingest.maxFiles, documentIds: [...changedFileIds] });
     return result;
   } catch (e) {
     const message = msg(e);

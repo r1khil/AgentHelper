@@ -11,6 +11,8 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { ROLES } from "@/lib/constants";
 import { createPasswordAccount, passwordAccountSchema } from "@/lib/members";
 import { AGENT_MODELS, AGENT_MODEL_SETTING, isAgentModelId } from "@/lib/agent/model";
+import { EMBEDDING_MODEL_SETTING, RERANK_MODEL_SETTING, embeddingLabel, isEmbeddingModelId, isRerankModelId, rerankLabel } from "@/lib/agent/retrieval-models";
+import { ensureEmbeddingIndex } from "@/lib/documents/search";
 import { setSetting } from "@/lib/settings";
 
 const roleSchema = z.enum(ROLES as [string, ...string[]]);
@@ -108,4 +110,28 @@ export async function setAgentModel(fd: FormData) {
   await setSetting(AGENT_MODEL_SETTING, id, me.id);
   revalidatePath("/admin");
   back(`Research agent switched to ${AGENT_MODELS.find((m) => m.id === id)?.label ?? id}`, true);
+}
+
+/** Switching the embedding model requeues every document; the partial HNSW index for the model is created up front. */
+export async function setEmbeddingModel(fd: FormData) {
+  const me = await requireAdmin();
+  const id = String(fd.get("model") ?? "");
+  if (!isEmbeddingModelId(id)) back("Pick one of the listed embedding models", false);
+  try {
+    await ensureEmbeddingIndex(id);
+  } catch (e) {
+    back(`Could not prepare the vector index for ${embeddingLabel(id)}: ${e instanceof Error ? e.message : String(e)}`, false);
+  }
+  await setSetting(EMBEDDING_MODEL_SETTING, id, me.id);
+  revalidatePath("/admin");
+  back(`Embeddings switched to ${embeddingLabel(id)}. Documents are re-embedded a few at a time in the background; press "Re-embed now" to start.`, true);
+}
+
+export async function setRerankModel(fd: FormData) {
+  const me = await requireAdmin();
+  const id = String(fd.get("model") ?? "");
+  if (!isRerankModelId(id)) back("Pick one of the listed rerank options", false);
+  await setSetting(RERANK_MODEL_SETTING, id, me.id);
+  revalidatePath("/admin");
+  back(`Reranking set to ${rerankLabel(id)}`, true);
 }

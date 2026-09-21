@@ -7,7 +7,7 @@ import { holdings, teams } from "@/db/schema";
 import { canAccessTeam, getCurrentUser } from "@/lib/auth";
 import { effectiveMime } from "@/lib/drive/extract";
 import { upsertIndexRows } from "@/lib/drive/index";
-import { ingestFile } from "@/lib/jobs/ingest";
+import { ingestDocument } from "@/lib/jobs/ingest";
 import { ensureHoldingFolders, itemToRow, uploadFile } from "@/lib/drive/writes";
 import { downloadModelFile, removeStagedFile, STAGING_PREFIX } from "@/lib/storage";
 
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     await removeStagedFile(stagedPath).catch(() => undefined);
     revalidatePath(`/t/${row.slug}/h/${row.h.ticker}`);
     // Text, summary, and embeddings are produced after the response so the upload returns quickly.
-    after(() => ingestFile(item.id, { reason: "upload" }));
+    after(() => ingestDocument(item.id, { reason: "upload" }));
     return Response.json({ ok: true, fileId: item.id, webViewLink: item.webViewLink ?? null, textError: null });
   } catch (e) {
     return Response.json({ ok: false, error: e instanceof Error ? e.message : String(e) }, { status: 502 });

@@ -205,9 +205,11 @@ const TOOL_LABELS: Record<string, string> = {
   get_earnings_calendar: "Earnings calendar",
   get_team_context: "Team context",
   get_peer_moves: "Peer moves",
-  find_drive_files: "Analyst Drive",
-  search_drive_text: "Drive passages",
-  read_drive_file: "Drive file",
+  find_documents: "Documents",
+  search_documents: "Document passages",
+  read_url: "Web page",
+  search_web: "Web search",
+  read_document: "Document",
 };
 
 const TOOL_PROGRESS: Record<string, string> = {
@@ -224,9 +226,11 @@ const TOOL_PROGRESS: Record<string, string> = {
   get_earnings_calendar: "Checking earnings calendar",
   get_team_context: "Reading team notes",
   get_peer_moves: "Checking peer moves",
-  find_drive_files: "Searching the analyst Drive",
-  search_drive_text: "Searching document text",
-  read_drive_file: "Reading a Drive file",
+  find_documents: "Searching indexed documents",
+  search_documents: "Searching document text",
+  read_url: "Reading a web page",
+  search_web: "Searching the web",
+  read_document: "Reading a document",
 };
 
 /**

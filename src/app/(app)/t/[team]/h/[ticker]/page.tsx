@@ -10,6 +10,7 @@ import { addNote, deleteNote, exitHolding, updateOwner, updateThesis } from "@/l
 import { canManageTeam } from "@/lib/auth";
 import { documentLabel } from "@/lib/drive/labels";
 import { driveStatus, listHoldingFiles } from "@/lib/drive/index";
+import { listHoldingFilings } from "@/lib/documents/index";
 import { DocumentUploadForm } from "@/components/app/document-upload-form";
 import { DocumentSummary } from "@/components/app/document-summary";
 import { ThesisProposal } from "@/components/app/thesis-proposal";
@@ -40,7 +41,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
   const { h, ownerName } = row;
 
   const { since, today } = newsWindow();
-  const [members, notes, market, bars, spxBars, filings, news, drive, docs, proposals] = await Promise.all([
+  const [members, notes, market, bars, spxBars, filings, news, drive, docs, proposals, indexedFilings] = await Promise.all([
     listTeamMembers(team.id),
     listNotes(h.id),
     marketSnapshot([h.ticker]),
@@ -51,7 +52,9 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
     driveStatus().catch(() => null),
     listHoldingFiles(h.id, 30).catch(() => []),
     listPendingProposals(h.id).catch(() => []),
+    listHoldingFilings(h.id, 8).catch(() => []),
   ]);
+  const newSince = recentCutoff();
   const thesisProposal = !h.thesis?.trim() ? proposals.find((p) => p.field === "thesis") : undefined;
   const driveReady = Boolean(drive?.connected && drive.rootFolderId && !drive.needsReconnect);
   const driveNote = !drive?.configured ? "Google Drive is not set up on this deployment." : !drive.connected || !drive.rootFolderId ? "Ask an admin to connect Google Drive from the Admin page." : drive.needsReconnect ? "Google Drive needs to be reconnected by an admin." : undefined;
@@ -202,6 +205,26 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
           </Card>
 
           <Card className="p-4">
+            <SectionTitle aside={indexedFilings.length ? "indexed for the agent" : undefined}>SEC filings</SectionTitle>
+            {indexedFilings.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{h.cik ? "No filings indexed yet. The morning sweep indexes 10-K, 10-Q and 8-K filings; an admin can backfill two years from the Admin page." : "No SEC registrant matched this ticker."}</p>
+            ) : (
+              <ul className="space-y-2">
+                {indexedFilings.map((f) => (
+                  <li key={f.id} className="flex items-baseline gap-2 text-sm">
+                    <Badge variant="outline" className="tnum w-16 shrink-0 justify-center text-[0.7rem]">{f.form ?? "filing"}</Badge>
+                    <a href={f.url ?? "#"} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate hover:underline" title={f.sectionNote ?? undefined}>
+                      {f.title}
+                    </a>
+                    {f.publishedAt && f.publishedAt.getTime() > newSince && <Badge className="shrink-0 text-[0.65rem]">new</Badge>}
+                    <span className="tnum shrink-0 text-xs text-muted-foreground">{f.publishedAt ? fmtDate(f.publishedAt) : ""}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card className="p-4">
             <SectionTitle aside={h.cik ? `CIK ${Number(h.cik)}` : "No CIK"}>Recent filings</SectionTitle>
             {filings.length === 0 ? (
               <p className="text-sm text-muted-foreground">{h.cik ? "No filings found." : "No SEC registrant matched this ticker."}</p>
@@ -250,6 +273,11 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
 function newsWindow() {
   const now = Date.now();
   return { since: new Date(now - 7 * 86400000).toISOString().slice(0, 10), today: new Date(now).toISOString().slice(0, 10) };
+}
+
+/** Filings filed within the last week get a "new" pill. */
+function recentCutoff() {
+  return Date.now() - 7 * 86400000;
 }
 
 /** A full year plus a calendar cushion for the starting trading session. */

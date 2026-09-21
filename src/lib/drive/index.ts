@@ -1,22 +1,47 @@
 import "server-only";
 import { and, count, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { driveFiles, holdingProposals, type DriveDocKind, type DriveFile } from "@/db/schema";
+import { documents, driveFiles, holdingProposals, type DriveDocKind, type DriveFile } from "@/db/schema";
 import { DriveNotConnected, driveConfigured, loadConnection } from "./auth";
 import { fetchAndExtract } from "./extract";
+import type { DocSummary } from "./summary";
 import { capText } from "./text";
+import { driveDocumentRow, driveVersion, upsertDriveDocuments } from "@/lib/documents/index";
 
 import { DOC_KIND_LABELS, DOCUMENT_HEADING_CHARS } from "./labels";
 export { DOC_KIND_LABELS } from "./labels";
 export const DOC_KINDS = Object.keys(DOC_KIND_LABELS) as DriveDocKind[];
 
-/** Everything about a file except the cached text (which can be large). */
-export type DriveFileMeta = Omit<DriveFile, "text"> & { documentHeading?: string | null };
+/** Ingest bookkeeping that lives on the file's corpus row (documents), joined onto every Drive file read. */
+export type DocumentIngestFields = {
+  version: string;
+  textFor: string | null;
+  textError: string | null;
+  summary: DocSummary | null;
+  summaryModel: string | null;
+  summaryVersion: number | null;
+  summaryFor: string | null;
+  summaryError: string | null;
+  summarizedAt: Date | null;
+  docDate: string | null;
+  embedModel: string | null;
+  embedFor: string | null;
+  embedError: string | null;
+  embeddedAt: Date | null;
+  ingestAttempts: number;
+  ingestAttemptedAt: Date | null;
+};
+
+/** Everything about a file except the cached text (which can be large): the drive_files row ⨝ its documents row. */
+export type DriveFileMeta = DriveFile & DocumentIngestFields & { documentHeading?: string | null };
+
 // A bounded excerpt avoids loading full documents on the company page. Ignore stale text.
 export const documentHeadingColumn = sql<string | null>`case
-  when ${driveFiles.kind} = 'earnings_update' and ${driveFiles.textModifiedTime} = ${driveFiles.modifiedTime}
-  then left(${driveFiles.text}, ${DOCUMENT_HEADING_CHARS}) else null end`;
-const metaColumns = {
+  when ${driveFiles.kind} = 'earnings_update' and ${documents.textFor} = ${documents.version}
+  then left(${documents.text}, ${DOCUMENT_HEADING_CHARS}) else null end`;
+
+/** The one place to extend when a column joins DriveFileMeta. */
+export const metaColumns = {
   id: driveFiles.id,
   name: driveFiles.name,
   documentHeading: documentHeadingColumn,
@@ -34,38 +59,43 @@ const metaColumns = {
   createdByApp: driveFiles.createdByApp,
   uploadedBy: driveFiles.uploadedBy,
   indexedAt: driveFiles.indexedAt,
-  textModifiedTime: driveFiles.textModifiedTime,
-  textError: driveFiles.textError,
-  summary: driveFiles.summary,
-  summaryModel: driveFiles.summaryModel,
-  summaryVersion: driveFiles.summaryVersion,
-  summaryModifiedTime: driveFiles.summaryModifiedTime,
-  summaryError: driveFiles.summaryError,
-  summarizedAt: driveFiles.summarizedAt,
-  docDate: driveFiles.docDate,
-  embedModel: driveFiles.embedModel,
-  embedModifiedTime: driveFiles.embedModifiedTime,
-  embedError: driveFiles.embedError,
-  embeddedAt: driveFiles.embeddedAt,
-  ingestAttempts: driveFiles.ingestAttempts,
-  ingestAttemptedAt: driveFiles.ingestAttemptedAt,
+  documentId: driveFiles.documentId,
   createdAt: driveFiles.createdAt,
+  version: sql<string>`coalesce(${documents.version}, '')`,
+  textFor: documents.textFor,
+  textError: documents.textError,
+  summary: documents.summary,
+  summaryModel: documents.summaryModel,
+  summaryVersion: documents.summaryVersion,
+  summaryFor: documents.summaryFor,
+  summaryError: documents.summaryError,
+  summarizedAt: documents.summarizedAt,
+  docDate: documents.docDate,
+  embedModel: documents.embedModel,
+  embedFor: documents.embedFor,
+  embedError: documents.embedError,
+  embeddedAt: documents.embeddedAt,
+  ingestAttempts: sql<number>`coalesce(${documents.ingestAttempts}, 0)`.mapWith(Number),
+  ingestAttemptedAt: documents.ingestAttemptedAt,
 };
+
+const docJoin = eq(documents.id, driveFiles.documentId);
 
 export type IngestStats = { matched: number; withText: number; summarized: number; embedded: number; pending: number; errored: number; pendingProposals: number };
 
-/** Ingestion progress across the index, one query. "pending" counts matched files whose summary is not current. */
+/** Ingestion progress across the Drive index, one query. "pending" counts matched files whose summary is not current. */
 export async function ingestStats(): Promise<IngestStats> {
   const [c] = await db
     .select({
       matched: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null)`.mapWith(Number),
-      withText: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and ${driveFiles.textModifiedTime} = ${driveFiles.modifiedTime} and ${driveFiles.text} is not null)`.mapWith(Number),
-      summarized: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and ${driveFiles.summaryModifiedTime} = ${driveFiles.modifiedTime} and ${driveFiles.summary} is not null)`.mapWith(Number),
-      embedded: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and ${driveFiles.embedModifiedTime} = ${driveFiles.modifiedTime})`.mapWith(Number),
-      pending: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and (${driveFiles.summaryModifiedTime} is distinct from ${driveFiles.modifiedTime}) and not (${driveFiles.textModifiedTime} = ${driveFiles.modifiedTime} and ${driveFiles.textError} is not null))`.mapWith(Number),
-      errored: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and ((${driveFiles.textError} is not null and ${driveFiles.textModifiedTime} = ${driveFiles.modifiedTime}) or (${driveFiles.summaryError} is not null and ${driveFiles.summaryModifiedTime} = ${driveFiles.modifiedTime}) or (${driveFiles.embedError} is not null and ${driveFiles.embedModifiedTime} = ${driveFiles.modifiedTime})))`.mapWith(Number),
+      withText: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and ${documents.textFor} = ${documents.version} and ${documents.text} is not null)`.mapWith(Number),
+      summarized: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and ${documents.summaryFor} = ${documents.version} and ${documents.summary} is not null)`.mapWith(Number),
+      embedded: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and ${documents.embedFor} = ${documents.version})`.mapWith(Number),
+      pending: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and (${documents.summaryFor} is distinct from ${documents.version}) and not (${documents.textFor} = ${documents.version} and ${documents.textError} is not null))`.mapWith(Number),
+      errored: sql<number>`count(*) filter (where ${driveFiles.holdingId} is not null and ((${documents.textError} is not null and ${documents.textFor} = ${documents.version}) or (${documents.summaryError} is not null and ${documents.summaryFor} = ${documents.version}) or (${documents.embedError} is not null and ${documents.embedFor} = ${documents.version})))`.mapWith(Number),
     })
     .from(driveFiles)
+    .leftJoin(documents, docJoin)
     .where(eq(driveFiles.isFolder, false));
   const [p] = await db.select({ n: count() }).from(holdingProposals).where(eq(holdingProposals.status, "pending"));
   return { matched: c?.matched ?? 0, withText: c?.withText ?? 0, summarized: c?.summarized ?? 0, embedded: c?.embedded ?? 0, pending: c?.pending ?? 0, errored: c?.errored ?? 0, pendingProposals: p?.n ?? 0 };
@@ -128,13 +158,14 @@ export async function listHoldingFiles(holdingId: string, limit = 20): Promise<D
   return db
     .select(metaColumns)
     .from(driveFiles)
+    .leftJoin(documents, docJoin)
     .where(and(eq(driveFiles.holdingId, holdingId), eq(driveFiles.isFolder, false)))
     .orderBy(sql`${driveFiles.modifiedTime} desc nulls last`)
     .limit(limit);
 }
 
 export async function getFileMeta(fileId: string): Promise<DriveFileMeta | null> {
-  const [row] = await db.select(metaColumns).from(driveFiles).where(eq(driveFiles.id, fileId)).limit(1);
+  const [row] = await db.select(metaColumns).from(driveFiles).leftJoin(documents, docJoin).where(eq(driveFiles.id, fileId)).limit(1);
   return row ?? null;
 }
 
@@ -153,6 +184,7 @@ export async function searchIndex(p: { ticker?: string; query?: string; kind?: D
   return db
     .select(metaColumns)
     .from(driveFiles)
+    .leftJoin(documents, docJoin)
     .where(and(...conds))
     .orderBy(sql`${driveFiles.modifiedTime} desc nulls last`)
     .limit(p.limit ?? 10);
@@ -160,7 +192,10 @@ export async function searchIndex(p: { ticker?: string; query?: string; kind?: D
 
 export type DriveFileInsert = typeof driveFiles.$inferInsert;
 
-/** Insert or refresh index rows. Never touches the cached text columns; staleness is detected at read time. */
+/**
+ * Insert or refresh index rows, and the corpus row behind each non-folder file. Never touches the cached text
+ * columns; staleness is detected at read time through documents.version.
+ */
 export async function upsertIndexRows(rows: DriveFileInsert[]) {
   for (let i = 0; i < rows.length; i += 200) {
     const chunk = rows.slice(i, i + 200);
@@ -187,29 +222,38 @@ export async function upsertIndexRows(rows: DriveFileInsert[]) {
           indexedAt: sql`excluded.indexed_at`,
         },
       });
+    await upsertDriveDocuments(chunk.filter((r) => !r.isFolder).map((r) => ({ id: r.id, name: r.name, holdingId: r.holdingId ?? null, ticker: r.ticker ?? null, webViewLink: r.webViewLink ?? null, modifiedTime: r.modifiedTime ?? null })));
   }
 }
 
 /**
- * Extracted text for a file, cached on the row and keyed on Drive's modifiedTime. Extraction happens on first read,
- * so sync stays cheap and only files the agent actually opens are downloaded.
+ * Extracted text for a file, cached on its corpus row and keyed on Drive's modifiedTime. Extraction happens on
+ * first read, so sync stays cheap and only files the agent actually opens are downloaded.
  */
 export async function getFileText(fileId: string): Promise<{ meta: DriveFileMeta; text: string }> {
-  const [row] = await db.select().from(driveFiles).where(eq(driveFiles.id, fileId)).limit(1);
-  if (!row) throw new Error("That file is not in the Drive index. Use find_drive_files to look it up.");
-  if (row.isFolder) throw new Error("That id is a folder, not a file.");
-  const { text: cached, ...meta } = row;
-  const fresh = row.textModifiedTime?.getTime() === row.modifiedTime?.getTime();
-  if (fresh && cached !== null) return { meta: { ...meta, documentHeading: cached.slice(0, DOCUMENT_HEADING_CHARS) }, text: cached };
-  if (fresh && row.textError) throw new Error(row.textError);
+  const [row] = await db.select({ file: driveFiles, doc: documents }).from(driveFiles).leftJoin(documents, docJoin).where(eq(driveFiles.id, fileId)).limit(1);
+  if (!row) throw new Error("That file is not in the Drive index. Use find_documents to look it up.");
+  if (row.file.isFolder) throw new Error("That id is a folder, not a file.");
+  const version = driveVersion(row.file.modifiedTime);
+  if (!row.doc) {
+    // A row indexed before the corpus existed; give it one now.
+    await db.insert(documents).values(driveDocumentRow(row.file)).onConflictDoNothing();
+    await db.update(driveFiles).set({ documentId: row.file.id }).where(eq(driveFiles.id, fileId));
+  }
+  const doc = row.doc;
+  const fresh = doc?.textFor === version;
+  const base = await getFileMeta(fileId);
+  if (!base) throw new Error("That file is not in the Drive index.");
+  if (fresh && doc?.text != null) return { meta: { ...base, documentHeading: doc.text.slice(0, DOCUMENT_HEADING_CHARS) }, text: doc.text };
+  if (fresh && doc?.textError) throw new Error(doc.textError);
   try {
-    const text = capText(await fetchAndExtract(row));
-    await db.update(driveFiles).set({ text, textModifiedTime: row.modifiedTime, textError: null }).where(eq(driveFiles.id, fileId));
-    return { meta: { ...meta, documentHeading: text.slice(0, DOCUMENT_HEADING_CHARS), textError: null, textModifiedTime: row.modifiedTime }, text };
+    const text = capText(await fetchAndExtract(row.file));
+    await db.update(documents).set({ text, textFor: version, textError: null, updatedAt: new Date() }).where(eq(documents.id, fileId));
+    return { meta: { ...base, documentHeading: text.slice(0, DOCUMENT_HEADING_CHARS), textError: null, textFor: version }, text };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     if (!(e instanceof DriveNotConnected)) {
-      await db.update(driveFiles).set({ text: null, textModifiedTime: row.modifiedTime, textError: message }).where(eq(driveFiles.id, fileId));
+      await db.update(documents).set({ text: null, textFor: version, textError: message, updatedAt: new Date() }).where(eq(documents.id, fileId));
     }
     throw e;
   }

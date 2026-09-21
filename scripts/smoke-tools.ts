@@ -10,7 +10,7 @@ async function main() {
   const tools = makeTools({ teamId: "00000000-0000-0000-0000-000000000000", userId: "smoke" });
   const run = async (name: keyof typeof tools, input: unknown) => {
     const t0 = Date.now();
-    const r = (await (tools[name].execute as (i: unknown, o: unknown) => Promise<ToolResult<unknown>>)(input, { toolCallId: name })) as ToolResult<unknown>;
+    const r = (await (tools[name]!.execute as (i: unknown, o: unknown) => Promise<ToolResult<unknown>>)(input, { toolCallId: name })) as ToolResult<unknown>;
     const d = r.data as Record<string, unknown> | null;
     console.log(`\n== ${String(name)} ${JSON.stringify(input)} — ${Date.now() - t0} ms, ${r.sources.length} sources${r.error ? `, ERROR ${r.error}` : ""}`);
     if (r.error) return r;
@@ -21,7 +21,7 @@ async function main() {
     } else if (name === "get_analyst_estimates") {
       for (const row of (d?.trend as { period: string; endDate: string; eps: { avg: number; analysts: number }; revenue: { avg: number } }[]) ?? []) console.log(`  ${row.period} (${row.endDate}): EPS ${row.eps.avg} (${row.eps.analysts} analysts), revenue ${row.revenue.avg}`);
       console.log(`  target mean ${d?.targetMeanPrice}, recs ${JSON.stringify((d?.recommendations as unknown[])?.[0])}`);
-    } else if (name === "read_web_page") {
+    } else if (name === "read_url") {
       console.log(`  title: ${d?.title}\n  ${String(d?.text ?? "").slice(0, 300).replace(/\n/g, " ")}`);
     } else if (name === "compare_peers") {
       for (const c of (d?.companies as Record<string, unknown>[]) ?? []) console.log(`  ${c.ticker} ${c.periodEnd ?? ""} ${c.error ?? JSON.stringify((c.values as Record<string, { value: unknown }>)?.revenue ?? (c.values as Record<string, unknown>))?.slice(0, 120)}`);
@@ -32,8 +32,8 @@ async function main() {
   await run("get_insider_transactions", { ticker, limit: 4 });
   await run("get_institutional_holders", { ticker });
   await run("get_analyst_estimates", { ticker });
-  await run("read_web_page", { url: "https://www.federalreserve.gov/newsevents/pressreleases.htm", offset: 0, maxChars: 1500 });
-  await run("read_web_page", { url: "http://169.254.169.254/latest/meta-data", offset: 0, maxChars: 500 });
+  await run("read_url", { url: "https://www.federalreserve.gov/newsevents/pressreleases.htm", offset: 0, maxChars: 1500 });
+  await run("read_url", { url: "http://169.254.169.254/latest/meta-data", offset: 0, maxChars: 500 });
   await run("compare_peers", { tickers: [ticker, "V", "MA"], periodKind: "quarter" });
 }
 

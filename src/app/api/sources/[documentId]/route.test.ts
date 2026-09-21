@@ -2,14 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/sell-side/store", () => ({ getCall: vi.fn(), callParts: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn(), canAccessTeam: vi.fn() }));
 vi.mock("@/lib/chats", () => ({ getChat: vi.fn(), loadMessages: vi.fn(), effectiveRunStatus: vi.fn() }));
-vi.mock("@/lib/drive/index", () => ({ getFileMeta: vi.fn(), getFileText: vi.fn() }));
+vi.mock("@/lib/drive/index", () => ({ getFileText: vi.fn() }));
+vi.mock("@/lib/documents/index", () => ({ getDocument: vi.fn() }));
 import { getCurrentUser, canAccessTeam } from "@/lib/auth";
 import { effectiveRunStatus, getChat, loadMessages } from "@/lib/chats";
-import { getFileMeta, getFileText } from "@/lib/drive/index";
+import { getDocument } from "@/lib/documents/index";
+import { getFileText } from "@/lib/drive/index";
 import { GET } from "./route";
 
 const chatId = "11111111-1111-4111-8111-111111111111";
-const request = () => GET(new Request(`http://localhost/api/sources/drive/file_123?chatId=${chatId}`), { params: Promise.resolve({ fileId: "file_123" }) });
+const request = (id = "file_123") => GET(new Request(`http://localhost/api/sources/${id}?chatId=${chatId}`), { params: Promise.resolve({ documentId: id }) });
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(getCurrentUser).mockResolvedValue({ id: "user" } as never);
@@ -19,10 +21,10 @@ beforeEach(() => {
     {
       id: "a",
       role: "assistant",
-      parts: [{ type: "tool-read_drive_file", state: "output-available", output: { sources: [{ id: "drive-1", documentId: "file_123", title: "Transcript" }] } }],
+      parts: [{ type: "tool-read_document", state: "output-available", output: { sources: [{ id: "drive-1", documentId: "file_123", title: "Transcript" }] } }],
     },
   ] as never);
-  vi.mocked(getFileMeta).mockResolvedValue({ id: "file_123", name: "Transcript", isFolder: false, webViewLink: "https://drive.google.com/file/d/file_123/view" } as never);
+  vi.mocked(getDocument).mockResolvedValue({ id: "file_123", kind: "drive", title: "Transcript", url: "https://drive.google.com/file/d/file_123/view", version: "v1", textFor: "v1", text: "cached" } as never);
   vi.mocked(getFileText).mockResolvedValue({ text: "Opening remarks. Revenue grew 8%. Questions.", meta: {} } as never);
 });
 
@@ -49,8 +51,17 @@ describe("source document endpoint", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ title: "Transcript", text: null, url: "https://drive.google.com/file/d/file_123/view" });
   });
+  it("serves an indexed SEC filing from the corpus with its sec.gov link", async () => {
+    const id = "6f2b7a1e-1111-4111-8111-222222222222";
+    vi.mocked(loadMessages).mockResolvedValue([{ id: "a", role: "assistant", parts: [{ type: "tool-search_documents", state: "output-available", output: { sources: [{ id: "doc-1", documentId: id, title: "10-K" }] } }] }] as never);
+    vi.mocked(getDocument).mockResolvedValue({ id, kind: "filing", title: "AXP 10-K filed 2026-02-10", url: "https://www.sec.gov/Archives/edgar/data/4962/x.htm", version: "acc", textFor: "acc", text: "## Item 1A\n\nRisks." } as never);
+    const res = await request(id);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ title: "AXP 10-K filed 2026-02-10", text: "## Item 1A\n\nRisks.", url: "https://www.sec.gov/Archives/edgar/data/4962/x.htm" });
+    expect(getFileText).not.toHaveBeenCalled();
+  });
   it("returns unavailable for a removed document", async () => {
-    vi.mocked(getFileMeta).mockResolvedValue(null);
+    vi.mocked(getDocument).mockResolvedValue(null);
     expect((await request()).status).toBe(404);
     expect(getFileText).not.toHaveBeenCalled();
   });
@@ -63,7 +74,7 @@ describe("source document endpoint", () => {
     if (scenario === "other-team") vi.mocked(canAccessTeam).mockReturnValue(false);
     else vi.mocked(loadMessages).mockResolvedValue([]);
     expect((await request()).status).toBe(404);
-    expect(getFileMeta).not.toHaveBeenCalled();
+    expect(getDocument).not.toHaveBeenCalled();
     expect(getFileText).not.toHaveBeenCalled();
   });
   it("returns a graceful unavailable response for database failures", async () => {
@@ -78,7 +89,7 @@ import { getCall, callParts } from "@/lib/sell-side/store";
 describe("call transcript source viewer", () => {
   const callId = "22222222-2222-4222-8222-222222222222";
   const fileId = `call-${callId}`;
-  const open = () => GET(new Request(`http://localhost/api/sources/drive/${fileId}?chatId=${chatId}`), { params: Promise.resolve({ fileId }) });
+  const open = () => request(fileId);
   it("opens saved transcript text through the existing authenticated citation endpoint", async () => {
     vi.mocked(loadMessages).mockResolvedValue([{ id: "a", role: "assistant", parts: [{ type: "tool-read_call_transcript", state: "output-available", output: { sources: [{ id: "call-1", documentId: fileId, title: "Call" }] } }] }] as never);
     vi.mocked(getCall).mockResolvedValue({ id: callId, teamId: "team", title: "Broker call" } as never);
@@ -86,7 +97,7 @@ describe("call transcript source viewer", () => {
     const res = await open();
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ title: "Broker call", text: "[00:00:01–00:00:04] Revenue grew 8%.", url: null });
-    expect(getFileMeta).not.toHaveBeenCalled();
+    expect(getDocument).not.toHaveBeenCalled();
     vi.mocked(getCall).mockResolvedValue({ teamId: "another-team" } as never);
     expect((await open()).status).toBe(404);
   });

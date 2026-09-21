@@ -2,12 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { runCloseJob } from "@/lib/jobs/close";
 import { runMorningJob } from "@/lib/jobs/morning";
 import { runPricesJob } from "@/lib/jobs/prices";
 import { backfillIndustries, refreshBellwethers } from "@/lib/jobs/bellwethers";
 import { prepEarnings } from "@/lib/jobs/earnings-prep";
+import { syncFilings } from "@/lib/jobs/filings";
+import { runIngest } from "@/lib/jobs/ingest";
 
 export async function runCloseNow(fd: FormData) {
   await requireAdmin();
@@ -42,6 +45,39 @@ export async function runBellwethersNow() {
   revalidatePath("/t/[team]/earnings", "page");
   const failed = Object.keys(r.errors);
   redirect(`/admin?ok=${encodeURIComponent(`Bellwethers: ${r.tickers} names across ${r.etfs} sector ETFs, ${r.dated} with a report date; industries filled ${industries.filled}/${industries.checked}${failed.length ? `; failed ${failed.join(", ")}` : ""}`)}`);
+}
+
+/** Filings sync runs after the redirect (listing EDGAR and embedding take minutes); repeated presses continue the queue. */
+function filingsInBackground(opts: { backfill: boolean }) {
+  after(async () => {
+    const r = await syncFilings({ backfill: opts.backfill, budgetMs: 240_000, reason: opts.backfill ? "admin backfill" : "admin" });
+    if (r.status !== "ok" || r.failed.length || r.ingest?.status === "rate_limited") console.warn(`[filings] sync ${r.status}${r.reason ? `: ${r.reason}` : ""}; failed ${r.failed.length}; ingest ${r.ingest?.status ?? "not run"}`);
+  });
+}
+
+export async function syncFilingsNow() {
+  await requireAdmin();
+  filingsInBackground({ backfill: false });
+  revalidatePath("/admin");
+  redirect(`/admin?ok=${encodeURIComponent("Syncing SEC filings in the background (new 10-K, 10-Q, 8-K since the last sync). Watch the filings_sync and ingest rows; press again to continue a rate-limited queue.")}`);
+}
+
+export async function backfillFilingsNow() {
+  await requireAdmin();
+  filingsInBackground({ backfill: true });
+  revalidatePath("/admin");
+  redirect(`/admin?ok=${encodeURIComponent("Backfilling SEC filings in the background (two years of 10-K/10-Q, ninety days of 8-K). Embedding continues a few documents per run; press again after a minute if the ingest row says rate_limited.")}`);
+}
+
+/** Re-embed every document whose vectors are not from the current model (a model switch requeues them all). */
+export async function reembedNow() {
+  await requireAdmin();
+  after(async () => {
+    const r = await runIngest({ reason: "reembed", budgetMs: 240_000, maxDocs: 60 });
+    if (r.status !== "ok") console.warn(`[ingest] reembed ${r.status}${r.reason ? `: ${r.reason}` : ""}`);
+  });
+  revalidatePath("/admin");
+  redirect(`/admin?ok=${encodeURIComponent("Re-embedding in the background with the current model, newest documents first. The counts update as it goes; a rate_limited ingest row means the free-model budget is spent for now.")}`);
 }
 
 export async function runEarningsPrepNow() {

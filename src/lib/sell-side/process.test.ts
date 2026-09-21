@@ -50,7 +50,7 @@ vi.mock("./store", () => ({
 }));
 const tools = vi.hoisted(() => ({ find: vi.fn(), search: vi.fn(), read: vi.fn() }));
 vi.mock("@/lib/agent/tools", () => ({
-  makeTools: () => ({ find_drive_files: { execute: tools.find }, search_drive_text: { execute: tools.search }, read_drive_file: { execute: tools.read } }),
+  makeTools: () => ({ find_documents: { execute: tools.find }, search_documents: { execute: tools.search }, read_document: { execute: tools.read } }),
 }));
 vi.mock("@/lib/chats", () => ({
   getChat: vi.fn(async () => ({ id: "chat", teamId: "team", runStatus: state.chatStatus })),
@@ -108,7 +108,7 @@ beforeEach(() => {
       });
     }),
   );
-  tools.find.mockResolvedValue({ data: { files: [{ fileId: "internal1" }] }, sources: [] });
+  tools.find.mockResolvedValue({ data: { documents: [{ documentId: "internal1" }] }, sources: [] });
   tools.search.mockResolvedValue({ data: null, sources: [], error: "Embeddings unavailable" });
   tools.read.mockResolvedValue({
     data: { text: "Our FY26 model has revenue of $2.8 billion." },
@@ -122,7 +122,7 @@ describe("call processing integration with existing agent pipeline", () => {
     expect(state.part.summary).toContain("$3.2 billion");
     await analyzeCall("call", { id: "user", fullName: "Analyst", role: "associate_analyst" });
     expect(tools.find).toHaveBeenCalledWith({ ticker: "ABC", limit: 10 }, expect.anything());
-    expect(tools.read).toHaveBeenCalledWith({ fileId: "internal1", offset: 0, maxChars: 12000 }, expect.anything());
+    expect(tools.read).toHaveBeenCalledWith({ documentId: "internal1", offset: 0, maxChars: 12000 }, expect.anything());
     expect(runAgentTurn).toHaveBeenCalledOnce();
     expect(state.callStatus).toBe("ready");
     const sources = [...collectSources(state.messages as UIMessage[]).values()];

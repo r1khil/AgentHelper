@@ -1,52 +1,55 @@
 import "server-only";
-import { embedMany } from "ai";
-import { openrouterProvider } from "./model";
+import { embeddingDims, embeddingModelId } from "./retrieval-models";
 
-export const DEFAULT_EMBEDDING_MODEL = "openai/text-embedding-3-small";
-/** Fixed by the drive_chunks.embedding column; only 1536-dimension models are valid. */
-export const EMBEDDING_DIMS = 1536;
 const BATCH = 64;
+
+/** OpenRouter answered 429: the free-model budget (20 requests/min, 50 or 1,000/day) is spent. Callers stop, never retry-sleep. */
+export class RateLimited extends Error {
+  readonly status = 429;
+  constructor(message = "OpenRouter rate limit reached for the embedding model; try again later") {
+    super(message);
+    this.name = "RateLimited";
+  }
+}
 
 export function embeddingConfigured() {
   return Boolean(process.env.OPENROUTER_API_KEY) && process.env.OPENROUTER_EMBEDDINGS !== "off";
 }
 
-export function embeddingModelId() {
-  return process.env.OPENROUTER_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL;
-}
+export type EmbedResult = { model: string; dims: number; vectors: number[][] };
 
-function check(vectors: number[][], expected: number) {
+function check(vectors: number[][], expected: number, dims: number, model: string) {
   if (vectors.length !== expected) throw new Error(`Embedding provider returned ${vectors.length} vectors for ${expected} inputs`);
-  for (const v of vectors) if (v.length !== EMBEDDING_DIMS) throw new Error(`Embedding has ${v.length} dimensions; the index expects ${EMBEDDING_DIMS} (check OPENROUTER_EMBEDDING_MODEL)`);
+  for (const v of vectors) if (v.length !== dims) throw new Error(`${model} returned ${v.length}-dimension vectors; the registry says ${dims} (fix EMBEDDING_MODELS)`);
   return vectors;
 }
 
-/** Fallback for providers that do not expose embeddings through the SDK: OpenRouter's OpenAI-compatible endpoint. */
+/** OpenRouter's OpenAI-compatible embeddings endpoint. The fetch path is used for every model so free-tier headers stay consistent. */
 async function embedViaFetch(model: string, input: string[]): Promise<number[][]> {
   const res = await fetch("https://openrouter.ai/api/v1/embeddings", {
     method: "POST",
     headers: { authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "content-type": "application/json", "HTTP-Referer": process.env.APP_URL ?? "", "X-Title": "The Owl's Nest" },
     body: JSON.stringify({ model, input }),
   });
+  if (res.status === 429) throw new RateLimited(`OpenRouter rate limit reached for ${model}: ${(await res.text()).slice(0, 160)}`);
   if (!res.ok) throw new Error(`Embeddings endpoint returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const j = (await res.json()) as { data?: { index: number; embedding: number[] }[] };
   const rows = [...(j.data ?? [])].sort((a, b) => a.index - b.index);
   return rows.map((r) => r.embedding);
 }
 
-/** Embeddings for a list of strings, in order. Batched; throws on a dimension mismatch so nothing bad is stored. */
-export async function embedTexts(values: string[]): Promise<number[][]> {
+/**
+ * Embeddings for a list of strings, in order, with the model that produced them. Batched; throws on a dimension
+ * mismatch so nothing bad is stored, and throws RateLimited (no retry) when OpenRouter says the budget is spent.
+ */
+export async function embedTexts(values: string[]): Promise<EmbedResult> {
   if (!embeddingConfigured()) throw new Error("Embeddings are not configured (OPENROUTER_API_KEY / OPENROUTER_EMBEDDINGS)");
-  if (!values.length) return [];
-  const model = embeddingModelId();
-  const out: number[][] = [];
+  const model = await embeddingModelId();
+  const dims = embeddingDims(model);
+  const vectors: number[][] = [];
   for (let i = 0; i < values.length; i += BATCH) {
     const batch = values.slice(i, i + BATCH);
-    const vectors =
-      process.env.OPENROUTER_EMBEDDINGS_VIA_FETCH === "1"
-        ? await embedViaFetch(model, batch)
-        : (await embedMany({ model: openrouterProvider().textEmbeddingModel(model), values: batch, maxRetries: 2 })).embeddings;
-    out.push(...check(vectors, batch.length));
+    vectors.push(...check(await embedViaFetch(model, batch), batch.length, dims, model));
   }
-  return out;
+  return { model, dims, vectors };
 }

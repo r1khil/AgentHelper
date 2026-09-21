@@ -13,6 +13,7 @@ import { purgeStagedUploads } from "@/lib/storage";
 import { createJobReporter } from "./progress";
 import { purgeExpiredMemories } from "@/lib/agent/memory/store";
 import { prepEarnings } from "./earnings-prep";
+import { syncFilings } from "./filings";
 
 export type MorningJobResult = {
   date: string;
@@ -23,6 +24,7 @@ export type MorningJobResult = {
   bellwethers: Record<string, unknown>;
   email: Record<string, number>;
   drive: Record<string, unknown>;
+  filings: Record<string, unknown>;
   memories: Record<string, unknown>;
   prep: Record<string, unknown>;
 };
@@ -32,7 +34,7 @@ export async function runMorningJob(): Promise<MorningJobResult> {
   const [jobRow] = await db.insert(jobRuns).values({ job: "morning" }).returning({ id: jobRuns.id });
   const progress = createJobReporter(jobRow.id);
   const date = todayNY();
-  const result: MorningJobResult = { date, evidenceFinished: 0, reminders: 0, overdue: 0, earnings: {}, bellwethers: {}, email: {}, drive: {}, memories: {}, prep: {} };
+  const result: MorningJobResult = { date, evidenceFinished: 0, reminders: 0, overdue: 0, earnings: {}, bellwethers: {}, email: {}, drive: {}, filings: {}, memories: {}, prep: {} };
 
   const pending = await db.select({ id: movements.id }).from(movements).where(and(eq(movements.evidenceStatus, "pending"), ne(movements.status, "completed"))).limit(20);
   progress.step("finish pending evidence", { movements: pending.length });
@@ -145,6 +147,17 @@ export async function runMorningJob(): Promise<MorningJobResult> {
   } catch (e) {
     result.drive = { error: e instanceof Error ? e.message : String(e) };
     progress.warn("drive sync failed", { error: result.drive.error });
+  }
+
+  // New SEC filings for every holding, then a bounded embedding pass; the shared free-model budget is respected (429 stops it).
+  progress.step("sync SEC filings");
+  try {
+    const r = await syncFilings({ budgetMs: 60_000, reason: "morning" });
+    result.filings = { status: r.status, reason: r.reason, holdings: r.holdings, listed: r.listed, added: r.added, failed: r.failed.length, ingest: r.ingest ? { status: r.ingest.status, embedded: r.ingest.embedded, remaining: r.ingest.remaining } : undefined };
+    if (r.failed.length) progress.warn("some holdings failed to list filings", { failed: r.failed });
+  } catch (e) {
+    result.filings = { error: e instanceof Error ? e.message : String(e) };
+    progress.warn("filings sync failed", { error: result.filings.error });
   }
 
   progress.step("finished", { evidenceFinished: result.evidenceFinished, reminders: result.reminders, overdue: result.overdue });
