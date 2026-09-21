@@ -2,9 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { chats, teams } from "@/db/schema";
+import { chats, holdings, teams } from "@/db/schema";
 import { requireTeamAccess, requireUser } from "@/lib/auth";
 
 export async function createChat(fd: FormData) {
@@ -16,6 +16,15 @@ export async function createChat(fd: FormData) {
   redirect(`/t/${team.slug}/agent/${c.id}`);
 }
 
+/** Start a chat pinned to a holding from the research board; the board then sends the first question itself. */
+export async function createHoldingChat(input: { teamId: string; holdingId: string }): Promise<{ id: string }> {
+  const user = await requireTeamAccess(input.teamId);
+  const [h] = await db.select({ id: holdings.id }).from(holdings).where(and(eq(holdings.id, input.holdingId), eq(holdings.teamId, input.teamId))).limit(1);
+  if (!h) throw new Error("Holding not found");
+  const [c] = await db.insert(chats).values({ teamId: input.teamId, holdingId: h.id, createdBy: user.id }).returning({ id: chats.id });
+  return { id: c.id };
+}
+
 export async function deleteChat(fd: FormData) {
   const id = String(fd.get("id") ?? "");
   const user = await requireUser();
@@ -25,6 +34,8 @@ export async function deleteChat(fd: FormData) {
   if (c.createdBy !== user.id && user.role !== "admin" && user.role !== "lead_analyst" && user.role !== "exec") return;
   await db.delete(chats).where(eq(chats.id, id));
   const [team] = await db.select({ slug: teams.slug }).from(teams).where(eq(teams.id, c.teamId)).limit(1);
+  const [h] = c.holdingId ? await db.select({ ticker: holdings.ticker }).from(holdings).where(eq(holdings.id, c.holdingId)).limit(1) : [];
   revalidatePath(`/t/${team.slug}/agent`);
-  redirect(`/t/${team.slug}/agent`);
+  // A holding chat returns to its board; a team-wide chat returns to the index.
+  redirect(h ? `/t/${team.slug}/agent/h/${h.ticker}` : `/t/${team.slug}/agent`);
 }

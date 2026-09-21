@@ -13,7 +13,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         signOut={signOut}
       />
       <main className="min-w-0 flex-1">
-        <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8">{children}</div>
+        <div className="app-container mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8">{children}</div>
       </main>
     </div>
   );

@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
-import type { AgentUIMessage, TraceEvent } from "@/lib/trace/events";
-import { buildTraceView, FetchRows, latestLabel, StepDivider, TraceHeader, type TraceView } from "./trace-panel";
+import type { UIMessage } from "ai";
+import { FetchRows, latestLabel, StepDivider, TraceHeader, type TraceView } from "./trace-panel";
 import { ArrowUp, ChevronRight, Loader2, Wrench } from "lucide-react";
 import { Citation, ResearchAnswer, ResearchSources } from "./research-answer";
+import { useResearchChat } from "./use-research-chat";
 import { cn } from "@/lib/utils";
 import { collectSources } from "@/lib/agent/citations";
 import { isToolPart, splitAssistantParts, summarizeActivity, toolDone, toolFailed, toolName, type Part, type ToolPart } from "@/lib/agent/turn";
@@ -22,12 +21,7 @@ const SUGGESTIONS = [
   "Explain how to read the segment disclosure in {T}'s latest 10-K.",
 ];
 
-const POLL_MS = 2500;
-/** Trace events kept per turn; a long research turn is a few hundred. */
-const TRACE_CAP = 2000;
-
-const isStillWorking = (e: Error) => e.message.includes("still working");
-
+/** Team-wide chats (no pinned holding). Holding chats use the research board instead. */
 export function ChatPanel({
   chatId,
   initialMessages,
@@ -44,92 +38,19 @@ export function ChatPanel({
   /** Exec/admin transparency mode: the server streams a live trace and this panel renders it. */
   transparency?: boolean;
 }) {
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/chat",
-        prepareSendMessagesRequest: ({ id, messages }) => ({ body: { chatId: id, message: messages[messages.length - 1] } }),
-      }),
-    [],
-  );
-  // True while the server is still answering but this page is not attached to the stream
-  // (the analyst navigated away and came back, or pressed stop). We poll until it finishes.
-  const [catchingUp, setCatchingUp] = useState(initialRunStatus === "running");
-  // Live trace of the current turn (transparency mode only). Transient parts: never in `messages`, never persisted.
-  const [trace, setTrace] = useState<TraceEvent[]>([]);
-  const { messages, sendMessage, setMessages, status, error, stop } = useChat<AgentUIMessage>({
-    id: chatId,
-    messages: initialMessages as AgentUIMessage[],
-    transport,
-    // A "still working" 409 means another tab or an earlier visit started a run: catch up instead of erroring.
-    onError: (e) => {
-      if (isStillWorking(e)) setCatchingUp(true);
-    },
-    onData: (part) => {
-      if (part.type === "data-trace") setTrace((prev) => (prev.length >= TRACE_CAP ? prev : [...prev, part.data]));
-    },
-  });
-  const traceView = useMemo(() => (transparency && trace.length > 0 ? buildTraceView(trace) : null), [transparency, trace]);
-  // Tick the elapsed clock while the trace is live.
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!traceView || traceView.finished) return;
-    const id = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(id);
-  }, [traceView]);
+  const { messages, status, streaming, busy, catchingUp, runError, requestError, traceView, now, send, stopWatching } = useResearchChat({ chatId, initialMessages, initialRunStatus, transparency });
   const [input, setInput] = useState("");
-  const [runError, setRunError] = useState<string | null>(initialRunStatus === "error" ? "The previous answer did not finish. Ask again." : null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const streaming = status === "submitted" || status === "streaming";
-  const busy = streaming || catchingUp;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [messages, status, catchingUp]);
 
-  // Catch up on a run that continued server-side while this page was away.
-  useEffect(() => {
-    if (!catchingUp) return;
-    let cancelled = false;
-    const tick = async () => {
-      try {
-        const res = await fetch(`/api/chat/${chatId}`, { cache: "no-store" });
-        if (!res.ok) throw new Error(await res.text());
-        const data = (await res.json()) as { runStatus: RunStatus; messages: UIMessage[] };
-        if (cancelled) return;
-        if (data.runStatus !== "running") {
-          setMessages(data.messages as AgentUIMessage[]);
-          setCatchingUp(false);
-          if (data.runStatus === "error") setRunError("The previous answer did not finish. Ask again.");
-        }
-      } catch (e) {
-        if (!cancelled) console.error("[chat] poll failed", e);
-      }
-    };
-    void tick();
-    const id = setInterval(tick, POLL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [catchingUp, chatId, setMessages]);
-
   const sources = useMemo(() => collectSources(messages), [messages]);
 
   const submit = useCallback(() => {
-    const text = input.trim();
-    if (!text || busy) return;
-    setInput("");
-    setRunError(null);
-    setTrace([]);
-    void sendMessage({ text });
-  }, [input, busy, sendMessage]);
-
-  function stopWatching() {
-    // The server keeps going and saves the answer; this page just stops streaming and polls for the result.
-    stop();
-    setCatchingUp(true);
-  }
+    if (send(input)) setInput("");
+  }, [input, send]);
 
   const t = tickers[0] ?? "NVDA";
   const last = messages[messages.length - 1];
@@ -177,9 +98,7 @@ export function ChatPanel({
             </div>
           )}
           {runError && <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning-foreground">{runError}</div>}
-          {error && !isStillWorking(error) && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error.message}</div>
-          )}
+          {requestError && <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{requestError}</div>}
           <div ref={bottomRef} />
         </div>
         <form
@@ -314,7 +233,7 @@ const TOOL_PROGRESS: Record<string, string> = {
  * One line per turn summarising the research; expands to the individual lookups and any interim notes.
  * With a transparency trace, the expansion also shows each model step and every provider call under each lookup.
  */
-function ActivityRow({ parts, live, trace, now }: { parts: Part[]; live: boolean; trace: TraceView | null; now: number }) {
+export function ActivityRow({ parts, live, trace, now }: { parts: Part[]; live: boolean; trace: TraceView | null; now: number }) {
   const [open, setOpen] = useState(false);
   const { lookups, sources, failed, current } = summarizeActivity(parts);
   const running = live && (current !== null || lookups === 0);

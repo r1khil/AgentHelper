@@ -149,6 +149,8 @@
 }
 @layer utilities {
   .tnum { font-variant-numeric: tabular-nums; }
+  /* A page that renders a full-height workspace (the research board) opts out of the centered column. */
+  .app-container:has(> [data-full-bleed]) { max-width: none; padding: 0; }
 }
 
 /* Fade the new range without morphing financial observations between prices. */

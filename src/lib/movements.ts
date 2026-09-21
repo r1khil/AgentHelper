@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { evidenceItems, holdings, movements, profiles } from "@/db/schema";
 
@@ -36,4 +36,15 @@ export async function getMovement(id: string) {
 
 export async function listEvidence(movementId: string) {
   return db.select().from(evidenceItems).where(eq(evidenceItems.movementId, movementId)).orderBy(desc(evidenceItems.publishedAt));
+}
+
+/** The unfinished movement on a holding, if the analyst still owes an update. */
+export async function getOpenMovement(holdingId: string) {
+  const [row] = await db
+    .select()
+    .from(movements)
+    .where(and(eq(movements.holdingId, holdingId), inArray(movements.status, ["open", "in_progress"])))
+    .orderBy(desc(movements.sessionDate))
+    .limit(1);
+  return row ?? null;
 }

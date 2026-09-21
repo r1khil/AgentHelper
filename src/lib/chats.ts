@@ -1,5 +1,5 @@
 import "server-only";
-import { asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { UIMessage } from "ai";
 import { db } from "@/db/client";
 import { chatMessages, chats, holdings, profiles } from "@/db/schema";
@@ -63,4 +63,67 @@ export async function maybeTitleChat(chatId: string, firstUserText: string) {
   const title = firstUserText.replace(/\s+/g, " ").trim().slice(0, 80);
   if (!title) return;
   await db.update(chats).set({ title }).where(sql`${chats.id} = ${chatId} and ${chats.title} = 'New chat'`);
+}
+
+export type HoldingChatStats = {
+  holdingId: string;
+  chats: number;
+  /** Distinct source ids returned by tools across every chat on the holding. */
+  sources: number;
+  lastActivity: Date;
+  /** Set while any chat on the holding is still answering: who asked and what. */
+  running?: { authorName: string | null; title: string };
+};
+
+/** Research activity per holding, for the agent index cards. */
+export async function listHoldingChatStats(teamId: string): Promise<Map<string, HoldingChatStats>> {
+  const [stats, live] = await Promise.all([
+    db.execute<{ holding_id: string; chats: string; sources: string; last_activity: string }>(sql`
+      select c.holding_id,
+             count(distinct c.id) as chats,
+             count(distinct s->>'id') as sources,
+             max(c.updated_at) as last_activity
+      from chats c
+      left join chat_messages m on m.chat_id = c.id and m.role = 'assistant'
+      left join lateral jsonb_array_elements(m.parts) p on true
+      left join lateral jsonb_array_elements(
+        case when jsonb_typeof(p->'output'->'sources') = 'array' then p->'output'->'sources' else '[]'::jsonb end
+      ) s on true
+      where c.team_id = ${teamId} and c.holding_id is not null
+      group by c.holding_id
+    `),
+    db
+      .select({ c: chats, authorName: profiles.fullName })
+      .from(chats)
+      .leftJoin(profiles, eq(profiles.id, chats.createdBy))
+      .where(and(eq(chats.teamId, teamId), eq(chats.runStatus, "running"))),
+  ]);
+  const map = new Map<string, HoldingChatStats>();
+  for (const r of stats) {
+    map.set(r.holding_id, { holdingId: r.holding_id, chats: Number(r.chats), sources: Number(r.sources), lastActivity: new Date(r.last_activity) });
+  }
+  for (const { c, authorName } of live) {
+    if (!c.holdingId || effectiveRunStatus(c) !== "running") continue;
+    const row = map.get(c.holdingId);
+    if (row && !row.running) row.running = { authorName, title: c.title };
+  }
+  return map;
+}
+
+export type HoldingChat = { c: typeof chats.$inferSelect; authorName: string | null; questions: number };
+
+/** Every chat pinned to one holding, newest first, with how many questions each holds. */
+export async function listHoldingChats(holdingId: string): Promise<HoldingChat[]> {
+  const rows = await db
+    .select({
+      c: chats,
+      authorName: profiles.fullName,
+      questions: sql<number>`(select count(*) from chat_messages m where m.chat_id = ${chats.id} and m.role = 'user')`,
+    })
+    .from(chats)
+    .leftJoin(profiles, eq(profiles.id, chats.createdBy))
+    .where(eq(chats.holdingId, holdingId))
+    .orderBy(desc(chats.updatedAt))
+    .limit(100);
+  return rows.map((r) => ({ ...r, questions: Number(r.questions) }));
 }
