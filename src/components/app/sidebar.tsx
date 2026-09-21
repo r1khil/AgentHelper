@@ -17,6 +17,7 @@ import {
   ScanEye,
   Settings,
   Sparkles,
+  Mic,
   Table2,
   Briefcase,
 } from "lucide-react";
@@ -92,6 +93,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
     ? [
         { href: base, label: "Holdings", icon: Briefcase, exact: true },
         { href: `${base}/agent`, label: "Agent", icon: Sparkles },
+        { href: `${base}/sell-side`, label: "Sell-side analyzer", icon: Mic },
         { href: `${base}/movements`, label: "Movements", icon: Activity },
         { href: `${base}/earnings`, label: "Earnings", icon: CalendarDays },
         { href: `${base}/economic-calendar`, label: "Economic Calendar", icon: CalendarClock },

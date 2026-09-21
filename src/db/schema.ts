@@ -607,3 +607,32 @@ export const changelogEntries = pgTable("changelog_entries", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export type ChangelogEntry = typeof changelogEntries.$inferSelect;
+
+/** Team-owned calls reuse chats for summaries, follow-ups, and citation persistence. */
+export const sellSideCalls = pgTable("sell_side_calls", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  holdingId: uuid("holding_id").notNull().references(() => holdings.id),
+  chatId: uuid("chat_id").notNull().references(() => chats.id, { onDelete: "cascade" }).unique(),
+  createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  ticker: text("ticker").notNull(),
+  status: text("status").notNull().default("recording"),
+  expectedParts: integer("expected_parts"),
+  error: text("error"),
+  lease: uuid("lease"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  ...timestamps,
+}, t => [index("sell_side_calls_team").on(t.teamId, t.createdAt)]);
+
+export const sellSideParts = pgTable("sell_side_parts", {
+  callId: uuid("call_id").notNull().references(() => sellSideCalls.id, { onDelete: "cascade" }),
+  seq: integer("seq").notNull(),
+  path: text("path").notNull(),
+  mimeType: text("mime_type").notNull(),
+  offset: numeric("offset").notNull(),
+  duration: numeric("duration").notNull(),
+  segments: jsonb("segments").$type<import("../lib/sell-side/types").Segment[]>(),
+  text: text("text"),
+  summary: text("summary"),
+}, t => [primaryKey({ columns: [t.callId, t.seq] })]);

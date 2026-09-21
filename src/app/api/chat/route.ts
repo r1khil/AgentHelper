@@ -1,3 +1,6 @@
+import { db } from "@/db/client";
+import { sellSideCalls } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { after } from "next/server";
 import { createUIMessageStreamResponse, type UIMessage } from "ai";
 import { getCurrentUser, canAccessTeam, transparencyEnabled } from "@/lib/auth";
@@ -20,6 +23,8 @@ export async function POST(req: Request) {
   if (!chat || !canAccessTeam(user, chat.teamId)) return new Response("Not found", { status: 404 });
   if (effectiveRunStatus(chat) === "running") return new Response("This chat is still working on the previous question.", { status: 409 });
 
+  const [call] = await db.select().from(sellSideCalls).where(eq(sellSideCalls.chatId, chat.id)).limit(1);
+  if (call && call.status !== "ready") return new Response("Finish call processing before asking follow-up questions.", { status: 409 });
   const prior = await loadMessages(chat.id);
   const incoming: UIMessage = { ...body.message, role: "user" };
   const messages = [...prior.filter((m) => m.id !== incoming.id), incoming];

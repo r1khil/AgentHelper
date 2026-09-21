@@ -83,3 +83,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/close?date=2026-
 ## Economic calendar
 
 The team sidebar includes Economic Calendar next to Earnings. Live public agency feeds load without API credentials. Coverage is explicitly partial: private/regional events and consensus estimates still need a fuller provider. See [sources, MarketWatch investigation, and validation](docs/economic-calendar.md). With `ECONOMIC_CALENDAR_PREVIEW=1` in development, `/dev/economic-calendar?live=1` verifies live data; omitting `live=1` shows clearly labeled synthetic fixtures.
+
+## Sell-side analyzer
+
+Team sidebar tab for recording, speaker transcripts, automatically cross-checking company documents, and saved transcript chat. Reuses the research agent, Drive retrieval, and citation viewer. See [setup, recovery, and verification](docs/sell-side-analyzer.md); apply `drizzle/0011_sell_side.sql` and configure the transcription key before using processing.

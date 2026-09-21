@@ -33,7 +33,7 @@ export async function runAgentTurn(opts: {
   const baseTools = makeTools({ teamId: chat.teamId, userId: user.id, sources: [...collectSources(messages).values()] });
   const tools = sink ? instrumentTools(baseTools, sink) : baseTools;
   const modelId = await agentModelId();
-  const instructions = await buildInstructions(chat.teamId, { holdingId: chat.holdingId, userName: user.fullName, userRole: user.role });
+  const instructions = "Saved sell-side calls are available through find_call_transcripts and read_call_transcript. Use these for questions about calls and cite their returned sources.\n" + await buildInstructions(chat.teamId, { holdingId: chat.holdingId, userName: user.fullName, userRole: user.role });
   const t0 = Date.now();
   sink?.emit({ t: "run.start", chatId: chat.id, modelId, maxSteps: MAX_STEPS });
 
