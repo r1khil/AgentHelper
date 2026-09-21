@@ -60,7 +60,7 @@ export function summarizeActivity(activity: Part[]) {
 
 const TEXT_KEEP_CHARS = 400;
 /** Tools whose `data.text` is a long document window; only the head is kept once the step is no longer current. */
-const TEXT_TOOLS = new Set(["read_filing", "read_drive_file", "read_call_transcript", "read_web_page"]);
+const TEXT_TOOLS = new Set(["read_filing", "read_document", "read_call_transcript", "read_url"]);
 
 /**
  * Shrink one tool's `data` payload to what the model still needs once that result is no longer
@@ -77,8 +77,8 @@ export function shrinkToolData(name: string, data: unknown): unknown {
     const items = (d.items as Record<string, unknown>[]).map(({ headline, publishedAt, sourceId }) => ({ headline, publishedAt, sourceId }));
     return { ...d, items };
   }
-  if (name === "search_drive_text" && Array.isArray(d.passages)) {
-    const passages = (d.passages as Record<string, unknown>[]).map(({ fileId, name: n, seq, sourceId, text }) => ({ fileId, name: n, seq, sourceId, text: typeof text === "string" ? text.slice(0, 160) : text }));
+  if (name === "search_documents" && Array.isArray(d.passages)) {
+    const passages = (d.passages as Record<string, unknown>[]).map(({ documentId, name: n, title, section, seq, sourceId, text }) => ({ documentId, name: n, title, section, seq, sourceId, text: typeof text === "string" ? text.slice(0, 160) : text }));
     return { ...d, passages };
   }
   return data;

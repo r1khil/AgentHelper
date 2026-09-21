@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import { agentMemories, type AgentMemory, type MemoryKind, type MemoryMeta, type MemoryScope } from "@/db/schema";
 import type { Source } from "@/lib/providers/types";
 import { embeddingConfigured, embedTexts } from "@/lib/agent/embeddings";
+import { cosineDistance, modelLiteral } from "@/lib/agent/vector-sql";
 import type { MemoryEntry } from "./prompt";
 
 /** Cosine similarity above which a new fact is treated as a repeat of an existing one. */
@@ -41,16 +42,19 @@ export function toEntry(r: AgentMemory): MemoryEntry {
   };
 }
 
-async function embedOrNull(text: string): Promise<number[] | null> {
+async function embedOrNull(text: string): Promise<{ vector: number[]; model: string } | null> {
   if (!embeddingConfigured()) return null;
   try {
-    const [v] = await embedTexts([text.slice(0, 4000)]);
-    return v ?? null;
+    const r = await embedTexts([text.slice(0, 4000)]);
+    return r.vectors[0] ? { vector: r.vectors[0], model: r.model } : null;
   } catch (e) {
-    console.error("[memory] embedding failed", e);
+    console.error("[memory] embedding failed", e instanceof Error ? e.message : e);
     return null;
   }
 }
+
+/** Only vectors from the current model are comparable; rows embedded by another model are invisible to semantic recall. */
+const sameModel = (model: string) => sql`${agentMemories.embedModel} = ${modelLiteral(model)}`;
 
 function mergeSources(a: Source[], b: Source[]) {
   const seen = new Set(a.map((s) => s.id));
@@ -66,15 +70,14 @@ const scopeCondition = (scope: MemoryScope, teamId: string | null, holdingId: st
  * expiry move forward. Returns the row id and whether it was merged into an existing one.
  */
 export async function rememberMemory(input: NewMemory): Promise<{ id: string; merged: boolean }> {
-  const embedding = await embedOrNull(input.body);
+  const embedded = await embedOrNull(input.body);
   const now = new Date();
-  if (embedding && input.kind !== "log") {
-    const literal = JSON.stringify(embedding);
-    const distance = sql<number>`${agentMemories.embedding} <=> ${literal}::vector`;
+  if (embedded && input.kind !== "log") {
+    const distance = cosineDistance(agentMemories.embedding, embedded.vector, embedded.model);
     const [near] = await db
       .select({ row: agentMemories, distance: distance.mapWith(Number) })
       .from(agentMemories)
-      .where(and(scopeCondition(input.scope, input.teamId, input.holdingId), eq(agentMemories.kind, input.kind), sql`${agentMemories.embedding} is not null`))
+      .where(and(scopeCondition(input.scope, input.teamId, input.holdingId), eq(agentMemories.kind, input.kind), sameModel(embedded.model)))
       .orderBy(distance)
       .limit(1);
     if (near && 1 - near.distance >= DUPLICATE_SIMILARITY) {
@@ -96,7 +99,8 @@ export async function rememberMemory(input: NewMemory): Promise<{ id: string; me
       sources: input.sources ?? [],
       meta: input.meta,
       sourceChatId: input.sourceChatId ?? null,
-      embedding,
+      embedding: embedded?.vector ?? null,
+      embedModel: embedded?.model ?? null,
       model: input.model ?? null,
       evidenceAt: input.evidenceAt ?? null,
       expiresAt: input.expiresAt ?? null,
@@ -134,20 +138,26 @@ export async function searchMemories(p: { query: string; teamId: string; holding
   const visible = or(eq(agentMemories.scope, "fund"), and(eq(agentMemories.scope, "team"), eq(agentMemories.teamId, p.teamId)), p.holdingId ? and(eq(agentMemories.scope, "holding"), eq(agentMemories.holdingId, p.holdingId)) : sql`false`);
   const conds = [visible, or(isNull(agentMemories.expiresAt), gt(agentMemories.expiresAt, new Date()))];
   if (p.kinds?.length) conds.push(inArray(agentMemories.kind, p.kinds));
-  const vec = await embedOrNull(p.query);
-  let hits: MemoryHit[];
-  if (vec) {
-    const distance = sql<number>`${agentMemories.embedding} <=> ${JSON.stringify(vec)}::vector`;
+  const embedded = await embedOrNull(p.query);
+  const hits: MemoryHit[] = [];
+  if (embedded) {
+    const distance = cosineDistance(agentMemories.embedding, embedded.vector, embedded.model);
     const rows = await db
       .select({ row: agentMemories, distance: distance.mapWith(Number) })
       .from(agentMemories)
-      .where(and(...conds, sql`${agentMemories.embedding} is not null`))
+      .where(and(...conds, sameModel(embedded.model)))
       .orderBy(distance)
       .limit(limit);
-    hits = rows.map((r) => ({ ...toEntry(r.row), score: +(1 - r.distance).toFixed(4) }));
-  } else {
-    const rows = await db.select().from(agentMemories).where(and(...conds)).orderBy(desc(agentMemories.createdAt)).limit(limit);
-    hits = rows.map((r) => ({ ...toEntry(r), score: null }));
+    hits.push(...rows.map((r) => ({ ...toEntry(r.row), score: +(1 - r.distance).toFixed(4) })));
+  }
+  // Rows embedded by another model (or none) still surface newest first, so a model switch never hides the log.
+  if (hits.length < limit) {
+    const seen = new Set(hits.map((h) => h.id));
+    const rows = await db.select().from(agentMemories).where(and(...conds)).orderBy(desc(agentMemories.createdAt)).limit(limit + hits.length);
+    for (const r of rows) {
+      if (hits.length >= limit) break;
+      if (!seen.has(r.id) && (!embedded || r.embedModel !== embedded.model)) hits.push({ ...toEntry(r), score: null });
+    }
   }
   if (hits.length) {
     await db

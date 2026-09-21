@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   check,
+  customType,
   date,
   index,
   integer,
@@ -17,7 +18,6 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
-  vector,
 } from "drizzle-orm/pg-core";
 import { GICS_SECTORS } from "../lib/attribution/sectors";
 import type { JobProgressEvent } from "../lib/jobs/progress-types";
@@ -49,6 +49,17 @@ export const driveDocKindEnum = pgEnum("drive_doc_kind", ["initiating_coverage",
 export const holdingProposalStatusEnum = pgEnum("holding_proposal_status", ["pending", "accepted", "dismissed"]);
 export const securityEventKindEnum = pgEnum("security_event_kind", ["dividend", "split"]);
 export const sectorSourceEnum = pgEnum("sector_source", ["yahoo", "default", "manual"]);
+export const documentKindEnum = pgEnum("document_kind", ["drive", "filing", "web"]);
+
+/**
+ * pgvector halfvec without a typmod: vectors from models of different lengths coexist in one column, and each
+ * model gets its own partial HNSW index over `embedding::halfvec(<dims>)` (see ensureEmbeddingIndex).
+ */
+const halfvecAny = customType<{ data: number[]; driverData: string }>({
+  dataType: () => "extensions.halfvec",
+  toDriver: (value) => JSON.stringify(value),
+  fromDriver: (value) => JSON.parse(value) as number[],
+});
 
 const sqlActive = sql`status = 'active'`;
 
@@ -504,50 +515,78 @@ export const driveFiles = pgTable(
     createdByApp: boolean("created_by_app").notNull().default(false),
     uploadedBy: uuid("uploaded_by").references(() => profiles.id, { onDelete: "set null" }),
     indexedAt: timestamp("indexed_at", { withTimezone: true }).notNull().defaultNow(),
-    text: text("text"),
-    textModifiedTime: timestamp("text_modified_time", { withTimezone: true }),
-    textError: text("text_error"),
-    // Structured summary extracted by the app, keyed on modified_time like the text cache.
-    summary: jsonb("summary").$type<DocSummary>(),
-    summaryModel: text("summary_model"),
-    summaryVersion: smallint("summary_version"),
-    summaryModifiedTime: timestamp("summary_modified_time", { withTimezone: true }),
-    summaryError: text("summary_error"),
-    summarizedAt: timestamp("summarized_at", { withTimezone: true }),
-    docDate: date("doc_date"),
-    // Embedding bookkeeping; the chunks live in drive_chunks.
-    embedModel: text("embed_model"),
-    embedModifiedTime: timestamp("embed_modified_time", { withTimezone: true }),
-    embedError: text("embed_error"),
-    embeddedAt: timestamp("embedded_at", { withTimezone: true }),
-    ingestAttempts: smallint("ingest_attempts").notNull().default(0),
-    ingestAttemptedAt: timestamp("ingest_attempted_at", { withTimezone: true }),
+    /** The corpus row holding this file's text, summary and embedding bookkeeping; equals the file id for non-folders. */
+    documentId: text("document_id").references(() => documents.id, { onDelete: "set null" }),
     ...timestamps,
   },
   (t) => [index("drive_files_holding").on(t.holdingId), index("drive_files_parent").on(t.parentId), index("drive_files_ticker").on(t.ticker)],
 );
 
-export const driveChunks = pgTable(
-  "drive_chunks",
+// The searchable corpus: every document the agent can cite by id, whatever its origin. Drive rows reuse the Drive
+// file id so existing citations keep resolving; filings use a random id. `version` is the freshness key (Drive
+// modifiedTime, filing accession); a step is current when its `*_for` column equals `version`.
+export const documents = pgTable(
+  "documents",
+  {
+    id: text("id").primaryKey(),
+    kind: documentKindEnum("kind").notNull(),
+    /** drive: file id; filing: `${accession}/${documentName}`; web: canonical URL. */
+    externalId: text("external_id").notNull(),
+    holdingId: uuid("holding_id").references(() => holdings.id, { onDelete: "set null" }),
+    ticker: text("ticker"),
+    title: text("title").notNull(),
+    url: text("url"),
+    publisher: text("publisher"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    docDate: date("doc_date"),
+    /** 10-K, 10-Q, 8-K, EX-99.1 for filings. */
+    form: text("form"),
+    /** Which parts of a long filing were kept, for the reader. */
+    sectionNote: text("section_note"),
+    version: text("version").notNull(),
+    text: text("text"),
+    textFor: text("text_for"),
+    textError: text("text_error"),
+    // Structured summary extracted by the app (Drive documents only).
+    summary: jsonb("summary").$type<DocSummary>(),
+    summaryModel: text("summary_model"),
+    summaryVersion: smallint("summary_version"),
+    summaryFor: text("summary_for"),
+    summaryError: text("summary_error"),
+    summarizedAt: timestamp("summarized_at", { withTimezone: true }),
+    // Embedding bookkeeping; the chunks live in document_chunks.
+    embedModel: text("embed_model"),
+    embedFor: text("embed_for"),
+    embedError: text("embed_error"),
+    embeddedAt: timestamp("embedded_at", { withTimezone: true }),
+    ingestAttempts: smallint("ingest_attempts").notNull().default(0),
+    ingestAttemptedAt: timestamp("ingest_attempted_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("documents_kind_external").on(t.kind, t.externalId), index("documents_holding").on(t.holdingId), index("documents_ticker").on(t.ticker), index("documents_kind_published").on(t.kind, t.publishedAt)],
+);
+
+export const documentChunks = pgTable(
+  "document_chunks",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    fileId: text("file_id")
+    documentId: text("document_id")
       .notNull()
-      .references(() => driveFiles.id, { onDelete: "cascade" }),
+      .references(() => documents.id, { onDelete: "cascade" }),
     holdingId: uuid("holding_id").references(() => holdings.id, { onDelete: "set null" }),
     ticker: text("ticker"),
     seq: integer("seq").notNull(),
+    /** Item label for filing sections (e.g. "Item 1A"). */
+    section: text("section"),
     text: text("text").notNull(),
-    embedding: vector("embedding", { dimensions: 1536 }).notNull(),
+    embedding: halfvecAny("embedding").notNull(),
     model: text("model").notNull(),
+    /** Generated in SQL: to_tsvector('english', text). Never written by the app. */
+    tsv: text("tsv"),
     ...timestamps,
   },
-  (t) => [
-    uniqueIndex("drive_chunks_file_seq").on(t.fileId, t.seq),
-    index("drive_chunks_holding").on(t.holdingId),
-    index("drive_chunks_ticker").on(t.ticker),
-    index("drive_chunks_embedding").using("hnsw", t.embedding.op("vector_cosine_ops")),
-  ],
+  (t) => [uniqueIndex("document_chunks_document_seq").on(t.documentId, t.seq), index("document_chunks_holding").on(t.holdingId), index("document_chunks_ticker").on(t.ticker)],
 );
 
 // Values the app extracted from a team document and proposes for a holding field; nothing changes until accepted.
@@ -588,7 +627,10 @@ export type CashFlowRow = typeof cashFlows.$inferSelect;
 export type Role = Profile["role"];
 export type DriveFile = typeof driveFiles.$inferSelect;
 export type DriveConnection = typeof driveConnection.$inferSelect;
-export type DriveChunk = typeof driveChunks.$inferSelect;
+export type DocumentRow = typeof documents.$inferSelect;
+export type DocumentInsert = typeof documents.$inferInsert;
+export type DocumentChunk = typeof documentChunks.$inferSelect;
+export type DocumentKind = DocumentRow["kind"];
 export type HoldingProposal = typeof holdingProposals.$inferSelect;
 export type DriveDocKind = DriveFile["kind"] & string;
 
@@ -663,8 +705,10 @@ export const agentMemories = pgTable(
     sources: jsonb("sources").$type<Source[]>().notNull().default([]),
     meta: jsonb("meta").$type<MemoryMeta>(),
     sourceChatId: uuid("source_chat_id").references(() => chats.id, { onDelete: "set null" }),
-    embedding: vector("embedding", { dimensions: 1536 }),
+    embedding: halfvecAny("embedding"),
     model: text("model"),
+    /** Which embedding model produced `embedding`; semantic recall only compares vectors from the current model. */
+    embedModel: text("embed_model"),
     /** publishedAt of the newest cited source: when the fact was last true per its evidence. */
     evidenceAt: timestamp("evidence_at", { withTimezone: true }),
     /** Last time a later turn's distilled fact matched this row. */
@@ -676,7 +720,7 @@ export const agentMemories = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     ...timestamps,
   },
-  (t) => [index("agent_memories_holding").on(t.holdingId, t.kind, t.createdAt), index("agent_memories_team_scope").on(t.teamId, t.scope), index("agent_memories_embedding").using("hnsw", t.embedding.op("vector_cosine_ops"))],
+  (t) => [index("agent_memories_holding").on(t.holdingId, t.kind, t.createdAt), index("agent_memories_team_scope").on(t.teamId, t.scope)],
 );
 export type AgentMemory = typeof agentMemories.$inferSelect;
 

@@ -4,8 +4,14 @@ import { db } from "@/db/client";
 import { invitations, profiles, teams } from "@/db/schema";
 import { requireRole, transparencyEnabled } from "@/lib/auth";
 import { ROLES, ROLE_LABELS } from "@/lib/constants";
-import { createTestAccount, inviteMember, removeMember, revokeInvitation, setAgentModel, updateMember } from "@/lib/actions/admin";
-import { runBellwethersNow, runCloseNow, runEarningsPrepNow, runMorningNow, runPricesNow } from "@/lib/actions/jobs";
+import { createTestAccount, inviteMember, removeMember, revokeInvitation, setAgentModel, setEmbeddingModel, setRerankModel, updateMember } from "@/lib/actions/admin";
+import { backfillFilingsNow, reembedNow, runBellwethersNow, runCloseNow, runEarningsPrepNow, runMorningNow, runPricesNow, syncFilingsNow } from "@/lib/actions/jobs";
+import { EMBEDDING_MODELS, RERANK_MODELS, embeddingDims, embeddingModelId, rerankModelId } from "@/lib/agent/retrieval-models";
+import { embeddingConfigured } from "@/lib/agent/embeddings";
+import { embeddingStats } from "@/lib/documents/index";
+import { getSetting } from "@/lib/settings";
+import { FILINGS_LAST_SYNC_SETTING } from "@/lib/jobs/filings";
+import { tavilyConfigured } from "@/lib/web/tavily";
 import { disconnectDrive, ingestDriveNow, renewDriveWatchNow, setDriveRoot, syncDriveNow } from "@/lib/actions/drive";
 import { addMcpServer, removeMcpServer, testMcpServerNow, toggleMcpServer } from "@/lib/actions/mcp";
 import { listMcpServers } from "@/lib/agent/mcp";
@@ -51,6 +57,17 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const currentModelId = await agentModelId();
   const mcp = await listMcpServers().catch(() => []);
   const currentModel = AGENT_MODELS.find((m) => m.id === currentModelId);
+  const [embedId, rerankId, filingsLastSync] = await Promise.all([embeddingModelId(), rerankModelId(), getSetting(FILINGS_LAST_SYNC_SETTING)]);
+  const embedModel = EMBEDDING_MODELS.find((m) => m.id === embedId);
+  const embedDims = (() => {
+    try {
+      return embeddingDims(embedId);
+    } catch {
+      return null;
+    }
+  })();
+  const retrieval = await embeddingStats(embedId).catch(() => null);
+  const lastFilingsRun = await db.select().from(jobRuns).where(eq(jobRuns.job, "filings_sync")).orderBy(desc(jobRuns.startedAt)).limit(1).then((r) => r[0] ?? null);
   const driveUnmatched = ((lastDriveRun?.summary as { unmatched?: string[] } | undefined)?.unmatched ?? []).slice(0, 12);
   const driveLabel = !drive.configured ? "off" : !drive.connected ? "not connected" : drive.needsReconnect ? "reconnect needed" : `on (${drive.fileCount} files)`;
   const [allTeams, members, pending] = await Promise.all([
@@ -117,6 +134,23 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <span className="text-sm">Earnings prep packs (reports in the next five trading days, up to three per run)</span>
             <Button type="submit" size="sm" variant="outline">Run</Button>
           </form>
+          <div className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
+            <span className="text-sm">
+              SEC filings index (10-K, 10-Q, 8-K and EX-99.1 for every holding)
+              <span className="block text-xs text-muted-foreground">
+                {filingsLastSync ? `Last sync ${filingsLastSync}` : "Never synced"}
+                {lastFilingsRun ? ` · last run ${lastFilingsRun.ok === false ? "failed" : "ok"} ${fmtDateTime(lastFilingsRun.startedAt)}` : ""}. Also runs inside the morning sweep.
+              </span>
+            </span>
+            <div className="flex shrink-0 gap-2">
+              <form action={syncFilingsNow}>
+                <Button type="submit" size="sm" variant="outline">Sync filings</Button>
+              </form>
+              <form action={backfillFilingsNow}>
+                <Button type="submit" size="sm" variant="outline">Backfill (2y)</Button>
+              </form>
+            </div>
+          </div>
         </Card>
         ) : (
         <Card className="p-4 text-sm">
@@ -126,6 +160,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <li className="border-t pt-2">Price history (attribution closes, dividends, splits). Scheduled at 23:30 UTC.</li>
             <li className="border-t pt-2">Sector bellwethers (ETF constituents, earnings dates, industries). Runs inside the morning sweep.</li>
             <li className="border-t pt-2">Earnings prep packs (agent-gathered evidence for reports in the next five trading days). Runs inside the morning sweep.</li>
+            <li className="border-t pt-2">SEC filings index (10-K, 10-Q, 8-K and EX-99.1 for every holding). Runs inside the morning sweep{filingsLastSync ? `; last sync ${filingsLastSync}` : ""}.</li>
           </ul>
         </Card>
         )}
@@ -135,23 +170,69 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       </div>
 
       <SectionTitle aside={agentConfigured() ? `using ${currentModel?.label ?? currentModelId}` : "set OPENROUTER_API_KEY"}>Research agent</SectionTitle>
-      <Card className="mb-8 p-4">
-        <form action={setAgentModel} className="flex flex-wrap items-end gap-2">
-          <div className="grid gap-1">
-            <Label htmlFor="agent-model">Model</Label>
-            <NativeSelect id="agent-model" name="model" defaultValue={currentModelId} className="w-72">
-              {AGENT_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-              {!currentModel && <option value={currentModelId}>{currentModelId} (from environment)</option>}
-            </NativeSelect>
-          </div>
-          <Button type="submit" size="sm" variant="outline">Save</Button>
-          <p className="basis-full text-xs text-muted-foreground">Applies to the next chat turn, draft feedback, earnings extraction, research-log distillation, and earnings prep packs. All three are free OpenRouter models; a rate-limited model hands the request to the next one on the list.</p>
-        </form>
-      </Card>
+      <div className="mb-8 grid gap-4 lg:grid-cols-2">
+        <Card className="p-4">
+          <form action={setAgentModel} className="flex flex-wrap items-end gap-2">
+            <div className="grid gap-1">
+              <Label htmlFor="agent-model">Model</Label>
+              <NativeSelect id="agent-model" name="model" defaultValue={currentModelId} className="w-72" disabled={!canMutate}>
+                {AGENT_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+                {!currentModel && <option value={currentModelId}>{currentModelId} (from environment)</option>}
+              </NativeSelect>
+            </div>
+            {canMutate && <Button type="submit" size="sm" variant="outline">Save</Button>}
+            <p className="basis-full text-xs text-muted-foreground">Applies to the next chat turn, draft feedback, earnings extraction, research-log distillation, and earnings prep packs. All three are free OpenRouter models; a rate-limited model hands the request to the next one on the list.</p>
+          </form>
+          <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">Web search (Tavily): {tavilyConfigured() ? "on; the agent has search_web and read_url." : "off; set TAVILY_API_KEY to give the agent search_web (read_url still opens a URL directly)."}</p>
+        </Card>
+        <Card className="p-4">
+          <SectionTitle aside={embeddingConfigured() ? `${embedModel?.label ?? embedId}${embedDims ? `, ${embedDims} dims` : ""}` : "embeddings off"}>Retrieval</SectionTitle>
+          <form action={setEmbeddingModel} className="flex flex-wrap items-end gap-2">
+            <div className="grid gap-1">
+              <Label htmlFor="embed-model">Embedding model</Label>
+              <NativeSelect id="embed-model" name="model" defaultValue={embedId} className="w-72" disabled={!canMutate}>
+                {EMBEDDING_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label} ({m.dims} dims)
+                  </option>
+                ))}
+                {!embedModel && <option value={embedId}>{embedId} (from environment; not in the registry)</option>}
+              </NativeSelect>
+            </div>
+            {canMutate && <Button type="submit" size="sm" variant="outline">Save</Button>}
+          </form>
+          <form action={setRerankModel} className="mt-3 flex flex-wrap items-end gap-2">
+            <div className="grid gap-1">
+              <Label htmlFor="rerank-model">Reranker</Label>
+              <NativeSelect id="rerank-model" name="model" defaultValue={rerankId} className="w-72" disabled={!canMutate}>
+                {RERANK_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+                {!RERANK_MODELS.some((m) => m.id === rerankId) && <option value={rerankId}>{rerankId} (from environment)</option>}
+              </NativeSelect>
+            </div>
+            {canMutate && <Button type="submit" size="sm" variant="outline">Save</Button>}
+          </form>
+          <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 border-t pt-3 text-sm">
+            <dt className="text-muted-foreground">Embedded</dt>
+            <dd className="tnum">
+              {retrieval ? `${retrieval.embeddedWithModel} of ${retrieval.documents} indexed documents with this model (${retrieval.chunksWithModel} of ${retrieval.chunksTotal} chunks)` : "unavailable (apply drizzle/0013_documents.sql)"}
+            </dd>
+          </dl>
+          {canMutate && (
+            <form action={reembedNow} className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
+              <span className="text-xs text-muted-foreground">Search fuses vector and full-text hits, then reranks. Free OpenRouter models share one budget (20 requests/min, 50 or 1,000/day) with the chat model: a switch re-embeds a few documents per run and stops on a 429 until the next run.</span>
+              <Button type="submit" size="sm" variant="outline" className="shrink-0">Re-embed now</Button>
+            </form>
+          )}
+        </Card>
+      </div>
 
       <SectionTitle aside={mcp.length ? `${mcp.filter((m) => m.enabled).length} of ${mcp.length} enabled` : "none registered"}>
         <span id="mcp">External tools (MCP servers)</span>

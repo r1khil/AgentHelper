@@ -9,7 +9,7 @@ import { agentConfigured } from "@/lib/agent/model";
 import { runAgentTurn } from "@/lib/agent/run";
 import { distillTurn } from "@/lib/agent/memory/distill";
 import { ensureDriveIndexFresh } from "@/lib/jobs/drive";
-import { ensureDriveIngested } from "@/lib/jobs/ingest";
+import { ensureIngested } from "@/lib/jobs/ingest";
 
 export const maxDuration = 300;
 
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   if (prior.length === 0 && firstText && "text" in firstText) await maybeTitleChat(chat.id, firstText.text);
 
   await ensureDriveIndexFresh();
-  after(() => ensureDriveIngested());
+  after(() => ensureIngested());
   // Transparency mode (exec/admin preference) streams a live trace of steps and provider calls to this browser only.
   const question = incoming.parts.map((p) => (p.type === "text" ? p.text : "")).join("").trim();
   const { clientStream, persisted } = await runAgentTurn({

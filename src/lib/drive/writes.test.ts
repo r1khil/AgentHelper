@@ -33,7 +33,7 @@ describe("Drive write surface", () => {
   });
 
   it("no module deletes, trashes, moves, or shares", () => {
-    for (const f of ["auth.ts", "http.ts", "read.ts", "writes.ts", "index.ts", "extract.ts", "mime.ts", "mirror.ts", "changes.ts", "search.ts", "summarize.ts"]) {
+    for (const f of ["auth.ts", "http.ts", "read.ts", "writes.ts", "index.ts", "extract.ts", "mime.ts", "mirror.ts", "changes.ts", "summarize.ts", "../documents/search.ts", "../documents/adapters.ts", "../documents/index.ts"]) {
       const src = read(f);
       expect(src, f).not.toMatch(/method:\s*"DELETE"/);
       expect(src, f).not.toMatch(/\/trash|emptyTrash|\/permissions|"trashed":\s*true|removeParents|addParents/);

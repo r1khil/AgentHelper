@@ -15,7 +15,8 @@ import { parseFolderId } from "@/lib/drive/oauth";
 import { getFile } from "@/lib/drive/read";
 import { FOLDER_MIME } from "@/lib/drive/tree";
 import { ensureDriveWatch, runDriveSync, stopDriveWatch, type DriveSyncResult } from "@/lib/jobs/drive";
-import { runDriveIngest, type IngestResult } from "@/lib/jobs/ingest";
+import { runIngest, type IngestResult } from "@/lib/jobs/ingest";
+import { pruneDriveDocuments } from "@/lib/documents/index";
 import { ALLOWED_UPLOAD_EXTENSIONS, MAX_UPLOAD_BYTES } from "@/lib/drive/uploads";
 import { createStagedUploadUrl } from "@/lib/storage";
 
@@ -27,7 +28,7 @@ function syncSummary(r: DriveSyncResult) {
 /** Reading files takes minutes; it runs after the redirect so the admin page never waits on it. */
 function ingestInBackground(reason: string, opts: { budgetMs: number; maxFiles: number }) {
   after(async () => {
-    const r: IngestResult = await runDriveIngest({ reason, ...opts });
+    const r: IngestResult = await runIngest({ reason, kinds: ["drive"], budgetMs: opts.budgetMs, maxDocs: opts.maxFiles });
     if (r.status !== "ok") console.warn(`[drive] ingest (${reason}) ${r.status}${r.reason ? `: ${r.reason}` : ""}`);
   });
 }
@@ -91,6 +92,7 @@ export async function disconnectDrive() {
     await revokeStoredToken(conn);
   }
   await db.delete(driveFiles);
+  await pruneDriveDocuments([]);
   await db.delete(driveConnection);
   clearTokenCache();
   back("Google Drive disconnected. Files in the Drive were not touched.", true);

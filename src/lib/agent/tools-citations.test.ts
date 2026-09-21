@@ -8,11 +8,14 @@ vi.mock("@/lib/drive/auth", () => ({ DriveNotConnected: Error, driveConfigured: 
 vi.mock("@/lib/drive/read", () => ({ searchFullText: vi.fn() }));
 vi.mock("@/lib/drive/index", () => ({
   driveStatus: async () => ({ configured: true, connected: true, rootFolderId: "root" }),
-  getFileText: vi.fn(),
   listHoldingFiles: vi.fn(),
   searchIndex: vi.fn(),
 }));
-vi.mock("@/lib/drive/search", () => ({ searchChunks: vi.fn() }));
+vi.mock("@/lib/documents/search", () => ({ searchChunks: vi.fn() }));
+vi.mock("@/lib/documents/index", () => ({ getDocument: vi.fn(), listHoldingFilings: vi.fn(async () => []) }));
+vi.mock("@/lib/documents/adapters", () => ({ getDocumentText: vi.fn() }));
+vi.mock("@/lib/documents/find", () => ({ searchFilings: vi.fn(async () => []) }));
+vi.mock("@/lib/web/tavily", () => ({ tavilyConfigured: () => false, searchWeb: vi.fn(), extractPage: vi.fn() }));
 vi.mock("@/lib/agent/embeddings", () => ({ embeddingConfigured: () => true }));
 vi.mock("@/lib/providers/edgar", async (original) => ({
   ...(await original<object>()),
@@ -32,8 +35,10 @@ vi.mock("@/lib/agent/financials", () => ({
   searchConcepts: vi.fn(),
 }));
 import { getFilingText, listFilings, listFilingDocuments } from "@/lib/providers/edgar";
-import { getFileText } from "@/lib/drive/index";
-import { searchChunks } from "@/lib/drive/search";
+import { searchIndex } from "@/lib/drive/index";
+import { getDocument } from "@/lib/documents/index";
+import { getDocumentText } from "@/lib/documents/adapters";
+import { searchChunks } from "@/lib/documents/search";
 import { makeTools, type ToolResult } from "./tools";
 import { collectSources } from "./citations";
 import { resolveSource } from "./source-resolution";
@@ -44,16 +49,21 @@ const meta = {
   name: "Internal transcript",
   docDate: "2026-09-10",
   modifiedTime: new Date("2026-09-19"),
-  kind: "transcript",
+  kind: "earnings_update",
+  path: "AXP/Internal transcript.pdf",
   webViewLink: "https://drive.google.com/file/d/file_123/view",
 };
+const doc = { id: "file_123", kind: "drive", title: "Internal transcript", url: meta.webViewLink, version: "2026-09-19T00:00:00.000Z", publishedAt: meta.modifiedTime, docDate: "2026-09-10", form: null, sectionNote: null };
+const hitMeta = { id: "file_123", kind: "drive", title: "Internal transcript", form: null, url: meta.webViewLink, publisher: "Analyst Drive", publishedAt: meta.modifiedTime, docDate: "2026-09-10", ticker: "AXP", holdingId: "h1", name: meta.name, driveKind: "earnings_update", path: meta.path, mimeType: "application/pdf", modifiedTime: meta.modifiedTime, webViewLink: meta.webViewLink, documentHeading: null };
 const run = (tools: ReturnType<typeof makeTools>, name: keyof ReturnType<typeof makeTools>, args: unknown) =>
-  (tools[name].execute as (args: unknown, options: unknown) => Promise<ToolResult<unknown>>)(args, { toolCallId: "test", messages: [] });
+  (tools[name]!.execute as (args: unknown, options: unknown) => Promise<ToolResult<unknown>>)(args, { toolCallId: "test", messages: [] });
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(listFilings).mockResolvedValue([{ accession: "0000123-26-000001", form: "10-Q", filedAt: "2026-09-10", primaryDocument: "quarter.htm", url }] as never);
   vi.mocked(getFilingText).mockResolvedValue("Revenue grew 8%. Margins improved.");
-  vi.mocked(getFileText).mockResolvedValue({ meta, text: "Opening remarks. Revenue grew 8%. Questions." } as never);
+  vi.mocked(getDocument).mockResolvedValue(doc as never);
+  vi.mocked(getDocumentText).mockResolvedValue({ doc, text: "Opening remarks. Revenue grew 8%. Questions." } as never);
+  vi.mocked(searchIndex).mockResolvedValue([meta] as never);
 });
 
 describe("retrieval citation metadata", () => {
@@ -84,18 +94,29 @@ describe("retrieval citation metadata", () => {
   });
   it("preserves internal document identity, publication date and supporting excerpts", async () => {
     const tools = makeTools({ teamId: "team", userId: "user" });
-    const result = await run(tools, "read_drive_file", { fileId: meta.id, offset: 17, maxChars: 16 });
-    expect(result.sources[0]).toMatchObject({ documentId: meta.id, publishedAt: "2026-09-10", excerpt: "Revenue grew 8%.", location: { offset: 17, text: "Revenue grew 8%." } });
+    const result = await run(tools, "read_document", { documentId: meta.id, offset: 17, maxChars: 16 });
+    expect(result.sources[0]).toMatchObject({ documentId: meta.id, publishedAt: "2026-09-10", sourceType: "earnings update", excerpt: "Revenue grew 8%.", location: { offset: 17, text: "Revenue grew 8%." } });
     expect(resolveSource(result.sources[0])).toEqual({ kind: "document", documentId: meta.id });
+    expect(result.data).toMatchObject({ documentId: meta.id, kind: "drive", name: meta.name, documentType: "Earnings transcript" });
   });
   it("assigns distinct sources to multiple retrieved passages in the same document", async () => {
     vi.mocked(searchChunks).mockResolvedValue([
-      { fileId: meta.id, seq: 0, text: "Revenue grew 8%.", meta },
-      { fileId: meta.id, seq: 1, text: "Margins improved.", meta },
+      { documentId: meta.id, seq: 0, section: null, text: "Revenue grew 8%.", score: 0.9, via: "hybrid", meta: hitMeta },
+      { documentId: meta.id, seq: 1, section: null, text: "Margins improved.", score: 0.8, via: "text", meta: hitMeta },
     ] as never);
-    const result = await run(makeTools({ teamId: "team", userId: "user" }), "search_drive_text", { query: "results", limit: 6 });
+    const result = await run(makeTools({ teamId: "team", userId: "user" }), "search_documents", { query: "results", limit: 6 });
     expect(result.sources).toHaveLength(2);
     expect(result.sources[0].id).not.toBe(result.sources[1].id);
     expect(result.sources.map((s) => s.excerpt)).toEqual(["Revenue grew 8%.", "Margins improved."]);
+    expect(resolveSource(result.sources[0])).toEqual({ kind: "document", documentId: meta.id });
+  });
+  it("cites indexed filing passages by document id with the Item and a sec.gov link", async () => {
+    const filingUrl = "https://www.sec.gov/Archives/edgar/data/123/000012326000002/annual.htm";
+    const filingMeta = { ...hitMeta, id: "6f2b7a1e-1111-4111-8111-222222222222", kind: "filing", title: "Example Company 10-K filed 2026-02-10", form: "10-K", url: filingUrl, publisher: "SEC EDGAR", publishedAt: new Date("2026-02-10T12:00:00Z"), docDate: "2025-12-31", name: "Example Company 10-K filed 2026-02-10", driveKind: null, path: null, mimeType: null, modifiedTime: null, webViewLink: null };
+    vi.mocked(searchChunks).mockResolvedValue([{ documentId: filingMeta.id, seq: 3, section: "Item 1A", text: "Credit losses may rise.", score: 0.7, via: "vector", meta: filingMeta }] as never);
+    const result = await run(makeTools({ teamId: "team", userId: "user" }), "search_documents", { query: "credit losses", kind: "filing", limit: 6 });
+    expect(result.sources[0]).toMatchObject({ documentId: filingMeta.id, url: filingUrl, publisher: "SEC EDGAR", publishedAt: "2026-02-10", sourceType: "SEC filing", location: { section: "Item 1A", text: "Credit losses may rise." } });
+    expect(resolveSource(result.sources[0])).toEqual({ kind: "document", documentId: filingMeta.id });
+    expect(result.data).toMatchObject({ passages: [{ form: "10-K", section: "Item 1A", filedAt: "2026-02-10" }] });
   });
 });

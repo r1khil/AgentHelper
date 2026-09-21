@@ -33,6 +33,17 @@ async function main() {
   } else {
     console.log("news: FINNHUB_API_KEY not set");
   }
+  const { tavilyConfigured, searchWeb, extractPage } = await import("../src/lib/web/tavily");
+  if (tavilyConfigured()) {
+    const hits = await searchWeb({ query: `${symbol} earnings`, topic: "finance", timeRange: "month", limit: 3 });
+    console.log("web search:", hits.map((h) => `${h.publishedAt ?? "?"} ${h.url}`));
+    if (hits[0]) {
+      const page = await extractPage(hits[0].url);
+      console.log("web page:", page.title, `${page.text.length} chars`, page.text.slice(0, 200).replace(/\n/g, " "));
+    }
+  } else {
+    console.log("web: TAVILY_API_KEY not set");
+  }
 }
 
 main().catch((e) => {

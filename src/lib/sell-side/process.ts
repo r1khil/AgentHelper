@@ -70,9 +70,9 @@ export async function analyzeCall(callId: string, user: { id: string; fullName: 
     const tools = makeTools({ teamId: call.teamId, userId: user.id });
     const options = { toolCallId: crypto.randomUUID(), messages: [], context: {} };
     const ticker = call.ticker;
-    const files = await toolOutput(await tools.find_drive_files.execute!({ ticker, limit: 10 }, options));
+    const files = await toolOutput(await tools.find_documents.execute!({ ticker, limit: 10 }, options));
     const passages = await toolOutput(
-      await tools.search_drive_text.execute!({ ticker, query: `${ticker} thesis growth margins guidance valuation risks catalysts`, limit: 8 }, options),
+      await tools.search_documents.execute!({ ticker, query: `${ticker} thesis growth margins guidance valuation risks catalysts`, limit: 8 }, options),
     );
     messages = [
       toolMessage(
@@ -83,14 +83,14 @@ export async function analyzeCall(callId: string, user: { id: string; fullName: 
           sources: parts.map((p) => transcriptSource(call, p.seq, p.text!)),
         },
       ),
-      toolMessage("find_drive_files", { ticker, limit: 10 }, files),
-      toolMessage("search_drive_text", { ticker, query: `${ticker} thesis growth margins guidance valuation risks catalysts`, limit: 8 }, passages),
+      toolMessage("find_documents", { ticker, limit: 10 }, files),
+      toolMessage("search_documents", { ticker, query: `${ticker} thesis growth margins guidance valuation risks catalysts`, limit: 8 }, passages),
     ];
     // Read actual documents even when embeddings are disabled; metadata alone is never a cross-check.
-    const found = (files.data as { files?: { fileId: string }[] } | null)?.files ?? [];
+    const found = (files.data as { documents?: { documentId: string }[] } | null)?.documents ?? [];
     for (const file of found.slice(0, 3)) {
-      const input = { fileId: file.fileId, offset: 0, maxChars: 12000 };
-      messages.push(toolMessage("read_drive_file", input, await toolOutput(await tools.read_drive_file.execute!(input, options))));
+      const input = { documentId: file.documentId, offset: 0, maxChars: 12000 };
+      messages.push(toolMessage("read_document", input, await toolOutput(await tools.read_document.execute!(input, options))));
     }
     messages.push({ id: crypto.randomUUID(), role: "user", parts: [{ type: "text", text: summaryPrompt(ticker, callId) }] });
     await saveMessages(chat.id, messages);

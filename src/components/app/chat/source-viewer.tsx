@@ -36,7 +36,7 @@ function DocumentBody({ source, chatId }: { source: Source; chatId: string }) {
     let retry: ReturnType<typeof setTimeout>;
     async function load() {
       try {
-        const res = await fetch(`/api/sources/drive/${encodeURIComponent(id!)}?chatId=${encodeURIComponent(chatId)}`, { signal: controller.signal, cache: "no-store" });
+        const res = await fetch(`/api/sources/${encodeURIComponent(id!)}?chatId=${encodeURIComponent(chatId)}`, { signal: controller.signal, cache: "no-store" });
         if (!res.ok || !res.headers.get("content-type")?.includes("application/json")) throw new Error("Unavailable");
         if (res.status === 202) {
           if (!controller.signal.aborted) {
