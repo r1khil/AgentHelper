@@ -58,6 +58,14 @@ export function ingestNeeds(row: IngestRow, cfg: IngestConfig): IngestNeeds {
   return { text: !textFresh || summary || embed, summary, embed };
 }
 
+/**
+ * Provider hiccups (EDGAR or OpenRouter 5xx, rate limits, dropped connections) are not facts about the document:
+ * the step stays unrecorded so the next run retries it, instead of stamping the version as failed.
+ */
+export function isTransientIngestError(message: string): boolean {
+  return /rate limited|EDGAR 5\d\d|returned 5\d\d|fetch failed|ECONN|ETIMEDOUT|socket hang up/i.test(message);
+}
+
 export function needsAnything(n: IngestNeeds): boolean {
   return n.text || n.summary || n.embed;
 }

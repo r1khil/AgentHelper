@@ -84,6 +84,18 @@ export async function upsertFilingDocuments(rows: DocumentInsert[]): Promise<num
 }
 
 /** external_ids of the filings already indexed for a holding, so a sync only lists exhibits for new 8-Ks. */
+/**
+ * Drop filing rows that are not text documents: EDGAR lists the images embedded in a press release as GRAPHIC
+ * rows, and the first exhibit filter let ones named "…ex99…jpg" through. Chunks cascade. Idempotent.
+ */
+export async function pruneNonTextFilings(): Promise<number> {
+  const r = await db
+    .delete(documents)
+    .where(and(eq(documents.kind, "filing"), sql`${documents.externalId} !~* '\\.(htm|html|txt)$'`))
+    .returning({ id: documents.id });
+  return r.length;
+}
+
 export async function existingFilingIds(holdingId: string): Promise<Set<string>> {
   const rows = await db.select({ externalId: documents.externalId }).from(documents).where(and(eq(documents.kind, "filing"), eq(documents.holdingId, holdingId)));
   return new Set(rows.map((r) => r.externalId));

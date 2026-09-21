@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ingestNeeds, isIngestible, pickIngestCandidates, type IngestRow } from "./ingest-plan";
+import { ingestNeeds, isIngestible, isTransientIngestError, pickIngestCandidates, type IngestRow } from "./ingest-plan";
 import { SUMMARY_VERSION } from "@/lib/drive/summary";
 
 const t1 = new Date("2025-01-01T00:00:00Z");
@@ -113,5 +113,21 @@ describe("pickIngestCandidates", () => {
     const { picked, remaining } = pickIngestCandidates([done, poison, recent, retry], cfg, opts);
     expect(picked.map((r) => r.id)).toEqual(["retry"]);
     expect(remaining).toBe(0);
+  });
+});
+
+describe("isTransientIngestError", () => {
+  it("treats provider outages and rate limits as retryable", () => {
+    expect(isTransientIngestError('Embeddings endpoint returned 502: {"error":{"code":502}}')).toBe(true);
+    expect(isTransientIngestError("EDGAR 503 for https://www.sec.gov/x")).toBe(true);
+    expect(isTransientIngestError("OpenRouter rate limited")).toBe(true);
+    expect(isTransientIngestError("fetch failed")).toBe(true);
+    expect(isTransientIngestError("read ECONNRESET")).toBe(true);
+  });
+
+  it("treats document and model problems as final", () => {
+    expect(isTransientIngestError("nvidia/x returned 1024-dimension vectors; the registry says 2048")).toBe(false);
+    expect(isTransientIngestError("Embeddings endpoint returned 400: bad input")).toBe(false);
+    expect(isTransientIngestError("EDGAR 404 for https://www.sec.gov/x")).toBe(false);
   });
 });
