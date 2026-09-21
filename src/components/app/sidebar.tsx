@@ -8,7 +8,9 @@ import {
   ChartNoAxesCombined,
   Activity,
   CalendarDays,
+  CalendarClock,
   ChevronsUpDown,
+  History,
   Home,
   LogOut,
   Menu,
@@ -92,6 +94,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
         { href: `${base}/agent`, label: "Agent", icon: Sparkles },
         { href: `${base}/movements`, label: "Movements", icon: Activity },
         { href: `${base}/earnings`, label: "Earnings", icon: CalendarDays },
+        { href: `${base}/economic-calendar`, label: "Economic Calendar", icon: CalendarClock },
         { href: `${base}/models`, label: "Models", icon: Table2 },
         // Position sizes and P&L: leads of this team and fund-wide roles only.
         ...(fundWide || (user.role === "lead_analyst" && user.teamId === team?.id)
@@ -154,6 +157,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
 
       {fundWide && (
         <nav className="mt-4 px-3">
+          <NavItem href="/changelog" label="Changelog" icon={History} active={isActive("/changelog")} />
           <NavItem href="/admin" label="Admin" icon={Settings} active={isActive("/admin")} />
         </nav>
       )}

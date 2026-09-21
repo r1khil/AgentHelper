@@ -5,6 +5,11 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_PATHS = ["/login", "/not-invited", "/auth/callback", "/auth/google/callback", "/api/cron", "/api/health", "/api/version", "/api/drive/webhook"];
 
 export async function proxy(request: NextRequest) {
+  // Explicit local-only, synthetic calendar preview; never bypass app or live API authentication.
+  if (process.env.NODE_ENV === "development" && process.env.ECONOMIC_CALENDAR_PREVIEW === "1" &&
+      ["/dev/economic-calendar", "/api/dev/economic-calendar"].includes(request.nextUrl.pathname)) {
+    return NextResponse.next({ request });
+  }
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

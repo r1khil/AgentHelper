@@ -17,6 +17,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed.ts",
     "smoke:providers": "tsx scripts/smoke-providers.ts",
+    "changelog:sync": "tsx --conditions=react-server scripts/changelog-smoke.ts",
     "smoke:agent": "tsx --conditions=react-server scripts/smoke-agent.ts"
   },
   "dependencies": {

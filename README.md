@@ -53,6 +53,10 @@ Setup (one time, by the admin whose account owns the folder):
 
 **Reading files.** Matched files are read after each sync, newest first, a few at a time so no run exceeds a serverless function's budget (**Read files now** on the Admin page works through the backlog). For each file version the app extracts the text (PDF, Word, PowerPoint, Excel, Google Docs/Sheets/Slides), writes a structured summary (one line, the document's own thesis, rating, price target, key numbers, catalysts, risks, date) with `OPENROUTER_SUMMARY_MODEL` (default: the chat model), and embeds the text in chunks (`OPENROUTER_EMBEDDING_MODEL`, 1536 dimensions, `OPENROUTER_EMBEDDINGS=off` to skip). Summaries show on the holding page and in the agent's context; the agent's `search_drive_text` tool searches the chunks by meaning. When a holding has no thesis and its initiating coverage report states one, the app proposes it on the holding page; nothing changes until an analyst accepts. Uploads from a holding page go browser → Supabase Storage (signed URL) → server → Drive, so files up to 50MB work within Vercel's request limits; the upload returns at once and the file is read in the background.
 
+## Changelog
+
+`/changelog` (execs and admins) lists every pull request merged into `main`, newest first, each with a one-line headline and a short plain-English summary written for non-technical readers. Summaries are produced once per pull request by a free OpenRouter model (`CHANGELOG_MODEL`, default `cohere/north-mini-code:free`; set it to `agent` to use the model chosen on the Admin page) and stored in `changelog_entries`, so the page costs nothing to view. GitHub is asked for the merged list at most every 15 minutes; **Refresh** on the page asks again at once. Admins can **Regenerate** a summary that came out wrong. Setup: `GITHUB_TOKEN` (fine-grained personal access token, read-only Pull requests permission on the repo) and `GITHUB_REPO` in `.env.local` and in the Vercel project. Without the token the page shows a not-configured notice.
+
 ## Scheduled jobs
 
 `vercel.json` runs the close check at 23:00 UTC on weekdays, the price history job at 23:30 UTC, and the morning sweep (pending evidence, reminders, overdue notices, earnings calendar, email retries, Drive channel renewal, crawl, and file reading) at 14:00 UTC. Both endpoints accept `Authorization: Bearer $CRON_SECRET` and can be run from the Admin page, with a date for backfills:
@@ -75,3 +79,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/close?date=2026-
 - [docs/product.md](docs/product.md): scope and the learning boundary
 - [docs/original-outline.txt](docs/original-outline.txt): the original proposal
 - [docs/decisions.md](docs/decisions.md): historical decision log
+
+## Economic calendar
+
+The team sidebar includes Economic Calendar next to Earnings. Live public agency feeds load without API credentials. Coverage is explicitly partial: private/regional events and consensus estimates still need a fuller provider. See [sources, MarketWatch investigation, and validation](docs/economic-calendar.md). With `ECONOMIC_CALENDAR_PREVIEW=1` in development, `/dev/economic-calendar?live=1` verifies live data; omitting `live=1` shows clearly labeled synthetic fixtures.
