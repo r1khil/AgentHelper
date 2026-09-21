@@ -1,4 +1,5 @@
 import "server-only";
+import { parseTokenLimit, shrinkInputs } from "./embed-limits";
 import { embeddingDims, embeddingModelId } from "./retrieval-models";
 
 const BATCH = 64;
@@ -24,15 +25,25 @@ function check(vectors: number[][], expected: number, dims: number, model: strin
   return vectors;
 }
 
-/** OpenRouter's OpenAI-compatible embeddings endpoint. The fetch path is used for every model so free-tier headers stay consistent. */
-async function embedViaFetch(model: string, input: string[]): Promise<number[][]> {
+/**
+ * OpenRouter's OpenAI-compatible embeddings endpoint. The fetch path is used for every model so free-tier headers stay
+ * consistent. A 422 "input length N exceeds model maximum M" (chunks are cut by characters, tokens vary with the
+ * text) shrinks the batch by that ratio and retries, up to three times, so one dense table does not mark the whole
+ * document unembeddable.
+ */
+async function embedViaFetch(model: string, input: string[], attempt = 0): Promise<number[][]> {
   const res = await fetch("https://openrouter.ai/api/v1/embeddings", {
     method: "POST",
     headers: { authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "content-type": "application/json", "HTTP-Referer": process.env.APP_URL ?? "", "X-Title": "The Owl's Nest" },
     body: JSON.stringify({ model, input }),
   });
   if (res.status === 429) throw new RateLimited(`OpenRouter rate limit reached for ${model}: ${(await res.text()).slice(0, 160)}`);
-  if (!res.ok) throw new Error(`Embeddings endpoint returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) {
+    const body = (await res.text()).slice(0, 400);
+    const limit = res.status === 422 ? parseTokenLimit(body) : null;
+    if (limit && attempt < 3) return embedViaFetch(model, shrinkInputs(input, limit), attempt + 1);
+    throw new Error(`Embeddings endpoint returned ${res.status}: ${body.slice(0, 200)}`);
+  }
   const j = (await res.json()) as { data?: { index: number; embedding: number[] }[] };
   const rows = [...(j.data ?? [])].sort((a, b) => a.index - b.index);
   return rows.map((r) => r.embedding);

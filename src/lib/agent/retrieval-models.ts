@@ -10,7 +10,7 @@ import { getSetting } from "@/lib/settings";
  * mismatch, so a wrong entry surfaces as an ingest error, never as corrupt data. Fix the number here if it does.
  */
 export const EMBEDDING_MODELS = [
-  { id: "nvidia/nemotron-3-embed-1b:free", label: "Nemotron 3 Embed 1B (free)", dims: 2048, maxTokens: 32768 },
+  { id: "nvidia/nemotron-3-embed-1b:free", label: "Nemotron 3 Embed 1B (free)", dims: 2048, maxTokens: 4096 },
   { id: "perplexity/pplx-embed-v1-0.6b", label: "Perplexity Embed 0.6B", dims: 1024, maxTokens: 32000 },
   { id: "openai/text-embedding-3-small", label: "OpenAI text-embedding-3-small", dims: 1536, maxTokens: 8192 },
 ] as const;
