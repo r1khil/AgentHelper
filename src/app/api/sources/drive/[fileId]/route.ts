@@ -1,3 +1,4 @@
+import { callParts, getCall } from "@/lib/sell-side/store";
 import { getCurrentUser, canAccessTeam } from "@/lib/auth";
 import { effectiveRunStatus, getChat, loadMessages } from "@/lib/chats";
 import { collectSources } from "@/lib/agent/citations";
@@ -20,6 +21,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ fileId: string 
       // Tool results stream to the browser before the server saves the finished turn.
       if (effectiveRunStatus(chat) === "running") return Response.json({ pending: true }, { status: 202, headers });
       return Response.json({ error: "Source unavailable." }, { status: 404, headers });
+    }
+    if (/^call-[0-9a-f-]{36}$/i.test(fileId)) {
+      const call = await getCall(fileId.slice(5));
+      if (!call || call.teamId !== chat.teamId) return Response.json({ error: "Source unavailable." }, { status: 404, headers });
+      const parts = await callParts(call.id);
+      return Response.json({ title: call.title, text: parts.map(p => p.text ?? "[Part not yet transcribed]").join("\n\n"), url: null }, { headers });
     }
     const meta = await getFileMeta(fileId);
     if (!meta || meta.isFolder) return Response.json({ error: "Source unavailable." }, { status: 404, headers });

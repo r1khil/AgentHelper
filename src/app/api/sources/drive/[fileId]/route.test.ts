@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("@/lib/sell-side/store", () => ({ getCall: vi.fn(), callParts: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn(), canAccessTeam: vi.fn() }));
 vi.mock("@/lib/chats", () => ({ getChat: vi.fn(), loadMessages: vi.fn(), effectiveRunStatus: vi.fn() }));
 vi.mock("@/lib/drive/index", () => ({ getFileMeta: vi.fn(), getFileText: vi.fn() }));
@@ -70,5 +71,23 @@ describe("source document endpoint", () => {
     const res = await request();
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ error: "Source temporarily unavailable." });
+  });
+});
+
+import { getCall, callParts } from "@/lib/sell-side/store";
+describe("call transcript source viewer", () => {
+  const callId = "22222222-2222-4222-8222-222222222222";
+  const fileId = `call-${callId}`;
+  const open = () => GET(new Request(`http://localhost/api/sources/drive/${fileId}?chatId=${chatId}`), { params: Promise.resolve({ fileId }) });
+  it("opens saved transcript text through the existing authenticated citation endpoint", async () => {
+    vi.mocked(loadMessages).mockResolvedValue([{ id: "a", role: "assistant", parts: [{ type: "tool-read_call_transcript", state: "output-available", output: { sources: [{ id: "call-1", documentId: fileId, title: "Call" }] } }] }] as never);
+    vi.mocked(getCall).mockResolvedValue({ id: callId, teamId: "team", title: "Broker call" } as never);
+    vi.mocked(callParts).mockResolvedValue([{ text: "[00:00:01–00:00:04] Revenue grew 8%." }] as never);
+    const res = await open();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ title: "Broker call", text: "[00:00:01–00:00:04] Revenue grew 8%.", url: null });
+    expect(getFileMeta).not.toHaveBeenCalled();
+    vi.mocked(getCall).mockResolvedValue({ teamId: "another-team" } as never);
+    expect((await open()).status).toBe(404);
   });
 });

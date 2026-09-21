@@ -1,4 +1,5 @@
 import "server-only";
+import { readTranscript, searchTranscripts } from "@/lib/sell-side/store";
 import { tool } from "ai";
 import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
@@ -56,6 +57,16 @@ export function makeTools(ctx: { teamId: string; userId: string; sources?: Sourc
   const tickerArg = z.string().describe("Ticker symbol, e.g. NVDA");
 
   return {
+    find_call_transcripts: tool({
+      description: "Search saved sell-side call transcripts in this team. Filter by company ticker; optional full-text query. Returns source passages. Use read_call_transcript to page the complete call.",
+      inputSchema: z.object({ ticker: z.string().optional(), query: z.string().min(2).optional() }),
+      execute: async ({ ticker, query }) => { try { return await searchTranscripts(ctx.teamId, ticker, query); } catch (e) { return fail(e, null); } },
+    }),
+    read_call_transcript: tool({
+      description: "Read saved sell-side call transcript parts with timestamps (no speaker labels). Page with offset until nextOffset is null. Never attribute statements to specific speakers.",
+      inputSchema: z.object({ callId: z.string().uuid(), offset: z.number().int().min(0).default(0), limit: z.number().int().min(1).max(6).default(3) }),
+      execute: async ({ callId, offset, limit }) => { try { return await readTranscript(ctx.teamId, callId, offset, limit); } catch (e) { return fail(e, null); } },
+    }),
     get_quote: tool({
       description: "Latest price, day change, and market state for a ticker.",
       inputSchema: z.object({ ticker: tickerArg }),
