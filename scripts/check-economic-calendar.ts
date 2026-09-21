@@ -1,11 +1,10 @@
 import "dotenv/config";
 import { writeFile } from "node:fs/promises";
 import { validateRange } from "../src/lib/economic-calendar/dates";
-import { publicCalendarProvider } from "../src/lib/economic-calendar/public-provider";
+import { loadConfiguredCalendar } from "../src/lib/economic-calendar/provider-selection";
 
 const range = validateRange(process.argv[2] ?? null, process.argv[3] ?? null);
-const provider = publicCalendarProvider();
-const result = await provider.getEvents(range);
+const result = await loadConfiguredCalendar(range);
 const categories = Object.fromEntries(
   [...new Set(result.events.map((e) => e.category ?? "Uncategorized"))].map(
     (category) => [
@@ -18,7 +17,6 @@ const categories = Object.fromEntries(
 const report = {
   ...range,
   fetchedAt: new Date().toISOString(),
-  provider: provider.name,
   ...result,
   count: result.events.length,
   categories,
@@ -30,6 +28,25 @@ console.log(
     {
       file,
       count: report.count,
+      provider: result.provider,
+      futureWithEstimate: result.events.filter(
+        (e) =>
+          e.timestamp &&
+          Date.parse(e.timestamp) > Date.now() &&
+          e.estimate !== null,
+      ).length,
+      futureWithPrevious: result.events.filter(
+        (e) =>
+          e.timestamp &&
+          Date.parse(e.timestamp) > Date.now() &&
+          e.previous !== null,
+      ).length,
+      futureWithActual: result.events.filter(
+        (e) =>
+          e.timestamp &&
+          Date.parse(e.timestamp) > Date.now() &&
+          e.actual !== null,
+      ).length,
       sources: result.sources,
       coverage: result.coverage,
     },

@@ -1,20 +1,22 @@
 import "server-only";
 import { cached } from "@/lib/providers/cache";
-import { publicCalendarProvider } from "./public-provider";
+import {
+  calendarConfiguration,
+  loadConfiguredCalendar,
+} from "./provider-selection";
 import type { CalendarFeed, CalendarRange } from "./types";
 
 const pending = new Map<string, Promise<CalendarFeed>>();
 export async function getEconomicCalendar(
   range: CalendarRange,
 ): Promise<CalendarFeed> {
-  const provider = publicCalendarProvider();
-  const cacheKey = `public-calendar:feed:v1:${range.from}:${range.to}`;
+  const config = calendarConfiguration();
+  const cacheKey = `economic-calendar:feed:v3:${config.cacheScope}:${range.from}:${range.to}`;
   const running = pending.get(cacheKey);
   if (running) return running;
   const request = cached(cacheKey, 60, async () => ({
     ...range,
-    ...(await provider.getEvents(range)),
-    provider: provider.name,
+    ...(await loadConfiguredCalendar(range, config)),
     mode: "live" as const,
     fetchedAt: new Date().toISOString(),
   }));

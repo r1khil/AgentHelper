@@ -1,5 +1,163 @@
 # Economic Calendar
 
+## Active free configuration — September 21, 2026
+
+`ECONOMIC_CALENDAR_PROVIDER=biquote` explicitly selects the free, keyless biquote
+API. The local `.env.local` is configured this way; the saved EODHD token is
+preserved but unused. `auto` prefers configured TE/EODHD credentials and otherwise
+uses biquote. `public` explicitly selects the legacy agency-feed fallback.
+Provider mode is included in the cache identity. Deployments need the same setting
+if an unentitled EODHD key is present; no deployment was made in this run.
+
+MarketWatch loaded in the in-app browser, including an expanded September 24
+claims row (period September 19, forecast 204K, previous 196K, actual blank).
+However, an unauthenticated server request still returned HTTP 401 with
+`x-datadome: protected`. No browser challenge credentials were copied into the
+application. The user-authorized free alternative was integrated instead.
+
+The adapter preserves raw numbers plus unit/scale labels, exact reference dates,
+importance, currency and provider IDs. `revisedPrevious` becomes Previous and the
+original prior is retained as “was”. Forecasts remain separate `providerForecast`
+metadata; Estimate stays null because consensus provenance is unverified. No
+manual MarketWatch snapshot is used to fill live values. The existing UI and
+60-second memory/Postgres feed cache are reused.
+
+Exact UTC release times convert to Eastern with DST. Date-only/tentative clocks
+remain TBA and keep the provider's calendar day. The adapter splits saturated
+500-row windows and deduplicates by source identity. Live inspection found two
+auction schedule/actual duplicates with different value IDs; these are collapsed
+only when provider series, timestamp, period, unit and multiplier match, favoring
+the reported observation. Conflicting actuals fail visibly. Source IDs remain
+stable for normal value updates; a replacement provider record may change its ID.
+
+Live validation: upcoming September 21–27 returned 55 events, 46 periods, 49
+previous values and zero actuals. Prior September 14–20 returned 77 source rows,
+75 after removing the two duplicate auction schedules, with 71 actuals. The live
+browser showed upcoming claims at 8:30 AM Eastern, period 2026-09-19, previous 196
+(thousands), and Actual/Estimate blank. Search and week navigation worked.
+Coverage remains partial; this is not a verified MarketWatch-equivalent feed.
+Validation after integration: 305 tests passed, ESLint and TypeScript passed,
+production Webpack build passed, and the live browser recorded no errors.
+
+## Dedicated API integration
+
+The existing calendar UI is retained. The service prefers Trading Economics when
+`TRADING_ECONOMICS_API_KEY` is set, and falls back to EODHD when configured and TE
+fails (HTTP, transport, or schema validation). A successful empty week is not an
+error. Providers are not blended: values from different series or reporting
+periods are never joined by title. Failed TE status remains visible with EODHD.
+If both configured APIs fail, the route returns 502 and the existing UI retains
+and labels its last successful response. If neither key is configured in auto mode, the free biquote provider is selected.
+The legacy public feed is available through explicit public mode.
+
+Set these **server-only** variables in the application environment:
+
+- `TRADING_ECONOMICS_API_KEY`: a credential entitled to the U.S. calendar/date range.
+- `EODHD_API_KEY`: optional fallback credential with economic-events access.
+- `EODHD_CALENDAR_TIMEZONE`: required for EODHD; use the timezone confirmed by the
+  provider for your feed. The published endpoint schema does not specify one;
+  do not guess UTC or Eastern. Invalid/missing configuration disables that attempt.
+
+Credentials are never included in source links, errors, cache keys, or browser
+responses. The existing memory/Postgres cache stores normalized range results
+for 60 seconds and coalesces concurrent requests. A hashed configuration scope
+prevents an old public feed or different credential's feed from satisfying a
+new configuration. Failed calls are not cached; fallback results retry TE after
+60 seconds. No new dependencies or database migrations.
+
+### Audit performed before implementation
+
+`service.ts` previously always called `publicCalendarProvider`. BLS/BEA ICS and
+Federal Reserve JSON primarily supplied dates/titles. `agency-parsers.ts`
+extracted periods only when present in recognized source fields or titles;
+Census provided latest and next observations, and XOOMAR only partial reported
+values. There was no dedicated consensus API. `makeEvent` initialized absent
+values to null; the UI faithfully displayed those nulls as unavailable. Thus
+missing period/actual/estimate/previous primarily reflected source limitations,
+not missing table bindings. Public sources also produced separate schedule and
+value records, since joining them speculatively would risk mismatched measures.
+
+Files affected: `dedicated-providers.ts` (new adapters), `provider-selection.ts`
+(new selection/fallback), `service.ts` (selection/cache), `types.ts` (reference
+and currency metadata), `normalize.ts` (dedupe before range filtering so moved
+releases do not leave obsolete rows), API error wording, calendar explanatory
+copy, `.env.example`, verification script, and regression tests. All calendar
+paths are under `src/lib/economic-calendar` unless otherwise stated.
+
+### Field contract
+
+| App field | Trading Economics field | EODHD field |
+| --- | --- | --- |
+| Stable ID | `te:CalendarId` | Hash of country, source date/time, type, comparison, period |
+| Period | `Reference`, else literal `ReferenceDate` | `period` |
+| Actual | `Actual`, suppressed before scheduled release | `actual`, same suppression |
+| Estimate | `Forecast` only; **never `TEForecast`** | `estimate` |
+| Previous | `Previous` (already revised) | `previous` |
+| Previous before revision | `Revised` | Unavailable |
+| Units/currency | `Unit` / `Currency`, original strings retained | Unavailable |
+| Importance | `Importance` 1/2/3 | Unavailable |
+| Updated at | `LastUpdate` | Unavailable |
+
+TE timestamps are UTC and convert with `America/New_York` (DST-aware). Requests
+include the next UTC date so late Eastern Sunday events survive range filtering.
+`DateSpan != 0` is tentative and displays TBA, without an invented exact time.
+Reference periods are not shifted through timezone conversion. Source strings
+retain scaling/suffixes; zero stays zero; empty/null placeholders remain null.
+An elapsed scheduled time never creates an actual if the source supplies none.
+TE IDs survive revisions and rescheduling; duplicate IDs keep the newest update.
+Deduplication happens before range filtering to remove stale rescheduled rows.
+
+EODHD comparison (MoM/QoQ/YoY) is retained in the event name and identity. Its
+endpoint has no stable provider ID: deterministic IDs survive value changes but
+can change if date/time or period is corrected. No unsupported cross-provider
+identity matching is attempted. EODHD uses pagination up to its documented offset
+limit and refuses a saturated final page rather than silently truncating. It
+remains visibly partial because units, revisions, and importance are absent.
+
+References: [TE schema](https://docs.tradingeconomics.com/economic_calendar/schema/),
+[TE date-range endpoint](https://docs.tradingeconomics.com/economic_calendar/country/),
+[EODHD economic events](https://eodhd.com/financial-apis/economic-events-data-api).
+
+### Verification
+
+Run `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build -- --webpack`.
+Regression tests cover future actual suppression with estimate/previous retained,
+TEForecast exclusion, zero/missing values, revisions, rescheduling, deduplication,
+DST and Eastern week boundaries, provider fallback, safe errors, and pagination.
+
+For live acceptance, configure credentials, then run
+`npx tsx scripts/check-economic-calendar.ts YYYY-MM-DD YYYY-MM-DD` for a released
+week and the upcoming week. The script uses the same provider selection as the
+app and reports future counts for estimate, previous, and actual (must be zero).
+Use `DOTENV_CONFIG_PATH=.env.local` if credentials are in that file. Inspect the
+saved report's event identities/periods/units, not merely row counts. A successful
+mock test does not establish live subscription coverage or release latency.
+
+The development-only view remains `/dev/economic-calendar?live=1`, enabled with
+`ECONOMIC_CALENDAR_PREVIEW=1`. Without `live=1` it is explicitly synthetic.
+Production authentication remains required and unchanged.
+
+### Results of this implementation run
+
+- 298 tests across 42 files passed; TypeScript, ESLint and `git diff --check` passed.
+- Webpack production build passed.
+- Browser verification of the existing explicitly synthetic preview passed on
+  desktop and 390px mobile, with no browser errors or horizontal overflow.
+  Next-week preview rendered 24 blank actual cells and retained estimate/previous
+  for the 21 applicable fixtures. This is UI evidence, not live financial data.
+- Dedicated provider and service tests use mocked HTTP responses; cache expiry,
+  coalescing, credential separation and failed-request recovery are covered.
+- No TE/EODHD credential was available. Live dedicated-feed coverage, authenticated
+  team access, and real release latency remain unverified. Configure the variables
+  above and run the live acceptance command before treating this as production-ready.
+- Changes are local in the existing `visuals` worktree; no push or deployment.
+
+## Historical public-feed audit (September 19, 2026)
+
+The following documents the pre-integration public-feed limitations and prior
+validation, not verification of the new dedicated API against a paid account.
+
+
 ## Status
 
 The calendar now loads live public data **without Trading Economics credentials**. No production fixtures, MarketWatch table scraper, new runtime dependencies, or database migrations are used. **MarketWatch coverage acceptance failed; this feature remains incomplete and the PR remains draft.** The UI exposes this limitation and per-source availability instead of implying completeness from the number of records.

@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     );
   } catch {
     return Response.json(
-      { error: "Public feeds unavailable." },
+      { error: "Calendar providers unavailable. Check API access and configuration." },
       { status: 502 },
     );
   }

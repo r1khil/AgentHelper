@@ -9,12 +9,15 @@ export type EconomicEvent = {
   period: string | null;
   actual: string | null;
   estimate: string | null;
+  providerForecast?: string | null;
   previous: string | null;
   previousBeforeRevision: string | null;
   importance: 1 | 2 | 3 | null;
   source: string | null;
   sourceUrl?: string;
   unit?: string | null;
+  currency?: string | null;
+  referenceDate?: string | null;
   updatedAt: string | null;
 };
 export type CalendarRange = { from: string; to: string };

@@ -259,7 +259,7 @@ export function EconomicCalendar({
       </Card>
       {livePreview && (
         <p role="note" className="mb-4 text-sm text-muted-foreground">
-          Local verification view · live public feeds · app authentication
+          Local verification view · live calendar feed · app authentication
           remains required on the main route.
         </p>
       )}
@@ -345,7 +345,7 @@ export function EconomicCalendar({
         <>
           <p className="mb-3 text-xs text-muted-foreground">
             Showing {visible.length} of {events.length} events · All times ET ·
-            Checks every minute · Sources cached for 5 minutes
+            Checks every minute · Provider caching applies
           </p>
           <div className="space-y-4">
             {days.map((day) => {
@@ -477,8 +477,8 @@ export function EconomicCalendar({
             })}
           </div>
           <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
-            Estimate is economist consensus, where supplied. Public agency feeds
-            do not supply consensus; no forecasts are inferred. — means
+            Estimate is provider-supplied, where available. Trading Economics uses
+            economist consensus; its model forecasts are never substituted. — means
             unavailable or not applicable; a past time alone does not confirm a
             release. Previous includes provider revisions. Values are shown
             neutrally: higher does not always mean better. Release updates

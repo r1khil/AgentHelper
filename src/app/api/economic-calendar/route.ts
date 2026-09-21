@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     return Response.json(
       {
         error:
-          "Public calendar sources are unavailable. Try again shortly. No synthetic events have been substituted.",
+          "Calendar providers are unavailable. Check API access and configuration, then try again. No synthetic events have been substituted.",
       },
       {
         status: 502,

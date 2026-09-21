@@ -65,7 +65,6 @@ export function inRange(
   const today = DateTime.fromMillis(now, { zone: NY }).toISODate()!;
   const byId = new Map<string, EconomicEvent>();
   for (const event of events) {
-    if (event.date < range.from || event.date > range.to) continue;
     const upcoming = event.timestamp
       ? Date.parse(event.timestamp) > now
       : event.date > today;
@@ -73,12 +72,14 @@ export function inRange(
     if (!old || (event.updatedAt ?? "") >= (old.updatedAt ?? ""))
       byId.set(event.id, { ...event, actual: upcoming ? null : event.actual });
   }
-  return [...byId.values()].sort(
-    (a, b) =>
-      a.date.localeCompare(b.date) ||
-      (a.timestamp ?? `${a.date}T99`).localeCompare(
-        b.timestamp ?? `${b.date}T99`,
-      ) ||
-      a.name.localeCompare(b.name),
-  );
+  return [...byId.values()]
+    .filter((event) => event.date >= range.from && event.date <= range.to)
+    .sort(
+      (a, b) =>
+        a.date.localeCompare(b.date) ||
+        (a.timestamp ?? `${a.date}T99`).localeCompare(
+          b.timestamp ?? `${b.date}T99`,
+        ) ||
+        a.name.localeCompare(b.name),
+    );
 }
