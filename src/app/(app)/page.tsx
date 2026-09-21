@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { and, asc, eq, gte, inArray, ne } from "drizzle-orm";
 import { db } from "@/db/client";
 import { earnings, holdings, movements, profiles, teams } from "@/db/schema";
 import { requireUser, listAccessibleTeams, isFundWide } from "@/lib/auth";
-import { marketSnapshot } from "@/lib/market";
+import { marketSnapshot, type MarketSnapshot } from "@/lib/market";
 import { fmtDate, fmtDateTime, fmtMoney, fmtPct } from "@/lib/format";
 import { todayNY } from "@/lib/providers/calendar";
 import { PageHeader, SectionTitle } from "@/components/app/page-header";
@@ -13,6 +14,7 @@ import { Move } from "@/components/app/move";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Today" };
@@ -59,18 +61,19 @@ export default async function TodayPage() {
   ]);
   const mine = openMovements.filter((r) => r.m.ownerId === user.id);
   const others = openMovements.filter((r) => r.m.ownerId !== user.id);
-  const market = await marketSnapshot(activeHoldings.map((r) => r.h.ticker));
+  // Not awaited: the page renders from the database right away and the quotes stream into their Suspense
+  // boundaries when Yahoo answers. One promise feeds both boundaries so it is a single provider call.
+  const market = marketSnapshot(activeHoldings.map((r) => r.h.ticker));
+  const fundWide = isFundWide(user);
 
   return (
     <>
       <PageHeader
         title="Today"
         description={
-          market.spx ? (
-            <>S&amp;P 500 {fmtPct(market.spx.changePct)}{market.spx.marketState && market.spx.marketState !== "REGULAR" ? " · market closed" : ""}. {fmtDate(today)}.</>
-          ) : (
-            fmtDate(today)
-          )
+          <Suspense fallback={fmtDate(today)}>
+            <MarketLine market={market} today={today} />
+          </Suspense>
         }
       />
 
@@ -97,40 +100,10 @@ export default async function TodayPage() {
           </div>
 
           <div>
-            <SectionTitle aside={isFundWide(user) ? "All teams" : myTeams[0]?.name}>Holdings</SectionTitle>
-            <Card className="overflow-x-auto p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ticker</TableHead>
-                    {isFundWide(user) && <TableHead>Team</TableHead>}
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead className="text-right">Day</TableHead>
-                    <TableHead className="text-right">vs S&amp;P</TableHead>
-                    <TableHead>Owner</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {activeHoldings.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-muted-foreground">No holdings yet.</TableCell></TableRow>
-                  ) : (
-                    activeHoldings.map(({ h, teamSlug, teamName, ownerName }) => {
-                      const q = market.rows[h.ticker];
-                      return (
-                        <TableRow key={h.id}>
-                          <TableCell><Link href={`/t/${teamSlug}/h/${h.ticker}`} className="font-semibold hover:underline">{h.ticker}</Link></TableCell>
-                          {isFundWide(user) && <TableCell className="text-muted-foreground">{teamName}</TableCell>}
-                          <TableCell className="tnum text-right">{q?.quote ? fmtMoney(q.quote.price) : "—"}</TableCell>
-                          <TableCell className="text-right"><Move value={q?.quote?.changePct} unit="%" digits={2} /></TableCell>
-                          <TableCell className="text-right"><Move value={q?.relativePp} unit=" pp" /></TableCell>
-                          <TableCell className={ownerName ? "" : "text-warning-foreground"}>{ownerName ?? "Unassigned"}</TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </Card>
+            <SectionTitle aside={fundWide ? "All teams" : myTeams[0]?.name}>Holdings</SectionTitle>
+            <Suspense fallback={<HoldingsTable rows={activeHoldings} fundWide={fundWide} />}>
+              <LiveHoldingsTable rows={activeHoldings} fundWide={fundWide} market={market} />
+            </Suspense>
           </div>
         </div>
 
@@ -152,7 +125,7 @@ export default async function TodayPage() {
             )}
           </div>
 
-          {isFundWide(user) && (
+          {fundWide && (
             <div>
               <SectionTitle>Teams</SectionTitle>
               <Card className="divide-y p-0">
@@ -167,5 +140,66 @@ export default async function TodayPage() {
         </div>
       </div>
     </>
+  );
+}
+
+async function MarketLine({ market, today }: { market: Promise<MarketSnapshot>; today: string }) {
+  const { spx } = await market;
+  if (!spx) return fmtDate(today);
+  return <>S&amp;P 500 {fmtPct(spx.changePct)}{spx.marketState && spx.marketState !== "REGULAR" ? " · market closed" : ""}. {fmtDate(today)}.</>;
+}
+
+type HoldingRow = { h: typeof holdings.$inferSelect; teamSlug: string; teamName: string; ownerName: string | null };
+
+async function LiveHoldingsTable({ rows, fundWide, market }: { rows: HoldingRow[]; fundWide: boolean; market: Promise<MarketSnapshot> }) {
+  return <HoldingsTable rows={rows} fundWide={fundWide} market={await market} />;
+}
+
+/** Without `market` the price columns show placeholders; that is the Suspense fallback while quotes load. */
+function HoldingsTable({ rows, fundWide, market }: { rows: HoldingRow[]; fundWide: boolean; market?: MarketSnapshot }) {
+  return (
+    <Card className="overflow-x-auto p-0">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Ticker</TableHead>
+            {fundWide && <TableHead>Team</TableHead>}
+            <TableHead className="text-right">Price</TableHead>
+            <TableHead className="text-right">Day</TableHead>
+            <TableHead className="text-right">vs S&amp;P</TableHead>
+            <TableHead>Owner</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.length === 0 ? (
+            <TableRow><TableCell colSpan={6} className="text-muted-foreground">No holdings yet.</TableCell></TableRow>
+          ) : (
+            rows.map(({ h, teamSlug, teamName, ownerName }) => {
+              const q = market?.rows[h.ticker];
+              return (
+                <TableRow key={h.id}>
+                  <TableCell><Link href={`/t/${teamSlug}/h/${h.ticker}`} className="font-semibold hover:underline">{h.ticker}</Link></TableCell>
+                  {fundWide && <TableCell className="text-muted-foreground">{teamName}</TableCell>}
+                  {market ? (
+                    <>
+                      <TableCell className="tnum text-right">{q?.quote ? fmtMoney(q.quote.price) : "—"}</TableCell>
+                      <TableCell className="text-right"><Move value={q?.quote?.changePct} unit="%" digits={2} /></TableCell>
+                      <TableCell className="text-right"><Move value={q?.relativePp} unit=" pp" /></TableCell>
+                    </>
+                  ) : (
+                    <>
+                      <TableCell><Skeleton className="ml-auto h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
+                      <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
+                    </>
+                  )}
+                  <TableCell className={ownerName ? "" : "text-warning-foreground"}>{ownerName ?? "Unassigned"}</TableCell>
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </Card>
   );
 }

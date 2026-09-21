@@ -10,15 +10,17 @@ export type CurrentUser = Profile & { team: Team | null };
 
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createSupabaseServer();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  // getClaims verifies the ES256 access token locally against the project's JWKS (cached per instance), so a
+  // render costs no round trip to the Auth server; getUser made one on every page. proxy.ts has already
+  // refreshed the session cookie for this request.
+  const { data } = await supabase.auth.getClaims();
+  const userId = data?.claims.sub;
+  if (!userId) return null;
   const rows = await db
     .select({ profile: profiles, team: teams })
     .from(profiles)
     .leftJoin(teams, eq(teams.id, profiles.teamId))
-    .where(eq(profiles.id, user.id))
+    .where(eq(profiles.id, userId))
     .limit(1);
   const row = rows[0];
   if (!row) return null;
