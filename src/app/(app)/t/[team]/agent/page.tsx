@@ -1,71 +1,63 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Loader2, Plus, Sparkles } from "lucide-react";
 import { loadTeam } from "@/lib/teams";
-import { effectiveRunStatus, listChats } from "@/lib/chats";
+import { listHoldingChatStats } from "@/lib/chats";
 import { listTeamHoldings } from "@/lib/holdings";
-import { createChat } from "@/lib/actions/chats";
-import { relativeTime } from "@/lib/format";
+import { listTeamMovements } from "@/lib/movements";
+import { listTeamEarnings } from "@/lib/earnings";
+import { marketSnapshot } from "@/lib/market";
 import { agentConfigured } from "@/lib/agent/model";
-import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
-import { NativeSelect } from "@/components/app/native-select";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { HoldingCards, type HoldingCardData, type MarketByTicker } from "@/components/app/agent/holding-cards";
 
 export const metadata: Metadata = { title: "Agent" };
 
 export default async function AgentIndex({ params }: { params: Promise<{ team: string }> }) {
   const { team: slug } = await params;
   const { team } = await loadTeam(slug);
-  const [rows, holdings] = await Promise.all([listChats(team.id), listTeamHoldings(team.id)]);
+  const [rows, stats, movements, earnings] = await Promise.all([listTeamHoldings(team.id), listHoldingChatStats(team.id), listTeamMovements(team.id), listTeamEarnings(team.id)]);
+  // Not awaited: the cards render from the database at once and the quotes stream in when Yahoo answers.
+  const market: Promise<MarketByTicker> = marketSnapshot(rows.map((r) => r.h.ticker)).then((m) =>
+    Object.fromEntries(Object.entries(m.rows).map(([t, r]) => [t, { changePct: r.quote?.changePct, relativePp: r.relativePp }])),
+  );
+
+  const today = new Date().toISOString().slice(0, 10);
+  const openMovement = new Map<string, { dueAt: string | null }>();
+  for (const { m } of movements) {
+    if ((m.status === "open" || m.status === "in_progress") && !openMovement.has(m.holdingId)) openMovement.set(m.holdingId, { dueAt: m.dueAt?.toISOString() ?? null });
+  }
+  const nextReport = new Map<string, HoldingCardData["earnings"]>();
+  for (const { e } of [...earnings].sort((a, b) => a.e.reportDate.localeCompare(b.e.reportDate))) {
+    if (e.status === "upcoming" && e.reportDate >= today && !nextReport.has(e.holdingId)) {
+      nextReport.set(e.holdingId, { reportDate: e.reportDate, dateStatus: e.dateStatus, hasExpectations: Boolean(e.expectations?.trim()) });
+    }
+  }
+
+  const holdings: HoldingCardData[] = rows.map(({ h }) => {
+    const s = stats.get(h.id);
+    return {
+      id: h.id,
+      ticker: h.ticker,
+      name: h.companyName,
+      href: `/t/${team.slug}/agent/h/${h.ticker}`,
+      chats: s?.chats ?? 0,
+      sources: s?.sources ?? 0,
+      lastActivity: s?.lastActivity.toISOString() ?? null,
+      running: s?.running,
+      movement: openMovement.get(h.id),
+      earnings: nextReport.get(h.id),
+    };
+  });
+
   return (
     <>
-      <PageHeader
-        title="Research agent"
-        description={agentConfigured() ? "Evidence with sources." : "Not configured: set OPENROUTER_API_KEY."}
-        actions={
-          <form action={createChat} className="flex items-center gap-2">
-            <input type="hidden" name="teamId" value={team.id} />
-            <NativeSelect name="holdingId" defaultValue="" className="w-44">
-              <option value="">Whole team</option>
-              {holdings.map(({ h }) => (
-                <option key={h.id} value={h.id}>
-                  Pin to {h.ticker}
-                </option>
-              ))}
-            </NativeSelect>
-            <Button type="submit" size="sm">
-              <Plus />
-              New chat
-            </Button>
-          </form>
-        }
-      />
+      {!agentConfigured() && <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning-foreground">The agent is not configured: set OPENROUTER_API_KEY.</div>}
       {rows.length === 0 ? (
-        <EmptyState title="No chats yet">Start a chat to pull filings, prices, and news for your holdings. Chats are shared with your team.</EmptyState>
+        <>
+          <h1 className="mb-5 text-xl font-semibold tracking-tight">Research agent</h1>
+          <EmptyState title="No holdings yet">Add the tickers this team covers on the Holdings page. Each one gets its own research board here.</EmptyState>
+        </>
       ) : (
-        <Card className="divide-y p-0">
-          {rows.map(({ c, authorName, ticker }) => (
-            <Link key={c.id} href={`/t/${team.slug}/agent/${c.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40">
-              <Sparkles className="size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">{c.title}</div>
-                <div className="text-xs text-muted-foreground">
-                  {authorName ?? "Unknown"} · {relativeTime(c.updatedAt)}
-                </div>
-              </div>
-              {effectiveRunStatus(c) === "running" && (
-                <Badge variant="secondary" className="gap-1">
-                  <Loader2 className="size-3 animate-spin" />
-                  Working
-                </Badge>
-              )}
-              {ticker && <Badge variant="outline">{ticker}</Badge>}
-            </Link>
-          ))}
-        </Card>
+        <HoldingCards holdings={holdings} market={market} />
       )}
     </>
   );
