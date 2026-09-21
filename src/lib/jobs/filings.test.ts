@@ -78,4 +78,13 @@ describe("filingDocumentRows", () => {
     expect(isEarningsExhibit({ name: "axp-ex99_1.htm", url: "u" })).toBe(true);
     expect(isEarningsExhibit({ name: "a.htm", url: "u", type: "EX-10.1" })).toBe(false);
   });
+
+  it("skips exhibit images and other non-text files even when their names carry ex99", () => {
+    // EDGAR's index lists every image embedded in a press release as its own GRAPHIC row.
+    expect(isEarningsExhibit({ name: "tm2625368d1_ex99-2img003.jpg", url: "u", type: "GRAPHIC" })).toBe(false);
+    expect(isEarningsExhibit({ name: "ex99-1.jpg", url: "u", type: "EX-99.1" })).toBe(false);
+    expect(isEarningsExhibit({ name: "ex991.pdf", url: "u", type: "EX-99.1" })).toBe(false);
+    expect(isEarningsExhibit({ name: "ex991.htm", url: "u", type: "GRAPHIC" })).toBe(false);
+    expect(isEarningsExhibit({ name: "nee-ex99_1.HTM", url: "u", type: "EX-99.1" })).toBe(true);
+  });
 });

@@ -5,6 +5,7 @@ import { documents, type DocumentRow } from "@/db/schema";
 import { getFileText } from "@/lib/drive/index";
 import { capText } from "@/lib/drive/text";
 import { getFilingText } from "@/lib/providers/edgar";
+import { isTransientIngestError } from "./ingest-plan";
 import { filingSectionsText, usesItemSections } from "./sections";
 
 /** Filings stored whole (8-K, exhibits) may be longer than a Drive document; the item-section form is much smaller. */
@@ -40,8 +41,9 @@ export async function getDocumentText(doc: DocumentRow): Promise<{ doc: Document
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     // EDGAR rate limits and outages are transient: leave the row retryable rather than marking the version unreadable.
-    if (!/rate limited|EDGAR 5\d\d|fetch failed|ECONN|ETIMEDOUT/i.test(message)) {
-      await db.update(documents).set({ text: null, textFor: doc.version, textError: message.slice(0, 500), updatedAt: new Date() }).where(eq(documents.id, doc.id));
+    if (!isTransientIngestError(message)) {
+      // Postgres rejects NUL in text; a failed query's message can echo binary params, so strip them here too.
+      await db.update(documents).set({ text: null, textFor: doc.version, textError: message.replace(/\u0000/g, "").slice(0, 500), updatedAt: new Date() }).where(eq(documents.id, doc.id));
     }
     throw e;
   }

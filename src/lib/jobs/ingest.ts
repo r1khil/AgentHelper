@@ -7,7 +7,7 @@ import { embeddingModelId } from "@/lib/agent/retrieval-models";
 import { DriveNotConnected, driveConfigured, loadConnection } from "@/lib/drive/auth";
 import { chunkHeader } from "@/lib/drive/chunk";
 import { getDocumentText } from "@/lib/documents/adapters";
-import { ingestNeeds, isIngestible, pickIngestCandidates, type IngestConfig, type IngestRow } from "@/lib/documents/ingest-plan";
+import { ingestNeeds, isIngestible, isTransientIngestError, pickIngestCandidates, type IngestConfig, type IngestRow } from "@/lib/documents/ingest-plan";
 import { chunkDocument } from "@/lib/documents/sections";
 import { replaceChunks } from "@/lib/documents/search";
 import { proposalEligibility } from "@/lib/drive/proposals";
@@ -206,7 +206,9 @@ async function ingestOne(documentId: string, cfg: IngestConfig, result: IngestRe
       }
       ok = false;
       fail("embed", e);
-      await db.update(documents).set({ embedError: msg(e).slice(0, 500), embedFor: row.version, updatedAt: new Date() }).where(eq(documents.id, documentId));
+      // A provider 5xx or dropped connection says nothing about the document: leave embedFor unset so the next run retries.
+      const transient = isTransientIngestError(msg(e));
+      await db.update(documents).set({ embedError: msg(e).slice(0, 500), ...(transient ? {} : { embedFor: row.version }), updatedAt: new Date() }).where(eq(documents.id, documentId));
     }
   }
 

@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { holdings, jobRuns } from "@/db/schema";
-import { existingFilingIds, upsertFilingDocuments } from "@/lib/documents/index";
+import { existingFilingIds, pruneNonTextFilings, upsertFilingDocuments } from "@/lib/documents/index";
 import { listFilingDocuments, listFilings, tickerToCik } from "@/lib/providers/edgar";
 import { getSetting, setSetting } from "@/lib/settings";
 import { filingDocumentRows, filingExternalId, listingSince, type Exhibit } from "./filings-plan";
@@ -17,6 +17,8 @@ export type FilingsSyncResult = {
   holdings: number;
   listed: number;
   added: number;
+  /** Non-text filing rows (exhibit images) removed before listing. */
+  pruned: number;
   failed: { ticker: string; error: string }[];
   ingest?: IngestResult;
   elapsedMs: number;
@@ -33,11 +35,13 @@ export async function syncFilings(opts: { backfill?: boolean; budgetMs?: number;
   const started = Date.now();
   const budgetMs = opts.budgetMs ?? 240_000;
   const now = new Date();
-  const result: FilingsSyncResult = { status: "ok", holdings: 0, listed: 0, added: 0, failed: [], elapsedMs: 0 };
+  const result: FilingsSyncResult = { status: "ok", holdings: 0, listed: 0, added: 0, pruned: 0, failed: [], elapsedMs: 0 };
   const done = (r: FilingsSyncResult) => ({ ...r, elapsedMs: Date.now() - started });
   const [jobRow] = await db.insert(jobRuns).values({ job: "filings_sync", summary: { reason: opts.reason ?? "manual", backfill: Boolean(opts.backfill) } }).returning({ id: jobRuns.id });
   const progress = createJobReporter(jobRow.id);
   try {
+    result.pruned = await pruneNonTextFilings();
+    if (result.pruned) progress.step("pruned non-text filing rows", { pruned: result.pruned });
     const lastSync = opts.backfill ? null : await getSetting(FILINGS_LAST_SYNC_SETTING, { fresh: true });
     const window = { backfill: Boolean(opts.backfill), lastSync, now };
     const rows = await db.select({ id: holdings.id, ticker: holdings.ticker, companyName: holdings.companyName, cik: holdings.cik }).from(holdings).where(eq(holdings.status, "active"));

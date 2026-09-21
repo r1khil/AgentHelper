@@ -29,7 +29,11 @@ export function listingSince(opts: { backfill: boolean; lastSync: string | null;
 
 export const filingExternalId = (accession: string, documentName: string) => `${accession}/${documentName}`;
 
+/** Exhibit files the app can read as text; EDGAR also lists the images embedded in press releases (type GRAPHIC, .jpg). */
+const TEXT_DOCUMENT_RE = /\.(htm|html|txt)$/i;
+
 export function isEarningsExhibit(e: Exhibit): boolean {
+  if (!TEXT_DOCUMENT_RE.test(e.name) || /^GRAPHIC$/i.test(e.type ?? "")) return false;
   return /EX-?99/i.test(e.type ?? "") || /ex-?99/i.test(e.name);
 }
 

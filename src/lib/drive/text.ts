@@ -5,7 +5,7 @@ import type { WorkbookInfo } from "@/lib/excel/read";
 export const MAX_TEXT_CHARS = 400_000;
 
 export function capText(text: string, max = MAX_TEXT_CHARS) {
-  const t = text.replace(/\r\n?/g, "\n").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  const t = text.replace(/\u0000/g, "").replace(/\r\n?/g, "\n").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   return t.length > max ? `${t.slice(0, max)}\n[truncated]` : t;
 }
 
