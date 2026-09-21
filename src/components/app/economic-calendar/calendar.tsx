@@ -52,10 +52,11 @@ export function EconomicCalendar({
   useEffect(() => {
     const controller = new AbortController();
     let busy = false;
-    async function load() {
+    // Only the first load and an explicit Refresh show the loading state; silent polls do not.
+    async function load(visible = false) {
       if (busy || document.visibilityState === "hidden") return;
       busy = true;
-      setLoading(true);
+      if (visible) setLoading(true);
       setNow(Date.now());
       try {
         const endpoint =
@@ -90,8 +91,8 @@ export function EconomicCalendar({
         if (!controller.signal.aborted) setLoading(false);
       }
     }
-    void load();
-    const timer = window.setInterval(load, 60_000);
+    void load(true);
+    const timer = window.setInterval(() => void load(), 60_000);
     const onVisible = () => {
       if (document.visibilityState === "visible") void load();
     };

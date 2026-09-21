@@ -3,9 +3,10 @@ import { getQuotes, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import type { Quote } from "@/lib/providers/types";
 
 export type MarketRow = { quote?: Quote; relativePp?: number; error?: string };
+export type MarketSnapshot = { rows: Record<string, MarketRow>; spx?: Quote; error?: string };
 
 /** Live quotes for tickers plus the day's move relative to the S&P 500, in percentage points. */
-export async function marketSnapshot(tickers: string[]): Promise<{ rows: Record<string, MarketRow>; spx?: Quote; error?: string }> {
+export async function marketSnapshot(tickers: string[]): Promise<MarketSnapshot> {
   if (!tickers.length) return { rows: {} };
   try {
     const quotes = await getQuotes([...new Set([...tickers, SPX_SYMBOL])]);

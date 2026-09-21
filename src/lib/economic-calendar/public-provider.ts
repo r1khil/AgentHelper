@@ -19,8 +19,46 @@ type Cache = <T>(
   seconds: number,
   load: () => Promise<T>,
 ) => Promise<T>;
+/** Failed sources are remembered briefly so client polling cannot hammer an agency that is down. */
+const FAILURE_TTL_MS = 30_000;
+const recentFailures = new Map<string, { error: Error; until: number }>();
+/** Test isolation only. */
+export function forgetCalendarFailures() {
+  recentFailures.clear();
+}
+const MAX_BODY_BYTES = 5_000_000;
+export const REQUEST_TIMEOUT_MS = 10_000;
+
+/** BLS returns 403 to User-Agents containing a URL; its usage policy asks for a contact address instead. */
+export function calendarUserAgent(
+  env: Record<string, string | undefined> = process.env,
+) {
+  const contact = env.CALENDAR_CONTACT_EMAIL?.trim();
+  return contact ? `OwlFundCalendar/1.0 (${contact})` : "OwlFundCalendar/1.0";
+}
 export const COVERAGE_MESSAGE =
   "Partial coverage: agency schedules and reported values are live, but private surveys, regional Fed events and consensus estimates are not fully covered. Some reports have separate schedule and value records. This is not yet a complete MarketWatch replacement.";
+
+/** Stop reading as soon as the cap is passed instead of buffering an unbounded body first. */
+async function readBounded(response: Response): Promise<string> {
+  if (!response.body)
+    return (await response.text()).slice(0, MAX_BODY_BYTES + 1);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let bytes = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    if (bytes > MAX_BODY_BYTES) {
+      await reader.cancel();
+      throw new Error("Source response exceeded expected size");
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
+}
 
 export function publicCalendarProvider(
   fetcher: typeof fetch = fetch,
@@ -59,24 +97,40 @@ export function publicCalendarProvider(
         },
       ];
       const results = await Promise.allSettled(
-        sources.map((source) =>
-          cache(`public-calendar:v1:${source.url}`, 300, async () => {
-            const response = await fetcher(source.url, {
-              cache: "no-store",
-              signal: AbortSignal.timeout(15_000),
-              headers: {
-                Accept: "application/json, text/calendar, text/html",
-                "User-Agent":
-                  "OwlFundCalendar/1.0 (+https://github.com/r1khil/AgentHelper)",
+        sources.map(async (source) => {
+          const failed = recentFailures.get(source.url);
+          if (failed && failed.until > Date.now()) throw failed.error;
+          try {
+            return await cache(
+              `public-calendar:v1:${source.url}`,
+              300,
+              async () => {
+                const response = await fetcher(source.url, {
+                  cache: "no-store",
+                  signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+                  headers: {
+                    Accept: "application/json, text/calendar, text/html",
+                    "User-Agent": calendarUserAgent(),
+                  },
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const declared = Number(
+                  response.headers.get("content-length") ?? 0,
+                );
+                if (declared > MAX_BODY_BYTES)
+                  throw new Error("Source response exceeded expected size");
+                const body = await readBounded(response);
+                return source.parse(body.replace(/^\uFEFF/, ""));
               },
+            );
+          } catch (error) {
+            recentFailures.set(source.url, {
+              error: error instanceof Error ? error : new Error(String(error)),
+              until: Date.now() + FAILURE_TTL_MS,
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const body = (await response.text()).replace(/^\uFEFF/, "");
-            if (body.length > 5_000_000)
-              throw new Error("Source response exceeded expected size");
-            return source.parse(body);
-          }),
-        ),
+            throw error;
+          }
+        }),
       );
       const statuses: CalendarSourceStatus[] = [];
       const events: EconomicEvent[] = [];

@@ -56,25 +56,30 @@ export async function getQuote(symbol: string): Promise<Quote> {
 }
 
 export async function getQuotes(symbols: string[]): Promise<Record<string, Quote>> {
-  const out: Record<string, Quote> = {};
-  if (!symbols.length) return out;
-  const res = await spaced(HOST, GAP_MS, () => retry(() => yf().quote(symbols)));
-  for (const q of res) {
-    if (q.regularMarketPrice === undefined) continue;
-    out[q.symbol] = {
-      symbol: q.symbol,
-      name: q.longName ?? q.shortName,
-      price: q.regularMarketPrice,
-      previousClose: q.regularMarketPreviousClose,
-      changePct: q.regularMarketChangePercent,
-      marketState: q.marketState,
-      asOf: (q.regularMarketTime instanceof Date ? q.regularMarketTime : new Date()).toISOString(),
-      currency: q.currency,
-      marketCap: q.marketCap,
-      exchange: q.fullExchangeName,
-    };
-  }
-  return out;
+  const unique = [...new Set(symbols)].sort();
+  if (!unique.length) return {};
+  // Every Today and team page view used to be a live Yahoo call. A short shared cache lets all renders in the
+  // same minute, on any warm instance via the DB layer, reuse one; the quotes are delayed anyway.
+  return cached(`yahoo:quotes:${unique.join(",")}`, 60, async () => {
+    const out: Record<string, Quote> = {};
+    const res = await spaced(HOST, GAP_MS, () => retry(() => yf().quote(unique)));
+    for (const q of res) {
+      if (q.regularMarketPrice === undefined) continue;
+      out[q.symbol] = {
+        symbol: q.symbol,
+        name: q.longName ?? q.shortName,
+        price: q.regularMarketPrice,
+        previousClose: q.regularMarketPreviousClose,
+        changePct: q.regularMarketChangePercent,
+        marketState: q.marketState,
+        asOf: (q.regularMarketTime instanceof Date ? q.regularMarketTime : new Date()).toISOString(),
+        currency: q.currency,
+        marketCap: q.marketCap,
+        exchange: q.fullExchangeName,
+      };
+    }
+    return out;
+  });
 }
 
 export async function lookupCompany(symbol: string): Promise<{ symbol: string; name: string } | null> {

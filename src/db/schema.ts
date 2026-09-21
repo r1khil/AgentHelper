@@ -592,3 +592,18 @@ export const appSettings = pgTable("app_settings", {
   updatedBy: uuid("updated_by").references(() => profiles.id, { onDelete: "set null" }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// One row per pull request merged into main, with a plain-English summary written once by the
+// research agent's (free) model. The Changelog page for execs and admins reads from here.
+export const changelogEntries = pgTable("changelog_entries", {
+  prNumber: integer("pr_number").primaryKey(),
+  title: text("title").notNull(),
+  author: text("author").notNull(),
+  url: text("url").notNull(),
+  mergedAt: timestamp("merged_at", { withTimezone: true }).notNull(),
+  headline: text("headline").notNull(),
+  summary: text("summary").notNull(),
+  model: text("model").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ChangelogEntry = typeof changelogEntries.$inferSelect;
