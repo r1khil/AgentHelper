@@ -9,6 +9,7 @@ import { chunkHeader } from "@/lib/drive/chunk";
 import { getDocumentText } from "@/lib/documents/adapters";
 import { ingestNeeds, isIngestible, isTransientIngestError, pickIngestCandidates, type IngestConfig, type IngestRow } from "@/lib/documents/ingest-plan";
 import { chunkDocument } from "@/lib/documents/sections";
+import { requeueOversizedEmbeds } from "@/lib/documents/index";
 import { replaceChunks } from "@/lib/documents/search";
 import { proposalEligibility } from "@/lib/drive/proposals";
 import { SUMMARY_VERSION, isEmptySummary, type DocSummary } from "@/lib/drive/summary";
@@ -89,6 +90,7 @@ export async function runIngest(opts: IngestOptions): Promise<IngestResult> {
   const cfg = await ingestConfig();
   const [jobRow] = await db.insert(jobRuns).values({ job: "ingest", summary: { reason: opts.reason, kinds } }).returning({ id: jobRuns.id });
   try {
+    await requeueOversizedEmbeds();
     const rows = await loadCandidates(opts, driveOn);
     const { picked, remaining } = pickIngestCandidates(rows.map(toPlan), cfg, { max: opts.maxDocs ?? maxDocsDefault(), now: new Date(), retryAfterMs: RETRY_AFTER_MS, maxAttempts: MAX_ATTEMPTS });
     result.remaining = remaining;

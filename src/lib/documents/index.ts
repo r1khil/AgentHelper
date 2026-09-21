@@ -96,6 +96,19 @@ export async function pruneNonTextFilings(): Promise<number> {
   return r.length;
 }
 
+/**
+ * Rows stamped unembeddable by the provider's token cap before embedTexts learned to shrink oversized batches: clear
+ * the stamp so the planner queues them again. Idempotent; returns how many were requeued.
+ */
+export async function requeueOversizedEmbeds(): Promise<number> {
+  const r = await db
+    .update(documents)
+    .set({ embedFor: null, embedError: null, updatedAt: new Date() })
+    .where(and(isNotNull(documents.embedFor), sql`${documents.embedError} ilike '%exceeds model maximum%'`))
+    .returning({ id: documents.id });
+  return r.length;
+}
+
 export async function existingFilingIds(holdingId: string): Promise<Set<string>> {
   const rows = await db.select({ externalId: documents.externalId }).from(documents).where(and(eq(documents.kind, "filing"), eq(documents.holdingId, holdingId)));
   return new Set(rows.map((r) => r.externalId));
