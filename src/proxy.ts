@@ -26,10 +26,10 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  // Refreshes the session cookie when needed. Do not remove.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refreshes the session cookie when needed, then verifies the access token locally against the project's
+  // JWKS (cached per instance) instead of asking the Auth server on every request. Do not remove.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
