@@ -2,6 +2,9 @@
 // after the first chunks: the run must still finish, be saved, and clear run_status.
 // Usage: npm run smoke:agent -- "Summarize the last 10-Q for AXP…" [--keep] [--trace]
 // --trace runs the turn in transparency mode and checks that trace parts stream but are never saved.
+// It also prints model fallbacks and whether the citation-repair pass rewrote the answer.
+// After the turn it distills the answer into the holding's research log (like the chat route does) and lists
+// the holding's memories; --print-instructions shows the prompt the next turn would get, research log included.
 // (tsx needs the react-server condition because the agent modules import "server-only".)
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -13,6 +16,9 @@ import { runAgentTurn } from "@/lib/agent/run";
 import { loadMessages, saveMessages, setRunStatus } from "@/lib/chats";
 import { splitAssistantParts, summarizeActivity } from "@/lib/agent/turn";
 import type { TraceEvent } from "@/lib/trace/events";
+import { distillTurn } from "@/lib/agent/memory/distill";
+import { listHoldingMemories } from "@/lib/agent/memory/store";
+import { buildInstructions } from "@/lib/agent/instructions";
 
 async function main() {
   const question = process.argv[2] ?? "Summarize the last 10-Q for AXP: revenue, margins, and guidance, with sources.";
@@ -52,6 +58,7 @@ async function main() {
       else if (e.t === "tool.start") console.log(`    ${e.tool} ${JSON.stringify(e.args)}`);
       else if (e.t === "fetch") console.log(`      ${e.layer.padEnd(7)} ${e.host} ${e.key ?? e.url ?? ""} ${e.ms} ms${e.bytes ? ` ${e.bytes} B` : ""}${e.error ? ` ERROR ${e.error}` : ""}`);
       else if (e.t === "tool.end") console.log(`    -> ${e.ok ? "ok" : "failed"} ${e.ms} ms, ${e.sources} sources`);
+      else if (e.t === "model.fallback") console.log(`  MODEL FALLBACK ${e.from} -> ${e.to}: ${e.error}`);
     }
     if (events.length === 0) throw new Error("--trace produced no trace events");
     if (!stepEnds.some((e) => (e.usage.output ?? 0) > 0)) throw new Error("no step.end with output tokens");
@@ -83,8 +90,23 @@ async function main() {
     if (p.type === "text") console.log("  narration:", p.text.slice(0, 80).replace(/\n/g, " "));
     else console.log("  tool:", p.type, JSON.stringify((p as { input?: unknown }).input), (p as { output?: { error?: string; sources?: unknown[] } }).output?.error ?? `${(p as { output?: { sources?: unknown[] } }).output?.sources?.length ?? 0} sources`);
   }
-  console.log("metadata", JSON.stringify(assistant.metadata));
+  console.log("metadata", JSON.stringify(assistant.metadata), (assistant.metadata as { repaired?: boolean } | undefined)?.repaired ? "(citation repair ran)" : "");
   console.log("----- answer -----\n" + answer.map((p) => p.text).join("\n"));
+
+  const t1 = Date.now();
+  const distilled = await distillTurn({ chat, question, response: assistant });
+  console.log("distilled", JSON.stringify(distilled), "in", Date.now() - t1, "ms");
+  if (chat.holdingId) {
+    const mem = await listHoldingMemories(chat.holdingId, 20);
+    console.log(`memories for ${axp?.ticker}: ${mem.length}`);
+    for (const m of mem) console.log(`  [${m.kind}] ${m.createdAt.slice(0, 10)} ev=${m.evidenceAt?.slice(0, 10) ?? "-"} ver=${m.verifiedAt?.slice(0, 10) ?? "-"} exp=${m.expiresAt?.slice(0, 10) ?? "-"} ${m.body.slice(0, 110)} ${m.sources.length ? `[${m.sources.map((s) => s.id).join(",")}]` : ""}`);
+  }
+  if (process.argv.includes("--print-instructions")) {
+    const ins = await buildInstructions(chat.teamId, { holdingId: chat.holdingId, userName: "Smoke Test", userRole: "associate" });
+    const i = ins.indexOf("Research log for");
+    console.log(`instructions: ${ins.length} chars; research log block: ${i >= 0 ? "present" : "absent"}`);
+    if (i >= 0) console.log(ins.slice(i, i + 1500));
+  }
 
   if (process.argv.includes("--keep")) console.log("kept chat", chat.id);
   else {

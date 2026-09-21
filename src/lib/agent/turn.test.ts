@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UIMessage } from "ai";
-import { compactHistory, splitAssistantParts, summarizeActivity, type Part } from "./turn";
+import { compactForStep, compactHistory, shrinkToolData, splitAssistantParts, summarizeActivity, type Part } from "./turn";
 
 const text = (t: string): Part => ({ type: "text", text: t });
 const tool = (name: string, state: string, output?: unknown, id = name): Part =>
@@ -71,5 +71,52 @@ describe("compactHistory", () => {
   it("does not mutate the persisted messages", () => {
     compactHistory(msgs);
     expect((msgs[1].parts[0] as unknown as { output: { data: { text: string } } }).output.data.text.length).toBe(5000);
+  });
+});
+
+describe("compactForStep", () => {
+  const toolMsg = (name: string, text: string, id: string) =>
+    ({ role: "tool", content: [{ type: "tool-result", toolCallId: id, toolName: name, output: { type: "json", value: { data: { text, url: "u" }, sources: [] } } }] }) as unknown as import("ai").ModelMessage;
+  const long = "x".repeat(5000);
+  const msgs = [
+    { role: "user", content: "q" },
+    { role: "assistant", content: [{ type: "tool-call", toolCallId: "1", toolName: "read_filing", input: {} }] },
+    toolMsg("read_filing", long, "1"),
+    { role: "assistant", content: [{ type: "tool-call", toolCallId: "2", toolName: "read_filing", input: {} }] },
+    toolMsg("read_filing", long, "2"),
+    { role: "assistant", content: [{ type: "tool-call", toolCallId: "3", toolName: "read_filing", input: {} }] },
+    toolMsg("read_filing", long, "3"),
+  ] as import("ai").ModelMessage[];
+  const textOf = (m: import("ai").ModelMessage) => ((m.content as unknown as { output: { value: { data: { text: string } } } }[])[0].output.value.data.text);
+
+  it("shrinks tool results older than the last two steps and leaves the recent ones whole", () => {
+    const out = compactForStep(msgs, 2);
+    expect(textOf(out[2]).length).toBeLessThan(600);
+    expect(textOf(out[2])).toContain("truncated");
+    expect(textOf(out[4]).length).toBe(5000);
+    expect(textOf(out[6]).length).toBe(5000);
+    expect(textOf(msgs[2]).length).toBe(5000);
+  });
+
+  it("returns the same array when there is nothing to shrink", () => {
+    const two = msgs.slice(0, 5);
+    expect(compactForStep(two, 2)).toBe(two);
+    const short = [msgs[0], msgs[1], toolMsg("read_filing", "brief", "1"), msgs[3], toolMsg("get_quote", "n/a", "2"), msgs[5], toolMsg("get_quote", "n/a", "3")];
+    expect(compactForStep(short, 2)).toBe(short);
+  });
+
+  it("leaves non-json and non-ToolResult payloads alone", () => {
+    const odd = [{ role: "tool", content: [{ type: "tool-result", toolCallId: "1", toolName: "read_filing", output: { type: "text", value: long } }] }, msgs[3], msgs[4], msgs[5], msgs[6]] as unknown as import("ai").ModelMessage[];
+    expect(compactForStep(odd, 2)).toBe(odd);
+  });
+});
+
+describe("shrinkToolData", () => {
+  it("reduces news to headline, date and source id", () => {
+    expect(shrinkToolData("get_news", { items: [{ headline: "h", publishedAt: "d", sourceId: "s", summary: "long" }] })).toEqual({ items: [{ headline: "h", publishedAt: "d", sourceId: "s" }] });
+  });
+  it("returns the same reference when nothing applies", () => {
+    const d = { price: 1 };
+    expect(shrinkToolData("get_quote", d)).toBe(d);
   });
 });

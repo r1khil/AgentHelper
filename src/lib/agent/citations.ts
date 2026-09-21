@@ -43,3 +43,11 @@ export function uncitedFactCount(message: UIMessage) {
   }
   return n;
 }
+
+/** Uncited numeric lines above this many trigger the repair pass. */
+export const REPAIR_THRESHOLD = 2;
+
+/** Whether an answer should go through the citation-repair pass: enough uncited numeric lines, and sources it could cite. */
+export function needsCitationRepair(message: UIMessage, sourceCount: number) {
+  return sourceCount > 0 && uncitedFactCount(message) > REPAIR_THRESHOLD;
+}

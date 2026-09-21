@@ -76,6 +76,7 @@ export function buildTraceView(events: TraceEvent[]): TraceView {
       case "fetch":
       case "wait":
       case "retry":
+      case "model.fallback":
         if (e.toolCallId) {
           const list = v.fetchesByCall.get(e.toolCallId) ?? [];
           list.push(e);
@@ -182,6 +183,14 @@ export function FetchRows({ events, end }: { events: TraceEvent[]; end?: Extract
               </span>
               <span className="truncate">{e.error}</span>
             </>
+          ) : e.t === "model.fallback" ? (
+            <>
+              <RotateCcw className="size-3 shrink-0 text-warning-foreground" />
+              <span className="text-warning-foreground">model fallback</span>
+              <span className="min-w-0 truncate" title={e.error}>
+                {e.from} → {e.to}: {e.error}
+              </span>
+            </>
           ) : null}
         </li>
       ))}
@@ -206,5 +215,6 @@ export function latestLabel(view: TraceView): string | null {
   if (e.t === "fetch") return `${e.host} ${e.ok ? LAYER[e.layer]?.label : "failed"} ${ms(e.ms)}`;
   if (e.t === "wait") return `waiting ${ms(e.ms)} for ${e.host}`;
   if (e.t === "retry") return `retry ${e.attempt} after ${e.error}`;
+  if (e.t === "model.fallback") return `switched to ${e.to}`;
   return null;
 }

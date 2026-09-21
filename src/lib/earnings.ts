@@ -53,3 +53,9 @@ export async function listEarningsEvidence(earningsId: string) {
 
 export type ActualsRow = { metric: string; actual: string | null; priorYear: string | null; priorGuidance: string | null; estimate: string | null; sourceId: string | null; note?: string };
 export type Actuals = { rows: ActualsRow[]; sources: { id: string; title: string; url: string }[]; extractedAt: string; model?: string; missing: string[] };
+
+/** The next upcoming report for a holding (soonest first), for the research board's prep-pack card. */
+export async function getUpcomingEarnings(holdingId: string) {
+  const [row] = await db.select().from(earnings).where(and(eq(earnings.holdingId, holdingId), eq(earnings.status, "upcoming"))).orderBy(asc(earnings.reportDate)).limit(1);
+  return row ?? null;
+}

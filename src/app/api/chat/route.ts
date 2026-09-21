@@ -7,6 +7,7 @@ import { getCurrentUser, canAccessTeam, transparencyEnabled } from "@/lib/auth";
 import { effectiveRunStatus, getChat, loadMessages, maybeTitleChat, saveMessages, setRunStatus } from "@/lib/chats";
 import { agentConfigured } from "@/lib/agent/model";
 import { runAgentTurn } from "@/lib/agent/run";
+import { distillTurn } from "@/lib/agent/memory/distill";
 import { ensureDriveIndexFresh } from "@/lib/jobs/drive";
 import { ensureDriveIngested } from "@/lib/jobs/ingest";
 
@@ -38,7 +39,18 @@ export async function POST(req: Request) {
   await ensureDriveIndexFresh();
   after(() => ensureDriveIngested());
   // Transparency mode (exec/admin preference) streams a live trace of steps and provider calls to this browser only.
-  const { clientStream, persisted } = await runAgentTurn({ chat, user, messages, trace: transparencyEnabled(user) });
+  const question = incoming.parts.map((p) => (p.type === "text" ? p.text : "")).join("").trim();
+  const { clientStream, persisted } = await runAgentTurn({
+    chat,
+    user,
+    messages,
+    trace: transparencyEnabled(user),
+    // Once saved, distill the turn into the holding's research log (one extra model call; failures are logged, never surfaced).
+    onComplete: async ({ response }) => {
+      const r = await distillTurn({ chat, question, response });
+      if (r) console.log("[memory]", chat.id, JSON.stringify(r));
+    },
+  });
   // The run finishes and is saved even if the browser leaves; `after` keeps the function alive until then.
   after(persisted);
   return createUIMessageStreamResponse({ stream: clientStream });

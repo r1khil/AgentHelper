@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { loadTeam } from "@/lib/teams";
-import { transparencyEnabled } from "@/lib/auth";
+import { canManageTeam, transparencyEnabled } from "@/lib/auth";
 import { effectiveRunStatus, listHoldingChats, loadMessages } from "@/lib/chats";
 import { getHolding } from "@/lib/holdings";
 import { getOpenMovement } from "@/lib/movements";
 import { marketSnapshot } from "@/lib/market";
 import { agentConfigured } from "@/lib/agent/model";
+import { listHoldingMemories } from "@/lib/agent/memory/store";
+import { getUpcomingEarnings } from "@/lib/earnings";
+import { PrepPackCard } from "@/components/app/agent/prep-pack-card";
 import { HoldingBoard, type BoardChat, type BoardMarket } from "@/components/app/agent/holding-board";
 
 export async function generateMetadata({ params }: { params: Promise<{ ticker: string }> }): Promise<Metadata> {
@@ -20,7 +23,7 @@ export default async function HoldingBoardPage({ params, searchParams }: { param
   const row = await getHolding(team.id, ticker);
   if (!row) notFound();
   const { h } = row;
-  const [rows, movement] = await Promise.all([listHoldingChats(h.id), getOpenMovement(h.id)]);
+  const [rows, movement, memories, upcoming] = await Promise.all([listHoldingChats(h.id), getOpenMovement(h.id), listHoldingMemories(h.id).catch(() => []), getUpcomingEarnings(h.id).catch(() => null)]);
   const fundWide = user.role === "admin" || user.role === "lead_analyst" || user.role === "exec";
   const chats: BoardChat[] = rows.map(({ c, authorName, questions }) => ({
     id: c.id,
@@ -51,6 +54,9 @@ export default async function HoldingBoardPage({ params, searchParams }: { param
       configured={agentConfigured()}
       transparency={transparencyEnabled(user)}
       userName={user.fullName}
+      memories={memories}
+      canManage={canManageTeam(user, team.id)}
+      prepCard={upcoming?.prepPack ? <PrepPackCard pack={upcoming.prepPack} compact /> : undefined}
     />
   );
 }

@@ -1,4 +1,4 @@
-import type { UIMessage } from "ai";
+import type { ModelMessage, UIMessage } from "ai";
 
 export type Part = UIMessage["parts"][number];
 export type TextPart = Extract<Part, { type: "text" }>;
@@ -58,7 +58,31 @@ export function summarizeActivity(activity: Part[]) {
   return { lookups: tools.length, sources: sourceIds.size, failed, current: pending ? toolName(pending) : null };
 }
 
-const FILING_KEEP_CHARS = 400;
+const TEXT_KEEP_CHARS = 400;
+/** Tools whose `data.text` is a long document window; only the head is kept once the step is no longer current. */
+const TEXT_TOOLS = new Set(["read_filing", "read_drive_file", "read_call_transcript", "read_web_page"]);
+
+/**
+ * Shrink one tool's `data` payload to what the model still needs once that result is no longer
+ * current: the head of a long document window, headline-only news, passage stubs. Returns the
+ * same reference when nothing applies so callers can skip the copy.
+ */
+export function shrinkToolData(name: string, data: unknown): unknown {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return data;
+  const d = data as Record<string, unknown>;
+  if (TEXT_TOOLS.has(name) && typeof d.text === "string" && d.text.length > TEXT_KEEP_CHARS) {
+    return { ...d, text: `${d.text.slice(0, TEXT_KEEP_CHARS)}… (earlier; text truncated, call ${name} again with the same arguments if you need it)` };
+  }
+  if (name === "get_news" && Array.isArray(d.items)) {
+    const items = (d.items as Record<string, unknown>[]).map(({ headline, publishedAt, sourceId }) => ({ headline, publishedAt, sourceId }));
+    return { ...d, items };
+  }
+  if (name === "search_drive_text" && Array.isArray(d.passages)) {
+    const passages = (d.passages as Record<string, unknown>[]).map(({ fileId, name: n, seq, sourceId, text }) => ({ fileId, name: n, seq, sourceId, text: typeof text === "string" ? text.slice(0, 160) : text }));
+    return { ...d, passages };
+  }
+  return data;
+}
 
 /**
  * Shrink large tool outputs from earlier turns before they go back to the model.
@@ -79,17 +103,38 @@ export function compactHistory(messages: UIMessage[]): UIMessage[] {
       ...m,
       parts: m.parts.map((p) => {
         if (!isToolPart(p) || p.state !== "output-available" || !p.output || typeof p.output !== "object") return p;
-        const name = toolName(p);
-        const data = p.output.data as Record<string, unknown> | null | undefined;
-        if (name === "read_filing" && data && typeof data.text === "string" && data.text.length > FILING_KEEP_CHARS) {
-          return { ...p, output: { ...p.output, data: { ...data, text: `${data.text.slice(0, FILING_KEEP_CHARS)}… (earlier turn; text truncated, call read_filing again if you need it)` } } };
-        }
-        if (name === "get_news" && data && Array.isArray(data.items)) {
-          const items = (data.items as Record<string, unknown>[]).map(({ headline, publishedAt, sourceId }) => ({ headline, publishedAt, sourceId }));
-          return { ...p, output: { ...p.output, data: { ...data, items } } };
-        }
-        return p;
+        const data = shrinkToolData(toolName(p), p.output.data);
+        return data === p.output.data ? p : { ...p, output: { ...p.output, data } };
       }),
     } as UIMessage;
   });
+}
+
+/**
+ * Mid-turn compaction for `prepareStep`: every tool-result message except the last `keepLastSteps`
+ * gets its payloads shrunk with the same rules as `compactHistory`. Operates on the model messages
+ * of the current step only; nothing persisted changes. Returns the input array when nothing changed.
+ */
+export function compactForStep(messages: ModelMessage[], keepLastSteps = 2): ModelMessage[] {
+  const toolIdx: number[] = [];
+  messages.forEach((m, i) => {
+    if (m.role === "tool") toolIdx.push(i);
+  });
+  if (toolIdx.length <= keepLastSteps) return messages;
+  const cutoff = toolIdx[toolIdx.length - keepLastSteps];
+  let changed = false;
+  const out = messages.map((m, i) => {
+    if (m.role !== "tool" || i >= cutoff) return m;
+    const content = m.content.map((part) => {
+      if (part.type !== "tool-result" || part.output.type !== "json") return part;
+      const v = part.output.value as { data?: unknown } | null;
+      if (!v || typeof v !== "object" || !("data" in v)) return part;
+      const data = shrinkToolData(part.toolName, v.data);
+      if (data === v.data) return part;
+      changed = true;
+      return { ...part, output: { type: "json" as const, value: { ...v, data } as typeof part.output.value } };
+    });
+    return { ...m, content } as ModelMessage;
+  });
+  return changed ? out : messages;
 }

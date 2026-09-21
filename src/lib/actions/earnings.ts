@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { earnings, holdings, teams } from "@/db/schema";
-import { requireTeamAccess } from "@/lib/auth";
+import { canManageTeam, requireTeamAccess } from "@/lib/auth";
 import { gatherEarningsResults } from "@/lib/jobs/earnings-results";
+import { buildPrepPack } from "@/lib/jobs/earnings-prep";
 import { listEarningsEvidence, type Actuals } from "@/lib/earnings";
 import { reasoningFeedback } from "@/lib/agent/feedback";
 
@@ -79,4 +81,15 @@ export async function requestEarningsFeedback(fd: FormData) {
   const feedback = await reasoningFeedback({ kind: "earnings", ticker: r.h.ticker, studentText: reflection, thesis: r.h.thesis, evidence: evidenceText, expectations: expectations || null });
   await db.update(earnings).set({ reflection, feedback, reflectionBy: r.user.id, reflectionAt: new Date() }).where(eq(earnings.id, r.e.id));
   revalidatePath(r.path);
+}
+
+/** Leads and admins can rebuild the agent's pre-earnings evidence pack on demand. */
+export async function rebuildPrepPack(fd: FormData) {
+  const row = await load(String(fd.get("id") ?? ""));
+  if (!row) return;
+  if (!canManageTeam(row.user, row.h.teamId)) redirect(row.path);
+  const r = await buildPrepPack(row.e.id);
+  revalidatePath(row.path);
+  revalidatePath(`/t/${row.slug}/agent/h/${row.h.ticker}`);
+  redirect(r.ok ? row.path : `${row.path}?error=${encodeURIComponent(r.error)}`);
 }

@@ -191,3 +191,57 @@ export async function getFundSectorWeights(symbol: string): Promise<Record<strin
     return out;
   });
 }
+
+export type InstitutionalHolder = { organization: string; pctHeld: number | null; shares: number | null; value: number | null; reportDate: string | null };
+export type HoldersSnapshot = { insidersPctHeld: number | null; institutionsPctHeld: number | null; institutionsCount: number | null; top: InstitutionalHolder[] };
+
+/** Ownership breakdown and the largest institutional holders Yahoo lists (13F-derived, typically quarterly). */
+export async function getHolders(symbol: string): Promise<HoldersSnapshot> {
+  return cached(`yahoo:holders:${symbol}`, 60 * 60 * 24, async () => {
+    const res = (await spaced(HOST, GAP_MS, () => retry(() => yf().quoteSummary(symbol, { modules: ["majorHoldersBreakdown", "institutionOwnership"] }), 2))) as {
+      majorHoldersBreakdown?: { insidersPercentHeld?: number; institutionsPercentHeld?: number; institutionsCount?: number };
+      institutionOwnership?: { ownershipList?: { organization?: string; pctHeld?: number; position?: number; value?: number; reportDate?: Date | string }[] };
+    };
+    const pct = (v: number | undefined) => (typeof v === "number" ? +(v * 100).toFixed(2) : null);
+    const b = res.majorHoldersBreakdown;
+    return {
+      insidersPctHeld: pct(b?.insidersPercentHeld),
+      institutionsPctHeld: pct(b?.institutionsPercentHeld),
+      institutionsCount: b?.institutionsCount ?? null,
+      top: (res.institutionOwnership?.ownershipList ?? []).slice(0, 10).map((o) => ({
+        organization: o.organization ?? "Unknown",
+        pctHeld: pct(o.pctHeld),
+        shares: o.position ?? null,
+        value: o.value ?? null,
+        reportDate: o.reportDate ? new Date(o.reportDate).toISOString().slice(0, 10) : null,
+      })),
+    };
+  });
+}
+
+export type EstimateRow = { period: string; endDate: string | null; eps: { avg: number | null; low: number | null; high: number | null; analysts: number | null; yearAgo: number | null; growthPct: number | null }; revenue: { avg: number | null; low: number | null; high: number | null; analysts: number | null; growthPct: number | null } };
+export type EstimatesSnapshot = { trend: EstimateRow[]; recommendations: { period: string; strongBuy: number; buy: number; hold: number; sell: number; strongSell: number }[]; targetMeanPrice: number | null; targetLowPrice: number | null; targetHighPrice: number | null; analystCount: number | null };
+
+/** Consensus EPS and revenue estimates by period plus the recommendation mix, as Yahoo aggregates them. */
+export async function getEstimates(symbol: string): Promise<EstimatesSnapshot> {
+  return cached(`yahoo:estimates:${symbol}`, 60 * 60 * 12, async () => {
+    const res = (await spaced(HOST, GAP_MS, () => retry(() => yf().quoteSummary(symbol, { modules: ["earningsTrend", "recommendationTrend", "financialData"] }), 2))) as {
+      earningsTrend?: { trend?: { period?: string; endDate?: Date | string | null; earningsEstimate?: Record<string, number | undefined>; revenueEstimate?: Record<string, number | undefined> }[] };
+      recommendationTrend?: { trend?: { period?: string; strongBuy?: number; buy?: number; hold?: number; sell?: number; strongSell?: number }[] };
+      financialData?: { targetMeanPrice?: number; targetLowPrice?: number; targetHighPrice?: number; numberOfAnalystOpinions?: number };
+    };
+    const n = (v: number | undefined) => (typeof v === "number" ? v : null);
+    const pct = (v: number | undefined) => (typeof v === "number" ? +(v * 100).toFixed(1) : null);
+    const trend = (res.earningsTrend?.trend ?? [])
+      .filter((t) => t.period && ["0q", "+1q", "0y", "+1y"].includes(t.period))
+      .map((t) => ({
+        period: ({ "0q": "current quarter", "+1q": "next quarter", "0y": "current fiscal year", "+1y": "next fiscal year" } as Record<string, string>)[t.period!] ?? t.period!,
+        endDate: t.endDate ? new Date(t.endDate).toISOString().slice(0, 10) : null,
+        eps: { avg: n(t.earningsEstimate?.avg), low: n(t.earningsEstimate?.low), high: n(t.earningsEstimate?.high), analysts: n(t.earningsEstimate?.numberOfAnalysts), yearAgo: n(t.earningsEstimate?.yearAgoEps), growthPct: pct(t.earningsEstimate?.growth) },
+        revenue: { avg: n(t.revenueEstimate?.avg), low: n(t.revenueEstimate?.low), high: n(t.revenueEstimate?.high), analysts: n(t.revenueEstimate?.numberOfAnalysts), growthPct: pct(t.revenueEstimate?.growth) },
+      }));
+    const recommendations = (res.recommendationTrend?.trend ?? []).slice(0, 2).map((r) => ({ period: r.period === "0m" ? "current" : r.period === "-1m" ? "one month ago" : (r.period ?? "?"), strongBuy: r.strongBuy ?? 0, buy: r.buy ?? 0, hold: r.hold ?? 0, sell: r.sell ?? 0, strongSell: r.strongSell ?? 0 }));
+    const f = res.financialData;
+    return { trend, recommendations, targetMeanPrice: n(f?.targetMeanPrice), targetLowPrice: n(f?.targetLowPrice), targetHighPrice: n(f?.targetHighPrice), analystCount: n(f?.numberOfAnalystOpinions) };
+  });
+}

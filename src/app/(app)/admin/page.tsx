@@ -5,8 +5,10 @@ import { invitations, profiles, teams } from "@/db/schema";
 import { requireRole, transparencyEnabled } from "@/lib/auth";
 import { ROLES, ROLE_LABELS } from "@/lib/constants";
 import { createTestAccount, inviteMember, removeMember, revokeInvitation, setAgentModel, updateMember } from "@/lib/actions/admin";
-import { runBellwethersNow, runCloseNow, runMorningNow, runPricesNow } from "@/lib/actions/jobs";
+import { runBellwethersNow, runCloseNow, runEarningsPrepNow, runMorningNow, runPricesNow } from "@/lib/actions/jobs";
 import { disconnectDrive, ingestDriveNow, renewDriveWatchNow, setDriveRoot, syncDriveNow } from "@/lib/actions/drive";
+import { addMcpServer, removeMcpServer, testMcpServerNow, toggleMcpServer } from "@/lib/actions/mcp";
+import { listMcpServers } from "@/lib/agent/mcp";
 import { driveStatus } from "@/lib/drive/index";
 import { jobRuns } from "@/db/schema";
 import { fmtDateTime } from "@/lib/format";
@@ -47,6 +49,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   }));
   const [drive, lastDriveRun] = await Promise.all([driveStatus(), db.select().from(jobRuns).where(eq(jobRuns.job, "drive_sync")).orderBy(desc(jobRuns.startedAt)).limit(1).then((r) => r[0] ?? null)]);
   const currentModelId = await agentModelId();
+  const mcp = await listMcpServers().catch(() => []);
   const currentModel = AGENT_MODELS.find((m) => m.id === currentModelId);
   const driveUnmatched = ((lastDriveRun?.summary as { unmatched?: string[] } | undefined)?.unmatched ?? []).slice(0, 12);
   const driveLabel = !drive.configured ? "off" : !drive.connected ? "not connected" : drive.needsReconnect ? "reconnect needed" : `on (${drive.fileCount} files)`;
@@ -110,6 +113,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <span className="text-sm">Sector bellwethers (ETF constituents, earnings dates, industries)</span>
             <Button type="submit" size="sm" variant="outline">Run</Button>
           </form>
+          <form action={runEarningsPrepNow} className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
+            <span className="text-sm">Earnings prep packs (reports in the next five trading days, up to three per run)</span>
+            <Button type="submit" size="sm" variant="outline">Run</Button>
+          </form>
         </Card>
         ) : (
         <Card className="p-4 text-sm">
@@ -118,6 +125,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <li className="border-t pt-2">Morning sweep (reminders, earnings, email). Scheduled at 14:00 UTC.</li>
             <li className="border-t pt-2">Price history (attribution closes, dividends, splits). Scheduled at 23:30 UTC.</li>
             <li className="border-t pt-2">Sector bellwethers (ETF constituents, earnings dates, industries). Runs inside the morning sweep.</li>
+            <li className="border-t pt-2">Earnings prep packs (agent-gathered evidence for reports in the next five trading days). Runs inside the morning sweep.</li>
           </ul>
         </Card>
         )}
@@ -141,9 +149,102 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             </NativeSelect>
           </div>
           <Button type="submit" size="sm" variant="outline">Save</Button>
-          <p className="basis-full text-xs text-muted-foreground">Applies to the next chat turn, draft feedback, and earnings extraction. All three are free OpenRouter models.</p>
+          <p className="basis-full text-xs text-muted-foreground">Applies to the next chat turn, draft feedback, earnings extraction, research-log distillation, and earnings prep packs. All three are free OpenRouter models; a rate-limited model hands the request to the next one on the list.</p>
         </form>
       </Card>
+
+      <SectionTitle aside={mcp.length ? `${mcp.filter((m) => m.enabled).length} of ${mcp.length} enabled` : "none registered"}>
+        <span id="mcp">External tools (MCP servers)</span>
+      </SectionTitle>
+      <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <Card className="overflow-x-auto p-0">
+          {mcp.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">No MCP servers yet. Register a remote server (Streamable HTTP) and its tools join the research agent under the prefix you choose. Auth tokens stay in environment variables; only the variable name is stored here.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Server</TableHead>
+                  <TableHead>Prefix</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Tools</TableHead>
+                  {canMutate && <TableHead className="text-right">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mcp.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell>
+                      <div className="font-medium">{m.name}</div>
+                      <div className="max-w-[280px] truncate text-xs text-muted-foreground" title={m.url}>{m.url}</div>
+                      {m.authEnv && <div className="text-xs text-muted-foreground">auth from {m.authEnv}</div>}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{m.toolPrefix}_</TableCell>
+                    <TableCell className="text-xs">
+                      <Badge variant={m.enabled ? "default" : "secondary"}>{m.enabled ? "enabled" : "disabled"}</Badge>
+                      <div className="mt-1 text-muted-foreground">{m.lastOkAt ? `ok ${fmtDateTime(m.lastOkAt)}` : "never connected"}</div>
+                      {m.lastError && <div className="mt-1 max-w-[220px] truncate text-destructive" title={m.lastError}>{m.lastError}</div>}
+                    </TableCell>
+                    <TableCell className="max-w-[240px] text-xs text-muted-foreground">
+                      {m.toolNames?.length ? m.toolNames.join(", ") : "—"}
+                      {m.allowedTools?.length ? <div className="mt-1">allowed: {m.allowedTools.join(", ")}</div> : null}
+                    </TableCell>
+                    {canMutate && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <form action={testMcpServerNow}>
+                            <input type="hidden" name="id" value={m.id} />
+                            <Button type="submit" size="sm" variant="outline">Test</Button>
+                          </form>
+                          <form action={toggleMcpServer}>
+                            <input type="hidden" name="id" value={m.id} />
+                            <input type="hidden" name="enabled" value={m.enabled ? "false" : "true"} />
+                            <Button type="submit" size="sm" variant="outline">{m.enabled ? "Disable" : "Enable"}</Button>
+                          </form>
+                          <form action={removeMcpServer}>
+                            <input type="hidden" name="id" value={m.id} />
+                            <Button type="submit" size="sm" variant="ghost">Remove</Button>
+                          </form>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
+        {canMutate && (
+          <Card className="p-4">
+            <form action={addMcpServer} className="grid gap-2">
+              <div className="grid gap-1">
+                <Label htmlFor="mcp-name">Name</Label>
+                <Input id="mcp-name" name="name" placeholder="EDGAR full-text search" required />
+              </div>
+              <div className="grid gap-1">
+                <Label htmlFor="mcp-url">Server URL (Streamable HTTP)</Label>
+                <Input id="mcp-url" name="url" placeholder="https://example.com/mcp" required />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-1">
+                  <Label htmlFor="mcp-prefix">Tool prefix</Label>
+                  <Input id="mcp-prefix" name="toolPrefix" placeholder="edgar" />
+                </div>
+                <div className="grid gap-1">
+                  <Label htmlFor="mcp-auth">Auth env var</Label>
+                  <Input id="mcp-auth" name="authEnv" placeholder="EDGAR_MCP_TOKEN" />
+                </div>
+              </div>
+              <div className="grid gap-1">
+                <Label htmlFor="mcp-allowed">Allowed tools (optional, comma-separated)</Label>
+                <Input id="mcp-allowed" name="allowedTools" placeholder="search, get_filing" />
+              </div>
+              <Button type="submit" size="sm" variant="outline" className="justify-self-start">Add and test</Button>
+              <p className="text-xs text-muted-foreground">Tools appear to the agent as prefix_toolname. The env var is read on this deployment and sent as a Bearer token; set it on Vercel before adding the server.</p>
+            </form>
+          </Card>
+        )}
+      </div>
 
       <SectionTitle aside={drive.connected ? `connected as ${drive.accountEmail}` : drive.configured ? "not connected" : "set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, DRIVE_TOKEN_KEY"}>Google Drive</SectionTitle>
       <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
