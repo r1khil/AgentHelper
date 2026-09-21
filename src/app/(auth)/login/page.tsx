@@ -19,7 +19,7 @@ export default async function LoginPage({
         <div className="mb-8 flex items-center gap-3">
           <OwlMark className="size-9" />
           <div>
-            <div className="text-lg font-semibold leading-tight">Owl Fund</div>
+            <div className="text-lg font-semibold leading-tight">The Owl&apos;s Nest</div>
             <div className="text-sm text-muted-foreground">Research workspace</div>
           </div>
         </div>

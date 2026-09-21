@@ -65,7 +65,7 @@ function MobileBar(props: Props) {
     <div className="flex items-center justify-between border-b bg-sidebar px-4 py-2.5 md:hidden">
       <Link href="/" className="flex items-center gap-2">
         <OwlMark className="size-7" />
-        <span className="text-sm font-semibold">Owl Fund</span>
+        <span className="text-sm font-semibold">The Owl&apos;s Nest</span>
       </Link>
       <Sheet>
         <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open menu" />}>
@@ -111,7 +111,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
       <div className="px-3 pt-4 pb-2">
         <Link href="/" className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-sidebar-accent">
           <OwlMark className="size-7" />
-          <span className="text-sm font-semibold">Owl Fund</span>
+          <span className="text-sm font-semibold">The Owl&apos;s Nest</span>
         </Link>
       </div>
 

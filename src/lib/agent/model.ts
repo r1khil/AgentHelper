@@ -34,7 +34,7 @@ export async function agentModelId(): Promise<string> {
 export function openrouterProvider() {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
-  return createOpenRouter({ apiKey, headers: { "HTTP-Referer": process.env.APP_URL ?? "", "X-Title": "Owl Fund Workspace" } });
+  return createOpenRouter({ apiKey, headers: { "HTTP-Referer": process.env.APP_URL ?? "", "X-Title": "The Owl's Nest" } });
 }
 
 export function chatModel(id: string) {

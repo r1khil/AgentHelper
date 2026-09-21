@@ -30,7 +30,7 @@ export function emailConfigured() {
 async function sendOne(to: string, subject: string, text: string) {
   const { Resend } = await import("resend");
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const from = process.env.EMAIL_FROM || "Owl Fund Workspace <onboarding@resend.dev>";
+  const from = process.env.EMAIL_FROM || "The Owl's Nest <onboarding@resend.dev>";
   const { error } = await resend.emails.send({ from, to, subject, text });
   if (error) throw new Error(error.message);
 }

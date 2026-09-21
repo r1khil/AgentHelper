@@ -64,7 +64,7 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
       {current.id === "profile" && (
         <section className="space-y-5">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Welcome to Owl Fund</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Welcome to The Owl&apos;s Nest</h1>
             <p className="mt-1 text-sm text-muted-foreground">A quick setup before you reach the workspace. It takes about a minute.</p>
           </div>
           <Card>

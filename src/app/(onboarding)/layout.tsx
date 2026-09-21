@@ -10,7 +10,7 @@ export default async function OnboardingLayout({ children }: { children: React.R
       <header className="flex items-center justify-between border-b bg-background px-4 py-2.5 md:px-8">
         <div className="flex items-center gap-2.5">
           <OwlMark className="size-7" />
-          <span className="text-sm font-semibold">Owl Fund</span>
+          <span className="text-sm font-semibold">The Owl&apos;s Nest</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden text-xs text-muted-foreground sm:inline">{user.username ?? user.email}</span>

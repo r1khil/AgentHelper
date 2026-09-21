@@ -1,6 +1,6 @@
 import type { Role } from "@/db/schema";
 
-export const APP_NAME = "Owl Fund";
+export const APP_NAME = "The Owl's Nest";
 export const TEST_ACCOUNT_DOMAIN = "accounts.owlfund.local";
 export const MOVEMENT_THRESHOLD_PP = 4.0;
 

@@ -1,4 +1,4 @@
-# Owl Fund Workspace
+# The Owl's Nest
 
 Research workspace for the six sector teams of Temple University's Owl Fund. One rule shapes every feature:
 

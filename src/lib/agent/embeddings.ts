@@ -25,7 +25,7 @@ function check(vectors: number[][], expected: number) {
 async function embedViaFetch(model: string, input: string[]): Promise<number[][]> {
   const res = await fetch("https://openrouter.ai/api/v1/embeddings", {
     method: "POST",
-    headers: { authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "content-type": "application/json", "HTTP-Referer": process.env.APP_URL ?? "", "X-Title": "Owl Fund Workspace" },
+    headers: { authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "content-type": "application/json", "HTTP-Referer": process.env.APP_URL ?? "", "X-Title": "The Owl's Nest" },
     body: JSON.stringify({ model, input }),
   });
   if (!res.ok) throw new Error(`Embeddings endpoint returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
