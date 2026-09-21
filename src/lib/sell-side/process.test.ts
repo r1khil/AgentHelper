@@ -34,7 +34,7 @@ vi.mock("@/lib/storage", () => ({ downloadModelFile: vi.fn(async () => Buffer.fr
 vi.mock("@/lib/agent/model", () => ({ agentModel: vi.fn(async () => "existing-model") }));
 vi.mock("ai", async (importOriginal) => ({
   ...(await importOriginal<typeof import("ai")>()),
-  generateText: vi.fn(async () => ({ text: "Speaker A says FY27 revenue is $3.2 billion; uncertain margins." })),
+  generateText: vi.fn(async () => ({ text: "Call says FY27 revenue is $3.2 billion; uncertain margins." })),
 }));
 vi.mock("./store", () => ({
   callParts: vi.fn(async () => [state.part]),
@@ -89,18 +89,21 @@ beforeEach(() => {
   state.chatStatus = "idle";
   state.callStatus = "transcribing";
   state.writes = [];
-  vi.stubEnv("OPENAI_API_KEY", "test-only");
+  vi.stubEnv("OPENROUTER_API_KEY", "test-only");
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (_url, init) => {
-      const form = init.body as FormData;
-      expect(form.get("model")).toBe("gpt-4o-transcribe-diarize");
-      expect(form.get("response_format")).toBe("diarized_json");
-      expect(form.get("chunking_strategy")).toBe("auto");
+    vi.fn(async (url, init) => {
+      expect(url).toBe("https://openrouter.ai/api/v1/audio/transcriptions");
+      const body = JSON.parse(init.body as string);
+      expect(body.model).toBe("qwen/qwen3-asr-0.6b");
+      expect(body.response_format).toBe("verbose_json");
+      expect(body.input_audio.format).toBe("webm");
+      expect(typeof body.input_audio.data).toBe("string");
       return Response.json({
+        text: "FY27 revenue is $3.2 billion. What about margin uncertainty?",
         segments: [
-          { speaker: "A", start: 1, end: 5, text: "FY27 revenue is $3.2 billion." },
-          { speaker: "B", start: 6, end: 12, text: "What about margin uncertainty?" },
+          { id: 0, seek: 0, start: 1, end: 5, text: "FY27 revenue is $3.2 billion.", tokens: [1, 2] },
+          { id: 1, seek: 5, start: 6, end: 12, text: "What about margin uncertainty?", tokens: [3, 4] },
         ],
       });
     }),
@@ -115,7 +118,7 @@ beforeEach(() => {
 describe("call processing integration with existing agent pipeline", () => {
   it("transcribes, persists, summarizes, automatically retrieves company files, and preserves both citation types", async () => {
     await processPart("call");
-    expect(state.part.text).toContain("Part 1 · Speaker B");
+    expect(state.part.text).toContain("[00:00:06–00:00:12] What about margin uncertainty?");
     expect(state.part.summary).toContain("$3.2 billion");
     await analyzeCall("call", { id: "user", fullName: "Analyst", role: "associate_analyst" });
     expect(tools.find).toHaveBeenCalledWith({ ticker: "ABC", limit: 10 }, expect.anything());

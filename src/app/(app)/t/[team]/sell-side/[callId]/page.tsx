@@ -27,7 +27,7 @@ export default async function CallPage({ params }: { params: Promise<{ team: str
         </h1>
         <p className="text-sm text-muted-foreground">Transcript, structured summary, and comparison with your company files.</p>
       </div>
-      <CallWorkspace callId={call.id} configured={Boolean(process.env.OPENAI_API_KEY) && agentConfigured()} />
+      <CallWorkspace callId={call.id} configured={agentConfigured()} />
       {call.status === "ready" && (
         <section className="space-y-3">
           <h2 className="font-semibold">Summary & transcript chat</h2>

@@ -36,7 +36,6 @@ beforeEach(() => {
   mocks.claim = true;
   mocks.sets = [];
   mocks.after = [];
-  vi.stubEnv("OPENAI_API_KEY", "test-only");
   vi.mocked(getCurrentUser).mockResolvedValue({ id: "user", fullName: "Analyst", role: "admin" } as never);
   vi.mocked(canAccessTeam).mockReturnValue(true);
   vi.mocked(getCall).mockResolvedValue({ id, teamId: "team", status: "recording", expectedParts: null } as never);

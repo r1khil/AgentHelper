@@ -286,7 +286,7 @@ export function CallWorkspace({ callId, configured }: { callId: string; configur
       const count = state.call.expectedParts ?? state.parts.length;
       if (!count) throw new Error("Record some audio first.");
       for (;;) {
-        setProgress("Transcribing speakers and preparing part notes…");
+        setProgress("Transcribing audio and preparing part notes…");
         const result = await request({ action: "process", expectedParts: count });
         setProgress(`Transcribed ${result.completed ?? count} of ${count} parts`);
         await refresh();
@@ -320,7 +320,7 @@ export function CallWorkspace({ callId, configured }: { callId: string; configur
     <div className="space-y-4">
       {!configured && (
         <p className="rounded-lg border p-3 text-sm">
-          Transcription / analysis needs OPENAI_API_KEY and OPENROUTER_API_KEY on the server. Audio can still be recorded and saved.
+          Transcription / analysis needs OPENROUTER_API_KEY on the server. Audio can still be recorded and saved.
         </p>
       )}
       <section className="space-y-4 rounded-lg border bg-card p-5">
@@ -413,16 +413,17 @@ export function CallWorkspace({ callId, configured }: { callId: string; configur
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Speakers are labeled within each two-minute part; labels do not establish identity across parts. This transcript is available as a source in future
-            team agent chats.
+            Passages carry timestamps but no speaker labels; nothing here is attributed to a speaker. This transcript is available as a source in future team
+            agent chats.
           </p>
           <div className="max-h-96 space-y-3 overflow-y-auto rounded-lg border p-4">
             {segments
-              .filter((s) => `${s.speaker} ${s.text}`.toLowerCase().includes(filter.toLowerCase()))
+              .filter((s) => `${s.speaker ?? ""} ${s.text}`.toLowerCase().includes(filter.toLowerCase()))
               .map((s, i) => (
                 <div key={i}>
                   <p className="text-xs font-medium text-muted-foreground">
-                    {clock(s.start)} · {s.speaker}
+                    {clock(s.start)}
+                    {s.speaker ? ` · ${s.speaker}` : ""}
                   </p>
                   <p className="whitespace-pre-wrap text-sm">{s.text}</p>
                 </div>

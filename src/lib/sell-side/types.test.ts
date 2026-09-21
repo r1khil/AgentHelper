@@ -5,11 +5,12 @@ import { collectSources } from "@/lib/agent/citations";
 import type { UIMessage } from "ai";
 
 describe("saved transcript evidence", () => {
-  it("preserves exact words, timestamps, and part-scoped speaker labels", () => {
-    const segments = normalizeSegments({ segments: [{ speaker: "A", start: 1, end: 4, text: "FY27 revenue: $3.2 billion, not $3.5 billion." }] }, 1, 120);
-    expect(segments[0]).toMatchObject({ speaker: "Part 2 · Speaker A", start: 121, end: 124 });
+  it("preserves exact words and offset timestamps without speaker labels", () => {
+    const segments = normalizeSegments({ segments: [{ start: 1, end: 4, text: "FY27 revenue: $3.2 billion, not $3.5 billion." }] }, 120);
+    expect(segments[0]).toMatchObject({ start: 121, end: 124 });
+    expect(segments[0].speaker).toBeUndefined();
     const text = transcriptText(segments);
-    expect(text).toContain("[00:02:01–00:02:04] Part 2 · Speaker A: FY27 revenue: $3.2 billion, not $3.5 billion.");
+    expect(text).toContain("[00:02:01–00:02:04] FY27 revenue: $3.2 billion, not $3.5 billion.");
     const source = transcriptSource(
       { id: "11111111-1111-4111-8111-111111111111", title: "Analyst interview", ticker: "ABC", createdAt: "2026-09-20" },
       1,
@@ -26,9 +27,13 @@ describe("saved transcript evidence", () => {
     ];
     expect(collectSources(messages).get(source.id)).toEqual(source);
   });
-  it("rejects missing diarization and reversed timestamps", () => {
-    expect(() => normalizeSegments({ text: "No speakers" }, 0, 0)).toThrow();
-    expect(() => normalizeSegments({ segments: [{ speaker: "A", start: 8, end: 1, text: "Bad" }] }, 0, 0)).toThrow();
+  it("rejects missing segments and reversed timestamps", () => {
+    expect(() => normalizeSegments({ text: "No segments" }, 0)).toThrow();
+    expect(() => normalizeSegments({ segments: [{ start: 8, end: 1, text: "Bad" }] }, 0)).toThrow();
+  });
+  it("passes through provider speaker labels when present", () => {
+    const segments = normalizeSegments({ segments: [{ speaker: "A", start: 0, end: 2, text: "Hello" }] }, 0);
+    expect(transcriptText(segments)).toContain("[00:00:00–00:00:02] A: Hello");
   });
   it("never analyzes a partial, gapped, or untranscribed recording", () => {
     const p = { seq: 0, segments: [], summary: "Notes" };

@@ -63,11 +63,8 @@ export async function POST(req: Request, ctx: Context) {
         .onConflictDoNothing();
       return Response.json(await signModelUpload(path));
     }
-    if (!agentConfigured() || !process.env.OPENAI_API_KEY)
-      return Response.json(
-        { error: "Configure OPENAI_API_KEY for transcription and OPENROUTER_API_KEY for analysis. Your audio remains saved." },
-        { status: 503 },
-      );
+    if (!agentConfigured())
+      return Response.json({ error: "Configure OPENROUTER_API_KEY for transcription and analysis. Your audio remains saved." }, { status: 503 });
     if (call.status === "ready") return Response.json({ done: true });
     const lease = crypto.randomUUID();
     const [claimed] = await db

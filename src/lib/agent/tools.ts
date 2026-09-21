@@ -63,7 +63,7 @@ export function makeTools(ctx: { teamId: string; userId: string; sources?: Sourc
       execute: async ({ ticker, query }) => { try { return await searchTranscripts(ctx.teamId, ticker, query); } catch (e) { return fail(e, null); } },
     }),
     read_call_transcript: tool({
-      description: "Read saved sell-side call transcript parts with speaker labels and timestamps. Page with offset until nextOffset is null. Speakers are local to each part, not verified identities.",
+      description: "Read saved sell-side call transcript parts with timestamps (no speaker labels). Page with offset until nextOffset is null. Never attribute statements to specific speakers.",
       inputSchema: z.object({ callId: z.string().uuid(), offset: z.number().int().min(0).default(0), limit: z.number().int().min(1).max(6).default(3) }),
       execute: async ({ callId, offset, limit }) => { try { return await readTranscript(ctx.teamId, callId, offset, limit); } catch (e) { return fail(e, null); } },
     }),
