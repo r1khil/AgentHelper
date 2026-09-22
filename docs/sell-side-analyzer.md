@@ -1,42 +1,53 @@
 # Sell-side analyzer
 
-The team sidebar opens `/t/[team]/sell-side`. Select an existing holding, create a call, and record microphone audio (speakerphone) or microphone plus a browser tab's shared audio. Calls and follow-up chats are shared within the existing team access rules.
+The sidebar opens `/t/[team]/sell-side`. Choose a holding or **Other company**, enter a company name and ticker, and create a call. Other-company calls belong to the team with no holding link; the company name is preserved in the call title. Calls, transcripts and follow-up chats follow the existing team access rules.
 
-## Architecture
+## Pipeline and recovery
 
-- Calls link to the existing `chats` table. The summary and subsequent questions use `runAgentTurn`, `ChatPanel`, its tool activity, and the shared citation registry/viewer.
-- Browser MediaRecorder creates independent two-minute audio files, up to 120 parts. IndexedDB retains pending files until confirmed uploaded through the existing signed Supabase Storage helpers. Uploads go directly to the private `models` bucket under server-derived `calls/<team>/<call>/<seq>` paths, avoiding Next/Vercel request-body limits.
-- Each processing request transcribes and summarizes at most one part. Transcripts are saved before summarization, completed parts are skipped on retries, and a database lease prevents concurrent processors. A six-minute stale lease can be reclaimed after a crashed worker.
-- Transcription runs through the existing OpenRouter key (`qwen/qwen3-asr-0.6b` speech-to-text, `verbose_json`). Passages carry exact text and offset timestamps but no speaker labels; nothing is attributed to speakers anywhere in the pipeline.
-- Analysis deterministically invokes the existing `find_documents`, `search_documents`, and `read_document` tools for the company before invoking the existing agent. It reads up to three indexed documents as a fallback when embeddings are unavailable. Retrieval failures are included in the evidence, not converted into agreement. The agent can retrieve additional passages with its existing tools.
-- The initial saved answer has sections for executive summary, discussion themes, claims/numbers, catalysts, risks, open questions, and an internal-file cross-check. Comparisons require call and internal-document citations. No holding notes, models, or analyst price targets are modified.
-- `find_call_transcripts` adds team-scoped Postgres full-text search to the existing agent tool registry. `read_call_transcript` pages the complete saved call. Transcript sources use the existing source endpoint and viewer, with the same chat membership and source provenance checks as Drive documents. No second citation or chat system is introduced.
+1. The existing MediaRecorder records microphone audio or microphone plus shared browser-tab audio. Independent two-minute files, up to 120, are saved in IndexedDB until uploaded through the existing signed Supabase Storage helpers. Audio stays in the private `models` bucket; requests never proxy large audio through Next.
+2. One request transcribes one pending part with the existing OpenRouter key and `qwen/qwen3-asr-0.6b`. Offset timestamps and text are persisted immediately. This provider does not supply speaker labels; the app does not invent attribution.
+3. A separate request extracts structured part notes from saved text. The split keeps transcription and generation within the function runtime limit. Retries skip saved transcription and completed notes. A database lease prevents concurrent processing; an expired lease can be reclaimed after six minutes.
+4. The existing `find_documents`, `search_documents`, and `read_document` tools retrieve company evidence. `kind: drive` keeps the initial cross-check scoped to internal files after the unified-corpus changes. Up to three documents are read as a fallback when search/embeddings are unavailable. Metadata-only listings cannot support a comparison.
+5. A validated structured brief is saved in the existing chat's message metadata, alongside normal Markdown and the existing tool/source messages. It includes an overview, key points, important numbers with units/periods, positive commentary, risks, themes, catalysts, questions and an internal-file cross-check. Unknown source IDs and comparisons without internal evidence are rejected before the call becomes ready. Old Markdown-only calls remain readable.
+6. The brief and transcript have their own sections. Opening **Discuss this call** mounts the existing `ChatPanel`; subsequent questions still use `runAgentTurn`, its tools, citation registry, source viewer, persistence and current memory pipeline. The initial brief stays in view when processing completes.
+7. `find_call_transcripts` and `read_call_transcript` continue to expose saved transcripts to later research chats through team-scoped full-text retrieval. The existing `/api/sources/[documentId]` route verifies both chat access and source provenance before opening a transcript or internal document.
+
+No holding notes, models, price targets or portfolio positions are modified. A missing internal document is not agreement. Other-company analysis still runs when no internal files are available, with the evidence gap stated explicitly.
+
+### Missing part-summary diagnosis
+
+The old part-note request used `generateText`, a 700-token output cap and `result.text`, with no structured schema. A reasoning-capable provider can consume that budget entirely on reasoning, finish with `length`, and return an empty visible answer. The actual installed OpenRouter provider/AI SDK reproduces this behavior in `generate.test.ts`; it is not a JSON field-parsing mismatch. Production request logs were unavailable, so the specific failed production response could not be inspected.
+
+The fix uses `Output.object` with Zod validation, the existing `OPENROUTER_SUMMARY_MODEL` selection (falling back to the configured agent model), low reasoning effort and 8,000 output tokens. Incomplete or invalid output gets one retry with 12,000 tokens. Providers that explicitly reject JSON schema get a JSON-text fallback with the same schema validation. Authentication/configuration failures are not converted into successful summaries. Reasoning text is never used as the answer.
+
+Server diagnostics record only stage, error class, HTTP status, finish reason and token counts. Provider bodies, transcript contents, API keys and raw exception messages are not logged or returned by the analysis error path. The UI offers **Retry analysis** or **Retry transcription** according to the failed stage. A final-analysis retry skips audio upload, transcription and completed part notes. A fast-completion race is also fixed: reaching `ready` refreshes the server-rendered brief even if analysis finished before polling started.
 
 ## Deployment
 
-1. Apply `npx tsx scripts/apply-sql.ts drizzle/0011_sell_side.sql` to the intended development/deployment database. Like the other handwritten migrations, this is not in the Drizzle journal. New tables have RLS enabled and are accessed only through team-checked server code.
-2. Confirm the existing `OPENROUTER_API_KEY`, database, and Supabase variables. Transcription uses the same OpenRouter key; no separate transcription key is needed. The existing Drive connection supplies company documents.
-3. Ensure the existing **private** `models` storage bucket accepts `audio/webm` (including codecs parameter) and `audio/mp4`, with a per-file limit of at least 24 MB. Do not make the bucket public. There are no new anonymous storage read policies.
-4. Serve over HTTPS (localhost also supports browser media APIs). For browser calls, choose the tab and explicitly share audio. Browser/OS support for system audio varies; microphone mode does not capture remote headphone audio.
+For an installation already using sell-side calls, the only new database step is:
 
-## Recovery and limits
+```bash
+npx tsx scripts/apply-sql.ts drizzle/0014_sell_side_other_company.sql
+```
 
-Keep the tab open during recording and part processing. The in-progress part is not saved until its two-minute boundary or Stop; a crash can lose that current part. Short gaps can occur while MediaRecorder restarts. Pause does not add silence to transcript timestamps. Closing while processing is recoverable by reopening the call and using **Process / retry saved call**. After analysis starts, the existing server-owned agent run finishes independently of browser navigation.
+Run against the intended database using its existing environment configuration. Alternatively, execute the single SQL statement in the Supabase SQL editor. It drops `NOT NULL` from `sell_side_calls.holding_id`; the foreign key, existing rows and RLS remain intact. It is safe to run again. This handwritten migration is not in the Drizzle journal.
 
-Pending audio can be downloaded before retry. Browser-local recovery is specific to the same browser profile; clearing site data removes pending files. Saved transcripts remain in Postgres. Audio objects are private and retained; this feature does not introduce automatic audio deletion or retention policy changes.
+Apply it before using **Other company**. Existing holding calls and chat reads remain compatible if code deploys first; other-company creation returns a clear setup message and rolls back its transaction until the migration is applied. For a fresh installation, also apply `0011_sell_side.sql` first.
 
-Transcripts carry no speaker attribution, and a missing internal document is not confirmation. The internal-file cross-check displays retrieved evidence and gaps for analyst review.
+Continue using the existing database/Supabase variables and `OPENROUTER_API_KEY`. No new credential is required. The private `models` bucket must accept `audio/webm` (including the codecs variant) and `audio/mp4` up to 24 MB per file. Do not add anonymous read policies. HTTPS or localhost is required for media capture.
+
+## Recording limits
+
+Keep the page open during recording and part processing. The current part is saved at its two-minute boundary or Stop; a browser crash can lose that unfinished part, and short gaps can occur when MediaRecorder restarts. Pause does not add silence to transcript offsets. Audio pending upload can be downloaded. Local recovery requires the same browser profile; clearing site data removes pending files. Already uploaded audio and saved transcripts remain available when reopening the call. Final synthesis continues server-side after navigation.
 
 ## Verification
 
-Unit/integration fixtures cover transcript parsing, timestamp offsets, missing parts, transcription reuse after model failures, deterministic internal retrieval/fallback, saved citation provenance, auth/team checks, concurrent leases, and background failure recovery. Browser verification uses actual MediaRecorder/IndexedDB with synthetic audio and simulated storage/provider responses, covering pause/resume, multi-part rotation, upload retry, processing, transcript search, and reopening saved state. This is separate from a live test of microphone capture, Supabase, OpenRouter speech-to-text, and the connected Drive, which requires a configured development environment.
+- `npm test`: 460 tests across 68 files, including real SDK response parsing, malformed/empty outputs, schema fallback, configured model selection, citation validation, company validation, auth/team isolation, leases, saved-transcript reuse and final-analysis retries.
+- `npm run typecheck`, `npm run lint`, and `npm run build -- --webpack` validate the integrated application.
+- `npm run test:sell-side:browser` starts an isolated local integration app and Chrome (requires installed Chrome), then cleans up its server. It uses the production form, recorder, IndexedDB, analysis components, chat, source viewer, APIs, SQL migrations, store functions, processing code, provider SDK and streamed agent persistence. Auth, object storage, transcription/model HTTP responses and internal-document retrieval are deterministic fixtures. It never reads production env files or adds an auth bypass to the application.
+- Browser scenarios: a non-portfolio SNOW call; an AMZN holding call; record/pause/resume and two-minute rollover; reasoning-only part-note failure; final-analysis failure; retries without duplicate transcription; structured brief; transcript and internal-source opening; streamed follow-up with a valid citation; reload/reopen; transcript search; later full-text retrieval; other-team isolation; desktop/mobile layout and uncaught page errors. Screenshots are written under `.artifacts/sell-side-test/`.
+- PostgreSQL migrations execute in PGlite, including applying the nullable-holding migration twice. Persisted non-portfolio calls, messages, full-text sources and holding calls are exercised by the browser flow.
 
-### Validation performed on this branch
+The branch incorporates main through `376198c`: calendar and Owl's Nest branding, the holding research board, memory/MCP/earnings prep, unified document corpus and source endpoint, and ingest/embedding fixes. The existing chat/retrieval code is retained. The only schema change is the optional holding link.
 
-- `npm test`: 319 tests across 45 files passed.
-- `npm run typecheck`: passed; `eslint` on the sell-side change set: clean.
-- `npm run build -- --webpack`: passed. Default Turbopack encountered an environment port-binding restriction; no bundler configuration was changed.
-- Transcription provider re-verified live: `qwen/qwen3-asr-0.6b` through OpenRouter speech-to-text transcribed a two-voice clip in wav, webm, and mp4 containers; `verbose_json` returns timestamped segments without speaker labels. No separate transcription key is required.
-- Local PostgreSQL (PGlite) executed the migration twice and exercised the actual store functions: save/reopen, full-text retrieval, ticker filtering, team isolation, transcript paging, and citation metadata.
-- Browser harness: real MediaRecorder and IndexedDB, synthetic audio, mocked storage/transcription/analysis boundaries. Passed call creation, permission denial, pause/resume, two-part rotation, upload failure, local recovery after reload, processing retry, saved transcript search/reopen, mobile width, and page-error checks. Caught and fixed the explicit submit type on the new-call button.
-- Live service validation was unavailable: the main local clone and registered worktrees had no usable `.env` / `.env.local` with the required database, storage, and provider configuration. No secrets were printed; no live schema, account data, or deployment was modified.
+Live OpenRouter/Supabase/Drive verification and production migration execution require an authenticated, configured environment. Neither the main local checkout nor the isolated checkout contained an env file during this repair; no production migration or live-provider success is claimed.

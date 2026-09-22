@@ -21,7 +21,8 @@
     "smoke:agent": "tsx --conditions=react-server scripts/smoke-agent.ts",
     "smoke:tools": "tsx --conditions=react-server scripts/smoke-tools.ts",
     "smoke:mcp": "tsx --conditions=react-server scripts/smoke-mcp.ts",
-    "smoke:prep": "tsx --conditions=react-server scripts/smoke-prep.ts"
+    "smoke:prep": "tsx --conditions=react-server scripts/smoke-prep.ts",
+    "test:sell-side:browser": "node tests/sell-side/run.mjs"
   },
   "dependencies": {
     "@ai-sdk/mcp": "^2.0.52",
@@ -62,6 +63,8 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/luxon": "^3.7.5",
     "@types/node": "^22.20.2",
@@ -69,6 +72,7 @@
     "@types/react-dom": "^19.3.0",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.5",
     "prettier": "^3.9.6",

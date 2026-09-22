@@ -86,4 +86,4 @@ The team sidebar includes Economic Calendar next to Earnings. Live public agency
 
 ## Sell-side analyzer
 
-Team sidebar tab for recording, speaker transcripts, automatically cross-checking company documents, and saved transcript chat. Reuses the research agent, Drive retrieval, and citation viewer. See [setup, recovery, and verification](docs/sell-side-analyzer.md); apply `drizzle/0011_sell_side.sql` and configure the transcription key before using processing.
+Team sidebar tab for recording, timestamped transcripts, structured call briefs, automatic internal-file cross-checks, and saved transcript chat. Choose a holding or enter another company and ticker. Reuses the existing OpenRouter configuration, agent retrieval, chat, and citation viewer. See [setup, recovery, and verification](docs/sell-side-analyzer.md); apply `drizzle/0011_sell_side.sql` and `drizzle/0014_sell_side_other_company.sql`. No separate transcription key is needed.

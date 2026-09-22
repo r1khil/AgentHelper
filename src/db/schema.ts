@@ -661,7 +661,7 @@ export type ChangelogEntry = typeof changelogEntries.$inferSelect;
 export const sellSideCalls = pgTable("sell_side_calls", {
   id: uuid("id").primaryKey().defaultRandom(),
   teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
-  holdingId: uuid("holding_id").notNull().references(() => holdings.id),
+  holdingId: uuid("holding_id").references(() => holdings.id),
   chatId: uuid("chat_id").notNull().references(() => chats.id, { onDelete: "cascade" }).unique(),
   createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
   title: text("title").notNull(),

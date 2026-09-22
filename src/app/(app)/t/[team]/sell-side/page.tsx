@@ -3,6 +3,7 @@ import { loadTeam } from "@/lib/teams";
 import { listTeamHoldings } from "@/lib/holdings";
 import { listCalls } from "@/lib/sell-side/store";
 import { PageHeader } from "@/components/app/page-header";
+import { callStatusLabel } from "@/lib/sell-side/status";
 import { NewCall } from "@/components/app/sell-side/new-call";
 export const metadata = { title: "Sell-side analyzer" };
 export default async function SellSide({ params }: { params: Promise<{ team: string }> }) {
@@ -11,7 +12,15 @@ export default async function SellSide({ params }: { params: Promise<{ team: str
   return (
     <div className="space-y-6">
       <PageHeader title="Sell-side analyzer" description="Record the conversation. Review the evidence. Keep the transcript for future research." />
-      <NewCall team={team.slug} holdings={holdings.map(({ h }) => ({ id: h.id, ticker: h.ticker, companyName: h.companyName }))} />
+      <NewCall
+        team={team.slug}
+        teamId={team.id}
+        holdings={holdings.map(({ h }) => ({
+          id: h.id,
+          ticker: h.ticker,
+          companyName: h.companyName,
+        }))}
+      />
       <section className="space-y-3">
         <h2 className="font-semibold">Saved calls</h2>
         {!calls.length && <p className="text-sm text-muted-foreground">Your team’s calls, summaries, transcripts, and follow-up chats will appear here.</p>}
@@ -27,7 +36,7 @@ export default async function SellSide({ params }: { params: Promise<{ team: str
               </p>
               <p className="text-xs text-muted-foreground">{c.createdAt.toISOString().slice(0, 10)}</p>
             </div>
-            <span className="text-xs capitalize">{c.status}</span>
+            <span className="text-xs capitalize">{callStatusLabel[c.status] ?? "Saved call"}</span>
           </Link>
         ))}
       </section>

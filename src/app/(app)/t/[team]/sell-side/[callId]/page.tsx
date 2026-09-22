@@ -5,7 +5,8 @@ import { getCall } from "@/lib/sell-side/store";
 import { getChat, loadMessages, effectiveRunStatus } from "@/lib/chats";
 import { agentConfigured } from "@/lib/agent/model";
 import { transparencyEnabled } from "@/lib/auth";
-import { ChatPanel } from "@/components/app/chat/chat-panel";
+import { CallDiscussion } from "@/components/app/sell-side/call-discussion";
+import { AnalysisBrief } from "@/components/app/sell-side/analysis-brief";
 import { CallWorkspace } from "@/components/app/sell-side/call-workspace";
 export const metadata = { title: "Sell-side call" };
 export default async function CallPage({ params }: { params: Promise<{ team: string; callId: string }> }) {
@@ -27,19 +28,18 @@ export default async function CallPage({ params }: { params: Promise<{ team: str
         </h1>
         <p className="text-sm text-muted-foreground">Transcript, structured summary, and comparison with your company files.</p>
       </div>
-      <CallWorkspace callId={call.id} configured={agentConfigured()} />
+      <CallWorkspace callId={call.id} configured={agentConfigured()}>
+        {call.status === "ready" && <AnalysisBrief chatId={chat.id} messages={messages} />}
+      </CallWorkspace>
       {call.status === "ready" && (
-        <section className="space-y-3">
-          <h2 className="font-semibold">Summary & transcript chat</h2>
-          <ChatPanel
-            chatId={chat.id}
-            initialMessages={messages}
-            initialRunStatus={effectiveRunStatus(chat)}
-            tickers={[call.ticker]}
-            configured={agentConfigured()}
-            transparency={transparencyEnabled(user)}
-          />
-        </section>
+        <CallDiscussion
+          chatId={chat.id}
+          initialMessages={messages}
+          initialRunStatus={effectiveRunStatus(chat)}
+          tickers={[call.ticker]}
+          configured={agentConfigured()}
+          transparency={transparencyEnabled(user)}
+        />
       )}
     </div>
   );
