@@ -1,47 +1,36 @@
 "use client";
 
-import { useMemo, useRef, useState, type FormEvent } from "react";
-import { Check, Info, Play, RotateCcw, Search } from "lucide-react";
+import { memo, useMemo, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { PageHeader } from "@/components/app/page-header";
-import { exactDate } from "@/components/charts/primitives";
+import { PageHeader, SectionTitle } from "@/components/app/page-header";
+import { PerformanceChart } from "@/components/charts/performance-chart";
 import {
   BENCHMARKS,
   type BacktestResult,
+  type Metrics,
   type Snapshot,
 } from "@/lib/backtesting/engine";
-import {
-  PRESETS,
-  activePreset,
-  equalWeights,
-  isEdited,
-  presetStart,
-  requestWeights,
-  roundedWeights,
-  scaleTo100,
-  tidyWeight,
-  validWeight,
-  weightTotal,
-  type WeightInputs,
-} from "@/lib/backtesting/scenario";
 import { cn } from "@/lib/utils";
-import { Results } from "./results";
 
-const FORM_ID = "backtest-scenario";
-const legend =
-  "mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground";
-const two = (n: number) => (Number.isFinite(n) ? n.toFixed(2) : "—");
+const pct = (v: number | null) =>
+  v === null ? "—" : `${(v * 100).toFixed(2)}%`;
+const pp = (v: number | null) =>
+  v === null ? "—" : `${v >= 0 ? "+" : ""}${(v * 100).toFixed(2)} pp`;
+const tone = (v: number) =>
+  v > 1e-12 ? "text-up" : v < -1e-12 ? "text-down" : "text-muted-foreground";
+const cell = "px-3 py-2.5 text-right tnum whitespace-nowrap";
+const head = "px-3 py-2.5 text-left font-medium text-muted-foreground";
+const initialWeights = (snapshot: Snapshot) =>
+  Object.fromEntries(
+    snapshot.positions.map((p) => [p.id, String(p.weight * 100)]),
+  );
 
 type Completed = {
   id: number;
   result: BacktestResult;
-  weights: WeightInputs;
+  weights: Record<string, string>;
   from: string;
   to: string;
   benchmark: keyof typeof BENCHMARKS;
@@ -57,57 +46,31 @@ export function BacktestingWorkspace({
   defaultTo: string;
   endpoint?: string;
 }) {
-  // Saved weights rounded to two decimals; the request still uses the exact saved weights for unedited rows.
-  const baseline = useMemo(
-    () => roundedWeights(snapshot.positions),
-    [snapshot.positions],
-  );
-  const [weights, setWeights] = useState(baseline);
+  const [weights, setWeights] = useState(() => initialWeights(snapshot));
   const [from, setFrom] = useState(defaultFrom),
     [to, setTo] = useState(defaultTo);
   const [benchmark, setBenchmark] = useState<keyof typeof BENCHMARKS>("SPY");
   const [completed, setCompleted] = useState<Completed | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const [query, setQuery] = useState("");
-  const [showWeights, setShowWeights] = useState(false);
   const inFlight = useRef(false),
     runs = useRef(0);
   const values = Object.values(weights);
-  const sum = weightTotal(weights);
-  const entriesValid = values.every(validWeight);
-  const valid = entriesValid && Math.abs(sum - 100) < 1e-6;
-  const scaled = entriesValid && !valid ? scaleTo100(weights) : null;
-  const changed = snapshot.positions.filter((p) =>
-    isEdited(baseline, weights, p.id),
-  ).length;
-  const preset = activePreset(from, to, defaultTo);
-  const barMax = Math.max(
-    1,
-    ...Object.values(baseline).map(Number),
-    ...values.map((w) => (validWeight(w) ? Number(w) : 0)),
-  );
-  const q = query.trim().toLowerCase();
-  const visible = q
-    ? snapshot.positions.filter(
-        (p) =>
-          p.ticker.toLowerCase().includes(q) ||
-          p.name.toLowerCase().includes(q),
-      )
-    : snapshot.positions;
+  const sum = values.reduce((s, w) => s + Number(w), 0);
+  const valid =
+    values.every(
+      (w) =>
+        w.trim() !== "" &&
+        Number.isFinite(Number(w)) &&
+        Number(w) >= 0 &&
+        Number(w) <= 100,
+    ) && Math.abs(sum - 100) < 1e-6;
   const dirty =
     completed &&
     (completed.from !== from ||
       completed.to !== to ||
       completed.benchmark !== benchmark ||
       JSON.stringify(completed.weights) !== JSON.stringify(weights));
-  function resetAll() {
-    setWeights(baseline);
-    setFrom(defaultFrom);
-    setTo(defaultTo);
-    setBenchmark("SPY");
-    setQuery("");
-  }
   async function run(event: FormEvent) {
     event.preventDefault();
     if (!valid || inFlight.current) return;
@@ -123,7 +86,12 @@ export function BacktestingWorkspace({
           to,
           benchmark,
           version: snapshot.version,
-          weights: requestWeights(snapshot.positions, weights, baseline),
+          weights: Object.fromEntries(
+            Object.entries(weights).map(([id, weight]) => [
+              id,
+              Number(weight) / 100,
+            ]),
+          ),
         }),
         signal: AbortSignal.timeout(120000),
       });
@@ -156,462 +124,611 @@ export function BacktestingWorkspace({
       setBusy(false);
     }
   }
-  const runLabel = busy
-    ? "Replaying…"
-    : valid
-      ? "Run backtest"
-      : "Fix weights to run";
-  const result = completed?.result;
   return (
-    <div className="pb-24 lg:pb-0">
+    <>
       <PageHeader
         title="Backtesting"
-        description="Replay today's holdings with different weights and see what the change would have done."
-        actions={
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="rounded-full border bg-background px-2.5 py-1">
-              {snapshot.scope} · {snapshot.positions.length} holdings
-            </span>
-            <Popover>
-              <PopoverTrigger className="inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
-                <Info className="size-3.5" />
-                Assumptions
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-80 space-y-2 p-3">
-                <p>
-                  Saved weights total {snapshot.savedWeightTotal.toFixed(2)}%.
-                  Invested holdings are normalized to 100% for this
-                  comparison; cash is excluded.
-                </p>
-                <p className="text-muted-foreground">
-                  The current portfolio is a snapshot of today&apos;s holdings,
-                  not historical holdings. Changes here never update your saved
-                  portfolio.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Fixed weights rebalanced daily · USD total returns · Dividends
-                  reinvested · No fees, taxes, or transaction costs
-                </p>
-              </PopoverContent>
-            </Popover>
-          </div>
-        }
+        description="Compare your current allocation with a modified copy, one trading day at a time."
       />
-      <div className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:items-start">
-        <form
-          id={FORM_ID}
-          onSubmit={run}
-          aria-label="Scenario"
-          className="flex flex-col rounded-xl border bg-card"
-        >
-          <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
-            <h2 className="text-sm font-semibold">Scenario</h2>
-            <button
-              type="button"
-              onClick={resetAll}
-              className="inline-flex items-center gap-1.5 rounded px-1.5 py-1 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-            >
-              <RotateCcw className="size-3.5" />
-              Reset all
-            </button>
-          </div>
-
-          <fieldset className="shrink-0 space-y-3 border-b px-4 py-4">
-            <legend className={cn(legend, "float-left w-full")}>Period</legend>
-            <div
-              role="group"
-              aria-label="Period presets"
-              className="clear-both grid grid-cols-7 gap-0.5 rounded-lg bg-muted/60 p-1"
-            >
-              {PRESETS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  aria-pressed={preset === p}
-                  onClick={() => {
-                    setFrom(presetStart(p, defaultTo));
-                    setTo(defaultTo);
-                  }}
-                  className={cn(
-                    "rounded-md py-1.5 text-xs font-medium transition-colors motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-ring",
-                    preset === p
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-            <div className="grid grid-cols-2 gap-2.5">
-              <label className="space-y-1.5 text-xs text-muted-foreground">
-                <span>From</span>
-                <Input
-                  type="date"
-                  value={from}
-                  max={to}
-                  required
-                  onChange={(e) => setFrom(e.target.value)}
-                  className="text-foreground"
-                />
-              </label>
-              <label className="space-y-1.5 text-xs text-muted-foreground">
-                <span>To</span>
-                <Input
-                  type="date"
-                  value={to}
-                  min={from}
-                  max={defaultTo}
-                  required
-                  onChange={(e) => setTo(e.target.value)}
-                  className="text-foreground"
-                />
-              </label>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Up to five years of completed sessions. The start date includes
-              that day&apos;s return from the prior close.
-            </p>
-          </fieldset>
-
-          <fieldset className="shrink-0 border-b px-4 py-4">
-            <legend className={cn(legend, "float-left w-full")}>
+      <Card className="mb-5 gap-3 p-4 text-sm">
+        <div className="font-medium">{snapshot.scope}</div>
+        <p className="text-muted-foreground">
+          Saved weights total {snapshot.savedWeightTotal.toFixed(2)}%. The
+          invested holdings are normalized to 100% for this comparison; cash is
+          excluded. The original is a snapshot of current holdings, not
+          historical holdings. Changes here never update your saved portfolio.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Fixed weights are rebalanced daily · USD total returns · Dividends
+          reinvested · No fees, taxes, or transaction costs
+        </p>
+      </Card>
+      <form onSubmit={run}>
+        <Card className="mb-5 gap-4 p-4">
+          <SectionTitle>Replay settings</SectionTitle>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <label className="space-y-2 text-sm">
+              Start date
+              <Input
+                aria-label="Start date"
+                type="date"
+                value={from}
+                max={to}
+                required
+                onChange={(e) => setFrom(e.target.value)}
+              />
+            </label>
+            <label className="space-y-2 text-sm">
+              End date
+              <Input
+                aria-label="End date"
+                type="date"
+                value={to}
+                min={from}
+                max={defaultTo}
+                required
+                onChange={(e) => setTo(e.target.value)}
+              />
+            </label>
+            <label className="space-y-2 text-sm">
               Benchmark
-            </legend>
-            <div className="clear-both grid grid-cols-3 gap-2">
-              {Object.entries(BENCHMARKS).map(([key, label]) => {
-                const [name, ticker] = label.split(" · ");
-                const on = benchmark === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() =>
-                      setBenchmark(key as keyof typeof BENCHMARKS)
-                    }
-                    className={cn(
-                      "flex flex-col items-start gap-0.5 rounded-lg border bg-background px-2.5 py-2 text-left focus-visible:outline-2 focus-visible:outline-ring",
-                      on
-                        ? "border-foreground ring-1 ring-foreground"
-                        : "hover:bg-muted/50",
-                    )}
-                  >
-                    <span className="text-sm font-semibold">{ticker}</span>
-                    <span className="text-[11px] text-muted-foreground">
-                      {name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
-
-          <div className="flex shrink-0 items-center justify-between gap-2 px-4 pt-4 pb-3">
-            <div className="flex items-baseline gap-2">
-              <h3 className={cn(legend, "mb-0")}>Weights</h3>
-              {changed > 0 && (
-                <span className="text-xs font-medium text-[var(--series-1)]">
-                  {changed} changed
-                </span>
-              )}
-            </div>
-            <div className="flex gap-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setWeights(equalWeights(snapshot.positions.map((p) => p.id)))
+              <select
+                aria-label="Benchmark"
+                value={benchmark}
+                onChange={(e) =>
+                  setBenchmark(e.target.value as keyof typeof BENCHMARKS)
                 }
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
               >
-                Equal weight
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!changed && entriesValid}
-                onClick={() => setWeights(baseline)}
-              >
-                Revert
-              </Button>
-            </div>
+                {Object.entries(BENCHMARKS).map(([key, label]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-          <button
-            type="button"
-            aria-expanded={showWeights}
-            onClick={() => setShowWeights(!showWeights)}
-            className="mx-4 mb-3 rounded-lg border px-3 py-2.5 text-left text-sm font-medium lg:hidden"
-          >
-            {showWeights ? "Hide holdings" : `Edit ${snapshot.positions.length} holding weights`}
-          </button>
-          <div className={cn("flex flex-col", !showWeights && "max-lg:hidden")}>
-            <div className="shrink-0 space-y-2.5 px-4 pb-2">
-              <label className="relative block">
-                <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                <span className="sr-only">Filter holdings</span>
-                <Input
-                  type="search"
-                  placeholder="Filter holdings"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="pl-8"
-                />
-              </label>
-              <div className="grid grid-cols-[minmax(0,1fr)_3.25rem_5.25rem_3.25rem] gap-2 px-1.5 text-[11px] font-medium text-muted-foreground">
-                <span>Holding</span>
-                <span className="text-right">Now %</span>
-                <span className="text-right">Scenario %</span>
-                <span className="text-right">Δ</span>
-              </div>
-            </div>
-            <div className="px-2.5 pb-3">
-              {visible.length === 0 && (
-                <p className="px-1.5 py-4 text-sm text-muted-foreground">
-                  No holdings match “{query}”.
-                </p>
-              )}
-              {visible.map((p) => {
-                const input = weights[p.id];
-                const ok = validWeight(input);
-                const saved = Number(baseline[p.id]);
-                const edited = ok && isEdited(baseline, weights, p.id);
-                const delta = ok ? Number(input) - saved : null;
-                return (
-                  <div
-                    key={p.id}
-                    className={cn(
-                      "grid grid-cols-[minmax(0,1fr)_3.25rem_5.25rem_3.25rem] items-center gap-2 rounded-lg px-1.5 py-1.5",
-                      edited &&
-                        "bg-[color-mix(in_srgb,var(--series-1)_7%,transparent)]",
-                    )}
-                  >
-                    <div className="min-w-0 space-y-1.5">
-                      <div className="flex min-w-0 items-baseline gap-1.5">
-                        <span className="text-sm font-semibold">{p.ticker}</span>
-                        <span className="truncate text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
+            Start date includes that session’s return from the previous trading
+            close. Up to five years; completed sessions only.
+          </p>
+          <details open className="group">
+            <summary className="cursor-pointer text-sm font-medium">
+              Portfolio weights{" "}
+              <span className="text-muted-foreground">
+                · edit the modified copy
+              </span>
+            </summary>
+            <div className="mt-3 max-h-80 overflow-auto rounded-md border">
+              <table className="w-full text-sm">
+                <caption className="sr-only">
+                  Original and modified portfolio weights
+                </caption>
+                <thead className="sticky top-0 bg-muted">
+                  <tr>
+                    <th className={head}>Holding</th>
+                    <th className={cell}>Original</th>
+                    <th className={cell}>Modified (%)</th>
+                    <th className={cell}>Change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {snapshot.positions.map((p) => (
+                    <tr key={p.id} className="border-t">
+                      <th className="px-3 py-2 text-left font-medium">
+                        {p.ticker}
+                        <span className="mt-1 block max-w-60 truncate text-xs font-normal text-muted-foreground">
                           {p.name}
                         </span>
-                      </div>
-                      <div className="relative h-1 rounded-full bg-muted" aria-hidden>
-                        <div
-                          className={cn(
-                            "absolute inset-y-0 left-0 rounded-full",
-                            edited ? "bg-[var(--series-1)]" : "bg-muted-foreground/40",
-                          )}
-                          style={{
-                            width: `${ok ? Math.min(Number(input) / barMax, 1) * 100 : 0}%`,
-                          }}
+                      </th>
+                      <td className={cell}>{pct(p.weight)}</td>
+                      <td className={cell}>
+                        <Input
+                          className="ml-auto w-28 text-right"
+                          aria-label={`${p.ticker} modified weight`}
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="any"
+                          value={weights[p.id]}
+                          onChange={(e) =>
+                            setWeights({ ...weights, [p.id]: e.target.value })
+                          }
+                          required
                         />
-                        <div
-                          className="absolute -top-0.5 h-2 w-0.5 rounded-full bg-foreground"
-                          style={{ left: `${(saved / barMax) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                    <span className="text-right text-sm text-muted-foreground tnum">
-                      {baseline[p.id]}
-                    </span>
-                    <Input
-                      aria-label={`${p.ticker} scenario weight, percent`}
-                      aria-invalid={!ok || undefined}
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="any"
-                      inputMode="decimal"
-                      value={input}
-                      onChange={(e) =>
-                        setWeights({ ...weights, [p.id]: e.target.value })
-                      }
-                      onBlur={(e) => {
-                        const tidy = tidyWeight(e.target.value);
-                        if (tidy !== e.target.value)
-                          setWeights({ ...weights, [p.id]: tidy });
-                      }}
-                      required
-                      className={cn(
-                        "h-8 px-2 text-right tnum",
-                        edited && "border-[var(--series-1)]",
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        "text-right text-xs font-medium tnum",
-                        delta === null || !edited
-                          ? "text-muted-foreground"
-                          : delta > 0
-                            ? "text-up"
-                            : "text-down",
-                      )}
-                    >
-                      {delta === null
-                        ? "?"
-                        : edited
-                          ? `${delta > 0 ? "+" : ""}${delta.toFixed(2)}`
-                          : "—"}
-                    </span>
-                  </div>
-                );
-              })}
+                      </td>
+                      <td
+                        className={cn(
+                          cell,
+                          tone(Number(weights[p.id]) / 100 - p.weight),
+                        )}
+                      >
+                        {pp(Number(weights[p.id]) / 100 - p.weight)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
-
-          {/* The list scrolls with the page, so the total and Run button stay pinned while you edit. */}
-          <div className="shrink-0 space-y-3 rounded-b-xl border-t bg-card px-4 py-4 lg:sticky lg:bottom-0 lg:z-10 lg:shadow-[0_-8px_16px_-12px_rgb(0_0_0/0.25)]">
+          </details>
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div
               aria-live="polite"
-              className="flex items-center justify-between text-sm"
+              className={cn("text-sm tnum", !valid && "text-destructive")}
             >
-              <span className="text-muted-foreground">Scenario total</span>
-              <span
-                className={cn(
-                  "font-semibold tnum",
-                  valid ? "text-up" : "text-destructive",
-                )}
+              Modified total:{" "}
+              {Number.isFinite(sum)
+                ? sum.toFixed(6).replace(/0+$/, "").replace(/\.$/, "")
+                : "—"}
+              %{!valid && " · must total 100%"}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setWeights(initialWeights(snapshot))}
               >
-                {two(sum)}%
-              </span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
-              <div
-                className={cn("h-full", valid ? "bg-up" : "bg-destructive")}
-                style={{
-                  width: `${Number.isFinite(sum) ? Math.min(Math.max(sum, 0), 100) : 0}%`,
-                }}
-              />
-            </div>
-            {valid ? (
-              <p className="flex items-center gap-1.5 text-xs text-up">
-                <Check className="size-3.5" />
-                Balanced · cash excluded, invested sleeve at 100%
-              </p>
-            ) : (
-              <div
-                role="alert"
-                className="flex items-center justify-between gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive"
-              >
-                <span>
-                  {entriesValid
-                    ? `${two(Math.abs(sum - 100))}% ${sum > 100 ? "over" : "under"}. Weights must total 100%.`
-                    : "Each weight must be a number from 0 to 100."}
-                </span>
-                {scaled && (
-                  <button
-                    type="button"
-                    onClick={() => setWeights(scaled)}
-                    className="shrink-0 rounded-md border border-destructive/30 bg-background px-2 py-1 font-medium hover:bg-destructive/5"
-                  >
-                    Scale to 100%
-                  </button>
-                )}
-              </div>
-            )}
-            <Button
-              type="submit"
-              size="lg"
-              disabled={!valid || busy}
-              className="hidden w-full lg:flex"
-            >
-              <Play className="size-3.5 fill-current" />
-              {runLabel}
-            </Button>
-          </div>
-        </form>
-
-        <section aria-label="Results" className="min-w-0 space-y-4">
-          <div role="status" aria-live="polite" className="sr-only">
-            {busy
-              ? "Fetching adjusted history and calculating every trading day…"
-              : dirty
-                ? "Scenario changed. Results show the last completed run."
-                : result
-                  ? `${result.days.length} trading days replayed.`
-                  : ""}
-          </div>
-          {error && (
-            <div
-              role="alert"
-              className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive"
-            >
-              {error}
-            </div>
-          )}
-          {dirty && !busy && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/50 bg-warning/10 px-4 py-3 text-sm">
-              <span>
-                <strong className="font-semibold">Scenario changed.</strong>{" "}
-                <span className="text-muted-foreground">
-                  Results below are from your last run.
-                </span>
-              </span>
-              <Button type="submit" form={FORM_ID} size="sm" disabled={!valid}>
-                {valid ? "Run again" : "Fix weights to run"}
+                Reset weights
+              </Button>
+              <Button type="submit" disabled={!valid || busy}>
+                {busy ? "Replaying…" : "Run backtest"}
               </Button>
             </div>
-          )}
-          {completed && result ? (
-            <div
-              className={cn(
-                "space-y-4 transition-opacity motion-reduce:transition-none",
-                (dirty || busy) && "opacity-55",
-              )}
-            >
-              <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs text-muted-foreground tnum">
-                <span>
-                  {exactDate(result.days[0].date)} –{" "}
-                  {exactDate(result.days.at(-1)!.date)} · {result.days.length}{" "}
-                  trading days · vs {BENCHMARKS[completed.benchmark]}
-                </span>
-                <span>Baseline close {exactDate(result.baseline)}</span>
-              </div>
-              <Results
-                key={completed.id}
-                result={result}
-                positions={snapshot.positions}
-                weights={completed.weights}
-                baseline={baseline}
-              />
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed p-8 text-sm">
-              <h2 className="font-semibold">
-                {busy ? "Replaying your scenario…" : "No results yet"}
-              </h2>
-              <p className="mt-1 max-w-md text-muted-foreground">
-                {busy
-                  ? "Fetching adjusted price history and calculating every trading day. Longer periods take a little longer."
-                  : "Pick a period and benchmark, adjust any weights, then run the backtest. Your current weights are replayed alongside the scenario so you can see exactly what your changes would have done."}
-              </p>
-              {busy && (
-                <div className="mt-5 space-y-3" aria-hidden>
-                  <div className="h-24 animate-pulse rounded-lg bg-muted motion-reduce:animate-none" />
-                  <div className="h-56 animate-pulse rounded-lg bg-muted motion-reduce:animate-none" />
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-      </div>
-
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
-        <div className="flex-1 text-xs text-muted-foreground">
-          Scenario total
-          <div
-            className={cn(
-              "text-sm font-semibold tnum",
-              valid ? "text-up" : "text-destructive",
-            )}
-          >
-            {two(sum)}%
           </div>
-        </div>
-        <Button type="submit" form={FORM_ID} size="lg" disabled={!valid || busy}>
-          <Play className="size-3.5 fill-current" />
-          {runLabel}
-        </Button>
+        </Card>
+      </form>
+      <div
+        role="status"
+        aria-live="polite"
+        className="mb-4 text-sm text-muted-foreground"
+      >
+        {busy
+          ? "Fetching adjusted history and calculating every trading day…"
+          : dirty
+            ? "Settings changed. Results below show the last completed run; run again to apply changes."
+            : completed
+              ? `${completed.result.days.length} trading days replayed · ${completed.result.baseline} closing baseline → ${completed.result.days.at(-1)!.date}`
+              : "Choose your dates and weights, then run the comparison."}
       </div>
+      {error && (
+        <Card
+          role="alert"
+          className="mb-5 border-destructive/40 p-4 text-sm text-destructive"
+        >
+          {error}
+        </Card>
+      )}
+      {completed && (
+        <Results key={completed.id} result={completed.result} />
+      )}
+    </>
+  );
+}
+
+const Results = memo(function Results({ result }: { result: BacktestResult }) {
+  const [date, setDate] = useState(result.days.at(-1)!.date);
+  const [mode, setMode] = useState<
+    "originalActive" | "modifiedActive" | "delta"
+  >("modifiedActive");
+  const selected = result.days.find((d) => d.date === date)!;
+  const points = useMemo(
+    () => [
+      {
+        date: result.baseline,
+        values: { original: 100, modified: 100, benchmark: 100 },
+      },
+      ...result.days.map((d) => ({
+        date: d.date,
+        values: {
+          original: (1 + d.originalCumulative) * 100,
+          modified: (1 + d.modifiedCumulative) * 100,
+          benchmark: (1 + d.benchmarkCumulative) * 100,
+        },
+      })),
+    ],
+    [result],
+  );
+  const months = [...new Set(result.days.map((d) => d.date.slice(0, 7)))];
+  const byDate = new Map(result.days.map((d) => [d.date, d]));
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          ["Original return", result.original.totalReturn],
+          ["Modified return", result.modified.totalReturn],
+          [
+            "Weight-change delta",
+            result.modified.totalReturn - result.original.totalReturn,
+          ],
+        ].map(([label, value]) => (
+          <Card key={String(label)} className="gap-1 p-4">
+            <span className="text-xs text-muted-foreground">{label}</span>
+            <strong
+              className={cn("text-2xl font-semibold tnum", tone(Number(value)))}
+            >
+              {label === "Weight-change delta"
+                ? pp(Number(value))
+                : pct(Number(value))}
+            </strong>
+          </Card>
+        ))}
+      </div>
+      <Card className="p-4">
+        <SectionTitle>Cumulative returns</SectionTitle>
+        <PerformanceChart
+          data={points}
+          kind="return"
+          ranges={false}
+          label="Backtest cumulative returns"
+          note="Compounded daily total returns, rebased to the same closing baseline."
+          series={[
+            { key: "original", label: "Original", color: "var(--foreground)" },
+            { key: "modified", label: "Modified", color: "var(--up)" },
+            {
+              key: "benchmark",
+              label: result.benchmark,
+              color: "var(--muted-foreground)",
+              dashed: true,
+            },
+          ]}
+        />
+      </Card>
+      <Card className="p-4">
+        <SectionTitle>Daily active return</SectionTitle>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+          <label className="flex items-center gap-2">
+            Color by
+            <select
+              aria-label="Heatmap measure"
+              value={mode}
+              onChange={(e) => setMode(e.target.value as typeof mode)}
+              className="rounded border bg-background p-2"
+            >
+              <option value="modifiedActive">Modified vs benchmark</option>
+              <option value="originalActive">Original vs benchmark</option>
+              <option value="delta">Modified − original</option>
+            </select>
+          </label>
+          <span className="text-xs text-muted-foreground">
+            Red: negative · neutral: zero · green: positive · darker: larger (up
+            to 1 pp)
+          </span>
+        </div>
+        <div className="grid max-h-[36rem] gap-6 overflow-auto sm:grid-cols-2 xl:grid-cols-3">
+          {months.map((month) => {
+            const first = new Date(`${month}-01T00:00:00Z`);
+            const count = new Date(
+              Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0),
+            ).getUTCDate();
+            const offset = (first.getUTCDay() + 6) % 7;
+            return (
+              <div key={month}>
+                <h3 className="mb-2 text-sm font-medium">
+                  {first.toLocaleDateString("en-US", {
+                    month: "long",
+                    year: "numeric",
+                    timeZone: "UTC",
+                  })}
+                </h3>
+                <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                  {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+                    <span key={i} className="pb-1 text-muted-foreground">
+                      {d}
+                    </span>
+                  ))}
+                  {Array.from({ length: offset }, (_, i) => (
+                    <span key={`pad${i}`} />
+                  ))}
+                  {Array.from({ length: count }, (_, i) => {
+                    const day = `${month}-${String(i + 1).padStart(2, "0")}`,
+                      row = byDate.get(day);
+                    if (!row)
+                      return (
+                        <span
+                          key={day}
+                          className="grid min-h-8 place-items-center rounded bg-muted/30 text-muted-foreground/60"
+                          title="Outside replay or no benchmark session"
+                        >
+                          {i + 1}
+                        </span>
+                      );
+                    const value = row[mode];
+                    const label = `${day}: ${mode === "delta" ? "weight-change delta" : "active return"} ${pp(value)}`;
+                    return (
+                      <button
+                        type="button"
+                        key={day}
+                        title={label}
+                        aria-label={label}
+                        aria-pressed={day === date}
+                        onClick={() => setDate(day)}
+                        className={cn(
+                          "min-h-8 rounded border border-transparent text-xs text-foreground focus-visible:outline-2 focus-visible:outline-ring",
+                          day === date &&
+                            "ring-2 ring-foreground ring-offset-1 ring-offset-background",
+                        )}
+                        style={{
+                          backgroundColor:
+                            Math.abs(value) < 1e-12
+                              ? "var(--muted)"
+                              : `color-mix(in srgb, ${value > 0 ? "var(--up)" : "var(--down)"} ${20 + Math.min(Math.abs(value) / 0.01, 1) * 50}%, var(--background))`,
+                        }}
+                      >
+                        {i + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Select a trading day for contributions. Blank sessions are not
+          assigned a zero return.
+        </p>
+      </Card>
+      <Card className="p-4" aria-label="Selected day details">
+        <SectionTitle>Day detail · {date}</SectionTitle>
+        <div className="overflow-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className={head}>Return</th>
+                <th className={cell}>Original</th>
+                <th className={cell}>Modified</th>
+                <th className={cell}>Difference</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-t">
+                <th className={head}>Portfolio</th>
+                <td className={cell}>{pct(selected.original)}</td>
+                <td className={cell}>{pct(selected.modified)}</td>
+                <td className={cell}>{pp(selected.delta)}</td>
+              </tr>
+              <tr className="border-t">
+                <th className={head}>Benchmark · {result.benchmark}</th>
+                <td className={cell}>{pct(selected.benchmark)}</td>
+                <td className={cell}>{pct(selected.benchmark)}</td>
+                <td className={cell}>{pp(0)}</td>
+              </tr>
+              <tr className="border-t">
+                <th className={head}>Active vs benchmark</th>
+                <td className={cell}>{pp(selected.originalActive)}</td>
+                <td className={cell}>{pp(selected.modifiedActive)}</td>
+                <td className={cell}>{pp(selected.delta)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="overflow-auto">
+          <table className="w-full text-sm">
+            <caption className="py-3 text-left text-xs text-muted-foreground">
+              Holding contributions to daily portfolio return, in percentage
+              points.
+            </caption>
+            <thead>
+              <tr>
+                <th className={head}>Holding</th>
+                <th className={cell}>Holding return</th>
+                <th className={cell}>Original</th>
+                <th className={cell}>Modified</th>
+                <th className={cell}>Difference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selected.contributions.map((c) => (
+                <tr key={c.id} className="border-t">
+                  <th className={head}>{c.ticker}</th>
+                  <td className={cell}>{pct(c.return)}</td>
+                  <td className={cell}>{pp(c.original)}</td>
+                  <td className={cell}>{pp(c.modified)}</td>
+                  <td className={cn(cell, tone(c.delta))}>{pp(c.delta)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+      <Card className="p-4">
+        <SectionTitle>Period summary</SectionTitle>
+        <Summary result={result} />
+      </Card>
+      <Card className="p-4">
+        <SectionTitle>
+          Contributors, detractors & weight-change impact
+        </SectionTitle>
+        <Contributors result={result} />
+      </Card>
+      <details className="rounded-lg border p-4 text-sm text-muted-foreground">
+        <summary className="cursor-pointer font-medium text-foreground">
+          Calculation notes
+        </summary>
+        <div className="mt-3 space-y-2">
+          <p>
+            Returns use Yahoo Finance adjusted closing prices for both holdings
+            and the selected ETF benchmark, including dividend and split
+            adjustments. Returns are calculated as adjusted close / previous
+            adjusted close − 1. Each daily portfolio return is the weighted sum
+            of holding returns. Cumulative return is the product of (1 + daily
+            return) − 1.
+          </p>
+          <p>
+            Volatility is the sample standard deviation of daily returns × √252.
+            Drawdown includes the initial value of 1 and is shown as a negative
+            peak-to-trough return. Up/down capture is the ratio of geometric
+            mean daily portfolio and benchmark returns on
+            benchmark-positive/negative days; unavailable subsets show a dash.
+            Flat benchmark days enter neither capture ratio.
+          </p>
+          <p>
+            Daily contributions are weight × holding return. Period
+            contributions sum each daily contribution multiplied by the
+            portfolio’s value at the start of that day. They reconcile to each
+            compounded portfolio return; their differences reconcile to the
+            weight-change delta. Active return is portfolio minus benchmark, in
+            percentage points; active returns are not compounded separately.
+          </p>
+          <p>
+            This is a hypothetical replay of current holdings. It excludes cash,
+            trading costs, taxes and historical changes in membership; current
+            selection introduces survivorship and hindsight bias. Missing
+            holding prices block a run. The benchmark’s observed sessions define
+            the replay calendar.
+          </p>
+        </div>
+      </details>
     </div>
+  );
+});
+function Summary({ result }: { result: BacktestResult }) {
+  const rows: [string, keyof Metrics, "return" | "ratio" | "count"][] = [
+    ["Cumulative return", "totalReturn", "return"],
+    ["Annualized volatility", "volatility", "return"],
+    ["Max drawdown", "maxDrawdown", "return"],
+    ["Up capture", "upCapture", "ratio"],
+    ["Down capture", "downCapture", "ratio"],
+    ["Outperforming days", "outDays", "count"],
+    ["Underperforming days", "underDays", "count"],
+    ["Equal-return days", "equalDays", "count"],
+  ];
+  return (
+    <div className="overflow-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr>
+            <th className={head}>Metric</th>
+            <th className={cell}>Original</th>
+            <th className={cell}>Modified</th>
+            <th className={cell}>Benchmark</th>
+            <th className={cell}>Delta (modified − original)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, key, kind]) => {
+            const a = result.original[key],
+              b = result.modified[key],
+              d = a === null || b === null ? null : b - a;
+            return (
+              <tr key={key} className="border-t">
+                <th className={head}>{label}</th>
+                {[a, b, result.benchmarkMetrics[key]].map((v, i) => (
+                  <td key={i} className={cell}>
+                    {kind === "count" ? v : pct(v)}
+                  </td>
+                ))}
+                <td className={cell}>
+                  {kind === "count" ? `${d! >= 0 ? "+" : ""}${d}` : pp(d)}
+                </td>
+              </tr>
+            );
+          })}
+          <tr className="border-t">
+            <th className={head}>Active return</th>
+            <td className={cell}>
+              {pp(
+                result.original.totalReturn -
+                  result.benchmarkMetrics.totalReturn,
+              )}
+            </td>
+            <td className={cell}>
+              {pp(
+                result.modified.totalReturn -
+                  result.benchmarkMetrics.totalReturn,
+              )}
+            </td>
+            <td className={cell}>{pp(0)}</td>
+            <td className={cell}>
+              {pp(result.modified.totalReturn - result.original.totalReturn)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+function Contributors({ result }: { result: BacktestResult }) {
+  const [sort, setSort] = useState<"original" | "modified" | "delta">(
+    "modified",
+  );
+  const sorted = [...result.contributions].sort((a, b) => b[sort] - a[sort]);
+  const leaders = sorted.filter((c) => c[sort] > 0).slice(0, 5),
+    detractors = sorted
+      .filter((c) => c[sort] < 0)
+      .reverse()
+      .slice(0, 5);
+  return (
+    <>
+      <label className="mb-4 flex items-center gap-2 text-sm">
+        Rank by
+        <select
+          aria-label="Contribution ranking"
+          value={sort}
+          onChange={(e) => setSort(e.target.value as typeof sort)}
+          className="rounded border bg-background p-2"
+        >
+          <option value="modified">Modified</option>
+          <option value="original">Original</option>
+          <option value="delta">Weight-change delta</option>
+        </select>
+      </label>
+      <div className="mb-4 grid gap-4 sm:grid-cols-2">
+        {[
+          ["Top contributors", leaders],
+          ["Top detractors", detractors],
+        ].map(([label, rows]) => (
+          <div key={String(label)} className="rounded-md bg-muted/40 p-3">
+            <h3 className="mb-2 text-sm font-medium">{String(label)}</h3>
+            {(rows as typeof leaders).length ? (
+              (rows as typeof leaders).map((c) => (
+                <div key={c.id} className="flex justify-between py-1 text-sm">
+                  <span>{c.ticker}</span>
+                  <span className={cn("tnum", tone(c[sort]))}>
+                    {pp(c[sort])}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                None in this period.
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="max-h-96 overflow-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr>
+              <th className={head}>Holding</th>
+              <th className={cell}>Original contribution</th>
+              <th className={cell}>Modified contribution</th>
+              <th className={cell}>Delta</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((c) => (
+              <tr key={c.id} className="border-t">
+                <th className={head}>{c.ticker}</th>
+                <td className={cell}>{pp(c.original)}</td>
+                <td className={cell}>{pp(c.modified)}</td>
+                <td className={cn(cell, tone(c.delta))}>{pp(c.delta)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t font-medium">
+              <th className={head}>Total</th>
+              <td className={cell}>{pp(result.original.totalReturn)}</td>
+              <td className={cell}>{pp(result.modified.totalReturn)}</td>
+              <td className={cell}>
+                {pp(result.modified.totalReturn - result.original.totalReturn)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </>
   );
 }
