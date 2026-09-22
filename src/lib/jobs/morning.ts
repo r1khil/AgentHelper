@@ -14,6 +14,7 @@ import { createJobReporter } from "./progress";
 import { purgeExpiredMemories } from "@/lib/agent/memory/store";
 import { prepEarnings } from "./earnings-prep";
 import { syncFilings } from "./filings";
+import { runPricesJob } from "./prices";
 
 export type MorningJobResult = {
   date: string;
@@ -27,6 +28,7 @@ export type MorningJobResult = {
   filings: Record<string, unknown>;
   memories: Record<string, unknown>;
   prep: Record<string, unknown>;
+  prices: Record<string, unknown>;
 };
 
 /** Morning sweep: finish pending evidence, remind, flag overdue, refresh earnings, retry email. */
@@ -34,7 +36,7 @@ export async function runMorningJob(): Promise<MorningJobResult> {
   const [jobRow] = await db.insert(jobRuns).values({ job: "morning" }).returning({ id: jobRuns.id });
   const progress = createJobReporter(jobRow.id);
   const date = todayNY();
-  const result: MorningJobResult = { date, evidenceFinished: 0, reminders: 0, overdue: 0, earnings: {}, bellwethers: {}, email: {}, drive: {}, filings: {}, memories: {}, prep: {} };
+  const result: MorningJobResult = { date, evidenceFinished: 0, reminders: 0, overdue: 0, earnings: {}, bellwethers: {}, email: {}, drive: {}, filings: {}, memories: {}, prep: {}, prices: {} };
 
   const pending = await db.select({ id: movements.id }).from(movements).where(and(eq(movements.evidenceStatus, "pending"), ne(movements.status, "completed"))).limit(20);
   progress.step("finish pending evidence", { movements: pending.length });
@@ -99,6 +101,18 @@ export async function runMorningJob(): Promise<MorningJobResult> {
   } catch (e) {
     result.earnings = { error: e instanceof Error ? e.message : String(e) };
     progress.warn("earnings calendar failed", { error: result.earnings.error });
+  }
+
+  // Yahoo's daily bars for ETFs and stocks can lag the evening prices run (seen 2026-09-21: the
+  // benchmark ETFs stopped a session short while the index had closed), which holds the
+  // attribution calendar back a day. By morning the bars are final, so catch up here.
+  progress.step("catch up closes");
+  try {
+    const prices = await runPricesJob({ budgetMs: 60_000 });
+    result.prices = { status: prices.status, updated: prices.updated.length, failed: Object.keys(prices.failed).length, remaining: prices.remaining.length, ...(prices.reason ? { reason: prices.reason } : {}) };
+  } catch (e) {
+    result.prices = { error: e instanceof Error ? e.message : String(e) };
+    progress.warn("closes catch-up failed", { error: result.prices.error });
   }
 
   // Sector bellwethers and industries come after the holdings so they never crowd them out.
