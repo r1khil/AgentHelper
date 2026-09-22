@@ -6,6 +6,8 @@ import { FetchRows, latestLabel, StepDivider, TraceHeader, type TraceView } from
 import { ArrowUp, ChevronRight, Loader2, Wrench } from "lucide-react";
 import { Citation, ResearchAnswer, ResearchSources } from "./research-answer";
 import { useResearchChat } from "./use-research-chat";
+import { clearHootQuestion, peekHootQuestion } from "@/components/app/hoot/handoff";
+import { HootSprite } from "@/components/app/hoot/hoot-sprite";
 import { cn } from "@/lib/utils";
 import { collectSources } from "@/lib/agent/citations";
 import { isToolPart, splitAssistantParts, summarizeActivity, toolDone, toolFailed, toolName, type Part, type ToolPart } from "@/lib/agent/turn";
@@ -48,6 +50,17 @@ export function ChatPanel({
 
   const sources = useMemo(() => collectSources(messages), [messages]);
 
+  // A question asked through Hoot: send it once the chat is ready. Deferred a tick, like the research board,
+  // because the SDK's sendMessage returns silently if React's development double-invoke stops it mid-flight.
+  useEffect(() => {
+    const text = peekHootQuestion(chatId);
+    if (!text) return;
+    const t = setTimeout(() => {
+      if (send(text)) clearHootQuestion(chatId);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [chatId, send]);
+
   const submit = useCallback(() => {
     if (send(input)) setInput("");
   }, [input, send]);
@@ -84,7 +97,7 @@ export function ChatPanel({
           ))}
           {status === "submitted" && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" /> Thinking…
+              <HootSprite mood="thinking" size={32} bob /> Thinking…
             </div>
           )}
           {traceView && (status === "submitted" || last?.role !== "assistant") && (

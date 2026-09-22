@@ -26,7 +26,7 @@ export default async function MovementsPage({ params }: { params: Promise<{ team
     <>
       <PageHeader title="Major movements" description={`Sessions where a holding's close moved at least ${MOVEMENT_THRESHOLD_PP} pp against the S&P 500. Checked nightly after the close.`} />
       {rows.length === 0 ? (
-        <EmptyState title="No movements yet">The close check runs every trading day. Qualifying moves appear here with evidence attached and an owner assigned.</EmptyState>
+        <EmptyState title="No movements yet" hoot="sleepy">The close check runs every trading day. Qualifying moves appear here with evidence attached and an owner assigned.</EmptyState>
       ) : (
         <>
           <MovementTable title="Open" rows={open} teamById={scope.teamById} showTeam={showTeam} />

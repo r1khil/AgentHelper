@@ -27,7 +27,7 @@ export default async function TodayPage() {
     return (
       <>
         <PageHeader title="Today" description={`Signed in as ${user.fullName}.`} />
-        <EmptyState title="You are not on a team yet">Ask a Fund admin to assign you to a sector team.</EmptyState>
+        <EmptyState title="You are not on a team yet" hoot="wave">Ask a Fund admin to assign you to a sector team.</EmptyState>
       </>
     );
   }

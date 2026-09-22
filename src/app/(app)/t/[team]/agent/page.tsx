@@ -55,7 +55,7 @@ export default async function AgentIndex({ params }: { params: Promise<{ team: s
       {rows.length === 0 ? (
         <>
           <h1 className="mb-5 text-xl font-semibold tracking-tight">Research agent</h1>
-          <EmptyState title="No holdings yet">Add the tickers {scope.kind === "fund" ? "each team covers on its" : "this team covers on the"} Holdings page. Each one gets its own research board here.</EmptyState>
+          <EmptyState title="No holdings yet" hoot="wave">Add the tickers {scope.kind === "fund" ? "each team covers on its" : "this team covers on the"} Holdings page. Each one gets its own research board here.</EmptyState>
         </>
       ) : (
         <HoldingCards holdings={holdings} market={market} />

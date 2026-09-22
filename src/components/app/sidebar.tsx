@@ -29,7 +29,7 @@ import { OwlMark } from "./owl-mark";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { setTransparencyMode } from "@/lib/actions/preferences";
+import { setHootEnabled, setTransparencyMode } from "@/lib/actions/preferences";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export type SidebarUser = { fullName: string; role: Role; teamId: string | null; email: string; username: string | null; transparencyMode: boolean };
+export type SidebarUser = { fullName: string; role: Role; teamId: string | null; email: string; username: string | null; transparencyMode: boolean; hootEnabled: boolean };
 
 type Props = { user: SidebarUser; teams: Team[]; signOut: () => Promise<void> };
 
@@ -185,6 +185,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
       )}
 
       <div className="mt-auto border-t p-3">
+        <HootToggle on={user.hootEnabled} />
         {fundWide && <TransparencyToggle on={user.transparencyMode} />}
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -213,6 +214,30 @@ function SidebarBody({ user, teams, signOut }: Props) {
         </DropdownMenu>
       </div>
     </>
+  );
+}
+
+/** Show or hide Hoot, the companion in the corner. Persisted on the profile. */
+function HootToggle({ on }: { on: boolean }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return (
+    <label className="mb-1 flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-sidebar-accent" title="Hoot flags deadlines and opens quick questions to the research agent">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/hoot/mark.webp" alt="" width={16} height={16} className="size-4 shrink-0" />
+      <span className="min-w-0 flex-1 text-sm">Hoot</span>
+      <Switch
+        checked={on}
+        disabled={pending}
+        aria-label="Show Hoot"
+        onCheckedChange={(next) =>
+          startTransition(async () => {
+            await setHootEnabled(next);
+            router.refresh();
+          })
+        }
+      />
+    </label>
   );
 }
 

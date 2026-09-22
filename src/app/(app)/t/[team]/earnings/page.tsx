@@ -97,7 +97,7 @@ export default async function EarningsPage({ params, searchParams }: PageProps<"
       <EarningsCalendar base={base} query={query} grid={grid} byDate={byDate} today={today} selected={selected} accessibleTeamIds={accessibleTeamIds} />
       <EarningsDayList date={selected} events={byDate.get(selected) ?? []} accessibleTeamIds={accessibleTeamIds} />
       {rows.length === 0 ? (
-        <EmptyState title="No earnings dates yet">Dates are pulled each morning for every holding. An admin can run the morning sweep now from the Admin page.</EmptyState>
+        <EmptyState title="No earnings dates yet" hoot="sleepy">Dates are pulled each morning for every holding. An admin can run the morning sweep now from the Admin page.</EmptyState>
       ) : (
         <>
           <Section title="Upcoming" rows={upcoming} teamById={teamById} showTeam={!team} />

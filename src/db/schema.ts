@@ -101,6 +101,8 @@ export const profiles = pgTable("profiles", {
   onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
   // Exec/admin preference: show how the agent, attribution and jobs are computed. Role is enforced server-side.
   transparencyMode: boolean("transparency_mode").notNull().default(false),
+  // Hoot, the companion: shown or hidden, and which nudges this member has already dismissed.
+  hoot: jsonb("hoot").$type<import("../lib/hoot/types").HootState>().notNull().default({}),
   ...timestamps,
 });
 

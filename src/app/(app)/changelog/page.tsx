@@ -70,7 +70,7 @@ export default async function ChangelogPage() {
         </p>
       )}
 
-      {entries.length === 0 && !sync.error && <EmptyState title="No changes recorded yet">Merged changes will appear here automatically.</EmptyState>}
+      {entries.length === 0 && !sync.error && <EmptyState title="No changes recorded yet" hoot="sleepy">Merged changes will appear here automatically.</EmptyState>}
 
       {days.map((day) => (
         <section key={day.label} className="mb-8">

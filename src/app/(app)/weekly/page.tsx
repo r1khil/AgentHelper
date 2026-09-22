@@ -48,7 +48,7 @@ export default async function WeeklyIndexPage({ searchParams }: PageProps<"/week
       {error && <Notice tone="error">{error}</Notice>}
 
       {packs.length === 0 ? (
-        <EmptyState title="No packs yet">
+        <EmptyState title="No packs yet" hoot="sleepy">
           Every Sunday at 09:00 New York the app builds the pack for the Friday that just passed — the week&apos;s best and worst performers, the coming week&apos;s
           earnings and economic releases, and last week&apos;s agenda rolled forward — then emails the execs for their process updates. Build the first one now,
           or wait for Sunday.
