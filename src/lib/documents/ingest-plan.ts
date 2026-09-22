@@ -66,6 +66,19 @@ export function isTransientIngestError(message: string): boolean {
   return /rate limited|EDGAR 5\d\d|returned 5\d\d|fetch failed|ECONN|ETIMEDOUT|socket hang up/i.test(message);
 }
 
+/** The shape of a run result the job_runs summary needs; the full type lives in the server-only job module. */
+export type IngestRunOutcome = { status: string; reason?: string; failed: unknown[] };
+
+/**
+ * The job_runs summary for an ingest run. `reason` stays the trigger ("admin", "reembed", "morning"), which the
+ * Admin table and queries key on; the message a run stopped with (the 429 text, for instance) goes under `stopped`
+ * instead of being overwritten by the trigger.
+ */
+export function ingestRunSummary<T extends IngestRunOutcome>(result: T, opts: { reason: string; kinds: readonly string[] }): Omit<T, "reason"> & { reason: string; kinds: readonly string[]; stopped?: string } {
+  const { reason: stopped, ...rest } = result;
+  return { ...rest, reason: opts.reason, kinds: opts.kinds, failed: result.failed.slice(0, 20), ...(stopped ? { stopped } : {}) };
+}
+
 export function needsAnything(n: IngestNeeds): boolean {
   return n.text || n.summary || n.embed;
 }
