@@ -47,16 +47,17 @@ Replies are idempotent: `reply_email_id` is unique, so a webhook Resend delivers
    npx tsx scripts/apply-sql.ts drizzle/0015_weekly.sql
    ```
    Do not run `db:generate`; migrations from `0002` on are hand-written.
-2. **Sending domain.** `EMAIL_FROM` must be on a domain verified in Resend (e.g. `The Owl's Nest <nest@theowlfund.com>`). Resend's shared `onboarding@resend.dev` sender cannot carry a custom reply-to reliably.
-3. **Inbound domain.** Add an inbound subdomain in Resend, e.g. `inbound.theowlfund.com`, and create the **MX record** Resend gives you on that subdomain. Set `INBOUND_EMAIL_DOMAIN=inbound.theowlfund.com`.
+2. **Sending account.** The fund has no domain verified in Resend, and Resend's shared `onboarding@resend.dev` sender only delivers to the Resend account owner, so outgoing mail goes through a Gmail account made for the app. Turn on 2-Step Verification for it, create an app password (Google Account → Security → App passwords), and set `GMAIL_USER` and `GMAIL_APP_PASSWORD` (optionally `GMAIL_FROM_NAME`, default `The Owl's Nest`). When both are set, every email the app sends goes through Gmail; otherwise it falls back to Resend and `EMAIL_FROM`. The Gmail inbox itself receives nothing useful: replies go to the reply-to address below.
+3. **Inbound domain.** Replies still come in through Resend, which gives every account a free receiving domain, `<id>.resend.app` (Resend → Emails → Receiving). Set `INBOUND_EMAIL_DOMAIN` to it. No DNS is needed. A custom domain with Resend's MX record also works if the fund gets one later. `RESEND_API_KEY` stays set, because the app reads each reply through the Resend API.
 4. **Webhook.** In Resend, add a webhook for the `email.received` event pointing at `<APP_URL>/api/email/inbound`, and put its signing secret in `RESEND_WEBHOOK_SECRET`. The route is public by design (it is listed in `PUBLIC_PATHS` in `src/proxy.ts`); the svix signature is its authentication, and a request without a valid one is rejected with 400.
 5. **Recipients.** By default the ask goes to every profile with the `exec` role. Override it on the Admin page (**Weekly update → Ask these people**), which writes the `weekly_recipients` app setting.
-6. **Production env.** `vercel env add INBOUND_EMAIL_DOMAIN production`, same for `RESEND_WEBHOOK_SECRET`, then redeploy.
+6. **Production env.** `vercel env add` each of `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `INBOUND_EMAIL_DOMAIN` and `RESEND_WEBHOOK_SECRET` for production, then redeploy.
 
-Without `RESEND_API_KEY`, without `INBOUND_EMAIL_DOMAIN`, or for a `*.owlfund.local` test account, the request row is still created and its `send_error` records the skip (`skipped: test account`, `skipped: email not configured`, `skipped: INBOUND_EMAIL_DOMAIN is not set`) — the same behaviour as the movement notifications. That makes it safe to exercise the job against test accounts without emailing a real exec.
+With no sender configured (neither Gmail nor `RESEND_API_KEY`), without `INBOUND_EMAIL_DOMAIN`, or for a `*.owlfund.local` test account, the request row is still created and its `send_error` records the skip (`skipped: test account`, `skipped: email not configured`, `skipped: INBOUND_EMAIL_DOMAIN is not set`) — the same behaviour as the movement notifications. That makes it safe to exercise the job against test accounts without emailing a real exec.
 
 ## Known limits
 
 - The three highlight figures and the YTD chart live in the execs' price target sheet, which the app may not read yet. Phase 2 replaces the inputs with a Drive-based sheet reader.
 - Performers need Friday closes in `daily_closes`, which the prices job writes on weekday nights. Weeks before 2026-09-18 have no usable data.
+- Gmail caps a regular account at about 500 recipients a day, far above what the app sends. Google can lock an account it thinks is automated; if sends start failing with an auth error, sign in to the Gmail account once and make a new app password.
 - Vercel Hobby allows up to 100 daily crons per project, so the Sunday cron deploys as-is; Hobby timing is only accurate to the hour.
