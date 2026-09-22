@@ -16,6 +16,7 @@ import { ImportDialog } from "@/components/app/attribution/import-dialog";
 import { CashFlowDialog } from "@/components/app/attribution/cash-flow-dialog";
 import { SecurityRowForm } from "@/components/app/attribution/security-row-form";
 import { TeamSectorsForm } from "@/components/app/attribution/team-sectors-form";
+import { TicketDialog } from "@/components/app/attribution/ticket-dialog";
 import { TradeDialog } from "@/components/app/attribution/trade-dialog";
 import { VoidButton } from "@/components/app/attribution/void-button";
 import { deleteBenchmarkWeights, voidCashFlow, voidTrade } from "@/lib/actions/ledger";
@@ -90,6 +91,7 @@ export default async function LedgerPage({ searchParams }: PageProps<"/attributi
             aside={
               <span className="flex items-center gap-2">
                 <ImportDialog />
+                <TicketDialog />
                 <TradeDialog today={today} positions={positions.map((p) => ({ ticker: p.ticker, shares: p.shares }))} />
               </span>
             }
@@ -97,7 +99,7 @@ export default async function LedgerPage({ searchParams }: PageProps<"/attributi
             Trades
           </SectionTitle>
           {tradeRows.length === 0 ? (
-            <EmptyState title="No trades recorded">Record each buy and sell as executed, or import a CSV of past trades. Positions, weights and returns are derived from this list.</EmptyState>
+            <EmptyState title="No trades recorded">Record each buy and sell as executed, upload its trade ticket, or import a CSV of past trades. Positions, weights and returns are derived from this list.</EmptyState>
           ) : (
             <Card className="overflow-x-auto p-0">
               <Table>
