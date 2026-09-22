@@ -76,7 +76,7 @@ export function pageContextBlock(ctx: PageContext): string {
     const args = [`scope: ${q(ctx.scope)}`, ...(ctx.team ? [`team: ${q(ctx.team)}`] : []), `period: ${q(ctx.period)}`, ...(ctx.period === "custom" && ctx.from ? [`from: ${q(ctx.from)}`] : []), ...(ctx.period === "custom" && ctx.to ? [`to: ${q(ctx.to)}`] : [])].join(", ");
     return `${head}
 - The page shows ${ctx.scope === "fund" ? "whole-fund" : `the ${ctx.team ?? "team"} team's`} attribution for ${PERIOD_LABELS[ctx.period]} (returns from the ${ctx.start} close through the ${ctx.end} close).
-- For questions about it (why the Fund under- or outperformed, what drove a number, which holdings or sectors hurt), call get_attribution with { ${args} } first: it returns the page's numbers. Explain them in plain language: lead with the headline versus the S&P 500, then the sector-benchmark bridge (allocation, selection, interaction), then the holdings and sectors that moved it most. Cite its source id.
+- For questions about it (why the Fund under- or outperformed, what drove a number, which holdings or sectors hurt), call get_attribution with { ${args} } first: it returns the page's numbers. Explain them in plain language: lead with the headline versus the S&P 500, then the sector-benchmark bridge (allocation, selection, interaction), then the holdings and sectors that moved it most. End every line or bullet that uses one of its figures with its [src:ID], table rows included in the table's last column.
 - Then, when the question is about causes, look up news, filings or peer moves for the two or three biggest contributors or detractors in that window, and say plainly when nothing explains a move.
 - Attribution uses closing prices, so "today" before the close means the last completed session (${ctx.end}); say so.`;
   }
@@ -84,7 +84,7 @@ export function pageContextBlock(ctx: PageContext): string {
     const weights = ctx.changed.length ? `{ ${ctx.changed.map((c) => `${q(c.ticker)}: ${c.scenarioPct}`).join(", ")} }` : null;
     return `${head}
 - Their scenario: ${ctx.from} to ${ctx.to} against ${ctx.benchmark}${ctx.changed.length ? `, with ${ctx.changed.map((c) => `${c.ticker} ${c.savedPct}% → ${c.scenarioPct}%`).join(", ")}` : ", saved weights unchanged"}.${ctx.ran ? "" : " They have not run it with these inputs yet."}
-- For questions about it, call run_backtest with { from: ${q(ctx.from)}, to: ${q(ctx.to)}, benchmark: ${q(ctx.benchmark)}${weights ? `, weights: ${weights}` : ""} } first, then explain what changed and why in plain language (which holdings' contributions moved), with its source id. A backtest is hindsight on today's holdings: say so, and never present it as a recommendation.`;
+- For questions about it, call run_backtest with { from: ${q(ctx.from)}, to: ${q(ctx.to)}, benchmark: ${q(ctx.benchmark)}${weights ? `, weights: ${weights}` : ""} } first, then explain what changed and why in plain language (which holdings' contributions moved), ending every line that uses one of its figures with its [src:ID]. A backtest is hindsight on today's holdings: say so, and never present it as a recommendation.`;
   }
   return head;
 }

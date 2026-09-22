@@ -50,5 +50,6 @@ describe("summarizeAttribution", () => {
   });
   it("summarizes in one line", () => {
     expect(attributionHeadline(s)).toContain("Whole fund, 7D (2026-09-18 close to 2026-09-22 close): return -1.2%; S&P 500 1%, active -220 bps");
+    expect(attributionHeadline(s)).toContain("biggest detractors NVDA -40 bps; top contributors JPM 8 bps");
   });
 });

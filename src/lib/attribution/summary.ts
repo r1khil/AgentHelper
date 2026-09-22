@@ -131,5 +131,8 @@ export function attributionHeadline(s: AttributionSummary): string {
   const parts = [`${s.scope}, ${s.period.label} (${s.period.baseClose} close to ${s.period.end} close): return ${h.returnPct}%`];
   if (h.spxPriceReturnPct !== undefined && h.spxPriceReturnPct !== null) parts.push(`S&P 500 ${h.spxPriceReturnPct}%, active ${h.activeVsSpxBps} bps`);
   if (h.activeVsSectorBenchmarkBps !== null) parts.push(`vs sector benchmark ${h.activeVsSectorBenchmarkBps} bps (allocation ${h.allocationBps}, selection ${h.selectionBps}, interaction ${h.interactionBps})`);
+  const movers = (rows: { ticker: string; contributionBps: number | null }[]) => rows.slice(0, 3).map((r) => `${r.ticker} ${r.contributionBps} bps`).join(", ");
+  if (s.bottomContributors.length) parts.push(`biggest detractors ${movers(s.bottomContributors)}`);
+  if (s.topContributors.length) parts.push(`top contributors ${movers(s.topContributors)}`);
   return parts.join("; ");
 }
