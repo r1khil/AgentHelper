@@ -8,6 +8,7 @@ import { Citation, ResearchAnswer, ResearchSources } from "./research-answer";
 import { useResearchChat } from "./use-research-chat";
 import { clearHootQuestion, peekHootQuestion } from "@/components/app/hoot/handoff";
 import { HootSprite } from "@/components/app/hoot/hoot-sprite";
+import { HootHero } from "@/components/app/hoot/hoot-hero";
 import { cn } from "@/lib/utils";
 import { collectSources } from "@/lib/agent/citations";
 import { isToolPart, splitAssistantParts, summarizeActivity, toolDone, toolFailed, toolName, type Part, type ToolPart } from "@/lib/agent/turn";
@@ -73,7 +74,8 @@ export function ChatPanel({
       <div className="flex min-w-0 flex-1 flex-col rounded-lg border bg-card">
         <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
           {messages.length === 0 && (
-            <div className="mx-auto max-w-lg pt-10 text-center">
+            <div className="mx-auto max-w-lg pt-6 text-center">
+              <HootHero size={128} className="mx-auto mb-1" />
               <div className="text-sm font-medium">Ask for evidence, not conclusions</div>
               <p className="mt-1 text-sm text-muted-foreground">
                 The agent pulls prices, SEC filings, financials, news, and your team&rsquo;s notes, with a source on every fact. It will not write your update or thesis.

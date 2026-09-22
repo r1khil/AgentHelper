@@ -520,8 +520,12 @@ def render_sheet(outdir):
 
 
 def export_glb(path):
-    """Idle Hoot as glTF for the live 3D hero. Named nodes (Hoot, EyePivotL/R, ScleraL/R, WingPivotL/R) are driven in three.js."""
+    """Idle Hoot as glTF for the live 3D hero. Named nodes (Hoot, EyePivotL/R, ScleraL/R, WingPivotL/R, ClosedL/R,
+    HappyL/R) are driven in three.js; the closed and happy eye lines ship too and the page hides them until needed."""
     pose("idle")
+    for side in ("L", "R"):
+        show(f"Closed{side}", True)
+        show(f"Happy{side}", True)
     bpy.ops.object.select_all(action="DESELECT")
     bpy.ops.export_scene.gltf(
         filepath=path,
@@ -533,6 +537,7 @@ def export_glb(path):
         export_animations=False,
         export_texcoords=False,
     )
+    pose("idle")
 
 
 if __name__ == "__main__" and "--" in sys.argv:

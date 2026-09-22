@@ -10,7 +10,6 @@ import { dismissHootNudge, setHootEnabled } from "@/lib/actions/preferences";
 import { BUBBLE_VISIBLE_MS, companionHiddenOn, greeting, pickBubble, restingMood, suggestionsFor, teamSlugFromPath, tickerFromPath, tipFor, type BubbleSession } from "@/lib/hoot/policy";
 import type { HootFeed, HootMood, HootNudge } from "@/lib/hoot/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import { leaveHootQuestion } from "./handoff";
 import { HootPanel } from "./hoot-panel";
 import { HootSprite, preloadHoot } from "./hoot-sprite";
@@ -20,6 +19,14 @@ const SESSION_KEY = "hoot:session";
 const GREETED_KEY = "hoot:greeted";
 /** Opening these means they're handled; deadlines stay until the work is done or the member dismisses them. */
 const DISMISS_ON_OPEN = new Set(["sell_side", "changelog", "weekly", "tip", "proposal"]);
+const HOP: Keyframe[] = [
+  { transform: "translateY(0) scale(1, 1)" },
+  { transform: "translateY(0) scale(1.08, 0.9)", offset: 0.18 },
+  { transform: "translateY(-10px) scale(0.95, 1.06)", offset: 0.45 },
+  { transform: "translateY(0) scale(1.04, 0.96)", offset: 0.75 },
+  { transform: "translateY(0) scale(1, 1)" },
+];
+const POP: Keyframe[] = [{ transform: "scale(0.94)" }, { transform: "scale(1.03)", offset: 0.6 }, { transform: "scale(1)" }];
 
 function readSession(): BubbleSession {
   try {
@@ -59,7 +66,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   const [said, setSaid] = useState<{ nudge: HootNudge; path: string } | null>(null);
   const [hovered, setHovered] = useState(false);
   const [greetingWave, setGreetingWave] = useState(false);
-  const [hop, setHop] = useState(0);
+  const body = useRef<HTMLSpanElement>(null);
   const [asking, setAsking] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -181,8 +188,33 @@ export function HootCompanion({ firstName }: { firstName: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [hidden, setBubble]);
 
+  /** Squash-and-stretch without remounting anything (remounting under the cursor would eat clicks). */
+  const play = useCallback((frames: Keyframe[], duration: number) => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    body.current?.animate(frames, { duration, easing: "cubic-bezier(0.3, 0.7, 0.4, 1)" });
+  }, []);
+
   const ticker = tickerFromPath(pathname);
   const teamSlug = teamSlugFromPath(pathname);
+
+  const resting = feed ? restingMood(feed.marketOpen, nudges) : "idle";
+  const mood: HootMood = asking
+    ? "thinking"
+    : bubble
+      ? bubble.mood
+      : greetingWave
+        ? "wave"
+        : open || hovered
+          ? resting === "sleepy"
+            ? "idle"
+            : resting
+          : resting;
+  // A little pop whenever his expression changes.
+  const lastMood = useRef(mood);
+  useEffect(() => {
+    if (lastMood.current !== mood) play(POP, 260);
+    lastMood.current = mood;
+  }, [mood, play]);
 
   const ask = async (text: string) => {
     setAsking(true);
@@ -224,18 +256,6 @@ export function HootCompanion({ firstName }: { firstName: string }) {
 
   if (hidden) return null;
 
-  const resting = feed ? restingMood(feed.marketOpen, nudges) : "idle";
-  const mood: HootMood = asking
-    ? "thinking"
-    : bubble
-      ? bubble.mood
-      : greetingWave
-        ? "wave"
-        : open || hovered
-          ? resting === "sleepy"
-            ? "idle"
-            : resting
-          : resting;
   const urgent = nudges.filter((n) => n.priority <= 2).length;
   const label = urgent ? `Hoot: ${urgent} ${urgent === 1 ? "thing needs" : "things need"} you` : "Hoot: ask the research agent";
 
@@ -294,19 +314,18 @@ export function HootCompanion({ firstName }: { firstName: string }) {
             <button
               type="button"
               aria-label={label}
-              onClick={() => setHop((h) => h + 1)}
+              onClick={() => play(HOP, 520)}
               onMouseEnter={() => setHovered(true)}
               onMouseLeave={() => setHovered(false)}
               className="hoot-arrive group pointer-events-auto relative rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           }
         >
-          {/* Soft floor shadow grounds him on the page. */}
-          <span aria-hidden className="absolute inset-x-3 bottom-0.5 h-2 rounded-[50%] bg-black/15 blur-[3px]" />
-          <span key={hop} className={cn("relative block", hop > 0 && "hoot-hop")}>
-            <span key={mood} className="hoot-pop block">
-              <HootSprite mood={mood} size={64} track bob className="max-md:size-[52px]!" />
-            </span>
+          {/* Soft floor shadow grounds him on the page. Nothing inside the button takes pointer events, so a
+              mood change under the cursor can never swallow the click. */}
+          <span aria-hidden className="pointer-events-none absolute inset-x-3 bottom-0.5 h-2 rounded-[50%] bg-black/15 blur-[3px]" />
+          <span ref={body} className="pointer-events-none relative block">
+            <HootSprite mood={mood} size={64} track bob className="max-md:size-[52px]!" />
           </span>
           {mood === "sleepy" && (
             <span aria-hidden className="hoot-zzz absolute -top-1 right-1 text-[11px] font-semibold text-muted-foreground">
