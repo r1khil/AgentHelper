@@ -9,6 +9,7 @@ import { cosineDistance, modelLiteral } from "@/lib/agent/vector-sql";
 import { documentHeadingColumn } from "@/lib/drive/index";
 import { capPerDocument, rrfFuse } from "./fusion";
 import type { SectionChunk } from "./sections";
+import { looseQueryText } from "./text-query";
 
 const CANDIDATES = 30;
 
@@ -102,24 +103,42 @@ function base() {
   return db.select(hitColumns).from(documentChunks).innerJoin(documents, eq(documents.id, documentChunks.documentId)).leftJoin(driveFiles, eq(driveFiles.documentId, documents.id));
 }
 
+type Executor = Pick<typeof db, "select">;
+
 async function vectorCandidates(p: SearchParams): Promise<{ rows: Row[]; model: string } | null> {
   if (!embeddingConfigured()) return null;
   try {
     const { model, vectors } = await embedTexts([p.query]);
     const distance = cosineDistance(documentChunks.embedding, vectors[0], model);
-    const rows = await base()
-      .where(and(sql`${documentChunks.model} = ${modelLiteral(model)}`, ...filters(p)))
-      .orderBy(distance)
-      .limit(CANDIDATES);
-    return { rows: rows as Row[], model };
+    const conds = filters(p);
+    const nearest = (ex: Executor) =>
+      ex
+        .select({ ...hitColumns, distance })
+        .from(documentChunks)
+        .innerJoin(documents, eq(documents.id, documentChunks.documentId))
+        .leftJoin(driveFiles, eq(driveFiles.documentId, documents.id))
+        .where(and(sql`${documentChunks.model} = ${modelLiteral(model)}`, ...conds))
+        .orderBy(distance)
+        .limit(CANDIDATES);
+    // An HNSW scan filters only the ef_search (40) nearest chunks, so a ticker + Drive kind that owns ~2% of the
+    // corpus can come back empty. Iterative scan keeps walking the graph until the filtered rows fill the limit.
+    // relaxed_order can return neighbours slightly out of order, hence the re-sort for RRF's ranks.
+    const rows = conds.length
+      ? await db.transaction(async (tx) => {
+          await tx.execute(sql`set local hnsw.iterative_scan = relaxed_order`);
+          return nearest(tx);
+        })
+      : await nearest(db);
+    rows.sort((a, b) => a.distance - b.distance);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- drop the sort key so it stays out of hit meta
+    return { rows: rows.map(({ distance, ...r }) => r) as Row[], model };
   } catch (e) {
     if (!(e instanceof RateLimited)) console.warn("[search] vector leg failed; using full text only", e instanceof Error ? e.message : e);
     return null;
   }
 }
 
-async function textCandidates(p: SearchParams, model: string | null): Promise<Row[]> {
-  const q = sql`websearch_to_tsquery('english', ${p.query.slice(0, 400)})`;
+async function textMatches(p: SearchParams, model: string | null, q: SQL): Promise<Row[]> {
   const conds = [sql`${documentChunks.tsv} @@ ${q}`, ...filters(p)];
   // Keep the full-text leg on the same model's chunks so a mid-switch corpus does not return duplicate passages.
   if (model) conds.push(sql`${documentChunks.model} = ${modelLiteral(model)}`);
@@ -128,6 +147,19 @@ async function textCandidates(p: SearchParams, model: string | null): Promise<Ro
     .orderBy(desc(sql`ts_rank_cd(${documentChunks.tsv}, ${q})`))
     .limit(CANDIDATES);
   return rows as Row[];
+}
+
+/**
+ * websearch_to_tsquery requires every word, so a four-word question rarely matches one chunk. When it finds nothing,
+ * retry with any word (OR of the query's lexemes); ts_rank_cd still puts chunks matching more words first.
+ */
+async function textCandidates(p: SearchParams, model: string | null): Promise<Row[]> {
+  const query = p.query.slice(0, 400);
+  const rows = await textMatches(p, model, sql`websearch_to_tsquery('english', ${query})`);
+  const loose = rows.length ? null : looseQueryText(query);
+  if (!loose) return rows;
+  const anyWord = sql`(select to_tsquery('simple', string_agg(quote_literal(l), ' | ')) from unnest(tsvector_to_array(to_tsvector('english', ${loose}))) l)`;
+  return textMatches(p, model, anyWord);
 }
 
 const key = (r: { documentId: string; seq: number }) => `${r.documentId}:${r.seq}`;
