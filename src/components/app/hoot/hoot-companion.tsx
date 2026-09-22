@@ -56,7 +56,7 @@ function memberIsBusy() {
 /**
  * Hoot, the floating companion in the bottom corner. His face tells you the state of things at a glance
  * (dozing after the close, alert on earnings day, worried about an overdue write-up); a click opens a quick ask
- * to the research agent and everything that needs you. He speaks up on his own rarely: a few times a session at most.
+ * to research and everything that needs you. He speaks up on his own rarely: a few times a session at most.
  */
 export function HootCompanion({ firstName }: { firstName: string }) {
   const pathname = usePathname();
@@ -264,7 +264,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   // Pages that describe themselves (attribution, backtesting) are attached to the question; say so in the panel.
   const onScreen = open ? pageContextFor(pathname) : null;
   const seeing = onScreen && onScreen.kind !== "page" ? pageContextLabel(onScreen) : null;
-  const label = urgent ? `Hoot: ${urgent} ${urgent === 1 ? "thing needs" : "things need"} you` : "Hoot: ask the research agent";
+  const label = urgent ? `Hoot: ${urgent} ${urgent === 1 ? "thing needs" : "things need"} you` : "Hoot: ask a research question";
 
   return (
     <div className="pointer-events-none fixed right-3 bottom-3 z-40 flex flex-col items-end gap-2 md:right-5 md:bottom-5" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
@@ -349,7 +349,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
           <HootPanel
             greeting={greeting(new Date(), firstName)}
             suggestions={suggestionsFor(pathname, ticker)}
-            scopeHint={ticker ? `${ticker}'s research board` : "your team's agent"}
+            scopeHint={ticker ? `${ticker}'s research board` : null}
             seeing={seeing}
             nudges={nudges}
             loading={!feed}

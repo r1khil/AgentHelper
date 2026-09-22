@@ -111,6 +111,8 @@ describe("moods and routes", () => {
     expect(companionHiddenOn("/t/tech/agent")).toBe(true);
     expect(companionHiddenOn("/t/tech/agent/h/NVDA")).toBe(true);
     expect(companionHiddenOn("/t/tech/agents-guide")).toBe(false);
+    expect(companionHiddenOn("/hoot/0b7f")).toBe(true);
+    expect(companionHiddenOn("/hootenanny")).toBe(false);
   });
 
   it("gives each page's tip once and fits suggestions to the page", () => {

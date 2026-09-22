@@ -12,6 +12,11 @@ export const getTeamBySlug = cache(async (slug: string) => {
   return team ?? null;
 });
 
+export const getTeam = cache(async (id: string) => {
+  const [team] = await db.select().from(teams).where(eq(teams.id, id)).limit(1);
+  return team ?? null;
+});
+
 /** Load a team by slug and enforce access. 404s for unknown slugs; redirects home for inaccessible teams. */
 export async function loadTeam(slug: string) {
   const team = await getTeamBySlug(slug);

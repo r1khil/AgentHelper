@@ -20,7 +20,7 @@ const KIND_ICON: Record<NudgeKind, React.ComponentType<{ className?: string }>> 
 
 export const shortcutLabel = () => (typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘J" : "Ctrl J");
 
-/** What opens when you click Hoot: ask the research agent, see what needs you, or send him away. */
+/** What opens when you click Hoot: ask him a research question, see what needs you, or send him away. */
 export function HootPanel({
   greeting,
   suggestions,
@@ -38,8 +38,8 @@ export function HootPanel({
 }: {
   greeting: string;
   suggestions: string[];
-  /** Where the question will go, e.g. "NVDA's research board". */
-  scopeHint: string;
+  /** Where the question will go when it isn't a general conversation, e.g. "NVDA's research board". */
+  scopeHint: string | null;
   /** What on this page goes along with the question, e.g. "Fund attribution · 1D". */
   seeing?: string | null;
   nudges: HootNudge[];
@@ -63,7 +63,7 @@ export function HootPanel({
       <div className="flex items-start gap-3 border-b px-4 pt-3.5 pb-3">
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold">{greeting}</div>
-          <div className="text-xs text-muted-foreground">Hoot here. Ask the research agent, or see what needs you.</div>
+          <div className="text-xs text-muted-foreground">Ask me a research question, or see what needs you.</div>
         </div>
         <button type="button" onClick={onClose} className="-mr-1 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Close">
           <X className="size-4" />
@@ -79,7 +79,7 @@ export function HootPanel({
           }}
         >
           <label htmlFor="hoot-ask" className="sr-only">
-            Ask the research agent
+            Ask Hoot
           </label>
           <div className="relative">
             <Textarea
@@ -104,7 +104,7 @@ export function HootPanel({
             </Button>
           </div>
           <div className="mt-1.5 text-[11px] text-muted-foreground">
-            {asking ? "Opening a chat…" : seeing ? `Opens a new chat on ${scopeHint}, with this page attached.` : `Opens a new chat on ${scopeHint}.`}
+            {asking ? "Opening a chat…" : `Opens a new ${scopeHint ? `chat on ${scopeHint}` : "conversation"}${seeing ? ", with this page attached" : ""}.`}
           </div>
           {seeing && !asking && (
             <div className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">

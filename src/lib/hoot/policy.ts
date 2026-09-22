@@ -66,15 +66,15 @@ export function teamSlugFromPath(pathname: string) {
   return pathname.match(/^\/t\/([^/]+)/)?.[1] ?? null;
 }
 
-/** Floating Hoot steps aside where the page is already a conversation with the agent. */
+/** Floating Hoot steps aside where the page is already Hoot: his home, a research board or a conversation. */
 export function companionHiddenOn(pathname: string) {
-  return /^\/t\/[^/]+\/agent(\/|$)/.test(pathname);
+  return /^\/t\/[^/]+\/agent(\/|$)/.test(pathname) || /^\/hoot(\/|$)/.test(pathname);
 }
 
 type Tip = { id: string; match: RegExp; title: string; detail: string };
 
 const TIPS: Tip[] = [
-  { id: "tip:today", match: /^\/$/, title: "Hi, I'm Hoot!", detail: "I'll flag deadlines and earnings as they come up. Click me any time to ask the research agent a question." },
+  { id: "tip:today", match: /^\/$/, title: "Hi, I'm Hoot!", detail: "I'll flag deadlines and earnings as they come up. Click me any time to ask a research question." },
   { id: "tip:holdings", match: /^\/t\/[^/]+$/, title: "Every holding has a research board", detail: "Open a ticker to see its thesis, notes and a board where the agent cites every fact." },
   { id: "tip:holding", match: /^\/t\/[^/]+\/h\/[^/]+$/, title: "Ask about this holding", detail: "Click me and I'll open a research chat pinned to this ticker." },
   { id: "tip:movements", match: /^\/t\/[^/]+\/movements$/, title: "Movements", detail: "A holding lands here when it moves 4pp or more against the S&P 500. The owner writes up why by noon the next trading day." },

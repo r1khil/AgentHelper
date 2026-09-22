@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import type { UIMessage } from "ai";
 import { db } from "@/db/client";
 import { chatMessages, chats, holdings, profiles } from "@/db/schema";
@@ -128,5 +128,24 @@ export async function listHoldingChats(holdingId: string): Promise<HoldingChat[]
     .where(eq(chats.holdingId, holdingId))
     .orderBy(desc(chats.updatedAt))
     .limit(100);
+  return rows.map((r) => ({ ...r, questions: Number(r.questions) }));
+}
+
+export type GeneralChat = { c: typeof chats.$inferSelect; authorName: string | null; questions: number };
+
+/**
+ * Hoot conversations that aren't about one holding (asked from attribution, backtesting, Today…), newest first.
+ * Chats that never got a question are left out: Hoot creates the chat before the first message is sent.
+ */
+export async function listGeneralChats(teamId: TeamIds, limit = 50): Promise<GeneralChat[]> {
+  if (Array.isArray(teamId) && teamId.length === 0) return [];
+  const questions = sql<number>`(select count(*) from chat_messages m where m.chat_id = ${chats.id} and m.role = 'user')`;
+  const rows = await db
+    .select({ c: chats, authorName: profiles.fullName, questions })
+    .from(chats)
+    .leftJoin(profiles, eq(profiles.id, chats.createdBy))
+    .where(and(inTeams(chats.teamId, teamId), isNull(chats.holdingId), sql`${questions} > 0`))
+    .orderBy(desc(chats.updatedAt))
+    .limit(limit);
   return rows.map((r) => ({ ...r, questions: Number(r.questions) }));
 }

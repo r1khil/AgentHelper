@@ -26,7 +26,7 @@ const SUGGESTIONS = [
   "Explain how to read the segment disclosure in {T}'s latest 10-K.",
 ];
 
-/** Team-wide chats (no pinned holding). Holding chats use the research board instead. */
+/** General Hoot conversations (no pinned holding). Holding chats use the research board instead. */
 export function ChatPanel({
   chatId,
   initialMessages,
@@ -80,7 +80,7 @@ export function ChatPanel({
               <HootHero size={128} className="mx-auto mb-1" />
               <div className="text-sm font-medium">Ask for evidence, not conclusions</div>
               <p className="mt-1 text-sm text-muted-foreground">
-                The agent pulls prices, SEC filings, financials, news, and your team&rsquo;s notes, with a source on every fact. It will not write your update or thesis.
+                Hoot pulls prices, SEC filings, financials, news, and your team&rsquo;s notes, with a source on every fact. It will not write your update or thesis.
               </p>
               <div className="mt-5 grid gap-2 text-left">
                 {SUGGESTIONS.map((s) => (
@@ -135,7 +135,7 @@ export function ChatPanel({
                   submit();
                 }
               }}
-              placeholder={configured ? (catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…") : "Agent is not configured: add OPENROUTER_API_KEY"}
+              placeholder={configured ? (catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…") : "Hoot is not configured: add OPENROUTER_API_KEY"}
               disabled={!configured || catchingUp}
               rows={2}
               className="min-h-10 resize-none"
