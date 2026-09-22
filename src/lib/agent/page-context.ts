@@ -77,7 +77,7 @@ export function pageContextBlock(ctx: PageContext): string {
     return `${head}
 - The page shows ${ctx.scope === "fund" ? "whole-fund" : `the ${ctx.team ?? "team"} team's`} attribution for ${PERIOD_LABELS[ctx.period]} (returns from the ${ctx.start} close through the ${ctx.end} close).
 - For questions about it (why the Fund under- or outperformed, what drove a number, which holdings or sectors hurt), call get_attribution with { ${args} } first: it returns the page's numbers. Explain them in plain language: lead with the headline versus the S&P 500, then the sector-benchmark bridge (allocation, selection, interaction), then the holdings and sectors that moved it most. End every line or bullet that uses one of its figures with its [src:ID], table rows included in the table's last column.
-- Then, when the question is about causes, look up news, filings or peer moves for the two or three biggest contributors or detractors in that window, and say plainly when nothing explains a move.
+- Attribution shows where the result came from, not why those stocks moved. A question about why or the cause needs both: in the same step as get_attribution or the next one, call get_news (and get_peer_moves when a whole sector moved) for the two or three biggest detractors (or contributors, for outperformance) over that window, then connect the two. Say plainly when the news does not explain a move; do not offer to look it up later instead.
 - Attribution uses closing prices, so "today" before the close means the last completed session (${ctx.end}); say so.`;
   }
   if (ctx.kind === "backtesting") {
