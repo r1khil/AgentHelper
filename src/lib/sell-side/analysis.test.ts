@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analysisMarkdown, callAnalysisSchema, savedAnalysis, validateAnalysis, type CallAnalysis } from "./analysis";
+import { analysisMarkdown, callAnalysisSchema, repairAnalysis, savedAnalysis, validateAnalysis, type CallAnalysis } from "./analysis";
 import type { Source } from "@/lib/providers/types";
 import { newCallSchema } from "./company";
 export const exampleAnalysis: CallAnalysis = {
@@ -99,6 +99,39 @@ describe("structured call evidence", () => {
     const bad = structuredClone(exampleAnalysis);
     bad.crossChecks[0].internalSourceIds = ["call-1"];
     expect(() => validateAnalysis(bad, sources)).toThrow("types do not match");
+  });
+});
+describe("repairing near-miss briefs", () => {
+  it("fills missing cross-check fields, drops invented ids and downgrades unsupported comparisons", () => {
+    const raw = structuredClone(exampleAnalysis) as Record<string, unknown>;
+    const checks = raw.crossChecks as Record<string, unknown>[];
+    delete checks[0].followUp;
+    checks[0].assessment = "Supports";
+    checks[0].internalSourceIds = ["invented-doc"];
+    checks[0].callSourceIds = ["[src:call-1]"];
+    (raw.risks as { sourceIds: string[] }[])[0].sourceIds = ["invented"];
+    delete raw.coverage;
+    const fixed = repairAnalysis(raw, sources);
+    expect(fixed.crossChecks[0]).toMatchObject({ assessment: "Not retrieved", callSourceIds: ["call-1"], internalSourceIds: [] });
+    expect(fixed.crossChecks[0].followUp.length).toBeGreaterThan(0);
+    expect(fixed.risks).toEqual([]);
+    expect(fixed.coverage.length).toBeGreaterThan(0);
+    expect(() => validateAnalysis(callAnalysisSchema.parse(fixed), sources)).not.toThrow();
+  });
+  it("anchors an uncited overview to the transcript and adds a placeholder cross-check", () => {
+    const fixed = repairAnalysis(
+      { overview: { text: "Strong quarter." }, keyPoints: [{ text: "Revenue +35%", sourceIds: ["call-1", "internal-1"] }], crossChecks: "none" },
+      sources,
+    );
+    expect(fixed.overview.sourceIds).toEqual(["call-1"]);
+    expect(fixed.keyPoints[0].sourceIds).toEqual(["call-1", "internal-1"]);
+    expect(fixed.crossChecks).toHaveLength(1);
+    expect(fixed.crossChecks[0].assessment).toBe("Not retrieved");
+  });
+  it("refuses output with no transcript-backed key points or no object at all", () => {
+    expect(() => repairAnalysis({ keyPoints: [{ text: "Unsourced", sourceIds: ["internal-1"] }] }, sources)).toThrow("key points");
+    expect(() => repairAnalysis("# Markdown brief", sources)).toThrow("not an object");
+    expect(() => repairAnalysis(exampleAnalysis, new Map([["internal-1", sources.get("internal-1")!]]))).toThrow("transcript");
   });
 });
 describe("company selection", () => {

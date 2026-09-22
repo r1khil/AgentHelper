@@ -7,7 +7,7 @@ vi.mock("@/lib/drive/summarize", () => ({
   summaryModelId: async () => "configured-summary-model",
 }));
 vi.mock("@/lib/agent/model", () => ({ chatModel: vi.fn() }));
-import { generateStructured } from "./generate";
+import { generateStructured, parseJsonText } from "./generate";
 import { chatModel } from "@/lib/agent/model";
 
 const schema = z.object({ takeaway: z.string().min(1) });
@@ -110,6 +110,51 @@ describe("actual SDK / OpenRouter summary responses", () => {
     ).rejects.toThrow();
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
+  it("repairs near-miss JSON from the text fallback instead of failing the brief", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ error: { message: "model features structured outputs not support", code: 400 } }, { status: 400 }))
+      .mockResolvedValueOnce(completion('Here is the JSON you asked for:\n{"takeaway":"","extra":1}\nLet me know if you need more.'));
+    const result = await generateStructured({
+      model: modelWith(fetcher),
+      schema,
+      instructions: "Summarize",
+      prompt: "Call",
+      repair: (raw) => ({ takeaway: (raw as { takeaway?: string }).takeaway || "Repaired takeaway" }),
+    });
+    expect(result).toEqual({ takeaway: "Repaired takeaway" });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+  it("repairs structured output the SDK rejected against the schema", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetcher = vi.fn().mockResolvedValueOnce(completion('{"wrongField":"not a summary"}'));
+    const result = await generateStructured({
+      model: modelWith(fetcher),
+      schema,
+      instructions: "Summarize",
+      prompt: "Call",
+      repair: (raw) => ({ takeaway: String((raw as { wrongField?: string }).wrongField) }),
+    });
+    expect(result).toEqual({ takeaway: "not a summary" });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+  it("still fails when repair cannot recover the output", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetcher = vi.fn().mockImplementation(async () => completion("# A markdown brief\nNo JSON here."));
+    await expect(
+      generateStructured({
+        model: modelWith(fetcher),
+        schema,
+        instructions: "Summarize",
+        prompt: "Call",
+        repair: () => {
+          throw new Error("unrepairable");
+        },
+      }),
+    ).rejects.toThrow();
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
   it("honors the existing configured summary model", async () => {
     const fetcher = vi.fn<typeof fetch>(async () => completion('{"takeaway":"Outlook"}'));
     vi.mocked(chatModel).mockReturnValue(modelWith(fetcher));
@@ -133,5 +178,12 @@ describe("actual SDK / OpenRouter summary responses", () => {
     ).rejects.toThrow();
     expect(fetcher).toHaveBeenCalledOnce();
     expect(JSON.stringify(log.mock.calls)).not.toContain("secret-provider-payload");
+  });
+});
+describe("parseJsonText", () => {
+  it("takes the outermost object from fenced or prose-wrapped output", () => {
+    expect(parseJsonText('```json\n{"a":1}\n```')).toEqual({ a: 1 });
+    expect(parseJsonText('Sure! {"a":{"b":[1,2]}} Hope this helps.')).toEqual({ a: { b: [1, 2] } });
+    expect(() => parseJsonText("# Markdown only")).toThrow();
   });
 });

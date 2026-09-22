@@ -132,7 +132,7 @@ describe("call processing integration with existing agent pipeline", () => {
     expect(state.part.summary).toContain("$3.2 billion");
     await analyzeCall("call", { id: "user", fullName: "Analyst", role: "associate_analyst" });
     expect(tools.find).toHaveBeenCalledWith({ ticker: "ABC", kind: "drive", limit: 10 }, expect.anything());
-    expect(tools.read).toHaveBeenCalledWith({ documentId: "internal1", offset: 0, maxChars: 12000 }, expect.anything());
+    expect(tools.read).toHaveBeenCalledWith({ documentId: "internal1", offset: 0, maxChars: 6000 }, expect.anything());
     expect(generateStructured).toHaveBeenCalledTimes(2);
     expect(state.callStatus).toBe("ready");
     const sources = [...collectSources(state.messages as UIMessage[]).values()];
