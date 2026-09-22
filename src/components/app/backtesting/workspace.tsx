@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { Check, Info, Play, RotateCcw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,10 +20,13 @@ import {
   PRESETS,
   activePreset,
   equalWeights,
+  isEdited,
   presetStart,
+  requestWeights,
+  roundedWeights,
   scaleTo100,
+  tidyWeight,
   validWeight,
-  weightChanged,
   weightTotal,
   type WeightInputs,
 } from "@/lib/backtesting/scenario";
@@ -33,12 +36,7 @@ import { Results } from "./results";
 const FORM_ID = "backtest-scenario";
 const legend =
   "mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground";
-const initialWeights = (snapshot: Snapshot): WeightInputs =>
-  Object.fromEntries(
-    snapshot.positions.map((p) => [p.id, String(p.weight * 100)]),
-  );
-const trim = (n: number) =>
-  Number.isFinite(n) ? n.toFixed(6).replace(/0+$/, "").replace(/\.$/, "") : "—";
+const two = (n: number) => (Number.isFinite(n) ? n.toFixed(2) : "—");
 
 type Completed = {
   id: number;
@@ -59,7 +57,12 @@ export function BacktestingWorkspace({
   defaultTo: string;
   endpoint?: string;
 }) {
-  const [weights, setWeights] = useState(() => initialWeights(snapshot));
+  // Saved weights rounded to two decimals; the request still uses the exact saved weights for unedited rows.
+  const baseline = useMemo(
+    () => roundedWeights(snapshot.positions),
+    [snapshot.positions],
+  );
+  const [weights, setWeights] = useState(baseline);
   const [from, setFrom] = useState(defaultFrom),
     [to, setTo] = useState(defaultTo);
   const [benchmark, setBenchmark] = useState<keyof typeof BENCHMARKS>("SPY");
@@ -76,12 +79,12 @@ export function BacktestingWorkspace({
   const valid = entriesValid && Math.abs(sum - 100) < 1e-6;
   const scaled = entriesValid && !valid ? scaleTo100(weights) : null;
   const changed = snapshot.positions.filter((p) =>
-    weightChanged(p.weight, weights[p.id]),
+    isEdited(baseline, weights, p.id),
   ).length;
   const preset = activePreset(from, to, defaultTo);
   const barMax = Math.max(
     1,
-    ...snapshot.positions.map((p) => p.weight * 100),
+    ...Object.values(baseline).map(Number),
     ...values.map((w) => (validWeight(w) ? Number(w) : 0)),
   );
   const q = query.trim().toLowerCase();
@@ -99,7 +102,7 @@ export function BacktestingWorkspace({
       completed.benchmark !== benchmark ||
       JSON.stringify(completed.weights) !== JSON.stringify(weights));
   function resetAll() {
-    setWeights(initialWeights(snapshot));
+    setWeights(baseline);
     setFrom(defaultFrom);
     setTo(defaultTo);
     setBenchmark("SPY");
@@ -120,12 +123,7 @@ export function BacktestingWorkspace({
           to,
           benchmark,
           version: snapshot.version,
-          weights: Object.fromEntries(
-            Object.entries(weights).map(([id, weight]) => [
-              id,
-              Number(weight) / 100,
-            ]),
-          ),
+          weights: requestWeights(snapshot.positions, weights, baseline),
         }),
         signal: AbortSignal.timeout(120000),
       });
@@ -204,7 +202,7 @@ export function BacktestingWorkspace({
           id={FORM_ID}
           onSubmit={run}
           aria-label="Scenario"
-          className="flex flex-col overflow-hidden rounded-xl border bg-card lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)]"
+          className="flex flex-col rounded-xl border bg-card"
         >
           <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
             <h2 className="text-sm font-semibold">Scenario</h2>
@@ -334,7 +332,7 @@ export function BacktestingWorkspace({
                 variant="outline"
                 size="sm"
                 disabled={!changed && entriesValid}
-                onClick={() => setWeights(initialWeights(snapshot))}
+                onClick={() => setWeights(baseline)}
               >
                 Revert
               </Button>
@@ -348,12 +346,7 @@ export function BacktestingWorkspace({
           >
             {showWeights ? "Hide holdings" : `Edit ${snapshot.positions.length} holding weights`}
           </button>
-          <div
-            className={cn(
-              "flex flex-col lg:min-h-0 lg:flex-1",
-              !showWeights && "max-lg:hidden",
-            )}
-          >
+          <div className={cn("flex flex-col", !showWeights && "max-lg:hidden")}>
             <div className="shrink-0 space-y-2.5 px-4 pb-2">
               <label className="relative block">
                 <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -373,7 +366,7 @@ export function BacktestingWorkspace({
                 <span className="text-right">Δ</span>
               </div>
             </div>
-            <div className="min-h-0 flex-1 overflow-auto px-2.5 pb-3">
+            <div className="px-2.5 pb-3">
               {visible.length === 0 && (
                 <p className="px-1.5 py-4 text-sm text-muted-foreground">
                   No holdings match “{query}”.
@@ -382,8 +375,9 @@ export function BacktestingWorkspace({
               {visible.map((p) => {
                 const input = weights[p.id];
                 const ok = validWeight(input);
-                const edited = ok && weightChanged(p.weight, input);
-                const delta = ok ? Number(input) - p.weight * 100 : null;
+                const saved = Number(baseline[p.id]);
+                const edited = ok && isEdited(baseline, weights, p.id);
+                const delta = ok ? Number(input) - saved : null;
                 return (
                   <div
                     key={p.id}
@@ -412,12 +406,12 @@ export function BacktestingWorkspace({
                         />
                         <div
                           className="absolute -top-0.5 h-2 w-0.5 rounded-full bg-foreground"
-                          style={{ left: `${((p.weight * 100) / barMax) * 100}%` }}
+                          style={{ left: `${(saved / barMax) * 100}%` }}
                         />
                       </div>
                     </div>
                     <span className="text-right text-sm text-muted-foreground tnum">
-                      {(p.weight * 100).toFixed(2)}
+                      {baseline[p.id]}
                     </span>
                     <Input
                       aria-label={`${p.ticker} scenario weight, percent`}
@@ -431,6 +425,11 @@ export function BacktestingWorkspace({
                       onChange={(e) =>
                         setWeights({ ...weights, [p.id]: e.target.value })
                       }
+                      onBlur={(e) => {
+                        const tidy = tidyWeight(e.target.value);
+                        if (tidy !== e.target.value)
+                          setWeights({ ...weights, [p.id]: tidy });
+                      }}
                       required
                       className={cn(
                         "h-8 px-2 text-right tnum",
@@ -459,7 +458,8 @@ export function BacktestingWorkspace({
             </div>
           </div>
 
-          <div className="shrink-0 space-y-3 border-t bg-muted/20 px-4 py-4">
+          {/* The list scrolls with the page, so the total and Run button stay pinned while you edit. */}
+          <div className="shrink-0 space-y-3 rounded-b-xl border-t bg-card px-4 py-4 lg:sticky lg:bottom-0 lg:z-10 lg:shadow-[0_-8px_16px_-12px_rgb(0_0_0/0.25)]">
             <div
               aria-live="polite"
               className="flex items-center justify-between text-sm"
@@ -471,7 +471,7 @@ export function BacktestingWorkspace({
                   valid ? "text-up" : "text-destructive",
                 )}
               >
-                {trim(sum)}%
+                {two(sum)}%
               </span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
@@ -494,7 +494,7 @@ export function BacktestingWorkspace({
               >
                 <span>
                   {entriesValid
-                    ? `${trim(Math.abs(sum - 100))}% ${sum > 100 ? "over" : "under"}. Weights must total 100%.`
+                    ? `${two(Math.abs(sum - 100))}% ${sum > 100 ? "over" : "under"}. Weights must total 100%.`
                     : "Each weight must be a number from 0 to 100."}
                 </span>
                 {scaled && (
@@ -571,6 +571,7 @@ export function BacktestingWorkspace({
                 result={result}
                 positions={snapshot.positions}
                 weights={completed.weights}
+                baseline={baseline}
               />
             </div>
           ) : (
@@ -603,7 +604,7 @@ export function BacktestingWorkspace({
               valid ? "text-up" : "text-destructive",
             )}
           >
-            {trim(sum)}%
+            {two(sum)}%
           </div>
         </div>
         <Button type="submit" form={FORM_ID} size="lg" disabled={!valid || busy}>

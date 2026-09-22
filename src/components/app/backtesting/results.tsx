@@ -13,7 +13,7 @@ import type {
   Metrics,
   Position,
 } from "@/lib/backtesting/engine";
-import { weightChanged, type WeightInputs } from "@/lib/backtesting/scenario";
+import { isEdited, type WeightInputs } from "@/lib/backtesting/scenario";
 import { cn } from "@/lib/utils";
 import { BacktestChart } from "./chart";
 
@@ -37,12 +37,15 @@ type Props = {
   result: BacktestResult;
   positions: Position[];
   weights: WeightInputs;
+  /** Saved weights as rounded inputs; a holding is edited when its input differs. */
+  baseline: WeightInputs;
 };
 
 export const Results = memo(function Results({
   result,
   positions,
   weights,
+  baseline,
 }: Props) {
   return (
     <div className="space-y-4">
@@ -61,10 +64,10 @@ export const Results = memo(function Results({
           </TabsList>
         </div>
         <TabsContent value="changed" className="p-4 sm:p-5">
-          <WhatChanged result={result} positions={positions} weights={weights} />
+          <WhatChanged result={result} positions={positions} weights={weights} baseline={baseline} />
         </TabsContent>
         <TabsContent value="daily">
-          <DailyCalendar result={result} positions={positions} weights={weights} />
+          <DailyCalendar result={result} positions={positions} weights={weights} baseline={baseline} />
         </TabsContent>
         <TabsContent value="holdings" className="p-4 sm:p-5">
           <Contributors result={result} />
@@ -226,11 +229,11 @@ function Kpis({ result }: { result: BacktestResult }) {
   );
 }
 
-function WhatChanged({ result, positions, weights }: Props) {
+function WhatChanged({ result, positions, weights, baseline }: Props) {
   const byId = new Map(result.contributions.map((c) => [c.id, c]));
-  const edited = positions.filter((p) => weightChanged(p.weight, weights[p.id]));
+  const edited = positions.filter((p) => isEdited(baseline, weights, p.id));
   const unchanged = positions.filter(
-    (p) => !weightChanged(p.weight, weights[p.id]),
+    (p) => !isEdited(baseline, weights, p.id),
   );
   const rest = unchanged.reduce(
     (s, p) => {
@@ -248,7 +251,7 @@ function WhatChanged({ result, positions, weights }: Props) {
         return {
           key: p.id,
           label: p.ticker,
-          sub: `${(p.weight * 100).toFixed(2).replace(/\.?0+$/, "")}% → ${Number(weights[p.id]).toFixed(2).replace(/\.?0+$/, "")}%`,
+          sub: `${baseline[p.id]}% → ${Number(weights[p.id]).toFixed(2)}%`,
           original: c.original,
           modified: c.modified,
           delta: c.delta,
@@ -363,7 +366,7 @@ function WhatChanged({ result, positions, weights }: Props) {
 
 type HeatMode = "modifiedActive" | "originalActive" | "delta";
 
-function DailyCalendar({ result, positions, weights }: Props) {
+function DailyCalendar({ result, positions, weights, baseline }: Props) {
   const [mode, setMode] = useState<HeatMode>("modifiedActive");
   const [index, setIndex] = useState(result.days.length - 1);
   const [showAll, setShowAll] = useState(false);
@@ -379,7 +382,7 @@ function DailyCalendar({ result, positions, weights }: Props) {
       : `color-mix(in srgb, ${v > 0 ? "var(--up)" : "var(--down)"} ${14 + Math.min(Math.abs(v) / cap, 1) * 56}%, var(--background))`;
   const months = [...new Set(result.days.map((d) => d.date.slice(0, 7)))];
   const edited = new Set(
-    positions.filter((p) => weightChanged(p.weight, weights[p.id])).map((p) => p.id),
+    positions.filter((p) => isEdited(baseline, weights, p.id)).map((p) => p.id),
   );
   const contributions = [...selected.contributions].sort(
     (a, b) =>

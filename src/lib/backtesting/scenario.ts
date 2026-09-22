@@ -71,6 +71,43 @@ export function equalWeights(ids: string[]): WeightInputs {
   return settle(ids.map((id) => [id, 100 / ids.length]));
 }
 
-/** Weights compare numerically so "12" and "12.00" are the same holding weight. */
-export const weightChanged = (original: number, input: string) =>
-  Math.abs(Number(input) / 100 - original) > 1e-9;
+/** Saved weights as two-decimal inputs that total exactly 100, the starting point for editing. */
+export function roundedWeights(
+  positions: { id: string; weight: number }[],
+): WeightInputs {
+  return settle(positions.map((p) => [p.id, p.weight * 100]));
+}
+
+/** Inputs compare numerically against the rounded baseline, so "12.3" and "12.30" are the same weight. */
+export const isEdited = (baseline: WeightInputs, inputs: WeightInputs, id: string) =>
+  Number(inputs[id]) !== Number(baseline[id]);
+
+/**
+ * Decimal weights for the request. Edited holdings use the typed value; the rest keep their exact
+ * saved proportions, rescaled to fill the remainder, so an unedited run matches the saved portfolio
+ * exactly instead of its two-decimal rounding.
+ */
+export function requestWeights(
+  positions: { id: string; weight: number }[],
+  inputs: WeightInputs,
+  baseline: WeightInputs,
+): Record<string, number> {
+  const edited = positions.filter((p) => isEdited(baseline, inputs, p.id));
+  if (!edited.length)
+    return Object.fromEntries(positions.map((p) => [p.id, p.weight]));
+  const editedTotal = edited.reduce((s, p) => s + Number(inputs[p.id]) / 100, 0);
+  const restExact = positions
+    .filter((p) => !isEdited(baseline, inputs, p.id))
+    .reduce((s, p) => s + p.weight, 0);
+  const scale = restExact > 0 ? Math.max(0, 1 - editedTotal) / restExact : 0;
+  return Object.fromEntries(
+    positions.map((p) => [
+      p.id,
+      isEdited(baseline, inputs, p.id) ? Number(inputs[p.id]) / 100 : p.weight * scale,
+    ]),
+  );
+}
+
+/** More than two decimals is noise for a portfolio weight; trims "12.3456" to "12.35" and leaves "12.3" alone. */
+export const tidyWeight = (input: string) =>
+  validWeight(input) && /\.\d{3,}/.test(input) ? Number(input).toFixed(2) : input;

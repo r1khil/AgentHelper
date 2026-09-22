@@ -3,8 +3,10 @@ import {
   activePreset,
   equalWeights,
   presetStart,
+  requestWeights,
+  roundedWeights,
   scaleTo100,
-  weightChanged,
+  tidyWeight,
   weightTotal,
 } from "./scenario";
 
@@ -44,8 +46,33 @@ describe("weight tools", () => {
     expect(Object.values(weights).sort()).toEqual(["33.33", "33.33", "33.34"]);
     expect(Math.abs(weightTotal(weights) - 100)).toBeLessThan(1e-6);
   });
-  it("compares weights numerically", () => {
-    expect(weightChanged(0.12, "12.00")).toBe(false);
-    expect(weightChanged(0.12, "12.5")).toBe(true);
+});
+
+describe("saved weights", () => {
+  // Saved weights are normalized by a non-round total, so they rarely have two decimals.
+  const positions = [
+    { id: "a", weight: 0.4 / 0.97 },
+    { id: "b", weight: 0.33 / 0.97 },
+    { id: "c", weight: 0.24 / 0.97 },
+  ];
+  it("start as two-decimal inputs totalling 100", () => {
+    const baseline = roundedWeights(positions);
+    expect(Object.values(baseline).every((w) => /^\d+\.\d{2}$/.test(w))).toBe(true);
+    expect(Math.abs(weightTotal(baseline) - 100)).toBeLessThan(1e-6);
+  });
+  it("send the exact saved weights when nothing was edited", () => {
+    const baseline = roundedWeights(positions);
+    const sent = requestWeights(positions, { ...baseline, a: "45.00" }, baseline);
+    expect(requestWeights(positions, baseline, baseline)).toEqual(
+      Object.fromEntries(positions.map((p) => [p.id, p.weight])),
+    );
+    expect(sent.a).toBe(0.45);
+    expect(sent.b / sent.c).toBeCloseTo(0.33 / 0.24, 12);
+    expect(Math.abs(Object.values(sent).reduce((s, w) => s + w, 0) - 1)).toBeLessThan(1e-8);
+  });
+  it("trim typed weights past two decimals", () => {
+    expect(tidyWeight("12.3456")).toBe("12.35");
+    expect(tidyWeight("12.3")).toBe("12.3");
+    expect(tidyWeight("abc")).toBe("abc");
   });
 });
