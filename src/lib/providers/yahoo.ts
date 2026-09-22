@@ -151,6 +151,27 @@ export async function getBarsRange(symbol: string, from: string, to?: string): P
   );
 }
 
+/** Dividend- and split-adjusted daily closes for total-return backtesting. Never fall back to raw close. */
+export async function getAdjustedBarsRange(symbol: string, from: string, to: string): Promise<{ date: string; close: number }[]> {
+  return cached(`yahoo:backtest-adjusted:v1:${symbol}:${from}:${to}`, 60 * 15, async () => {
+    const res = await spaced(HOST, GAP_MS, () => retry(() => yf().chart(symbol, {
+      period1: DateTime.fromISO(from, { zone: NY }).startOf("day").toJSDate(),
+      period2: DateTime.fromISO(to, { zone: NY }).plus({ days: 1 }).startOf("day").toJSDate(),
+      interval: "1d",
+    })));
+    if (res.meta.currency !== "USD") throw new Error("Backtesting requires USD-denominated history.");
+    // Yahoo emits the occasional all-null row; drop it like getBarsRange does. The engine refuses to fill
+    // gaps, so a dropped session still fails the replay if it is needed. Present but unusable values throw.
+    const bars: { date: string; close: number }[] = [];
+    for (const q of res.quotes ?? []) {
+      if (q.adjclose == null) continue;
+      if (!Number.isFinite(q.adjclose) || q.adjclose <= 0) throw new Error(`Invalid adjusted close for ${symbol}`);
+      bars.push({ date: DateTime.fromJSDate(q.date).setZone(NY).toISODate()!, close: q.adjclose });
+    }
+    return bars;
+  });
+}
+
 export type SectorProfile = { sector: string | null; industry: string | null };
 
 /** Yahoo's sector and industry labels for a company; both null for ETFs and funds. */

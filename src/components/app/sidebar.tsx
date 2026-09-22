@@ -119,6 +119,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
 
       <nav className="px-3">
         <NavItem href="/" label="Today" icon={Home} active={pathname === "/"} />
+        <NavItem href="/backtesting" label="Backtesting" icon={History} active={isActive("/backtesting")} />
         {fundWide && <NavItem href="/attribution" label="Fund attribution" icon={ChartNoAxesCombined} active={isActive("/attribution")} />}
       </nav>
 
