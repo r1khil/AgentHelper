@@ -5,7 +5,7 @@ import { invitations, profiles, teams } from "@/db/schema";
 import { requireRole, transparencyEnabled } from "@/lib/auth";
 import { ROLES, ROLE_LABELS } from "@/lib/constants";
 import { createTestAccount, inviteMember, removeMember, revokeInvitation, setAgentModel, setEmbeddingModel, setRerankModel, setWeeklyRecipients, updateMember } from "@/lib/actions/admin";
-import { backfillFilingsNow, reembedNow, runBellwethersNow, runCloseNow, runEarningsPrepNow, runMorningNow, runPricesNow, runWeeklyNow, syncFilingsNow } from "@/lib/actions/jobs";
+import { backfillFilingsNow, reembedNow, runBellwethersNow, runCloseNow, runEarningsPrepNow, runMorningNow, runDailyBriefNow, runPricesNow, runWeeklyNow, syncFilingsNow } from "@/lib/actions/jobs";
 import { EMBEDDING_MODELS, RERANK_MODELS, embeddingDims, embeddingModelId, rerankModelId } from "@/lib/agent/retrieval-models";
 import { embeddingConfigured } from "@/lib/agent/embeddings";
 import { embeddingStats } from "@/lib/documents/index";
@@ -118,7 +118,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               <input type="checkbox" name="force" className="size-3.5" /> Re-run even if this session already completed
             </label>
-            <p className="text-xs text-muted-foreground">Leave the date empty for today. Scheduled nightly at 23:00 UTC on Vercel.</p>
+            <p className="text-xs text-muted-foreground">Leave the date empty for today. Scheduled weekdays at 5:00 p.m. New York (Supabase pg_cron), with a 7 p.m. Vercel backstop.</p>
           </form>
           <form action={runMorningNow} className="mt-4 flex items-center justify-between gap-2 border-t pt-3">
             <span className="text-sm">Morning sweep (reminders, earnings, email)</span>
@@ -127,6 +127,17 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <form action={runPricesNow} className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
             <span className="text-sm">Price history (attribution closes, dividends, splits)</span>
             <Button type="submit" size="sm" variant="outline">Run</Button>
+          </form>
+          <form action={runDailyBriefNow} className="mt-3 grid gap-2 border-t pt-3">
+            <Label htmlFor="brief-date">Hoot&apos;s daily attribution brief</Label>
+            <div className="flex items-center gap-2">
+              <Input id="brief-date" name="date" type="date" className="w-40" />
+              <Button type="submit" size="sm" variant="outline">Run</Button>
+            </div>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input type="checkbox" name="everyone" className="size-3.5" /> Email everyone on the list, not just me
+            </label>
+            <p className="text-xs text-muted-foreground">Weekdays: prices and close check at 5:00 p.m., Hoot&apos;s analysis at 5:05, email to Aadi, Saad, Rikhil and Max at 5:15 (New York).</p>
           </form>
           <form action={runBellwethersNow} className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
             <span className="text-sm">Sector bellwethers (ETF constituents, earnings dates, industries)</span>
@@ -174,7 +185,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         ) : (
         <Card className="p-4 text-sm">
           <ul className="grid gap-2">
-            <li>Close check (movements). Scheduled nightly at 23:00 UTC on Vercel.</li>
+            <li>Close check (movements). Scheduled weekdays at 5:00 p.m. New York (Supabase pg_cron), with a 7 p.m. Vercel backstop.</li>
             <li className="border-t pt-2">Morning sweep (reminders, earnings, email). Scheduled at 14:00 UTC.</li>
             <li className="border-t pt-2">Price history (attribution closes, dividends, splits). Scheduled at 23:30 UTC.</li>
             <li className="border-t pt-2">Sector bellwethers (ETF constituents, earnings dates, industries). Runs inside the morning sweep.</li>

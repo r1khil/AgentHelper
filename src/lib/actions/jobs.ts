@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth";
 import { runCloseJob } from "@/lib/jobs/close";
 import { runMorningJob } from "@/lib/jobs/morning";
 import { runPricesJob } from "@/lib/jobs/prices";
+import { runDailyBriefAnalysis, sendDailyBrief } from "@/lib/jobs/daily-brief";
 import { backfillIndustries, refreshBellwethers } from "@/lib/jobs/bellwethers";
 import { prepEarnings } from "@/lib/jobs/earnings-prep";
 import { syncFilings } from "@/lib/jobs/filings";
@@ -99,4 +100,16 @@ export async function runWeeklyNow(fd: FormData) {
   const build = r.build && "error" in r.build ? `build failed (${r.build.error})` : `built${r.build?.failed.length ? ` with ${r.build.failed.join(", ")} missing` : ""}`;
   const asks = r.asks && "error" in r.asks ? `asks failed (${r.asks.error})` : `asks ${r.asks?.sent ?? 0} sent, ${r.asks?.skipped ?? 0} skipped, ${r.asks?.failed ?? 0} failed`;
   redirect(`/admin?${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Weekly job for week ending ${r.weekEnding}: ${r.reason ?? `${build}; ${asks}`}`)}`);
+}
+
+/** Hoot's daily attribution brief, by hand: write it, then email it (to the pressing admin only, unless "everyone" is ticked). */
+export async function runDailyBriefNow(fd: FormData) {
+  const admin = await requireAdmin();
+  const date = String(fd.get("date") ?? "").trim() || undefined;
+  const everyone = fd.get("everyone") === "on";
+  const a = await runDailyBriefAnalysis({ sessionDate: date });
+  const s = await sendDailyBrief({ sessionDate: a.sessionDate, force: everyone, to: everyone ? undefined : [admin.email] });
+  revalidatePath("/admin");
+  const failed = Object.keys(s.failed);
+  redirect(`/admin?${a.status === "failed" && s.status !== "ok" ? "error" : "ok"}=${encodeURIComponent(`Daily brief ${a.sessionDate}: analysis ${a.status}${a.reason ? ` (${a.reason})` : ""}; email ${s.status}${s.reason ? ` (${s.reason})` : ""}, ${s.analysis}, sent to ${s.sent.join(", ") || "nobody"}${failed.length ? `; failed ${failed.join(", ")}` : ""}`)}`);
 }
