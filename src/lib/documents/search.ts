@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
 import { documentChunks, documents, driveFiles, type DocumentKind, type DriveDocKind } from "@/db/schema";
 import { RateLimited, embedTexts, embeddingConfigured } from "@/lib/agent/embeddings";
@@ -47,6 +47,8 @@ export type ChunkHitMeta = {
   publisher: string | null;
   publishedAt: Date | null;
   docDate: string | null;
+  /** See `documentDate`: what "latest" is measured by. */
+  documentDate: Date | null;
   ticker: string | null;
   holdingId: string | null;
   /** Drive-only fields. */
@@ -61,7 +63,29 @@ export type ChunkHitMeta = {
 
 export type ChunkHit = { documentId: string; seq: number; section: string | null; text: string; score: number; via: "hybrid" | "vector" | "text"; meta: ChunkHitMeta };
 
-export type SearchParams = { query: string; ticker?: string; holdingId?: string; kinds?: DocumentKind[]; driveKind?: DriveDocKind; limit?: number; perDoc?: number };
+export type SearchParams = {
+  query: string;
+  ticker?: string;
+  holdingId?: string;
+  kinds?: DocumentKind[];
+  driveKind?: DriveDocKind;
+  /** Filings only: 10-K, 10-Q, 8-K, or EX-99 for earnings releases. */
+  form?: string;
+  limit?: number;
+  perDoc?: number;
+  /** Only the N newest documents that match the other filters (e.g. the latest earnings update). */
+  latest?: number;
+  /** Only documents dated on or after this ISO date. */
+  since?: string;
+  /** Resolved from `latest` before the search legs run. */
+  documentIds?: string[];
+};
+
+/**
+ * When a document is "from": a filing's filed date; a Drive file's stated date (cover page, "as of"), else its
+ * modified time. Re-uploading an old deck bumps modifiedTime, so the stated date wins when the summary found one.
+ */
+export const documentDate = sql<Date | null>`case when ${documents.kind} = 'filing' then ${documents.publishedAt} else coalesce(${documents.docDate}::timestamptz, ${documents.publishedAt}) end`.mapWith(documents.publishedAt);
 
 const hitColumns = {
   documentId: documentChunks.documentId,
@@ -76,6 +100,7 @@ const hitColumns = {
   publisher: documents.publisher,
   publishedAt: documents.publishedAt,
   docDate: documents.docDate,
+  documentDate,
   ticker: documents.ticker,
   holdingId: documents.holdingId,
   name: sql<string>`coalesce(${driveFiles.name}, ${documents.title})`,
@@ -87,6 +112,12 @@ const hitColumns = {
   documentHeading: documentHeadingColumn,
 };
 
+/** 10-Q also matches 10-Q/A; any EX-99 form matches every EX-99 exhibit (earnings releases). */
+export function formFilter(form: string): SQL {
+  const f = form.toUpperCase().replace(/\s+/g, "");
+  return /^EX/.test(f) ? ilike(documents.form, "EX-99%") : or(eq(documents.form, f), eq(documents.form, `${f}/A`))!;
+}
+
 type Row = { documentId: string; seq: number; section: string | null; text: string } & ChunkHitMeta;
 
 function filters(p: SearchParams): SQL[] {
@@ -95,7 +126,29 @@ function filters(p: SearchParams): SQL[] {
   if (p.holdingId) conds.push(eq(documentChunks.holdingId, p.holdingId));
   if (p.kinds?.length) conds.push(inArray(documents.kind, p.kinds));
   if (p.driveKind) conds.push(eq(driveFiles.kind, p.driveKind));
+  if (p.form) conds.push(formFilter(p.form));
+  if (p.since) conds.push(sql`${documentDate} >= ${p.since}::date`);
+  if (p.documentIds) conds.push(inArray(documentChunks.documentId, p.documentIds));
   return conds;
+}
+
+/** The ids of the newest `n` documents that have chunks and match the filters, newest first. */
+export async function newestDocumentIds(p: Omit<SearchParams, "query" | "latest" | "documentIds">, n: number): Promise<string[]> {
+  const conds: SQL[] = [sql`exists (select 1 from ${documentChunks} where ${documentChunks.documentId} = ${documents.id})`];
+  if (p.ticker) conds.push(eq(documents.ticker, p.ticker.toUpperCase()));
+  if (p.holdingId) conds.push(eq(documents.holdingId, p.holdingId));
+  if (p.kinds?.length) conds.push(inArray(documents.kind, p.kinds));
+  if (p.driveKind) conds.push(eq(driveFiles.kind, p.driveKind));
+  if (p.form) conds.push(formFilter(p.form));
+  if (p.since) conds.push(sql`${documentDate} >= ${p.since}::date`);
+  const rows = await db
+    .select({ id: documents.id })
+    .from(documents)
+    .leftJoin(driveFiles, eq(driveFiles.documentId, documents.id))
+    .where(and(...conds))
+    .orderBy(sql`${documentDate} desc nulls last`)
+    .limit(n);
+  return rows.map((r) => r.id);
 }
 
 function base() {
@@ -137,9 +190,12 @@ const key = (r: { documentId: string; seq: number }) => `${r.documentId}:${r.seq
  * rank, reranked when a reranker is configured, then capped per document. Works with full text alone when
  * embeddings are off or rate limited. The query is embedded once.
  */
-export async function searchChunks(p: SearchParams): Promise<ChunkHit[]> {
+export async function searchChunks(params: SearchParams): Promise<ChunkHit[]> {
+  const p = params.latest && !params.documentIds ? { ...params, documentIds: await newestDocumentIds(params, params.latest) } : params;
+  if (p.documentIds && !p.documentIds.length) return [];
   const limit = p.limit ?? 6;
-  const perDoc = p.perDoc ?? 2;
+  // Narrowed to a few documents, let each one fill more of the result.
+  const perDoc = p.perDoc ?? (p.latest ? Math.max(2, Math.ceil(limit / p.latest)) : 2);
   const vec = await vectorCandidates(p);
   const model = vec?.model ?? (embeddingConfigured() ? await embeddingModelId().catch(() => null) : null);
   const text = await textCandidates(p, model);

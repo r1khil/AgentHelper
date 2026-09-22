@@ -440,10 +440,11 @@ function BoardThread({
   // (React's development double-invoke of effects calls the hook's cleanup) makes it return silently.
   // A question asked through Hoot arrives the same way, handed over in sessionStorage with the chat preselected.
   useEffect(() => {
-    const text = autoSend ?? peekHootQuestion(chatId);
-    if (!text) return;
+    const asked = autoSend ? { text: autoSend, page: null } : peekHootQuestion(chatId);
+    if (!asked) return;
+    const { text } = asked;
     const t = setTimeout(() => {
-      if (send(text)) {
+      if (send(text, asked.page)) {
         clearHootQuestion(chatId);
         onSent(text);
       }

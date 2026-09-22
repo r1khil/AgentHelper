@@ -43,6 +43,7 @@ export async function POST(req: Request) {
   const { clientStream, persisted } = await runAgentTurn({
     chat,
     user,
+    viewer: user,
     messages,
     trace: transparencyEnabled(user),
     // Once saved, distill the turn into the holding's research log (one extra model call; failures are logged, never surfaced).

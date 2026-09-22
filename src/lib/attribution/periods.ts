@@ -30,8 +30,11 @@ function onOrBefore(iso: string) {
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
+/** The attribution pages open on the last completed session. */
+export const DEFAULT_PERIOD: PeriodKey = "1d";
+
 export function parsePeriodKey(v: string | undefined): PeriodKey {
-  return (PERIOD_KEYS as readonly string[]).includes(v ?? "") ? (v as PeriodKey) : "itd";
+  return (PERIOD_KEYS as readonly string[]).includes(v ?? "") ? (v as PeriodKey) : DEFAULT_PERIOD;
 }
 
 /** `inception` is the first ledger day; `latest` the last valuation day. */
@@ -61,12 +64,9 @@ export function resolvePeriod(key: PeriodKey, opts: { from?: string; to?: string
   return { key, start, end, clamped };
 }
 
-/** Hide presets that would silently shorten to the ledger's inception. */
-export function availablePeriods(bounds: { inception: string; latest: string }): PeriodKey[] {
-  return PERIOD_KEYS.filter((key) => {
-    if (key === "custom") return false;
-    if (key === "itd") return true;
-    const period = resolvePeriod(key, bounds);
-    return !period.clamped && period.start < period.end;
-  });
+export type PeriodOption = { key: PeriodKey; /** Starts before the ledger does, so it shows results since inception. */ clamped: boolean };
+
+/** Every preset, always, so the control never changes shape; a preset older than the ledger says so instead of hiding. */
+export function periodOptions(bounds: { inception: string; latest: string }): PeriodOption[] {
+  return PERIOD_KEYS.filter((key) => key !== "custom").map((key) => ({ key, clamped: key !== "itd" && resolvePeriod(key, bounds).clamped }));
 }

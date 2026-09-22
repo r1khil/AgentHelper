@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import type { AgentUIMessage, TraceEvent } from "@/lib/trace/events";
+import type { PageContext } from "@/lib/agent/page-context";
 import type { RunStatus } from "@/lib/chats";
 import { buildTraceView, type TraceView } from "./trace-panel";
 
@@ -94,12 +95,12 @@ export function useResearchChat({
   const busy = streaming || catchingUp;
 
   const send = useCallback(
-    (text: string) => {
+    (text: string, page?: PageContext | null) => {
       const t = text.trim();
       if (!t || busy) return false;
       setRunError(null);
       setTrace([]);
-      void sendMessage({ text: t });
+      void sendMessage(page ? { text: t, metadata: { page } } : { text: t });
       return true;
     },
     [busy, sendMessage],

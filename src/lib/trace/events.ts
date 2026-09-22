@@ -1,3 +1,4 @@
+import type { PageContext } from "@/lib/agent/page-context";
 import type { UIMessage } from "ai";
 
 /** Where a provider call was answered from. `network` is a live upstream request. */
@@ -38,7 +39,14 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K>
 /** What callers pass to `sink.emit`: the sink stamps seq, at and step. */
 export type TraceEventInput = DistributiveOmit<TraceEvent, "seq" | "at" | "step">;
 
-export type AgentMetadata = { uncited?: number; model?: string; /** The answer went through the citation-repair pass. */ repaired?: boolean };
+export type AgentMetadata = {
+  uncited?: number;
+  model?: string;
+  /** The answer went through the citation-repair pass. */
+  repaired?: boolean;
+  /** On a question: the page it was asked from (attached by Hoot). */
+  page?: PageContext;
+};
 export type AgentDataParts = { trace: TraceEvent };
 export type AgentUIMessage = UIMessage<AgentMetadata, AgentDataParts>;
 

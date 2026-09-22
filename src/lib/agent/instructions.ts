@@ -14,12 +14,24 @@ import { fundMemoryBlock, holdingMemoryBlock } from "@/lib/agent/memory/prompt";
 
 const PINNED_DOCS_MAX_CHARS = 12_000;
 
-/** One line per document plus its extracted summary bullets, capped so a long shelf cannot crowd out the rest. */
+const fileDate = (f: Pick<DriveFileMeta, "docDate" | "modifiedTime">) => f.docDate ?? f.modifiedTime?.toISOString().slice(0, 10) ?? "";
+
+/**
+ * One line per document plus its extracted summary bullets, newest first by the date the document states, capped so
+ * a long shelf cannot crowd out the rest. The newest earnings update, pre-earnings note and transcript are marked
+ * so questions about the latest quarter start there instead of reading every past update.
+ */
 export function pinnedDocsBlock(files: DriveFileMeta[], maxChars = PINNED_DOCS_MAX_CHARS): string {
+  const sorted = [...files].sort((a, b) => fileDate(b).localeCompare(fileDate(a)));
+  const seenLabels = new Set<string>();
   let out = "";
   let shown = 0;
-  for (const f of files) {
-    const line = `- [${documentLabel(f)}] ${f.name} — id ${f.id}${f.modifiedTime ? ` — modified ${f.modifiedTime.toISOString().slice(0, 10)}` : ""}`;
+  for (const f of sorted) {
+    const label = documentLabel(f);
+    const latest = f.kind === "earnings_update" && !seenLabels.has(label);
+    seenLabels.add(label);
+    const dated = f.docDate ? ` — dated ${f.docDate}` : f.modifiedTime ? ` — modified ${f.modifiedTime.toISOString().slice(0, 10)}` : "";
+    const line = `- [${label}${latest ? ", LATEST" : ""}] ${f.name} — id ${f.id}${dated}`;
     const bullets = f.summary ? summaryToPromptLines(f.summary) : "";
     const block = bullets ? `${line}\n${bullets}\n` : `${line}\n`;
     if (out.length + block.length > maxChars) break;
@@ -32,15 +44,23 @@ export function pinnedDocsBlock(files: DriveFileMeta[], maxChars = PINNED_DOCS_M
 
 /** One line per indexed filing: form, filed date, and the id read_document takes. */
 export function pinnedFilingsBlock(filings: FilingDoc[]): string {
+  const seen = new Set<string>();
   return filings
-    .map((f) => `- [${f.form ?? "filing"}] ${f.title} — filed ${f.publishedAt?.toISOString().slice(0, 10) ?? "?"}${f.docDate ? ` — period ended ${f.docDate}` : ""} — id ${f.id}${f.embedFor === f.version ? "" : " (not searchable yet)"}`)
+    .map((f) => {
+      const form = (f.form ?? "filing").replace(/\/A$/, "").replace(/^EX-99.*/i, "EX-99");
+      const latest = !seen.has(form) && /^(10-Q|10-K|EX-99)/.test(form);
+      seen.add(form);
+      return { f, latest };
+    })
+    .map(({ f, latest }) => `- [${f.form ?? "filing"}${latest ? ", LATEST" : ""}] ${f.title} — filed ${f.publishedAt?.toISOString().slice(0, 10) ?? "?"}${f.docDate ? ` — period ended ${f.docDate}` : ""} — id ${f.id}${f.embedFor === f.version ? "" : " (not searchable yet)"}`)
     .join("\n");
 }
 import { todayNY } from "@/lib/providers/calendar";
+import { pageContextBlock, type PageContext } from "./page-context";
 
 export type ExternalToolsInfo = { servers: { name: string; toolCount: number }[]; instructions: string[]; toolNames: string[] };
 
-export async function buildInstructions(teamId: string, opts: { holdingId?: string | null; userName: string; userRole: string; purpose?: "chat" | "prep"; externalTools?: ExternalToolsInfo }) {
+export async function buildInstructions(teamId: string, opts: { holdingId?: string | null; userName: string; userRole: string; purpose?: "chat" | "prep"; externalTools?: ExternalToolsInfo; portfolioTools?: boolean; page?: PageContext | null }) {
   const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
   const rows = await db
     .select({ h: holdings, ownerName: profiles.fullName })
@@ -133,7 +153,9 @@ TOOL PLAYBOOK (follow it; each tool call costs a step and you have about ten):
 - Insider buying and selling: get_insider_transactions (Form 4). Who owns the stock: get_institutional_holders. Street consensus and price targets: get_analyst_estimates, always labeled as consensus, never as guidance or as your own view. Side-by-side with other companies: compare_peers.
 - When a get_news headline is not enough, read_url reads the article at its URL. search_web (when configured) finds pages the other tools cannot: use topic "news" for headlines and "finance" for company or market questions, then read_url before quoting. Neither can read SEC archive links (read_filing) or indexed documents (read_document). Quote sparingly; a filing or release outranks an article.
 - What the team's own documents say (what did our report say about X, which update mentions Y): search_documents first (kind "drive" to stay inside the team's files), then read_document with the returned documentId and an offset near the passage for context. find_documents is for locating a document by name, ticker, kind, or form.
-- Memory: recall searches what earlier chats established for this holding, the team, and the fund; use it before re-researching a question the team has likely asked. remember saves durable tool lessons (which concept, which item, which search came back empty), sourced facts, or fund-wide facts with an expiry. Never remember the student's interpretation, thesis, or conclusions.
+- Latest report first: a question about the upcoming, next, last, latest or most recent earnings (or "this quarter") is about the newest documents only. Read the document marked LATEST in the list below, or search with latest: 1 (driveKind "earnings_update" for the team's update, form "EX-99.1" or "10-Q" for the company's release or filing). Do not search every past update. Reach back further only when the question asks for history or a comparison across quarters, and then say which quarters you used. Always state the date of each document you rely on.
+${opts.portfolioTools ? `- The Fund's own performance: get_attribution answers how the Fund or a team did over a period and why (return vs the S&P 500, the sector-benchmark bridge of allocation, selection and interaction, and the holdings, sectors and teams that added or cost the most), exactly as the Attribution pages show it. run_backtest replays today's holdings with saved or changed weights, as the Backtesting page does. Translate their numbers into plain language (bps are hundredths of a percentage point) and cite their source ids; they describe the Fund's own results, so explaining them is not writing the student's conclusion.
+` : ""}- Memory: recall searches what earlier chats established for this holding, the team, and the fund; use it before re-researching a question the team has likely asked. remember saves durable tool lessons (which concept, which item, which search came back empty), sourced facts, or fund-wide facts with an expiry. Never remember the student's interpretation, thesis, or conclusions.
 - Never call a tool twice with the same arguments. If a call fails, fix the argument the error points at or move on; do not retry blindly.
 
 WORKING STYLE:
@@ -159,5 +181,5 @@ Holdings:
 ${holdingsList}
 
 Open movement investigations:
-${openList}${fundNotes}${pinned}${external}`;
+${openList}${fundNotes}${pinned}${external}${opts.page ? pageContextBlock(opts.page) : ""}`;
 }

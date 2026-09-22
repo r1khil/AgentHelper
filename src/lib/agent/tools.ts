@@ -28,6 +28,7 @@ import { searchFullText } from "@/lib/drive/read";
 import { windowText } from "@/lib/drive/text";
 import { MARKET_FACT_TTL_DAYS, rememberMemory, searchMemories } from "@/lib/agent/memory/store";
 import { newestEvidenceDate } from "@/lib/agent/memory/distill";
+import { passageCoverage } from "@/lib/agent/doc-recency";
 
 export type ToolResult<T> = { data: T; sources: Source[]; error?: string };
 
@@ -64,6 +65,8 @@ function documentSource(d: DocMeta): Source {
 }
 
 const hitMeta = (m: ChunkHitMeta): DocMeta => ({ id: m.id, kind: m.kind, title: m.title, form: m.form, url: m.url, publishedAt: m.publishedAt, docDate: m.docDate, name: m.name, driveKind: m.driveKind, webViewLink: m.webViewLink, modifiedTime: m.modifiedTime });
+
+const isoDay = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
 
 const kindArg = z.enum(["drive", "filing"]).optional().describe("drive: the team's own documents; filing: indexed SEC filings. Omit for both.");
 const driveKindArg = z.enum(["initiating_coverage", "earnings_update", "model", "other"]).optional().describe("Drive documents only");
@@ -499,7 +502,7 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
 
     find_documents: tool({
       description:
-        "Locate indexed documents by name, ticker, kind, or form: the team's own documents in the analyst Drive (initiating coverage reports, where the recorded thesis lives; earnings updates; the Excel model; other notes) and the SEC filings the app indexed for each holding (10-K, 10-Q, 8-K, EX-99.1 releases). Returns document ids for read_document. For questions about what a document says, use search_documents.",
+        "Locate indexed documents by name, ticker, kind, or form: the team's own documents in the analyst Drive (initiating coverage reports, where the recorded thesis lives; earnings updates; the Excel model; other notes) and the SEC filings the app indexed for each holding (10-K, 10-Q, 8-K, EX-99.1 releases). Newest first, so limit 1 with a driveKind or form is the latest one. Returns document ids and dates for read_document. For questions about what a document says, use search_documents.",
       inputSchema: z.object({
         ticker: tickerArg.optional(),
         query: z.string().min(2).optional().describe("Words in the title or folder path; Drive files are also searched by content"),
@@ -528,7 +531,7 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
               for (const r of rows) {
                 const s = driveSource(r);
                 sources.push(s);
-                documentsOut.push({ documentId: r.id, kind: "drive", name: r.name, driveKind: r.kind, documentType: documentLabel(r), ticker: r.ticker, path: r.path, mimeType: r.mimeType, modifiedTime: r.modifiedTime, size: r.size, sourceId: s.id });
+                documentsOut.push({ documentId: r.id, kind: "drive", name: r.name, driveKind: r.kind, documentType: documentLabel(r), ticker: r.ticker, docDate: r.docDate, path: r.path, mimeType: r.mimeType, modifiedTime: r.modifiedTime, size: r.size, sourceId: s.id });
               }
             } catch (e) {
               if (!(e instanceof DriveNotConnected) || kind === "drive") throw e;
@@ -558,28 +561,38 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
 
     search_documents: tool({
       description:
-        "Search inside the indexed documents by meaning and by keywords (a question or phrase): the team's own Drive documents and the SEC filings indexed for each holding (10-K Items 1, 1A, 7, 7A; 10-Q Items 2, 3, 1A; 8-Ks and EX-99.1 releases in full). Returns the best-matching passages with document ids and, for filings, the Item they come from; open a document with read_document for more context.",
+        "Search inside the indexed documents by meaning and by keywords (a question or phrase): the team's own Drive documents and the SEC filings indexed for each holding (10-K Items 1, 1A, 7, 7A; 10-Q Items 2, 3, 1A; 8-Ks and EX-99.1 releases in full). Returns the best-matching passages with document ids, each document's date and, for filings, the Item they come from; open a document with read_document for more context. Narrow to the newest documents with latest (e.g. latest 1 with driveKind earnings_update for the most recent earnings update) or to a date with since, so older quarters do not crowd out the current one.",
       inputSchema: z.object({
         query: z.string().min(3).describe("A question or phrase, e.g. 'what did we say about pricing pressure' or 'risk factors added on credit losses'"),
         ticker: tickerArg.optional(),
         kind: kindArg,
         driveKind: driveKindArg,
+        form: z.string().optional().describe("Filings only: 10-K, 10-Q, 8-K, or EX-99.1 for earnings releases"),
+        latest: z
+          .number()
+          .int()
+          .min(1)
+          .max(10)
+          .optional()
+          .describe("Search only the N newest matching documents. Use 1 for questions about the latest/last/most recent/upcoming report; omit only when the question is about history across quarters."),
+        since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Only documents dated on or after this day (yyyy-mm-dd)"),
         limit: z.number().int().min(1).max(12).default(6),
       }),
-      execute: async ({ query, ticker, kind, driveKind, limit }): Promise<ToolResult<unknown>> => {
+      execute: async ({ query, ticker, kind, driveKind, form, latest, since, limit }): Promise<ToolResult<unknown>> => {
         try {
           if (kind === "drive" || driveKind) await assertDriveReady();
-          const hits = await searchChunks({ query, ticker, kinds: kind ? [kind] : undefined, driveKind, limit });
+          const kinds = kind ? [kind] : form ? (["filing"] as const) : driveKind ? (["drive"] as const) : undefined;
+          const hits = await searchChunks({ query, ticker, kinds: kinds ? [...kinds] : undefined, driveKind, form, latest, since, limit });
           const sources: Source[] = [];
           const passages = hits.map((h) => {
             const s: Source = { ...documentSource(hitMeta(h.meta)), id: sourceId("doc", `${h.documentId}:chunk:${h.seq}:${h.text}`), excerpt: h.text.trim().slice(0, 360), location: { section: h.section ?? undefined, text: h.text.trim().slice(0, 180) } };
             sources.push(s);
-            const base = { documentId: h.documentId, kind: h.meta.kind, ticker: h.meta.ticker, seq: h.seq, score: h.score, matchedBy: h.via, text: h.text, sourceId: s.id };
+            const base = { documentId: h.documentId, kind: h.meta.kind, ticker: h.meta.ticker, documentDate: isoDay(h.meta.documentDate), seq: h.seq, score: h.score, matchedBy: h.via, text: h.text, sourceId: s.id };
             return h.meta.kind === "drive"
               ? { ...base, name: h.meta.name, driveKind: h.meta.driveKind, documentType: documentLabel({ kind: h.meta.driveKind, name: h.meta.name, documentHeading: h.meta.documentHeading }), docDate: h.meta.docDate }
               : { ...base, title: h.meta.title, form: h.meta.form, section: h.section, filedAt: h.meta.publishedAt?.toISOString().slice(0, 10), url: h.meta.url };
           });
-          return { data: { passages, note: passages.length ? undefined : "No passages matched in the indexed documents. New files and filings are embedded a few at a time in the background; for a filing not indexed yet, use get_filings and read_filing." }, sources };
+          return { data: { passages, coverage: passageCoverage(passages, latest), note: passages.length ? undefined : "No passages matched in the indexed documents. New files and filings are embedded a few at a time in the background; for a filing not indexed yet, use get_filings and read_filing." }, sources };
         } catch (e) {
           return fail(e, null);
         }

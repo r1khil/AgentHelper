@@ -1,0 +1,38 @@
+import { describe, expect, it } from "vitest";
+import { pageContextBlock, pageContextFromMessages, pageContextLabel, parsePageContext } from "./page-context";
+
+const attribution = { kind: "attribution", path: "/attribution", title: "Fund attribution", scope: "fund", period: "1d", start: "2026-09-21", end: "2026-09-22" } as const;
+
+describe("page context", () => {
+  it("keeps a valid attribution context and drops a malformed URL date instead of the whole context", () => {
+    expect(parsePageContext({ ...attribution, from: "yesterday" })).toEqual(attribution);
+  });
+  it("rejects unknown kinds and bad paths", () => {
+    expect(parsePageContext({ ...attribution, kind: "admin" })).toBeNull();
+    expect(parsePageContext({ ...attribution, path: "https://evil.example" })).toBeNull();
+    expect(parsePageContext(undefined)).toBeNull();
+  });
+  it("uses the newest user message that carries a page", () => {
+    const older = { kind: "page", path: "/", title: "Today" };
+    const messages = [
+      { role: "user", metadata: { page: older } },
+      { role: "assistant", metadata: { page: attribution } },
+      { role: "user", metadata: { page: attribution } },
+      { role: "user" },
+    ];
+    expect(pageContextFromMessages(messages)).toEqual(attribution);
+    expect(pageContextFromMessages([{ role: "user", metadata: { page: older } }])).toEqual(older);
+    expect(pageContextFromMessages([{ role: "user", metadata: {} }])).toBeNull();
+  });
+  it("tells the agent the exact attribution call that reproduces the page", () => {
+    const block = pageContextBlock(attribution);
+    expect(block).toContain('get_attribution with { scope: "fund", period: "1d" }');
+    expect(block).toContain("2026-09-21 close through the 2026-09-22 close");
+    expect(pageContextLabel(attribution)).toBe("Fund attribution · 1D");
+  });
+  it("hands a backtest scenario over as run_backtest arguments", () => {
+    const ctx = parsePageContext({ kind: "backtesting", path: "/backtesting", title: "Backtesting", from: "2026-06-22", to: "2026-09-21", benchmark: "SPY", changed: [{ ticker: "NVDA", savedPct: 4.1, scenarioPct: 10 }], ran: true })!;
+    expect(pageContextBlock(ctx)).toContain('run_backtest with { from: "2026-06-22", to: "2026-09-21", benchmark: "SPY", weights: { "NVDA": 10 } }');
+    expect(pageContextLabel(ctx)).toBe("Backtesting · 2026-06-22 to 2026-09-21 · 1 weight changed");
+  });
+});

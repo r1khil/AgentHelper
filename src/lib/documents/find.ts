@@ -3,6 +3,7 @@ import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { documents } from "@/db/schema";
 import type { FilingDoc } from "./index";
+import { formFilter } from "./search";
 
 export type FilingHit = FilingDoc & { ticker: string | null; holdingId: string | null };
 
@@ -10,10 +11,7 @@ export type FilingHit = FilingDoc & { ticker: string | null; holdingId: string |
 export async function searchFilings(p: { ticker?: string; query?: string; form?: string; limit?: number }): Promise<FilingHit[]> {
   const conds = [eq(documents.kind, "filing")];
   if (p.ticker) conds.push(eq(documents.ticker, p.ticker.toUpperCase()));
-  if (p.form) {
-    const f = p.form.toUpperCase().replace(/\s+/g, "");
-    conds.push(/^EX/.test(f) ? ilike(documents.form, "EX-99%") : or(eq(documents.form, f), eq(documents.form, `${f}/A`))!);
-  }
+  if (p.form) conds.push(formFilter(p.form));
   if (p.query) {
     const like = `%${p.query.replace(/[%_\\]/g, (m) => `\\${m}`)}%`;
     conds.push(or(ilike(documents.title, like), ilike(documents.form, like), sql`${documents.text} ilike ${like}`)!);
