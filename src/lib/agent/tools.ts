@@ -28,7 +28,7 @@ import { searchFullText } from "@/lib/drive/read";
 import { windowText } from "@/lib/drive/text";
 import { MARKET_FACT_TTL_DAYS, rememberMemory, searchMemories } from "@/lib/agent/memory/store";
 import { newestEvidenceDate } from "@/lib/agent/memory/distill";
-import { EARNINGS_DOC_TYPES, passageCoverage, type EarningsDocType } from "@/lib/agent/doc-recency";
+import { EARNINGS_DOC_TYPES, effectiveDate, passageCoverage, type EarningsDocType } from "@/lib/agent/doc-recency";
 
 export type ToolResult<T> = { data: T; sources: Source[]; error?: string };
 
@@ -65,8 +65,6 @@ function documentSource(d: DocMeta): Source {
 }
 
 const hitMeta = (m: ChunkHitMeta): DocMeta => ({ id: m.id, kind: m.kind, title: m.title, form: m.form, url: m.url, publishedAt: m.publishedAt, docDate: m.docDate, name: m.name, driveKind: m.driveKind, webViewLink: m.webViewLink, modifiedTime: m.modifiedTime });
-
-const isoDay = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
 
 const kindArg = z.enum(["drive", "filing"]).optional().describe("drive: the team's own documents; filing: indexed SEC filings. Omit for both.");
 const driveKindArg = z.enum(["initiating_coverage", "earnings_update", "model", "other"]).optional().describe("Drive documents only");
@@ -531,7 +529,7 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
               for (const r of rows) {
                 const s = driveSource(r);
                 sources.push(s);
-                documentsOut.push({ documentId: r.id, kind: "drive", name: r.name, driveKind: r.kind, documentType: documentLabel(r), ticker: r.ticker, docDate: r.docDate, path: r.path, mimeType: r.mimeType, modifiedTime: r.modifiedTime, size: r.size, sourceId: s.id });
+                documentsOut.push({ documentId: r.id, kind: "drive", name: r.name, driveKind: r.kind, documentType: documentLabel(r), ticker: r.ticker, documentDate: effectiveDate({ kind: "drive", docDate: r.docDate, name: r.name, publishedAt: r.modifiedTime }), path: r.path, mimeType: r.mimeType, modifiedTime: r.modifiedTime, size: r.size, sourceId: s.id });
               }
             } catch (e) {
               if (!(e instanceof DriveNotConnected) || kind === "drive") throw e;
@@ -593,7 +591,7 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
           const passages = hits.map((h) => {
             const s: Source = { ...documentSource(hitMeta(h.meta)), id: sourceId("doc", `${h.documentId}:chunk:${h.seq}:${h.text}`), excerpt: h.text.trim().slice(0, 360), location: { section: h.section ?? undefined, text: h.text.trim().slice(0, 180) } };
             sources.push(s);
-            const base = { documentId: h.documentId, kind: h.meta.kind, ticker: h.meta.ticker, documentDate: isoDay(h.meta.documentDate), seq: h.seq, score: h.score, matchedBy: h.via, text: h.text, sourceId: s.id };
+            const base = { documentId: h.documentId, kind: h.meta.kind, ticker: h.meta.ticker, documentDate: effectiveDate({ kind: h.meta.kind, docDate: h.meta.docDate, name: h.meta.name, publishedAt: h.meta.publishedAt }), seq: h.seq, score: h.score, matchedBy: h.via, text: h.text, sourceId: s.id };
             return h.meta.kind === "drive"
               ? { ...base, name: h.meta.name, driveKind: h.meta.driveKind, documentType: documentLabel({ kind: h.meta.driveKind, name: h.meta.name, documentHeading: h.meta.documentHeading }), docDate: h.meta.docDate }
               : { ...base, title: h.meta.title, form: h.meta.form, section: h.section, filedAt: h.meta.publishedAt?.toISOString().slice(0, 10), url: h.meta.url };

@@ -14,7 +14,7 @@ import { fundMemoryBlock, holdingMemoryBlock } from "@/lib/agent/memory/prompt";
 
 const PINNED_DOCS_MAX_CHARS = 12_000;
 
-const fileDate = (f: Pick<DriveFileMeta, "docDate" | "modifiedTime">) => f.docDate ?? f.modifiedTime?.toISOString().slice(0, 10) ?? "";
+const fileDate = (f: Pick<DriveFileMeta, "docDate" | "modifiedTime" | "name">) => effectiveDate({ kind: "drive", docDate: f.docDate, name: f.name, publishedAt: f.modifiedTime }) ?? "";
 
 /**
  * One line per document plus its extracted summary bullets, newest first by the date the document states, capped so
@@ -30,7 +30,8 @@ export function pinnedDocsBlock(files: DriveFileMeta[], maxChars = PINNED_DOCS_M
     const label = documentLabel(f);
     const latest = f.kind === "earnings_update" && !seenLabels.has(label);
     seenLabels.add(label);
-    const dated = f.docDate ? ` — dated ${f.docDate}` : f.modifiedTime ? ` — modified ${f.modifiedTime.toISOString().slice(0, 10)}` : "";
+    const stated = f.docDate ?? dateFromName(f.name);
+    const dated = stated ? ` — dated ${stated}` : f.modifiedTime ? ` — modified ${f.modifiedTime.toISOString().slice(0, 10)}` : "";
     const line = `- [${label}${latest ? ", LATEST" : ""}] ${f.name} — id ${f.id}${dated}`;
     const bullets = f.summary ? summaryToPromptLines(f.summary) : "";
     const block = bullets ? `${line}\n${bullets}\n` : `${line}\n`;
@@ -57,6 +58,7 @@ export function pinnedFilingsBlock(filings: FilingDoc[]): string {
 }
 import { todayNY } from "@/lib/providers/calendar";
 import { pageContextBlock, type PageContext } from "./page-context";
+import { dateFromName, effectiveDate } from "./doc-recency";
 
 export type ExternalToolsInfo = { servers: { name: string; toolCount: number }[]; instructions: string[]; toolNames: string[] };
 

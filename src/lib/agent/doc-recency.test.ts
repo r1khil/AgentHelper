@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { passageCoverage, pickNewest } from "./doc-recency";
+import { dateFromName, effectiveDate, passageCoverage, pickNewest } from "./doc-recency";
 
 describe("passageCoverage", () => {
   it("says nothing for an empty result", () => {
@@ -30,5 +30,20 @@ describe("pickNewest", () => {
     expect(pickNewest(rows, 1, { excludeLabels: ["Major movement"] })).toEqual(["pre"]);
     expect(pickNewest(rows, 1, { labels: ["Earnings update"] })).toEqual(["upd"]);
     expect(pickNewest(rows, 2)).toEqual(["mm", "pre"]);
+  });
+});
+
+describe("document dates", () => {
+  it("reads the date written in a file name", () => {
+    expect(dateFromName("KKR_4Q_25 Earnings Deck (05-Feb-2026).pdf")).toBe("2026-02-05");
+    expect(dateFromName("GOOG_2Q_20 Earnings Report (31-July-2020).pdf")).toBe("2020-07-31");
+    expect(dateFromName("GOOG model.xlsx")).toBeNull();
+  });
+  it("prefers the stated date, then the name, then the modified time", () => {
+    const publishedAt = new Date("2022-08-11T00:00:00Z");
+    expect(effectiveDate({ kind: "drive", docDate: "2019-10-20", name: "x (23-Oct-2019).pdf", publishedAt })).toBe("2019-10-20");
+    expect(effectiveDate({ kind: "drive", docDate: null, name: "GOOGL_3Q_19 Pre-Earnings Memo (23-Oct-2019).pdf", publishedAt })).toBe("2019-10-23");
+    expect(effectiveDate({ kind: "drive", docDate: null, name: "notes.docx", publishedAt })).toBe("2022-08-11");
+    expect(effectiveDate({ kind: "filing", docDate: "2026-06-30", name: "10-Q", publishedAt: "2026-07-24T12:00:00Z" })).toBe("2026-07-24");
   });
 });

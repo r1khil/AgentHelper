@@ -8,7 +8,7 @@ import { embeddingDims, embeddingModelId, embeddingModelSlug } from "@/lib/agent
 import { cosineDistance, modelLiteral } from "@/lib/agent/vector-sql";
 import { documentHeadingColumn } from "@/lib/drive/index";
 import { documentLabel } from "@/lib/drive/labels";
-import { EARNINGS_DOC_TYPES, pickNewest } from "@/lib/agent/doc-recency";
+import { EARNINGS_DOC_TYPES, effectiveDate, pickNewest } from "@/lib/agent/doc-recency";
 import { capPerDocument, rrfFuse } from "./fusion";
 import type { SectionChunk } from "./sections";
 
@@ -148,14 +148,17 @@ export async function newestDocumentIds(p: Omit<SearchParams, "query" | "latest"
   if (p.driveKind) conds.push(eq(driveFiles.kind, p.driveKind));
   if (p.form) conds.push(formFilter(p.form));
   if (p.since) conds.push(sql`${documentDate} >= ${p.since}::date`);
+  // Ordered by the SQL date, then re-sorted with the date in each file's name, which SQL cannot read.
   const rows = await db
-    .select({ id: documents.id, kind: documents.kind, date: documentDate, driveKind: driveFiles.kind, name: sql<string>`coalesce(${driveFiles.name}, ${documents.title})`, documentHeading: documentHeadingColumn })
+    .select({ id: documents.id, kind: documents.kind, docDate: documents.docDate, publishedAt: documents.publishedAt, driveKind: driveFiles.kind, name: sql<string>`coalesce(${driveFiles.name}, ${documents.title})`, documentHeading: documentHeadingColumn })
     .from(documents)
     .leftJoin(driveFiles, eq(driveFiles.documentId, documents.id))
     .where(and(...conds))
     .orderBy(sql`${documentDate} desc nulls last`)
-    .limit(n * 6 + 20);
-  const candidates = rows.map((r) => ({ id: r.id, kind: r.kind, date: r.date ? r.date.toISOString().slice(0, 10) : null, label: r.kind === "drive" ? documentLabel({ kind: r.driveKind, name: r.name, documentHeading: r.documentHeading }) : null }));
+    .limit(Math.max(300, n * 6));
+  const candidates = rows
+    .map((r) => ({ id: r.id, kind: r.kind, date: effectiveDate(r), label: r.kind === "drive" ? documentLabel({ kind: r.driveKind, name: r.name, documentHeading: r.documentHeading }) : null }))
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
   const excludeLabels = !p.documentLabels?.length && p.driveKind === "earnings_update" ? [EARNINGS_DOC_TYPES.major_movement] : undefined;
   return pickNewest(candidates, n, { labels: p.documentLabels, excludeLabels });
 }
