@@ -24,6 +24,7 @@ import type { JobProgressEvent } from "../lib/jobs/progress-types";
 import type { DocSummary } from "../lib/drive/summary";
 import type { Source } from "../lib/providers/types";
 import type { PrepPack } from "../lib/agent/prep-types";
+import type { AgendaItem, WeeklyAgenda, WeeklyChart, WeeklyFigures, WeeklyPerformers, WeeklySources } from "../lib/weekly/types";
 
 // Supabase-managed auth schema; referenced for the profiles FK only.
 const auth = pgSchema("auth");
@@ -50,6 +51,7 @@ export const holdingProposalStatusEnum = pgEnum("holding_proposal_status", ["pen
 export const securityEventKindEnum = pgEnum("security_event_kind", ["dividend", "split"]);
 export const sectorSourceEnum = pgEnum("sector_source", ["yahoo", "default", "manual"]);
 export const documentKindEnum = pgEnum("document_kind", ["drive", "filing", "web"]);
+export const weeklyStatusEnum = pgEnum("weekly_status", ["draft", "sent"]);
 
 /**
  * pgvector halfvec without a typmod: vectors from models of different lengths coexist in one column, and each
@@ -742,3 +744,60 @@ export const mcpServers = pgTable("mcp_servers", {
   ...timestamps,
 });
 export type McpServer = typeof mcpServers.$inferSelect;
+
+/**
+ * The weekly portfolio update pack, one row per Friday the week ended on. The agent fills the
+ * evidence (performers, earnings, market news) and rolls last week's agenda forward; the execs own
+ * every number in `figures` and every word in `agenda`. `editedAt` and `status = 'sent'` are what
+ * the Sunday job checks before it writes anything.
+ */
+export const weeklyUpdates = pgTable("weekly_updates", {
+  weekEnding: date("week_ending").primaryKey(),
+  status: weeklyStatusEnum("status").notNull().default("draft"),
+  figures: jsonb("figures").$type<WeeklyFigures>(),
+  performers: jsonb("performers").$type<WeeklyPerformers>(),
+  agenda: jsonb("agenda").$type<WeeklyAgenda>(),
+  lastWeekAgenda: jsonb("last_week_agenda").$type<WeeklyAgenda>(),
+  /** Unused until the app may read the price target sheet; the YTD chart is pasted by hand. */
+  chart: jsonb("chart").$type<WeeklyChart>(),
+  /** One entry per build step, so a partial pack says which part failed. */
+  sources: jsonb("sources").$type<WeeklySources>().notNull().default({}),
+  builtAt: timestamp("built_at", { withTimezone: true }),
+  editedAt: timestamp("edited_at", { withTimezone: true }),
+  editedBy: uuid("edited_by").references(() => profiles.id, { onDelete: "set null" }),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  sentBy: uuid("sent_by").references(() => profiles.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  ...timestamps,
+});
+export type WeeklyUpdate = typeof weeklyUpdates.$inferSelect;
+
+/** One process-update ask per exec per week, and the reply it came back with. */
+export const weeklyRequests = pgTable(
+  "weekly_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    weekEnding: date("week_ending").notNull().references(() => weeklyUpdates.weekEnding, { onDelete: "cascade" }),
+    recipientId: uuid("recipient_id").references(() => profiles.id, { onDelete: "set null" }),
+    recipientEmail: text("recipient_email").notNull(),
+    /** Random per request; it is what makes a reply address unguessable. */
+    token: text("token").notNull().unique(),
+    replyAddress: text("reply_address").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    sendError: text("send_error"),
+    resendId: text("resend_id"),
+    remindedAt: timestamp("reminded_at", { withTimezone: true }),
+    repliedAt: timestamp("replied_at", { withTimezone: true }),
+    /** Unique, so a webhook Resend delivers twice is applied once. */
+    replyEmailId: text("reply_email_id").unique(),
+    replyFrom: text("reply_from"),
+    /** The exec's own words, quoted reply stripped, stored before any parsing is attempted. */
+    replyText: text("reply_text"),
+    parsedItems: jsonb("parsed_items").$type<AgendaItem[]>(),
+    parseModel: text("parse_model"),
+    parseError: text("parse_error"),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("weekly_requests_week_recipient").on(t.weekEnding, t.recipientEmail)],
+);
+export type WeeklyRequest = typeof weeklyRequests.$inferSelect;

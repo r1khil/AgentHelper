@@ -27,12 +27,28 @@ export function emailConfigured() {
   return Boolean(process.env.RESEND_API_KEY);
 }
 
-async function sendOne(to: string, subject: string, text: string) {
+/**
+ * Send one plain-text email through Resend and return its id. `replyTo` is what makes the weekly
+ * process-update ask answerable by reply; nothing else in the app sets it.
+ */
+export async function sendEmail(msg: { to: string; subject: string; text: string; replyTo?: string; headers?: Record<string, string> }): Promise<string> {
   const { Resend } = await import("resend");
   const resend = new Resend(process.env.RESEND_API_KEY);
   const from = process.env.EMAIL_FROM || "The Owl's Nest <onboarding@resend.dev>";
-  const { error } = await resend.emails.send({ from, to, subject, text });
+  const { data, error } = await resend.emails.send({
+    from,
+    to: msg.to,
+    subject: msg.subject,
+    text: msg.text,
+    ...(msg.replyTo ? { replyTo: msg.replyTo } : {}),
+    ...(msg.headers ? { headers: msg.headers } : {}),
+  });
   if (error) throw new Error(error.message);
+  return data?.id ?? "";
+}
+
+async function sendOne(to: string, subject: string, text: string) {
+  await sendEmail({ to, subject, text });
 }
 
 /** Send every unsent notification. Test-account addresses (*.owlfund.local) are marked sent without emailing. */

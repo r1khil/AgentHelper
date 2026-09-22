@@ -22,6 +22,7 @@
     "smoke:tools": "tsx --conditions=react-server scripts/smoke-tools.ts",
     "smoke:mcp": "tsx --conditions=react-server scripts/smoke-mcp.ts",
     "smoke:prep": "tsx --conditions=react-server scripts/smoke-prep.ts",
+    "smoke:weekly": "tsx --conditions=react-server scripts/smoke-weekly.ts",
     "test:sell-side:browser": "node tests/sell-side/run.mjs"
   },
   "dependencies": {
