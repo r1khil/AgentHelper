@@ -39,14 +39,26 @@ it("uses adjusted rather than raw close, normalizes NY dates, and caches identic
   expect(cached).toEqual(first);
   expect(chart).toHaveBeenCalledTimes(1);
 });
-it("rejects missing adjusted prices rather than silently switching return basis", async () => {
+it("drops null rows rather than silently switching to raw close", async () => {
   chart.mockResolvedValue({
     meta: { currency: "USD" },
-    quotes: [{ date: new Date(), close: 100 }],
+    quotes: [
+      { date: new Date("2025-01-02T21:00:00Z"), close: 100 },
+      { date: new Date("2025-01-03T21:00:00Z"), close: 101, adjclose: 99 },
+    ],
+  });
+  expect(
+    await getAdjustedBarsRange("MISSING_TEST", "2025-01-01", "2025-01-03"),
+  ).toEqual([{ date: "2025-01-03", close: 99 }]);
+});
+it("rejects unusable adjusted prices", async () => {
+  chart.mockResolvedValue({
+    meta: { currency: "USD" },
+    quotes: [{ date: new Date(), close: 100, adjclose: 0 }],
   });
   await expect(
-    getAdjustedBarsRange("MISSING_TEST", "2025-01-01", "2025-01-02"),
-  ).rejects.toThrow(/Missing adjusted/);
+    getAdjustedBarsRange("INVALID_TEST", "2025-01-01", "2025-01-02"),
+  ).rejects.toThrow(/Invalid adjusted/);
 });
 it("rejects non-USD history without an FX return series", async () => {
   chart.mockResolvedValue({ meta: { currency: "EUR" }, quotes: [] });

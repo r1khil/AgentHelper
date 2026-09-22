@@ -105,3 +105,19 @@ it("fund roles read active fund holdings and produce stable, weight-sensitive sn
   rows[0].weightPct = "25";
   expect((await loadSnapshot(user)).version).not.toBe(a.version);
 });
+it("fund roles count a ticker covered by two teams once, since weight_pct is the fund-level weight on both rows", async () => {
+  const rows = [
+    { id: "a1", ticker: "A", companyName: "A", weightPct: "20" },
+    { id: "a2", ticker: "A", companyName: "A", weightPct: "20" },
+    { id: "b", ticker: "B", companyName: "B", weightPct: "20" },
+  ];
+  const orderBy = vi.fn().mockImplementation(() => Promise.resolve(rows));
+  vi.mocked(db.select).mockReturnValue({
+    from: () => ({ where: () => ({ orderBy }) }),
+  } as unknown as ReturnType<typeof db.select>);
+  const snapshot = await loadSnapshot({ role: "exec", teamId: null } as CurrentUser);
+  expect(snapshot.positions.map((p) => [p.ticker, p.weight])).toEqual([
+    ["A", 0.5],
+    ["B", 0.5],
+  ]);
+});

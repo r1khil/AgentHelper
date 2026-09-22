@@ -19,7 +19,7 @@ import {
 export async function loadSnapshot(user: CurrentUser): Promise<Snapshot> {
   if (!isFundWide(user) && !user.teamId)
     throw new Error("Join a team before backtesting its portfolio.");
-  const rows = await db
+  const held = await db
     .select({
       id: holdings.id,
       ticker: holdings.ticker,
@@ -40,6 +40,11 @@ export async function loadSnapshot(user: CurrentUser): Promise<Snapshot> {
         "Unable to read current portfolio weights. Please retry.",
       );
     });
+  // weight_pct is the fund-level weight copied onto every active row for a ticker, so a stock two teams
+  // both cover appears twice in the fund-wide query; keep one row per ticker before normalizing.
+  const rows = isFundWide(user)
+    ? held.filter((r, i) => held.findIndex((o) => o.ticker === r.ticker) === i)
+    : held;
   const snapshot = snapshotPositions(rows);
   return {
     ...snapshot,

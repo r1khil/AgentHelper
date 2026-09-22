@@ -160,10 +160,15 @@ export async function getAdjustedBarsRange(symbol: string, from: string, to: str
       interval: "1d",
     })));
     if (res.meta.currency !== "USD") throw new Error("Backtesting requires USD-denominated history.");
-    return (res.quotes ?? []).map(q => {
-      if (q.adjclose == null || !Number.isFinite(q.adjclose) || q.adjclose <= 0) throw new Error(`Missing adjusted close for ${symbol}`);
-      return { date: DateTime.fromJSDate(q.date).setZone(NY).toISODate()!, close: q.adjclose };
-    });
+    // Yahoo emits the occasional all-null row; drop it like getBarsRange does. The engine refuses to fill
+    // gaps, so a dropped session still fails the replay if it is needed. Present but unusable values throw.
+    const bars: { date: string; close: number }[] = [];
+    for (const q of res.quotes ?? []) {
+      if (q.adjclose == null) continue;
+      if (!Number.isFinite(q.adjclose) || q.adjclose <= 0) throw new Error(`Invalid adjusted close for ${symbol}`);
+      bars.push({ date: DateTime.fromJSDate(q.date).setZone(NY).toISODate()!, close: q.adjclose });
+    }
+    return bars;
   });
 }
 

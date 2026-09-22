@@ -28,6 +28,7 @@ const initialWeights = (snapshot: Snapshot) =>
   );
 
 type Completed = {
+  id: number;
   result: BacktestResult;
   weights: Record<string, string>;
   from: string;
@@ -52,7 +53,8 @@ export function BacktestingWorkspace({
   const [completed, setCompleted] = useState<Completed | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const inFlight = useRef(false);
+  const inFlight = useRef(false),
+    runs = useRef(0);
   const values = Object.values(weights);
   const sum = values.reduce((s, w) => s + Number(w), 0);
   const valid =
@@ -103,7 +105,14 @@ export function BacktestingWorkspace({
       const result = await response.json();
       if (!response.ok)
         throw new Error(result.error ?? "Unable to replay this period.");
-      setCompleted({ result, weights: { ...weights }, from, to, benchmark });
+      setCompleted({
+        id: ++runs.current,
+        result,
+        weights: { ...weights },
+        from,
+        to,
+        benchmark,
+      });
     } catch (e) {
       setError(
         e instanceof Error
@@ -290,7 +299,7 @@ export function BacktestingWorkspace({
         </Card>
       )}
       {completed && (
-        <Results key={JSON.stringify(completed)} result={completed.result} />
+        <Results key={completed.id} result={completed.result} />
       )}
     </>
   );
