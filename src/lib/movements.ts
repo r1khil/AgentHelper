@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { evidenceItems, holdings, movements, profiles } from "@/db/schema";
 import { inTeams, type TeamIds } from "@/lib/team-filter";
@@ -11,7 +11,8 @@ export async function listTeamMovements(teamId: TeamIds) {
     .innerJoin(holdings, eq(holdings.id, movements.holdingId))
     .leftJoin(profiles, eq(profiles.id, movements.ownerId))
     .where(inTeams(holdings.teamId, teamId))
-    .orderBy(desc(movements.sessionDate), asc(holdings.ticker))
+    // Unfinished investigations sort ahead of completed ones so the row cap only ever trims history.
+    .orderBy(sql`${movements.status} = 'completed'`, desc(movements.sessionDate), asc(holdings.ticker))
     .limit(200);
 }
 
