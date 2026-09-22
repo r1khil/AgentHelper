@@ -2,10 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { chats, holdings, teams } from "@/db/schema";
-import { requireTeamAccess, requireUser } from "@/lib/auth";
+import { listAccessibleTeams, requireTeamAccess, requireUser } from "@/lib/auth";
 
 export async function createChat(fd: FormData) {
   const teamId = String(fd.get("teamId") ?? "");
@@ -38,4 +38,32 @@ export async function deleteChat(fd: FormData) {
   revalidatePath(`/t/${team.slug}/agent`);
   // A holding chat returns to its board; a team-wide chat returns to the index.
   redirect(h ? `/t/${team.slug}/agent/h/${h.ticker}` : `/t/${team.slug}/agent`);
+}
+
+/**
+ * Hoot's quick ask: open a chat that fits the page the member is on. On a holding page the chat is pinned to that
+ * holding (it opens on the research board); anywhere else it is a team-wide chat for the team in view, or the member's own.
+ * The question itself travels client-side and is sent by the chat surface once it mounts.
+ */
+export async function startHootChat(input: { teamSlug: string | null; ticker: string | null }): Promise<{ href: string; chatId: string } | { error: string }> {
+  const user = await requireUser();
+  const accessible = await listAccessibleTeams(user);
+  if (accessible.length === 0) return { error: "You're not on a team yet, so there's no research agent to ask." };
+  const inView = accessible.find((t) => t.slug === input.teamSlug);
+  if (input.ticker) {
+    const scope = inView ? [inView.id] : accessible.map((t) => t.id);
+    const [row] = await db
+      .select({ holdingId: holdings.id, teamId: holdings.teamId, slug: teams.slug })
+      .from(holdings)
+      .innerJoin(teams, eq(teams.id, holdings.teamId))
+      .where(and(eq(holdings.ticker, input.ticker), inArray(holdings.teamId, scope), eq(holdings.status, "active")))
+      .limit(1);
+    if (row) {
+      const [c] = await db.insert(chats).values({ teamId: row.teamId, holdingId: row.holdingId, createdBy: user.id }).returning({ id: chats.id });
+      return { href: `/t/${row.slug}/agent/h/${encodeURIComponent(input.ticker)}?chat=${c.id}`, chatId: c.id };
+    }
+  }
+  const team = inView ?? accessible.find((t) => t.id === user.teamId) ?? accessible[0];
+  const [c] = await db.insert(chats).values({ teamId: team.id, holdingId: null, createdBy: user.id }).returning({ id: chats.id });
+  return { href: `/t/${team.slug}/agent/${c.id}`, chatId: c.id };
 }

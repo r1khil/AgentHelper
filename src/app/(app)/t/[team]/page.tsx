@@ -44,7 +44,7 @@ export default async function TeamHoldingsPage({ params }: { params: Promise<{ t
       />
 
       {rows.length === 0 ? (
-        <EmptyState title="No holdings yet">{fund ? "Pick a sector team in the sidebar to add its tickers." : "Add the tickers this team covers."} Each one gets live prices, filings, news, and movement alerts.</EmptyState>
+        <EmptyState title="No holdings yet" hoot="wave">{fund ? "Pick a sector team in the sidebar to add its tickers." : "Add the tickers this team covers."} Each one gets live prices, filings, news, and movement alerts.</EmptyState>
       ) : (
         <Suspense fallback={<HoldingsTable rows={rows} teamById={teamById} showTeam={fund} />}>
           <LiveHoldingsTable rows={rows} teamById={teamById} showTeam={fund} market={market} />

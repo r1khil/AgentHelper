@@ -20,7 +20,7 @@ export default async function ModelsPage({ params, searchParams }: { params: Pro
       <PageHeader title="Model historicals" description="Upload a model, map its line items to reported XBRL concepts once, and the agent proposes the other periods with a source for every number. You approve; formulas are never touched." />
       {error && <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error}</div>}
       {rows.length === 0 ? (
-        <EmptyState title="No holdings yet">Add holdings first; each one can carry a model.</EmptyState>
+        <EmptyState title="No holdings yet" hoot="wave">Add holdings first; each one can carry a model.</EmptyState>
       ) : (
         <div className="grid gap-3">
           {rows.map(({ holding, latest, versions }) => (
