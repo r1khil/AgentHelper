@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ingestNeeds, isIngestible, isTransientIngestError, pickIngestCandidates, type IngestRow } from "./ingest-plan";
+import { ingestNeeds, ingestRunSummary, isIngestible, isTransientIngestError, pickIngestCandidates, type IngestRow } from "./ingest-plan";
 import { SUMMARY_VERSION } from "@/lib/drive/summary";
 
 const t1 = new Date("2025-01-01T00:00:00Z");
@@ -129,5 +129,22 @@ describe("isTransientIngestError", () => {
     expect(isTransientIngestError("nvidia/x returned 1024-dimension vectors; the registry says 2048")).toBe(false);
     expect(isTransientIngestError("Embeddings endpoint returned 400: bad input")).toBe(false);
     expect(isTransientIngestError("EDGAR 404 for https://www.sec.gov/x")).toBe(false);
+  });
+});
+
+describe("ingestRunSummary", () => {
+  it("keeps the trigger under reason and the stop message under stopped", () => {
+    const out = ingestRunSummary({ status: "rate_limited", reason: "OpenRouter rate limit reached: free-models-per-min", embedded: 7, failed: [] }, { reason: "reembed", kinds: ["drive", "filing"] });
+    expect(out.reason).toBe("reembed");
+    expect(out.stopped).toBe("OpenRouter rate limit reached: free-models-per-min");
+    expect(out.embedded).toBe(7);
+    expect(out.kinds).toEqual(["drive", "filing"]);
+  });
+
+  it("omits stopped for a clean run and caps the failure list", () => {
+    const failed = Array.from({ length: 30 }, (_, i) => ({ id: String(i), step: "embed", error: "x" }));
+    const out = ingestRunSummary({ status: "ok", failed }, { reason: "admin", kinds: ["filing"] });
+    expect("stopped" in out).toBe(false);
+    expect(out.failed).toHaveLength(20);
   });
 });
