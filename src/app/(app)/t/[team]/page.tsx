@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { loadTeam } from "@/lib/teams";
+import { loadScope } from "@/lib/teams";
+import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { listTeamHoldings, listTeamMembers } from "@/lib/holdings";
 import { marketSnapshot, type MarketSnapshot } from "@/lib/market";
 import { fmtMoney, fmtPct } from "@/lib/format";
@@ -11,38 +12,42 @@ import { Move } from "@/components/app/move";
 import { AddHoldingDialog } from "@/components/app/add-holding-dialog";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { Team } from "@/db/schema";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export async function generateMetadata({ params }: { params: Promise<{ team: string }> }): Promise<Metadata> {
   const { team } = await params;
-  return { title: team };
+  return { title: team === FUND_SCOPE_SLUG ? "Fund holdings" : team };
 }
 
 export default async function TeamHoldingsPage({ params }: { params: Promise<{ team: string }> }) {
   const { team: slug } = await params;
-  const { team, user } = await loadTeam(slug);
-  const [rows, members] = await Promise.all([listTeamHoldings(team.id), listTeamMembers(team.id)]);
+  const scope = await loadScope(slug);
+  const { team, user, teamById } = scope;
+  const [rows, members] = await Promise.all([listTeamHoldings(scope.teamIds), team ? listTeamMembers(team.id) : []]);
   // Not awaited: the holdings render from the database at once and the quotes stream in when Yahoo answers.
   const market = marketSnapshot(rows.map((r) => r.h.ticker));
-  const isMember = user.teamId === team.id;
+  const isMember = user.teamId === team?.id;
+  const fund = scope.kind === "fund";
+  // Adding needs a team to own the holding, so the fund view leaves it to the sector pages.
 
   return (
     <>
       <PageHeader
-        title={team.name}
+        title={team?.name ?? "Fund holdings"}
         description={
           <Suspense fallback="Holdings">
             <MarketLine market={market} />
           </Suspense>
         }
-        actions={<AddHoldingDialog teamId={team.id} members={members} defaultOwnerId={isMember ? user.id : null} />}
+        actions={team ? <AddHoldingDialog teamId={team.id} members={members} defaultOwnerId={isMember ? user.id : null} /> : undefined}
       />
 
       {rows.length === 0 ? (
-        <EmptyState title="No holdings yet">Add the tickers this team covers. Each one gets live prices, filings, news, and movement alerts.</EmptyState>
+        <EmptyState title="No holdings yet">{fund ? "Pick a sector team in the sidebar to add its tickers." : "Add the tickers this team covers."} Each one gets live prices, filings, news, and movement alerts.</EmptyState>
       ) : (
-        <Suspense fallback={<HoldingsTable rows={rows} teamSlug={team.slug} />}>
-          <LiveHoldingsTable rows={rows} teamSlug={team.slug} market={market} />
+        <Suspense fallback={<HoldingsTable rows={rows} teamById={teamById} showTeam={fund} />}>
+          <LiveHoldingsTable rows={rows} teamById={teamById} showTeam={fund} market={market} />
         </Suspense>
       )}
     </>
@@ -57,12 +62,14 @@ async function MarketLine({ market }: { market: Promise<MarketSnapshot> }) {
 
 type HoldingRow = Awaited<ReturnType<typeof listTeamHoldings>>[number];
 
-async function LiveHoldingsTable({ rows, teamSlug, market }: { rows: HoldingRow[]; teamSlug: string; market: Promise<MarketSnapshot> }) {
-  return <HoldingsTable rows={rows} teamSlug={teamSlug} market={await market} />;
+type TableProps = { rows: HoldingRow[]; teamById: Map<string, Team>; showTeam: boolean };
+
+async function LiveHoldingsTable({ market, ...props }: TableProps & { market: Promise<MarketSnapshot> }) {
+  return <HoldingsTable {...props} market={await market} />;
 }
 
 /** Without `market` the price columns show placeholders; that is the Suspense fallback while quotes load. */
-function HoldingsTable({ rows, teamSlug, market }: { rows: HoldingRow[]; teamSlug: string; market?: MarketSnapshot }) {
+function HoldingsTable({ rows, teamById, showTeam, market }: TableProps & { market?: MarketSnapshot }) {
   return (
     <Card className="overflow-x-auto p-0">
       <Table>
@@ -70,6 +77,7 @@ function HoldingsTable({ rows, teamSlug, market }: { rows: HoldingRow[]; teamSlu
           <TableRow>
             <TableHead>Ticker</TableHead>
             <TableHead>Company</TableHead>
+            {showTeam && <TableHead>Team</TableHead>}
             <TableHead className="text-right">Shares</TableHead>
             <TableHead className="text-right">Weight</TableHead>
             <TableHead className="text-right">Price</TableHead>
@@ -81,14 +89,16 @@ function HoldingsTable({ rows, teamSlug, market }: { rows: HoldingRow[]; teamSlu
         <TableBody>
           {rows.map(({ h, ownerName }) => {
             const m = market?.rows[h.ticker];
+            const t = teamById.get(h.teamId);
             return (
               <TableRow key={h.id}>
                 <TableCell>
-                  <Link href={`/t/${teamSlug}/h/${h.ticker}`} className="font-semibold hover:underline">
+                  <Link href={`/t/${t?.slug}/h/${h.ticker}`} className="font-semibold hover:underline">
                     {h.ticker}
                   </Link>
                 </TableCell>
                 <TableCell className="max-w-64 truncate text-muted-foreground">{h.companyName}</TableCell>
+                {showTeam && <TableCell className="text-muted-foreground">{t?.name}</TableCell>}
                 <TableCell className="tnum text-right">{h.shares != null ? Number(h.shares).toLocaleString("en-US", { maximumFractionDigits: 2 }) : <span className="text-muted-foreground">—</span>}</TableCell>
                 <TableCell className="tnum text-right">{h.weightPct != null ? fmtPct(h.weightPct, 2, false) : <span className="text-muted-foreground">—</span>}</TableCell>
                 {market ? (

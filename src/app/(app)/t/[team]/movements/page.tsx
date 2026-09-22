@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { loadTeam } from "@/lib/teams";
+import { loadScope } from "@/lib/teams";
+import type { Team } from "@/db/schema";
 import { listTeamMovements } from "@/lib/movements";
 import { fmtDate, fmtDateTime } from "@/lib/format";
 import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
@@ -15,8 +16,9 @@ export const metadata: Metadata = { title: "Movements" };
 
 export default async function MovementsPage({ params }: { params: Promise<{ team: string }> }) {
   const { team: slug } = await params;
-  const { team } = await loadTeam(slug);
-  const rows = await listTeamMovements(team.id);
+  const scope = await loadScope(slug);
+  const rows = await listTeamMovements(scope.teamIds);
+  const showTeam = scope.kind === "fund";
   const open = rows.filter((r) => r.m.status !== "completed");
   const done = rows.filter((r) => r.m.status === "completed");
 
@@ -27,15 +29,15 @@ export default async function MovementsPage({ params }: { params: Promise<{ team
         <EmptyState title="No movements yet">The close check runs every trading day. Qualifying moves appear here with evidence attached and an owner assigned.</EmptyState>
       ) : (
         <>
-          <MovementTable title="Open" rows={open} slug={team.slug} />
-          {done.length > 0 && <MovementTable title="Completed" rows={done} slug={team.slug} />}
+          <MovementTable title="Open" rows={open} teamById={scope.teamById} showTeam={showTeam} />
+          {done.length > 0 && <MovementTable title="Completed" rows={done} teamById={scope.teamById} showTeam={showTeam} />}
         </>
       )}
     </>
   );
 }
 
-function MovementTable({ title, rows, slug }: { title: string; rows: Awaited<ReturnType<typeof listTeamMovements>>; slug: string }) {
+function MovementTable({ title, rows, teamById, showTeam }: { title: string; rows: Awaited<ReturnType<typeof listTeamMovements>>; teamById: Map<string, Team>; showTeam: boolean }) {
   return (
     <div className="mb-6">
       <h2 className="mb-2 text-sm font-semibold">{title} <span className="text-muted-foreground">{rows.length}</span></h2>
@@ -48,6 +50,7 @@ function MovementTable({ title, rows, slug }: { title: string; rows: Awaited<Ret
               <TableRow>
                 <TableHead>Session</TableHead>
                 <TableHead>Ticker</TableHead>
+                {showTeam && <TableHead>Team</TableHead>}
                 <TableHead className="text-right">Holding</TableHead>
                 <TableHead className="text-right">S&amp;P</TableHead>
                 <TableHead className="text-right">Relative</TableHead>
@@ -61,10 +64,11 @@ function MovementTable({ title, rows, slug }: { title: string; rows: Awaited<Ret
                 <TableRow key={m.id}>
                   <TableCell className="tnum">{fmtDate(m.sessionDate)}</TableCell>
                   <TableCell>
-                    <Link href={`/t/${slug}/movements/${m.id}`} className="font-semibold hover:underline">
+                    <Link href={`/t/${teamById.get(h.teamId)?.slug}/movements/${m.id}`} className="font-semibold hover:underline">
                       {h.ticker}
                     </Link>
                   </TableCell>
+                  {showTeam && <TableCell className="text-muted-foreground">{teamById.get(h.teamId)?.name}</TableCell>}
                   {m.dataQuality ? (
                     <TableCell colSpan={3} className="text-warning-foreground">Data quality: {m.dataQuality}</TableCell>
                   ) : (

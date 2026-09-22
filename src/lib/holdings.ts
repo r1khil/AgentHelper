@@ -2,9 +2,10 @@ import "server-only";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { holdingNotes, holdingProposals, holdings, profiles } from "@/db/schema";
+import { inTeams, type TeamIds } from "@/lib/team-filter";
 
-export async function listTeamHoldings(teamId: string, status: "active" | "exited" | "all" = "active") {
-  const where = status === "all" ? eq(holdings.teamId, teamId) : and(eq(holdings.teamId, teamId), eq(holdings.status, status));
+export async function listTeamHoldings(teamId: TeamIds, status: "active" | "exited" | "all" = "active") {
+  const where = status === "all" ? inTeams(holdings.teamId, teamId) : and(inTeams(holdings.teamId, teamId), eq(holdings.status, status));
   return db
     .select({ h: holdings, ownerName: profiles.fullName })
     .from(holdings)

@@ -21,11 +21,15 @@ import { canManageTeam, isFundWide, transparencyEnabled } from "@/lib/auth";
 import { BPS_NOTE } from "@/components/app/attribution/format";
 import { fmtDate } from "@/lib/format";
 import { loadTeam } from "@/lib/teams";
+import { FUND_SCOPE_SLUG } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Attribution" };
 
 export default async function TeamAttributionPage({ params, searchParams }: PageProps<"/t/[team]/attribution">) {
-  const { team, user } = await loadTeam((await params).team);
+  const slug = (await params).team;
+  // The fund-wide view of attribution already has its own page.
+  if (slug === FUND_SCOPE_SLUG) redirect("/attribution");
+  const { team, user } = await loadTeam(slug);
   // Position sizes and P&L are for leads and fund-wide roles.
   if (!canManageTeam(user, team.id)) redirect(`/t/${team.slug}`);
 

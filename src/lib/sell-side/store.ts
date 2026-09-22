@@ -3,6 +3,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { sellSideCalls, sellSideParts } from "@/db/schema";
 import { transcriptSource } from "./types";
+import { inTeams, type TeamIds } from "@/lib/team-filter";
 
 export async function getCall(id: string) {
   const [call] = await db.select().from(sellSideCalls).where(eq(sellSideCalls.id, id)).limit(1);
@@ -11,8 +12,8 @@ export async function getCall(id: string) {
 export async function callParts(id: string) {
   return db.select().from(sellSideParts).where(eq(sellSideParts.callId, id)).orderBy(asc(sellSideParts.seq));
 }
-export async function listCalls(teamId: string) {
-  return db.select().from(sellSideCalls).where(eq(sellSideCalls.teamId, teamId)).orderBy(desc(sellSideCalls.createdAt)).limit(100);
+export async function listCalls(teamId: TeamIds) {
+  return db.select().from(sellSideCalls).where(inTeams(sellSideCalls.teamId, teamId)).orderBy(desc(sellSideCalls.createdAt)).limit(100);
 }
 export async function readTranscript(teamId: string, callId: string, offset = 0, limit = 3) {
   const call = await getCall(callId);

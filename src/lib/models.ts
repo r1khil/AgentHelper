@@ -2,9 +2,10 @@ import "server-only";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { holdings, modelMappings, modelProposals, models, profiles } from "@/db/schema";
+import { inTeams, type TeamIds } from "@/lib/team-filter";
 
-export async function listTeamModels(teamId: string) {
-  const hs = await db.select().from(holdings).where(and(eq(holdings.teamId, teamId), eq(holdings.status, "active"))).orderBy(asc(holdings.ticker));
+export async function listTeamModels(teamId: TeamIds) {
+  const hs = await db.select().from(holdings).where(and(inTeams(holdings.teamId, teamId), eq(holdings.status, "active"))).orderBy(asc(holdings.ticker));
   if (!hs.length) return [];
   const ms = await db
     .select({ m: models, uploader: profiles.fullName })

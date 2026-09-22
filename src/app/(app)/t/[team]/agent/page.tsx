@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { loadTeam } from "@/lib/teams";
+import { loadScope } from "@/lib/teams";
 import { listHoldingChatStats } from "@/lib/chats";
 import { listTeamHoldings } from "@/lib/holdings";
 import { listTeamMovements } from "@/lib/movements";
@@ -13,8 +13,9 @@ export const metadata: Metadata = { title: "Agent" };
 
 export default async function AgentIndex({ params }: { params: Promise<{ team: string }> }) {
   const { team: slug } = await params;
-  const { team } = await loadTeam(slug);
-  const [rows, stats, movements, earnings] = await Promise.all([listTeamHoldings(team.id), listHoldingChatStats(team.id), listTeamMovements(team.id), listTeamEarnings(team.id)]);
+  const scope = await loadScope(slug);
+  const { teamIds, teamById } = scope;
+  const [rows, stats, movements, earnings] = await Promise.all([listTeamHoldings(teamIds), listHoldingChatStats(teamIds), listTeamMovements(teamIds), listTeamEarnings(teamIds)]);
   // Not awaited: the cards render from the database at once and the quotes stream in when Yahoo answers.
   const market: Promise<MarketByTicker> = marketSnapshot(rows.map((r) => r.h.ticker)).then((m) =>
     Object.fromEntries(Object.entries(m.rows).map(([t, r]) => [t, { changePct: r.quote?.changePct, relativePp: r.relativePp }])),
@@ -38,7 +39,7 @@ export default async function AgentIndex({ params }: { params: Promise<{ team: s
       id: h.id,
       ticker: h.ticker,
       name: h.companyName,
-      href: `/t/${team.slug}/agent/h/${h.ticker}`,
+      href: `/t/${teamById.get(h.teamId)?.slug}/agent/h/${h.ticker}`,
       chats: s?.chats ?? 0,
       sources: s?.sources ?? 0,
       lastActivity: s?.lastActivity.toISOString() ?? null,
@@ -54,7 +55,7 @@ export default async function AgentIndex({ params }: { params: Promise<{ team: s
       {rows.length === 0 ? (
         <>
           <h1 className="mb-5 text-xl font-semibold tracking-tight">Research agent</h1>
-          <EmptyState title="No holdings yet">Add the tickers this team covers on the Holdings page. Each one gets its own research board here.</EmptyState>
+          <EmptyState title="No holdings yet">Add the tickers {scope.kind === "fund" ? "each team covers on its" : "this team covers on the"} Holdings page. Each one gets its own research board here.</EmptyState>
         </>
       ) : (
         <HoldingCards holdings={holdings} market={market} />
