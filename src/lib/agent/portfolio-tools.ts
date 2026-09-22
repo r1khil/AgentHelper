@@ -15,7 +15,6 @@ import { qualityNotices } from "@/lib/attribution/view";
 import { BENCHMARKS, type Metrics } from "@/lib/backtesting/engine";
 import { loadSnapshot, runBacktest } from "@/lib/backtesting/load";
 import { weightsFromOverrides } from "@/lib/backtesting/overrides";
-import { presetStart } from "@/lib/backtesting/scenario";
 import { NY } from "@/lib/providers/calendar";
 import { sourceId, type Source } from "@/lib/providers/types";
 import type { ToolResult } from "./tools";
@@ -126,7 +125,8 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
         try {
           const yesterday = DateTime.now().setZone(NY).minus({ days: 1 }).toISODate()!;
           const end = to && to < yesterday ? to : yesterday;
-          const start = from ?? presetStart("3M", end);
+          // Same default window as the Backtesting page: three months back from the end date.
+          const start = from ?? DateTime.fromISO(end, { zone: NY }).minus({ months: 3 }).toISODate()!;
           const snapshot = await loadSnapshot(viewer);
           const weights = weightsFromOverrides(snapshot.positions, overrides ?? {});
           const r = await runBacktest(snapshot, weights, benchmark, start, end);
