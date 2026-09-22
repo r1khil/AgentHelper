@@ -10,6 +10,11 @@ export async function proxy(request: NextRequest) {
       ["/dev/economic-calendar", "/api/dev/economic-calendar"].includes(request.nextUrl.pathname)) {
     return NextResponse.next({ request });
   }
+  // Only synthetic QA endpoints, behind an explicit development flag; live backtesting stays authenticated.
+  if (process.env.NODE_ENV === "development" && process.env.BACKTESTING_PREVIEW === "1" &&
+      ["/dev/backtesting", "/api/dev/backtesting"].includes(request.nextUrl.pathname)) {
+    return NextResponse.next({ request });
+  }
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

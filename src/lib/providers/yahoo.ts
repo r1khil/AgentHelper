@@ -151,6 +151,22 @@ export async function getBarsRange(symbol: string, from: string, to?: string): P
   );
 }
 
+/** Dividend- and split-adjusted daily closes for total-return backtesting. Never fall back to raw close. */
+export async function getAdjustedBarsRange(symbol: string, from: string, to: string): Promise<{ date: string; close: number }[]> {
+  return cached(`yahoo:backtest-adjusted:v1:${symbol}:${from}:${to}`, 60 * 15, async () => {
+    const res = await spaced(HOST, GAP_MS, () => retry(() => yf().chart(symbol, {
+      period1: DateTime.fromISO(from, { zone: NY }).startOf("day").toJSDate(),
+      period2: DateTime.fromISO(to, { zone: NY }).plus({ days: 1 }).startOf("day").toJSDate(),
+      interval: "1d",
+    })));
+    if (res.meta.currency !== "USD") throw new Error("Backtesting requires USD-denominated history.");
+    return (res.quotes ?? []).map(q => {
+      if (q.adjclose == null || !Number.isFinite(q.adjclose) || q.adjclose <= 0) throw new Error(`Missing adjusted close for ${symbol}`);
+      return { date: DateTime.fromJSDate(q.date).setZone(NY).toISODate()!, close: q.adjclose };
+    });
+  });
+}
+
 export type SectorProfile = { sector: string | null; industry: string | null };
 
 /** Yahoo's sector and industry labels for a company; both null for ETFs and funds. */
