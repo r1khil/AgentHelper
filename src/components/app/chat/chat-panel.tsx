@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { UIMessage } from "ai";
 import { FetchRows, latestLabel, StepDivider, TraceHeader, type TraceView } from "./trace-panel";
-import { ArrowUp, ChevronRight, Loader2, Wrench } from "lucide-react";
+import Link from "next/link";
+import { ArrowUp, ChevronRight, Eye, Loader2, Wrench } from "lucide-react";
 import { Citation, ResearchAnswer, ResearchSources } from "./research-answer";
 import { useResearchChat } from "./use-research-chat";
 import { clearHootQuestion, peekHootQuestion } from "@/components/app/hoot/handoff";
@@ -11,6 +12,7 @@ import { HootSprite } from "@/components/app/hoot/hoot-sprite";
 import { HootHero } from "@/components/app/hoot/hoot-hero";
 import { cn } from "@/lib/utils";
 import { collectSources } from "@/lib/agent/citations";
+import { pageContextLabel, parsePageContext } from "@/lib/agent/page-context";
 import { isToolPart, splitAssistantParts, summarizeActivity, toolDone, toolFailed, toolName, type Part, type ToolPart } from "@/lib/agent/turn";
 import type { RunStatus } from "@/lib/chats";
 import { Button } from "@/components/ui/button";
@@ -54,10 +56,10 @@ export function ChatPanel({
   // A question asked through Hoot: send it once the chat is ready. Deferred a tick, like the research board,
   // because the SDK's sendMessage returns silently if React's development double-invoke stops it mid-flight.
   useEffect(() => {
-    const text = peekHootQuestion(chatId);
-    if (!text) return;
+    const asked = peekHootQuestion(chatId);
+    if (!asked) return;
     const t = setTimeout(() => {
-      if (send(text)) clearHootQuestion(chatId);
+      if (send(asked.text, asked.page)) clearHootQuestion(chatId);
     }, 0);
     return () => clearTimeout(t);
   }, [chatId, send]);
@@ -176,14 +178,20 @@ export function ChatPanel({
 
 function Message({ message, live, trace, now }: { message: UIMessage; live: boolean; trace: TraceView | null; now: number }) {
   const isUser = message.role === "user";
-  const meta = (message.metadata ?? {}) as { uncited?: number };
+  const meta = (message.metadata ?? {}) as { uncited?: number; page?: unknown };
 
   if (isUser) {
+    const page = parsePageContext(meta.page);
     return (
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-1">
         <div className="max-w-[85%] space-y-2 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground">
           {message.parts.map((p, i) => (p.type === "text" ? <p key={i} className="whitespace-pre-wrap">{p.text}</p> : null))}
         </div>
+        {page && page.kind !== "page" && (
+          <Link href={page.path} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground">
+            <Eye className="size-3" aria-hidden /> Asked from {pageContextLabel(page)}
+          </Link>
+        )}
       </div>
     );
   }
@@ -225,6 +233,8 @@ const TOOL_LABELS: Record<string, string> = {
   read_url: "Web page",
   search_web: "Web search",
   read_document: "Document",
+  get_attribution: "Attribution",
+  run_backtest: "Backtest",
 };
 
 const TOOL_PROGRESS: Record<string, string> = {
@@ -246,6 +256,8 @@ const TOOL_PROGRESS: Record<string, string> = {
   read_url: "Reading a web page",
   search_web: "Searching the web",
   read_document: "Reading a document",
+  get_attribution: "Reading the Fund's attribution",
+  run_backtest: "Running a backtest",
 };
 
 /**

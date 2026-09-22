@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { Activity, ArrowUp, CalendarDays, CalendarRange, EyeOff, FileText, Mic, Sparkles, X } from "lucide-react";
+import { Activity, ArrowUp, CalendarDays, CalendarRange, Eye, EyeOff, FileText, Mic, Sparkles, X } from "lucide-react";
 import type { HootNudge, NudgeKind } from "@/lib/hoot/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +25,7 @@ export function HootPanel({
   greeting,
   suggestions,
   scopeHint,
+  seeing,
   nudges,
   loading,
   asking,
@@ -39,6 +40,8 @@ export function HootPanel({
   suggestions: string[];
   /** Where the question will go, e.g. "NVDA's research board". */
   scopeHint: string;
+  /** What on this page goes along with the question, e.g. "Fund attribution · 1D". */
+  seeing?: string | null;
   nudges: HootNudge[];
   loading: boolean;
   asking: boolean;
@@ -100,7 +103,15 @@ export function HootPanel({
               <ArrowUp className="size-4" />
             </Button>
           </div>
-          <div className="mt-1.5 text-[11px] text-muted-foreground">{asking ? "Opening a chat…" : `Opens a new chat on ${scopeHint}.`}</div>
+          <div className="mt-1.5 text-[11px] text-muted-foreground">
+            {asking ? "Opening a chat…" : seeing ? `Opens a new chat on ${scopeHint}, with this page attached.` : `Opens a new chat on ${scopeHint}.`}
+          </div>
+          {seeing && !asking && (
+            <div className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">
+              <Eye className="size-3 shrink-0" aria-hidden />
+              <span className="truncate">Hoot can see: {seeing}</span>
+            </div>
+          )}
           {askError && <div className="mt-1.5 text-xs text-destructive">{askError}</div>}
           <div className="mt-2.5 flex flex-col gap-1.5">
             {suggestions.map((s) => (

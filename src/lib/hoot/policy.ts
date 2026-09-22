@@ -107,6 +107,20 @@ export function suggestionsFor(pathname: string, ticker: string | null): string[
       "Which recent reports from our holdings surprised versus consensus?",
     ];
   }
+  if (/\/attribution$/.test(pathname)) {
+    return [
+      "What drove this period's performance versus the S&P 500?",
+      "Which holdings and sectors hurt most, and was it allocation or selection?",
+      "Explain allocation, selection and interaction using these numbers.",
+    ];
+  }
+  if (/^\/backtesting$/.test(pathname)) {
+    return [
+      "What did my scenario change, and which holdings drove the difference?",
+      "How did the saved weights do against SPY over the last year?",
+      "What would doubling our largest position have done over the last six months?",
+    ];
+  }
   if (/\/movements/.test(pathname)) {
     return [
       "Which of our holdings moved most versus the S&P 500 this week, and what news is in the window?",

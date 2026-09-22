@@ -13,6 +13,8 @@ import {
   type Snapshot,
 } from "@/lib/backtesting/engine";
 import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
+import { usePageContext } from "@/components/app/hoot/page-context";
 
 const pct = (v: number | null) =>
   v === null ? "—" : `${(v * 100).toFixed(2)}%`;
@@ -71,6 +73,28 @@ export function BacktestingWorkspace({
       completed.to !== to ||
       completed.benchmark !== benchmark ||
       JSON.stringify(completed.weights) !== JSON.stringify(weights));
+  // Hoot attaches the scenario on screen to a question asked from this page.
+  const pathname = usePathname();
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  usePageContext(
+    /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to)
+      ? {
+          kind: "backtesting",
+          path: pathname,
+          title: "Backtesting",
+          from,
+          to,
+          benchmark,
+          changed: snapshot.positions
+            .filter((p) => {
+              const w = Number(weights[p.id]);
+              return weights[p.id]?.trim() !== "" && Number.isFinite(w) && w >= 0 && w <= 100 && Math.abs(w - p.weight * 100) > 1e-6;
+            })
+            .map((p) => ({ ticker: p.ticker, savedPct: round2(p.weight * 100), scenarioPct: round2(Number(weights[p.id])) })),
+          ran: Boolean(completed && !dirty),
+        }
+      : null,
+  );
   async function run(event: FormEvent) {
     event.preventDefault();
     if (!valid || inFlight.current) return;

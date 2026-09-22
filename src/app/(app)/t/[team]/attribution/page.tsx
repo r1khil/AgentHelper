@@ -12,6 +12,7 @@ import { EffectsWaterfall } from "@/components/app/attribution/effects-waterfall
 import { EXPLAIN } from "@/components/app/attribution/explainers";
 import { Explained } from "@/components/app/attribution/info-tip";
 import { PeriodSelector } from "@/components/app/attribution/period-selector";
+import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { SectorEffectsList } from "@/components/app/attribution/sector-effects-list";
 import { SectorTable } from "@/components/app/attribution/sector-table";
 import { computeTeamAttribution } from "@/lib/attribution/attribution";
@@ -69,6 +70,7 @@ export default async function TeamAttributionPage({ params, searchParams }: Page
         description={`${team.name} vs ${sectors.length ? sectors.map((s) => SECTOR_LABELS[s]).join(", ") : "—"} (${benchmarkName}) · ${PERIOD_LABELS[period.key]} · ${fmtDate(period.start)} close through ${fmtDate(period.end)} · ${result.days} trading ${result.days === 1 ? "day" : "days"}`}
         actions={<DataNoticesButton notices={notices} />}
       />
+      <PageContextPublisher value={{ kind: "attribution", path: base, title: `${team.name} attribution`, scope: "team", team: team.slug, period: period.key, from, to, start: period.start, end: period.end }} />
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <PeriodSelector basePath={base} active={period.key} from={from} to={to} inception={loaded.inception} latest={loaded.latest} />
         <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground">

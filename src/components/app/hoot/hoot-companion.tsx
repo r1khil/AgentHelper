@@ -11,6 +11,8 @@ import { BUBBLE_VISIBLE_MS, companionHiddenOn, greeting, pickBubble, restingMood
 import type { HootFeed, HootMood, HootNudge } from "@/lib/hoot/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { leaveHootQuestion } from "./handoff";
+import { pageContextFor } from "./page-context";
+import { pageContextLabel } from "@/lib/agent/page-context";
 import { HootPanel } from "./hoot-panel";
 import { HootSprite, preloadHoot } from "./hoot-sprite";
 
@@ -220,12 +222,14 @@ export function HootCompanion({ firstName }: { firstName: string }) {
     setAsking(true);
     setAskError(null);
     try {
+      // Read at the moment of asking, so it reflects the period or scenario on screen right now.
+      const page = pageContextFor(pathname);
       const res = await startHootChat({ teamSlug, ticker });
       if ("error" in res) {
         setAskError(res.error);
         return;
       }
-      if (!leaveHootQuestion(res.chatId, text)) {
+      if (!leaveHootQuestion(res.chatId, text, page)) {
         // Storage blocked: open the chat and let the member paste it.
         toast("Your chat is open. Paste your question to send it.");
       }
@@ -257,6 +261,9 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   if (hidden) return null;
 
   const urgent = nudges.filter((n) => n.priority <= 2).length;
+  // Pages that describe themselves (attribution, backtesting) are attached to the question; say so in the panel.
+  const onScreen = open ? pageContextFor(pathname) : null;
+  const seeing = onScreen && onScreen.kind !== "page" ? pageContextLabel(onScreen) : null;
   const label = urgent ? `Hoot: ${urgent} ${urgent === 1 ? "thing needs" : "things need"} you` : "Hoot: ask the research agent";
 
   return (
@@ -343,6 +350,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
             greeting={greeting(new Date(), firstName)}
             suggestions={suggestionsFor(pathname, ticker)}
             scopeHint={ticker ? `${ticker}'s research board` : "your team's agent"}
+            seeing={seeing}
             nudges={nudges}
             loading={!feed}
             asking={asking}

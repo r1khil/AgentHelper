@@ -8,6 +8,8 @@ import { compactHistory, isToolPart, toolDone } from "@/lib/agent/turn";
 import { traceUsage } from "@/lib/agent/trace";
 import { createTraceSink } from "@/lib/trace/context";
 import type { AgentMetadata, AgentUIMessage } from "@/lib/trace/events";
+import { pageContextFromMessages } from "@/lib/agent/page-context";
+import type { CurrentUser } from "@/lib/auth";
 
 export { MAX_STEPS };
 
@@ -28,6 +30,8 @@ export type TurnResult = { messages: UIMessage[]; response: UIMessage };
 export async function runAgentTurn(opts: {
   chat: { id: string; teamId: string; holdingId: string | null };
   user: { id: string; fullName: string; role: string };
+  /** The signed-in member, for tools that apply page access rules (attribution, backtests). */
+  viewer?: CurrentUser | null;
   messages: UIMessage[];
   trace?: boolean;
   /** Runs after the turn is saved and the chat is idle again (memory distillation and the like). */
@@ -35,7 +39,16 @@ export async function runAgentTurn(opts: {
 }) {
   const { chat, user, messages } = opts;
   const sink = opts.trace ? createTraceSink() : null;
-  const def = await buildAgentDefinition({ teamId: chat.teamId, holdingId: chat.holdingId, user, sources: [...collectSources(messages).values()], sink, purpose: "chat" });
+  const def = await buildAgentDefinition({
+    teamId: chat.teamId,
+    holdingId: chat.holdingId,
+    user,
+    viewer: opts.viewer,
+    page: pageContextFromMessages(messages),
+    sources: [...collectSources(messages).values()],
+    sink,
+    purpose: "chat",
+  });
   const t0 = Date.now();
   sink?.emit({ t: "run.start", chatId: chat.id, modelId: def.modelId, maxSteps: MAX_STEPS });
 

@@ -16,6 +16,7 @@ import { BPS_NOTE, fmtBps, fmtBpsShort, fmtSigned } from "@/components/app/attri
 import { HoldingsColumn } from "@/components/app/attribution/holdings-columns";
 import { Explained } from "@/components/app/attribution/info-tip";
 import { PeriodSelector } from "@/components/app/attribution/period-selector";
+import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { SectorEffectsList } from "@/components/app/attribution/sector-effects-list";
 import { SectorTable } from "@/components/app/attribution/sector-table";
 import { TeamTable } from "@/components/app/attribution/team-table";
@@ -106,6 +107,7 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
         description={`${PERIOD_LABELS[period.key]} · ${fmtDate(period.start)} close through ${fmtDate(period.end)} · ${result.days} trading ${result.days === 1 ? "day" : "days"}`}
         actions={<><DataNoticesButton notices={notices} />{ledgerButton}</>}
       />
+      <PageContextPublisher value={{ kind: "attribution", path: "/attribution", title: "Fund attribution", scope: "fund", period: period.key, from, to, start: period.start, end: period.end }} />
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <PeriodSelector basePath="/attribution" active={period.key} from={from} to={to} inception={loaded.inception} latest={loaded.latest} />
         <Legend asOf={loaded.latest} />

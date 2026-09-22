@@ -186,7 +186,8 @@ export async function searchIndex(p: { ticker?: string; query?: string; kind?: D
     .from(driveFiles)
     .leftJoin(documents, docJoin)
     .where(and(...conds))
-    .orderBy(sql`${driveFiles.modifiedTime} desc nulls last`)
+    // Newest first by the date the document states (cover page, "as of"), else when it was last modified.
+    .orderBy(sql`coalesce(${documents.docDate}::timestamptz, ${driveFiles.modifiedTime}) desc nulls last`)
     .limit(p.limit ?? 10);
 }
 
