@@ -20,6 +20,14 @@ The old part-note request used `generateText`, a 700-token output cap and `resul
 
 The fix uses `Output.object` with Zod validation, the existing `OPENROUTER_SUMMARY_MODEL` selection (falling back to the configured agent model), low reasoning effort and 8,000 output tokens. Incomplete or invalid output gets one retry with 12,000 tokens. Providers that explicitly reject JSON schema get a JSON-text fallback with the same schema validation. Authentication/configuration failures are not converted into successful summaries. Reasoning text is never used as the answer.
 
+### Free-tier provider fit
+
+Production runs with free OpenRouter models. In September 2026 the Ling 3.0 Flash Fin endpoint was routed to a provider that rejects JSON-schema output (HTTP 400), and its plain-JSON fallback answers missed fields such as `followUp`, so every brief failed strict validation. Nemotron 3 Ultra honored the schema but exceeded the 100-second per-attempt budget from Vercel. Three changes make the brief robust to this class of provider:
+
+- **Repair before reject.** `repairAnalysis` normalizes near-miss output: it strips `[src:…]` wrappers, drops unknown source ids and any item without transcript evidence, fills missing follow-up/evidence/coverage text, downgrades Supports/Contradicts rows that cite no internal file to Not retrieved, and adds a Not retrieved placeholder when no cross-check came back. Only the overview and cross-check rows may fall back to the call's own transcript sources; nothing else is invented. The result still passes `callAnalysisSchema` and `validateAnalysis`. Repair runs on the JSON-text fallback and on structured output the SDK rejected; markdown-only answers still fail.
+- **Longer attempts.** Each model attempt gets 120 seconds; two attempts plus retrieval stay inside the route's 300-second limit.
+- **Smaller prompt.** Document reads are capped at 6,000 characters, and saved evidence from older calls is trimmed to the same size in the prompt copy only, so stored messages are unchanged.
+
 Server diagnostics record only stage, error class, HTTP status, finish reason and token counts. Provider bodies, transcript contents, API keys and raw exception messages are not logged or returned by the analysis error path. The UI offers **Retry analysis** or **Retry transcription** according to the failed stage. A final-analysis retry skips audio upload, transcription and completed part notes. A fast-completion race is also fixed: reaching `ready` refreshes the server-rendered brief even if analysis finished before polling started.
 
 ## Deployment
