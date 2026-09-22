@@ -15,6 +15,6 @@ describe("attribution range availability", () => {
   it("offers all presets with enough history", () => {
     expect(
       availablePeriods({ inception: "2025-01-02", latest: "2026-09-18" }),
-    ).toEqual(["1d", "7d", "mtd", "qtd", "ytd", "1y", "itd"]);
+    ).toEqual(["1d", "7d", "1m", "6m", "ytd", "1y", "itd"]);
   });
 });

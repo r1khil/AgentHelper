@@ -331,9 +331,9 @@ describe("computeAttribution", () => {
 
 describe("resolvePeriod", () => {
   const base = { inception: "2025-06-02", latest: "2026-09-16" };
-  it("measures MTD, QTD and YTD from the prior period's last trading day", () => {
-    expect(resolvePeriod("mtd", base)).toMatchObject({ start: "2026-08-31", end: "2026-09-16", clamped: false });
-    expect(resolvePeriod("qtd", base).start).toBe("2026-06-30");
+  it("measures 1M, 6M and YTD from the prior period's last trading day", () => {
+    expect(resolvePeriod("1m", base)).toMatchObject({ start: "2026-08-14", end: "2026-09-16", clamped: false });
+    expect(resolvePeriod("6m", base).start).toBe("2026-03-16");
     expect(resolvePeriod("ytd", base).start).toBe("2025-12-31");
   });
   it("1Y lands on a trading day", () => {
