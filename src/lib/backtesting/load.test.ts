@@ -2,9 +2,6 @@ import { beforeEach, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/providers/yahoo", () => ({ getAdjustedBarsRange: vi.fn() }));
 vi.mock("@/db/client", () => ({ db: { select: vi.fn() } }));
-vi.mock("@/lib/auth", () => ({
-  isFundWide: (u: { role: string }) => ["admin", "exec"].includes(u.role),
-}));
 import { runBacktest } from "./load";
 import { getAdjustedBarsRange } from "@/lib/providers/yahoo";
 import type { Snapshot } from "./engine";
