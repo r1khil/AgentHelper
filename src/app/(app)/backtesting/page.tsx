@@ -6,6 +6,7 @@ import { BacktestingWorkspace } from "@/components/app/backtesting/workspace";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { NY } from "@/lib/providers/calendar";
+import { presetStart } from "@/lib/backtesting/scenario";
 export const metadata: Metadata = { title: "Backtesting" };
 export default async function BacktestingPage() {
   const user = await requireOnboardedUser();
@@ -27,12 +28,12 @@ export default async function BacktestingPage() {
       </>
     );
   }
-  const end = DateTime.now().setZone(NY).minus({ days: 1 });
+  const end = DateTime.now().setZone(NY).minus({ days: 1 }).toISODate()!;
   return (
     <BacktestingWorkspace
       snapshot={snapshot}
-      defaultFrom={end.minus({ months: 3 }).toISODate()!}
-      defaultTo={end.toISODate()!}
+      defaultFrom={presetStart("3M", end)}
+      defaultTo={end}
     />
   );
 }
