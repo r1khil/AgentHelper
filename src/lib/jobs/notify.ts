@@ -23,15 +23,45 @@ export async function queueNotification(n: {
   return rows.length > 0;
 }
 
-export function emailConfigured() {
-  return Boolean(process.env.RESEND_API_KEY);
+/** The fund has no domain verified in Resend, so outgoing mail goes through a Gmail account when one is set. */
+function gmailConfigured() {
+  return Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
 }
 
+export function emailConfigured() {
+  return gmailConfigured() || Boolean(process.env.RESEND_API_KEY);
+}
+
+type OutgoingEmail = { to: string; subject: string; text: string; replyTo?: string; headers?: Record<string, string> };
+
 /**
- * Send one plain-text email through Resend and return its id. `replyTo` is what makes the weekly
- * process-update ask answerable by reply; nothing else in the app sets it.
+ * Send one plain-text email and return the provider's id: Gmail SMTP when GMAIL_USER and
+ * GMAIL_APP_PASSWORD are set, Resend otherwise. `replyTo` is what makes the weekly process-update
+ * ask answerable by reply; nothing else in the app sets it.
  */
-export async function sendEmail(msg: { to: string; subject: string; text: string; replyTo?: string; headers?: Record<string, string> }): Promise<string> {
+export async function sendEmail(msg: OutgoingEmail): Promise<string> {
+  return gmailConfigured() ? sendWithGmail(msg) : sendWithResend(msg);
+}
+
+async function sendWithGmail(msg: OutgoingEmail): Promise<string> {
+  const nodemailer = await import("nodemailer");
+  const transport = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+  });
+  // Gmail always sends from the signed-in address, so only the display name is ours to choose.
+  const info = await transport.sendMail({
+    from: { name: process.env.GMAIL_FROM_NAME || "The Owl's Nest", address: process.env.GMAIL_USER! },
+    to: msg.to,
+    subject: msg.subject,
+    text: msg.text,
+    ...(msg.replyTo ? { replyTo: msg.replyTo } : {}),
+    ...(msg.headers ? { headers: msg.headers } : {}),
+  });
+  return info.messageId ?? "";
+}
+
+async function sendWithResend(msg: OutgoingEmail): Promise<string> {
   const { Resend } = await import("resend");
   const resend = new Resend(process.env.RESEND_API_KEY);
   const from = process.env.EMAIL_FROM || "The Owl's Nest <onboarding@resend.dev>";
