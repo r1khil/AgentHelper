@@ -59,7 +59,7 @@ Setup (one time, by the admin whose account owns the folder):
 
 ## Scheduled jobs
 
-`vercel.json` runs the close check at 23:00 UTC on weekdays, the price history job at 23:30 UTC, and the morning sweep (pending evidence, reminders, overdue notices, earnings calendar, email retries, Drive channel renewal, crawl, and file reading) at 14:00 UTC. Both endpoints accept `Authorization: Bearer $CRON_SECRET` and can be run from the Admin page, with a date for backfills:
+`vercel.json` runs the close check at 23:00 UTC on weekdays, the price history job at 23:30 UTC, the morning sweep (pending evidence, reminders, overdue notices, earnings calendar, email retries, Drive channel renewal, crawl, and file reading) at 14:00 UTC, and the weekly update pack at 13:00 UTC on Sundays (see `docs/weekly-update.md`). Both endpoints accept `Authorization: Bearer $CRON_SECRET` and can be run from the Admin page, with a date for backfills:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/close?date=2026-08-28"

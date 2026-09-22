@@ -4,12 +4,13 @@ import { db } from "@/db/client";
 import { invitations, profiles, teams } from "@/db/schema";
 import { requireRole, transparencyEnabled } from "@/lib/auth";
 import { ROLES, ROLE_LABELS } from "@/lib/constants";
-import { createTestAccount, inviteMember, removeMember, revokeInvitation, setAgentModel, setEmbeddingModel, setRerankModel, updateMember } from "@/lib/actions/admin";
-import { backfillFilingsNow, reembedNow, runBellwethersNow, runCloseNow, runEarningsPrepNow, runMorningNow, runPricesNow, syncFilingsNow } from "@/lib/actions/jobs";
+import { createTestAccount, inviteMember, removeMember, revokeInvitation, setAgentModel, setEmbeddingModel, setRerankModel, setWeeklyRecipients, updateMember } from "@/lib/actions/admin";
+import { backfillFilingsNow, reembedNow, runBellwethersNow, runCloseNow, runEarningsPrepNow, runMorningNow, runPricesNow, runWeeklyNow, syncFilingsNow } from "@/lib/actions/jobs";
 import { EMBEDDING_MODELS, RERANK_MODELS, embeddingDims, embeddingModelId, rerankModelId } from "@/lib/agent/retrieval-models";
 import { embeddingConfigured } from "@/lib/agent/embeddings";
 import { embeddingStats } from "@/lib/documents/index";
 import { getSetting } from "@/lib/settings";
+import { WEEKLY_RECIPIENTS_SETTING, inboundConfigured } from "@/lib/weekly/ask";
 import { FILINGS_LAST_SYNC_SETTING } from "@/lib/jobs/filings";
 import { tavilyConfigured } from "@/lib/web/tavily";
 import { disconnectDrive, ingestDriveNow, renewDriveWatchNow, setDriveRoot, syncDriveNow } from "@/lib/actions/drive";
@@ -57,7 +58,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const currentModelId = await agentModelId();
   const mcp = await listMcpServers().catch(() => []);
   const currentModel = AGENT_MODELS.find((m) => m.id === currentModelId);
-  const [embedId, rerankId, filingsLastSync] = await Promise.all([embeddingModelId(), rerankModelId(), getSetting(FILINGS_LAST_SYNC_SETTING)]);
+  const [embedId, rerankId, filingsLastSync, weeklyRecipients] = await Promise.all([embeddingModelId(), rerankModelId(), getSetting(FILINGS_LAST_SYNC_SETTING), getSetting(WEEKLY_RECIPIENTS_SETTING)]);
+  const weeklyLabel = `Cron Sunday 13:00 UTC · inbound email ${inboundConfigured() ? "on" : "not configured"}`;
   const embedModel = EMBEDDING_MODELS.find((m) => m.id === embedId);
   const embedDims = (() => {
     try {
@@ -134,6 +136,23 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <span className="text-sm">Earnings prep packs (reports in the next five trading days, up to three per run)</span>
             <Button type="submit" size="sm" variant="outline">Run</Button>
           </form>
+          <div className="mt-3 grid gap-2 border-t pt-3">
+            <Label htmlFor="weekly-date">Weekly update (pack for last Friday, then the process-update asks)</Label>
+            <div className="flex items-center gap-2">
+              <form action={runWeeklyNow} className="flex items-center gap-2">
+                <Input id="weekly-date" name="date" type="date" className="w-40" />
+                <Button type="submit" size="sm" variant="outline">Run</Button>
+              </form>
+            </div>
+            <p className="text-xs text-muted-foreground">Leave the date empty for today. {weeklyLabel}.</p>
+            <form action={setWeeklyRecipients} className="grid gap-1.5">
+              <Label htmlFor="weekly-recipients">Ask these people (blank = every exec)</Label>
+              <div className="flex items-center gap-2">
+                <Input id="weekly-recipients" name="recipients" defaultValue={weeklyRecipients ?? ""} placeholder="apatil@theowlfund.com, squddus@theowlfund.com" />
+                <Button type="submit" size="sm" variant="outline">Save</Button>
+              </div>
+            </form>
+          </div>
           <div className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
             <span className="text-sm">
               SEC filings index (10-K, 10-Q, 8-K and EX-99.1 for every holding)
@@ -161,6 +180,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <li className="border-t pt-2">Sector bellwethers (ETF constituents, earnings dates, industries). Runs inside the morning sweep.</li>
             <li className="border-t pt-2">Earnings prep packs (agent-gathered evidence for reports in the next five trading days). Runs inside the morning sweep.</li>
             <li className="border-t pt-2">SEC filings index (10-K, 10-Q, 8-K and EX-99.1 for every holding). Runs inside the morning sweep{filingsLastSync ? `; last sync ${filingsLastSync}` : ""}.</li>
+            <li className="border-t pt-2">Weekly update (pack for last Friday, then the process-update asks). {weeklyLabel}. Asks go to {weeklyRecipients || "every exec"}.</li>
           </ul>
         </Card>
         )}

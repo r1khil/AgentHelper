@@ -9,6 +9,7 @@ import {
   Activity,
   CalendarDays,
   CalendarClock,
+  CalendarRange,
   ChevronsUpDown,
   History,
   Home,
@@ -160,6 +161,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
 
       {fundWide && (
         <nav className="mt-4 px-3">
+          <NavItem href="/weekly" label="Weekly update" icon={CalendarRange} active={isActive("/weekly")} />
           <NavItem href="/changelog" label="Changelog" icon={History} active={isActive("/changelog")} />
           <NavItem href="/admin" label="Admin" icon={Settings} active={isActive("/admin")} />
         </nav>
