@@ -17,7 +17,6 @@ import {
   Menu,
   ScanEye,
   Settings,
-  Sparkles,
   Mic,
   Table2,
   Briefcase,
@@ -56,7 +55,10 @@ function useCurrentTeam(teams: Team[], user: SidebarUser, fundWide: boolean): Te
 
 /** The list page under /t/<slug>/ being viewed ("" for Holdings), so switching scope keeps the reader on it. */
 function useTeamSection() {
-  const m = usePathname().match(/^\/t\/[^/]+(\/[^/]+)?/);
+  const pathname = usePathname();
+  // A general Hoot conversation isn't under any team; switching scope from one lands on that scope's Hoot page.
+  if (/^\/hoot(\/|$)/.test(pathname)) return "/agent";
+  const m = pathname.match(/^\/t\/[^/]+(\/[^/]+)?/);
   const section = m?.[1] ?? "";
   // Holding pages (/h/<ticker>) have no fund-wide list of their own; land on Holdings instead.
   return section === "/h" ? "" : section;
@@ -106,7 +108,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
   const teamNav = base
     ? [
         { href: base, label: "Holdings", icon: Briefcase, exact: true },
-        { href: `${base}/agent`, label: "Agent", icon: Sparkles },
+        { href: `${base}/agent`, label: "Hoot", icon: HootIcon, also: "/hoot" },
         { href: `${base}/sell-side`, label: "Sell-side analyzer", icon: Mic },
         { href: `${base}/movements`, label: "Movements", icon: Activity },
         { href: `${base}/earnings`, label: "Earnings", icon: CalendarDays },
@@ -121,6 +123,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
 
   const isActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+  const teamNavActive = (n: { href: string; exact?: boolean; also?: string }) => isActive(n.href, n.exact) || (!!n.also && isActive(n.also));
 
   return (
     <>
@@ -172,7 +175,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
 
       <nav className="mt-1.5 px-3">
         {teamNav.map((n) => (
-          <NavItem key={n.href} href={n.href} label={n.label} icon={n.icon} active={isActive(n.href, n.exact)} />
+          <NavItem key={n.href} href={n.href} label={n.label} icon={n.icon} active={teamNavActive(n)} />
         ))}
       </nav>
 
@@ -217,15 +220,19 @@ function SidebarBody({ user, teams, signOut }: Props) {
   );
 }
 
+function HootIcon({ className }: { className?: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/hoot/mark.webp" alt="" width={16} height={16} className={className} />;
+}
+
 /** Show or hide Hoot, the companion in the corner. Persisted on the profile. */
 function HootToggle({ on }: { on: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return (
-    <label className="mb-1 flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-sidebar-accent" title="Hoot flags deadlines and opens quick questions to the research agent">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/hoot/mark.webp" alt="" width={16} height={16} className="size-4 shrink-0" />
-      <span className="min-w-0 flex-1 text-sm">Hoot</span>
+    <label className="mb-1 flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-sidebar-accent" title="Hoot in the corner of every page: flags deadlines and takes quick questions">
+      <HootIcon className="size-4 shrink-0" />
+      <span className="min-w-0 flex-1 text-sm">Floating Hoot</span>
       <Switch
         checked={on}
         disabled={pending}

@@ -33,8 +33,8 @@ export function HoldingCards({ holdings, market }: { holdings: HoldingCardData[]
   const shown = holdings.filter((h) => !f || h.ticker.toLowerCase().includes(f) || h.name.toLowerCase().includes(f));
   return (
     <>
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <h1 className="text-xl font-semibold tracking-tight">Research agent</h1>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold">Research boards</h2>
         <label className="flex h-8 w-full items-center gap-2 rounded-lg border bg-background px-3 text-muted-foreground shadow-xs sm:w-[300px]">
           <Search className="size-3.5 shrink-0" />
           <input
