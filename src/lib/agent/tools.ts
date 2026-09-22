@@ -28,7 +28,7 @@ import { searchFullText } from "@/lib/drive/read";
 import { windowText } from "@/lib/drive/text";
 import { MARKET_FACT_TTL_DAYS, rememberMemory, searchMemories } from "@/lib/agent/memory/store";
 import { newestEvidenceDate } from "@/lib/agent/memory/distill";
-import { passageCoverage } from "@/lib/agent/doc-recency";
+import { EARNINGS_DOC_TYPES, passageCoverage, type EarningsDocType } from "@/lib/agent/doc-recency";
 
 export type ToolResult<T> = { data: T; sources: Source[]; error?: string };
 
@@ -575,14 +575,20 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
           .max(10)
           .optional()
           .describe("Search only the N newest matching documents. Use 1 for questions about the latest/last/most recent/upcoming report; omit only when the question is about history across quarters."),
+        documentType: z
+          .enum(Object.keys(EARNINGS_DOC_TYPES) as [EarningsDocType, ...EarningsDocType[]])
+          .optional()
+          .describe("Drive earnings documents only: earnings_update (the team's post-earnings report), pre_earnings (the preview memo), transcript, major_movement. Narrows latest to that type."),
         since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Only documents dated on or after this day (yyyy-mm-dd)"),
         limit: z.number().int().min(1).max(12).default(6),
       }),
-      execute: async ({ query, ticker, kind, driveKind, form, latest, since, limit }): Promise<ToolResult<unknown>> => {
+      execute: async ({ query, ticker, kind, driveKind, form, latest, documentType, since, limit }): Promise<ToolResult<unknown>> => {
         try {
-          if (kind === "drive" || driveKind) await assertDriveReady();
-          const kinds = kind ? [kind] : form ? (["filing"] as const) : driveKind ? (["drive"] as const) : undefined;
-          const hits = await searchChunks({ query, ticker, kinds: kinds ? [...kinds] : undefined, driveKind, form, latest, since, limit });
+          // A document type is a kind of Drive earnings file.
+          const dk = documentType ? "earnings_update" : driveKind;
+          if (kind === "drive" || dk) await assertDriveReady();
+          const kinds = kind ? [kind] : form ? (["filing"] as const) : dk ? (["drive"] as const) : undefined;
+          const hits = await searchChunks({ query, ticker, kinds: kinds ? [...kinds] : undefined, driveKind: dk, form, latest, documentLabels: documentType ? [EARNINGS_DOC_TYPES[documentType]] : undefined, since, limit });
           const sources: Source[] = [];
           const passages = hits.map((h) => {
             const s: Source = { ...documentSource(hitMeta(h.meta)), id: sourceId("doc", `${h.documentId}:chunk:${h.seq}:${h.text}`), excerpt: h.text.trim().slice(0, 360), location: { section: h.section ?? undefined, text: h.text.trim().slice(0, 180) } };

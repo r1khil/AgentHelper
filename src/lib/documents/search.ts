@@ -7,6 +7,8 @@ import { rerank } from "@/lib/agent/rerank";
 import { embeddingDims, embeddingModelId, embeddingModelSlug } from "@/lib/agent/retrieval-models";
 import { cosineDistance, modelLiteral } from "@/lib/agent/vector-sql";
 import { documentHeadingColumn } from "@/lib/drive/index";
+import { documentLabel } from "@/lib/drive/labels";
+import { EARNINGS_DOC_TYPES, pickNewest } from "@/lib/agent/doc-recency";
 import { capPerDocument, rrfFuse } from "./fusion";
 import type { SectionChunk } from "./sections";
 
@@ -77,6 +79,8 @@ export type SearchParams = {
   latest?: number;
   /** Only documents dated on or after this ISO date. */
   since?: string;
+  /** Drive only: narrow `latest` to these document types (labels from `documentLabel`). */
+  documentLabels?: string[];
   /** Resolved from `latest` before the search legs run. */
   documentIds?: string[];
 };
@@ -132,7 +136,10 @@ function filters(p: SearchParams): SQL[] {
   return conds;
 }
 
-/** The ids of the newest `n` documents that have chunks and match the filters, newest first. */
+/**
+ * The ids of the newest `n` documents (same-day filings count as one report) that have chunks and match the filters,
+ * newest first. Asked for the latest earnings documents without a type, major-movement notes are left out.
+ */
 export async function newestDocumentIds(p: Omit<SearchParams, "query" | "latest" | "documentIds">, n: number): Promise<string[]> {
   const conds: SQL[] = [sql`exists (select 1 from ${documentChunks} where ${documentChunks.documentId} = ${documents.id})`];
   if (p.ticker) conds.push(eq(documents.ticker, p.ticker.toUpperCase()));
@@ -142,13 +149,15 @@ export async function newestDocumentIds(p: Omit<SearchParams, "query" | "latest"
   if (p.form) conds.push(formFilter(p.form));
   if (p.since) conds.push(sql`${documentDate} >= ${p.since}::date`);
   const rows = await db
-    .select({ id: documents.id })
+    .select({ id: documents.id, kind: documents.kind, date: documentDate, driveKind: driveFiles.kind, name: sql<string>`coalesce(${driveFiles.name}, ${documents.title})`, documentHeading: documentHeadingColumn })
     .from(documents)
     .leftJoin(driveFiles, eq(driveFiles.documentId, documents.id))
     .where(and(...conds))
     .orderBy(sql`${documentDate} desc nulls last`)
-    .limit(n);
-  return rows.map((r) => r.id);
+    .limit(n * 6 + 20);
+  const candidates = rows.map((r) => ({ id: r.id, kind: r.kind, date: r.date ? r.date.toISOString().slice(0, 10) : null, label: r.kind === "drive" ? documentLabel({ kind: r.driveKind, name: r.name, documentHeading: r.documentHeading }) : null }));
+  const excludeLabels = !p.documentLabels?.length && p.driveKind === "earnings_update" ? [EARNINGS_DOC_TYPES.major_movement] : undefined;
+  return pickNewest(candidates, n, { labels: p.documentLabels, excludeLabels });
 }
 
 function base() {
@@ -191,7 +200,9 @@ const key = (r: { documentId: string; seq: number }) => `${r.documentId}:${r.seq
  * embeddings are off or rate limited. The query is embedded once.
  */
 export async function searchChunks(params: SearchParams): Promise<ChunkHit[]> {
-  const p = params.latest && !params.documentIds ? { ...params, documentIds: await newestDocumentIds(params, params.latest) } : params;
+  // A document type on its own means "the newest few of that type".
+  const latest = params.latest ?? (params.documentLabels?.length ? 10 : undefined);
+  const p = latest && !params.documentIds ? { ...params, latest, documentIds: await newestDocumentIds(params, latest) } : params;
   if (p.documentIds && !p.documentIds.length) return [];
   const limit = p.limit ?? 6;
   // Narrowed to a few documents, let each one fill more of the result.
