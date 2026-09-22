@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { loadTeam } from "@/lib/teams";
+import { loadScope } from "@/lib/teams";
 import { listTeamModels } from "@/lib/models";
 import { relativeTime } from "@/lib/format";
 import { PageHeader } from "@/components/app/page-header";
@@ -13,8 +13,8 @@ export const metadata: Metadata = { title: "Models" };
 export default async function ModelsPage({ params, searchParams }: { params: Promise<{ team: string }>; searchParams: Promise<{ error?: string }> }) {
   const { team: slug } = await params;
   const { error } = await searchParams;
-  const { team } = await loadTeam(slug);
-  const rows = await listTeamModels(team.id);
+  const scope = await loadScope(slug);
+  const rows = await listTeamModels(scope.teamIds);
   return (
     <>
       <PageHeader title="Model historicals" description="Upload a model, map its line items to reported XBRL concepts once, and the agent proposes the other periods with a source for every number. You approve; formulas are never touched." />
@@ -27,12 +27,15 @@ export default async function ModelsPage({ params, searchParams }: { params: Pro
             <Card key={holding.id} className="flex flex-wrap items-center gap-4 p-4">
               <div className="min-w-32">
                 <div className="font-semibold">{holding.ticker}</div>
-                <div className="text-xs text-muted-foreground">{holding.companyName}</div>
+                <div className="text-xs text-muted-foreground">
+                  {holding.companyName}
+                  {scope.kind === "fund" && ` · ${scope.teamById.get(holding.teamId)?.name}`}
+                </div>
               </div>
               <div className="min-w-0 flex-1 text-sm">
                 {latest ? (
                   <>
-                    <Link href={`/t/${team.slug}/models/${latest.m.id}`} className="font-medium hover:underline">
+                    <Link href={`/t/${scope.teamById.get(holding.teamId)?.slug}/models/${latest.m.id}`} className="font-medium hover:underline">
                       {latest.m.fileName}
                     </Link>
                     <div className="text-xs text-muted-foreground">

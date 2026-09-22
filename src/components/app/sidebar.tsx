@@ -22,7 +22,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ROLE_LABELS } from "@/lib/constants";
+import { FUND_SCOPE_SLUG, ROLE_LABELS } from "@/lib/constants";
 import type { Role, Team } from "@/db/schema";
 import { OwlMark } from "./owl-mark";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -43,11 +43,22 @@ export type SidebarUser = { fullName: string; role: Role; teamId: string | null;
 
 type Props = { user: SidebarUser; teams: Team[]; signOut: () => Promise<void> };
 
-function useCurrentTeam(teams: Team[], user: SidebarUser) {
+/** Which team the section nav points at. Execs and admins default to the whole fund; everyone else to their team. */
+function useCurrentTeam(teams: Team[], user: SidebarUser, fundWide: boolean): Team | "fund" | null {
   const pathname = usePathname();
   const m = pathname.match(/^\/t\/([^/]+)/);
   const fromPath = m ? teams.find((t) => t.slug === m[1]) : undefined;
-  return fromPath ?? teams.find((t) => t.id === user.teamId) ?? teams[0] ?? null;
+  if (fromPath) return fromPath;
+  if (fundWide) return "fund";
+  return teams.find((t) => t.id === user.teamId) ?? teams[0] ?? null;
+}
+
+/** The list page under /t/<slug>/ being viewed ("" for Holdings), so switching scope keeps the reader on it. */
+function useTeamSection() {
+  const m = usePathname().match(/^\/t\/[^/]+(\/[^/]+)?/);
+  const section = m?.[1] ?? "";
+  // Holding pages (/h/<ticker>) have no fund-wide list of their own; land on Holdings instead.
+  return section === "/h" ? "" : section;
 }
 
 export function Sidebar(props: Props) {
@@ -85,9 +96,11 @@ function MobileBar(props: Props) {
 
 function SidebarBody({ user, teams, signOut }: Props) {
   const pathname = usePathname();
-  const team = useCurrentTeam(teams, user);
   const fundWide = user.role === "exec" || user.role === "admin";
-  const base = team ? `/t/${team.slug}` : null;
+  const current = useCurrentTeam(teams, user, fundWide);
+  const section = useTeamSection();
+  const team = current === "fund" ? null : current;
+  const base = current === "fund" ? `/t/${FUND_SCOPE_SLUG}` : team ? `/t/${team.slug}` : null;
 
   const teamNav = base
     ? [
@@ -98,8 +111,8 @@ function SidebarBody({ user, teams, signOut }: Props) {
         { href: `${base}/earnings`, label: "Earnings", icon: CalendarDays },
         { href: `${base}/economic-calendar`, label: "Economic Calendar", icon: CalendarClock },
         { href: `${base}/models`, label: "Models", icon: Table2 },
-        // Position sizes and P&L: leads of this team and fund-wide roles only.
-        ...(fundWide || (user.role === "lead_analyst" && user.teamId === team?.id)
+        // Position sizes and P&L: leads of this team and fund-wide roles only. The fund view has Fund attribution above.
+        ...(team && (fundWide || (user.role === "lead_analyst" && user.teamId === team.id))
           ? [{ href: `${base}/attribution`, label: "Attribution", icon: ChartColumn }]
           : []),
       ]
@@ -131,14 +144,18 @@ function SidebarBody({ user, teams, signOut }: Props) {
                 <button className="flex w-full items-center justify-between rounded-md border bg-background px-2.5 py-1.5 text-left text-sm hover:bg-muted" />
               }
             >
-              <span className="truncate font-medium">{team?.name ?? "Choose a team"}</span>
+              <span className="truncate font-medium">{team?.name ?? "Whole fund"}</span>
               <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
               <DropdownMenuGroup>
-                <DropdownMenuLabel>Sector teams</DropdownMenuLabel>
+                <DropdownMenuItem render={<Link href={`/t/${FUND_SCOPE_SLUG}${section}`} />}>Whole fund</DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Filter to a sector</DropdownMenuLabel>
                 {teams.map((t) => (
-                  <DropdownMenuItem key={t.id} render={<Link href={`/t/${t.slug}`} />}>
+                  <DropdownMenuItem key={t.id} render={<Link href={`/t/${t.slug}${section}`} />}>
                     {t.name}
                   </DropdownMenuItem>
                 ))}
@@ -147,7 +164,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
           </DropdownMenu>
         ) : (
           <div className="px-2.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-            {team?.name ?? "No team"}
+            {current === "fund" ? "Whole fund" : (team?.name ?? "No team")}
           </div>
         )}
       </div>

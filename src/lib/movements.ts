@@ -2,14 +2,15 @@ import "server-only";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { evidenceItems, holdings, movements, profiles } from "@/db/schema";
+import { inTeams, type TeamIds } from "@/lib/team-filter";
 
-export async function listTeamMovements(teamId: string) {
+export async function listTeamMovements(teamId: TeamIds) {
   return db
     .select({ m: movements, h: holdings, ownerName: profiles.fullName })
     .from(movements)
     .innerJoin(holdings, eq(holdings.id, movements.holdingId))
     .leftJoin(profiles, eq(profiles.id, movements.ownerId))
-    .where(eq(holdings.teamId, teamId))
+    .where(inTeams(holdings.teamId, teamId))
     .orderBy(desc(movements.sessionDate), asc(holdings.ticker))
     .limit(200);
 }
