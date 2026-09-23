@@ -74,7 +74,8 @@ export function syncChangelog(opts: { max?: number; fresh?: boolean } = {}): Pro
 async function runSync({ max = 5, fresh = false }: { max?: number; fresh?: boolean }): Promise<SyncResult> {
   const { missing, retry, error } = await changelogBacklog({ fresh });
   if (error) return { added: 0, pending: 0, error };
-  const queue = [...missing, ...retry];
+  // Newest first across both lists: retries queued after all missing entries never ran while new merges kept arriving.
+  const queue = [...missing, ...retry].sort((a, b) => b.mergedAt.localeCompare(a.mergedAt) || b.number - a.number);
   let done = 0;
   for (const pr of queue.slice(0, max)) {
     done++;
