@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UIMessage } from "ai";
-import { collectSources, uncitedFactCount } from "./citations";
+import { collectSources, fixCitationTypos, fixMessageCitationTypos, resolveCitedId, uncitedFactCount } from "./citations";
 
 const msg = (text: string): UIMessage => ({ id: "a", role: "assistant", parts: [{ type: "text", text }] });
 
@@ -46,5 +46,33 @@ describe("collectSources", () => {
       ],
     };
     expect([...collectSources([m]).keys()]).toEqual(["s1"]);
+  });
+});
+
+describe("fixCitationTypos", () => {
+  it("maps a dropped-character id to the one retrieved source it meant (2026-09-23 AMZN answer)", () => {
+    const known = new Set(["web-1jo7h58", "web-9zq2k41", "xbrl-1"]);
+    const text = "AWS grew 17% [src:web-1jo7h8]. Margin expanded [src:xbrl-1, web-1jo7h8]. Capex rose [src: web-1jo7h8].";
+    expect(fixCitationTypos(text, known)).toBe("AWS grew 17% [src:web-1jo7h58]. Margin expanded [src:xbrl-1, web-1jo7h58]. Capex rose [src: web-1jo7h58].");
+    expect(resolveCitedId("web-1jo7h8", known)).toBe("web-1jo7h58");
+  });
+
+  it("leaves the token alone when several retrieved ids are equally close", () => {
+    const known = new Set(["web-1jo7h58", "web-1jo7h59"]);
+    expect(resolveCitedId("web-1jo7h5", known)).toBeNull();
+    expect(fixCitationTypos("Sales rose [src:web-1jo7h5].", known)).toBe("Sales rose [src:web-1jo7h5].");
+  });
+
+  it("requires the same prefix and respects the distance limit", () => {
+    expect(resolveCitedId("doc-1jo7h58", new Set(["web-1jo7h58"]))).toBeNull();
+    expect(resolveCitedId("web-1xxxh58", new Set(["web-1jo7h58"]))).toBeNull();
+    expect(resolveCitedId("d-12", new Set(["d-1"]))).toBe("d-1");
+    expect(resolveCitedId("d-123", new Set(["d-1"]))).toBeNull();
+  });
+
+  it("returns the same message object when nothing needs fixing", () => {
+    const m = msg("Revenue grew [src:xbrl-1].");
+    expect(fixMessageCitationTypos(m, new Set(["xbrl-1"]))).toBe(m);
+    expect((fixMessageCitationTypos(msg("x [src:xbrl-2]"), new Set(["xbrl-1"])).parts[0] as { text: string }).text).toBe("x [src:xbrl-1]");
   });
 });

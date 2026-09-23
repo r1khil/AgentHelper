@@ -2,7 +2,7 @@ import "server-only";
 import { convertToModelMessages, createIdGenerator, createUIMessageStream, readUIMessageStream, streamText, toUIMessageStream, type UIMessage } from "ai";
 import { saveMessages, setRunStatus } from "@/lib/chats";
 import { buildAgentDefinition, FINAL_STEP, MAX_STEPS } from "@/lib/agent/definition";
-import { collectSources, needsCitationRepair, uncitedFactCount } from "@/lib/agent/citations";
+import { collectSources, fixMessageCitationTypos, needsCitationRepair, uncitedFactCount } from "@/lib/agent/citations";
 import { repairCitations } from "@/lib/agent/repair";
 import { compactHistory, isToolPart, toolDone } from "@/lib/agent/turn";
 import { traceUsage } from "@/lib/agent/trace";
@@ -114,7 +114,8 @@ export async function runAgentTurn(opts: {
       if (streamError) throw streamError;
       if (!last) throw new Error("the model produced no message");
 
-      let response: UIMessage = last;
+      // Map near-miss ids ("web-1jo7h8" for "web-1jo7h58") to what was retrieved, so they don't render as [?].
+      let response: UIMessage = fixMessageCitationTypos(last, new Set(collectSources([...messages, last]).keys()));
       const turnSources = [...collectSources([response]).values()];
       let repaired = false;
       if (needsCitationRepair(response, turnSources.length)) {
