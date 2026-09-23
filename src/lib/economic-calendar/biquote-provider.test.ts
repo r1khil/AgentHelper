@@ -128,7 +128,11 @@ describe("free calendar provider", () => {
     expect(
       (await loadConfiguredCalendar(range, config, fetcher)).provider,
     ).toBe("biquote (free)");
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(
+      fetcher.mock.calls.filter((c) =>
+        String((c as unknown[])[0]).includes("biquote.io"),
+      ),
+    ).toHaveLength(1);
     expect(JSON.stringify(fetcher.mock.calls)).not.toContain("unused-secret");
     expect(
       calendarConfiguration({ ECONOMIC_CALENDAR_PROVIDER: "biquote" })

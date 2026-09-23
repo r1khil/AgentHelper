@@ -2,9 +2,11 @@ import { biquoteProvider } from "./biquote-provider";
 import { createHash } from "node:crypto";
 import { tradingEconomicsProvider, eodhdProvider } from "./dedicated-providers";
 import { publicCalendarProvider } from "./public-provider";
+import { FXSTREET_PAGE, loadFxStreet, overlayFxStreet } from "./fxstreet";
 import { tradingViewProvider } from "./tradingview-provider";
 import type {
   CalendarRange,
+  CalendarResult,
   CalendarSourceStatus,
   EconomicCalendarProvider,
 } from "./types";
@@ -88,28 +90,17 @@ export async function loadConfiguredCalendar(
   fetcher: typeof fetch = fetch,
 ) {
   const started = Date.now();
+  // Runs alongside the chain, so whichever provider answers gets its gaps filled without waiting twice.
+  const second = loadFxStreet(range, fetcher).then(
+    (rows) => ({ rows }),
+    (error: unknown) => ({ error }),
+  );
   const failures: CalendarSourceStatus[] = [];
   for (const provider of providerChain(config, fetcher)) {
     if (Date.now() - started > FALLBACK_DEADLINE_MS) break;
+    let result: CalendarResult;
     try {
-      const result = await provider.getEvents(range);
-      if (!failures.length) return { ...result, provider: provider.name };
-      // A fallback is never passed off as the preferred feed: say what failed and what is showing.
-      const failed = failures.map((f) => `${f.name} (${f.error})`).join(", ");
-      return {
-        ...result,
-        provider: provider.name,
-        sources: [...failures, ...(result.sources ?? [])],
-        coverage: {
-          status: "partial" as const,
-          message: [
-            `${failed} ${failures.length > 1 ? "are" : "is"} unavailable, so this view comes from ${provider.name}.`,
-            result.coverage?.message,
-          ]
-            .filter(Boolean)
-            .join(" "),
-        },
-      };
+      result = await provider.getEvents(range);
     } catch (error) {
       failures.push({
         name: provider.name,
@@ -118,7 +109,48 @@ export async function loadConfiguredCalendar(
         count: 0,
         error: safeError(error),
       });
+      continue;
     }
+    let events = result.events.map((e) =>
+      e.estimate !== null && !e.estimateSource
+        ? { ...e, estimateSource: provider.name }
+        : e,
+    );
+    let filled = 0;
+    const overlay = await second;
+    const fx: CalendarSourceStatus = {
+      name: "FXStreet consensus and revisions",
+      url: FXSTREET_PAGE,
+      status: "unavailable",
+      count: 0,
+    };
+    if ("rows" in overlay) {
+      const merged = overlayFxStreet(events, overlay.rows);
+      events = merged.events;
+      filled = merged.consensus;
+      Object.assign(fx, { status: "ok", count: merged.matched });
+    } else fx.error = safeError(overlay.error);
+    const sources = [...failures, ...(result.sources ?? []), fx];
+    if (!failures.length)
+      return { ...result, events, sources, provider: provider.name };
+    // A fallback is never passed off as the preferred feed: say what failed and what is showing.
+    const failed = failures.map((f) => `${f.name} (${f.error})`).join(", ");
+    return {
+      ...result,
+      events,
+      sources,
+      provider: provider.name,
+      coverage: {
+        status: "partial" as const,
+        message: [
+          `${failed} ${failures.length > 1 ? "are" : "is"} unavailable, so this view comes from ${provider.name}.`,
+          result.coverage?.message,
+          filled ? "Consensus comes from FXStreet where its releases matched." : null,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      },
+    };
   }
   throw new CalendarUnavailableError(failures);
 }

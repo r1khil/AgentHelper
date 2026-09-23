@@ -19,7 +19,7 @@ export async function getEconomicCalendar(
   range: CalendarRange,
 ): Promise<CalendarFeed> {
   const config = calendarConfiguration();
-  const cacheKey = `economic-calendar:feed:v4:${config.cacheScope}:${range.from}:${range.to}`;
+  const cacheKey = `economic-calendar:feed:v5:${config.cacheScope}:${range.from}:${range.to}`;
   const lastGoodKey = `economic-calendar:last-good:v1:${range.from}:${range.to}`;
   const running = pending.get(cacheKey);
   if (running) return running;
