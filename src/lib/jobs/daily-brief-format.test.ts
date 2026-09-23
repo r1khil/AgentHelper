@@ -30,7 +30,7 @@ describe("numberCitations", () => {
 describe("briefEmail", () => {
   it("falls back to the numbers when the analysis failed", () => {
     const { subject, body } = briefEmail({ sessionDate: "2026-09-22", facts: "Fund return: +0.4%", analysis: null, sources: [], failure: "model timed out", appUrl: "https://x.app/" });
-    expect(subject).toBe("Hoot's daily attribution: 2026-09-22");
+    expect(subject).toBe("Owl Fund Daily Attribution Analysis (22-Sep-2026)");
     expect(body).toMatch(/^Hi all,\n\nMy analysis of Tuesday, September 22 didn't finish \(model timed out\)/);
     expect(body).toContain("https://x.app/attribution");
     expect(body.endsWith("Best,\nHoot")).toBe(true);

@@ -88,7 +88,7 @@ function longDate(iso: string) {
 }
 
 export function briefEmail(opts: { sessionDate: string; facts: string; analysis: string | null; sources: Source[]; failure?: string; appUrl?: string }) {
-  const subject = `Hoot's daily attribution: ${opts.sessionDate}`;
+  const subject = `Owl Fund Daily Attribution Analysis (${DateTime.fromISO(opts.sessionDate).toFormat("dd-LLL-yyyy")})`;
   const link = opts.appUrl ? `${opts.appUrl.replace(/\/$/, "")}/attribution` : null;
   const opening = opts.analysis
     ? [`Here's what drove the fund on ${longDate(opts.sessionDate)}.`, "", opts.analysis]
