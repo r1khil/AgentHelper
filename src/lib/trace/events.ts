@@ -46,6 +46,12 @@ export type AgentMetadata = {
   repaired?: boolean;
   /** On a question: the page it was asked from (attached by Hoot). */
   page?: PageContext;
+  /** Tokens the provider reported for the whole turn, summed over every model step. */
+  usage?: TraceUsage;
+  /** Model steps the turn took. */
+  steps?: number;
+  /** Tokens spent by the citation-repair call, billed on top of `usage`. */
+  repairUsage?: TraceUsage;
 };
 export type AgentDataParts = { trace: TraceEvent };
 export type AgentUIMessage = UIMessage<AgentMetadata, AgentDataParts>;
