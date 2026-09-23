@@ -210,7 +210,12 @@ export function isQuotePage(url: string): boolean {
 export const TIER_BONUS: Record<SourceTier, number> = { primary: 0.15, established: 0.1, other: 0, low: -1 };
 /** Results scoring below this share of the best result's relevance (or below the absolute floor) are dropped. */
 export const RELATIVE_RELEVANCE_FLOOR = 0.25;
-export const ABSOLUTE_RELEVANCE_FLOOR = 0.1;
+/**
+ * Across production searches on 2026-09-23, on-topic articles scored about 0.3 and up, while filler from the
+ * preferred-domain padding and off-topic pages scored 0.03–0.25. When every result is filler, the relative floor
+ * alone keeps them all.
+ */
+export const ABSOLUTE_RELEVANCE_FLOOR = 0.3;
 
 /**
  * Drops results that are barely relevant to the query, then orders the rest by relevance plus a reliability bonus

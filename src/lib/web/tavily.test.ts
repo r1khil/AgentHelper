@@ -47,12 +47,20 @@ describe("searchWeb", () => {
         hit("https://www.marketwatch.com/investing/stock/amzn?countrycode=ch", 0.49),
         hit("https://www.cnbc.com/2026/09/23/cctv-script-23/09/26.html", 0.42, "CCTV Script 23/09/26 - CNBC"),
         hit("https://www.tradingview.com/news/benzinga:d85307743094b:0-what-s-going-on-with-amazon-stock-wednesday", 0.4),
-        hit("https://www.marketwatch.com/livecoverage/stock-market-today", 0.3),
+        hit("https://www.marketwatch.com/livecoverage/stock-market-today", 0.31),
         hit("https://blog.example/amzn", 0.12),
       ],
     });
     const hits = await searchWeb({ query: "why is amazon down today", limit: 5 });
-    expect(hits.map((h) => h.url)).toEqual(["https://www.cnbc.com/2026/09/23/cctv-script-23/09/26.html", "https://www.marketwatch.com/livecoverage/stock-market-today", "https://blog.example/amzn"]);
+    expect(hits.map((h) => h.url)).toEqual(["https://www.cnbc.com/2026/09/23/cctv-script-23/09/26.html", "https://www.marketwatch.com/livecoverage/stock-market-today"]);
+  });
+  it("returns nothing when the whole pool is filler", async () => {
+    // The AVGO search from production on 2026-09-23: every result was preferred-domain padding.
+    const hit = (url: string, score: number) => ({ title: url, url, content: "s", score });
+    sdk.search.mockResolvedValue({
+      results: [hit("https://www.bloomberg.com/news/videos/2026-09-23/japan-pm-takaichi", 0.254), hit("https://www.bloomberg.com/news/videos/2026-09-23/xi-unlikely", 0.191), hit("https://www.bbc.com/southtoday", 0.139), hit("https://www.barrons.com/articles/anthropic-ipo-etf", 0.104)],
+    });
+    expect(await searchWeb({ query: "Broadcom AVGO stock decline today", limit: 10 })).toEqual([]);
   });
   it("restricts to the given domains, normalized", async () => {
     sdk.search.mockResolvedValue({ results: [] });
