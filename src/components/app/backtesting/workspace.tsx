@@ -229,14 +229,15 @@ export function BacktestingWorkspace({
     <>
       <PageHeader
         title="Backtesting"
-        description="Compare your current allocation with a modified copy, one trading day at a time."
+        description="Replay today's portfolio weights over past prices and compare them with a modified copy."
       />
       <Card className="mb-5 gap-3 p-4 text-sm">
         <div className="font-medium">{snapshot.scope}</div>
         <p className="text-muted-foreground">
           Invested holdings total {snapshot.savedWeightTotal.toFixed(2)}%; uninvested cash is {((snapshot.positions.find((p) => p.kind === "cash")?.weight ?? 0) * 100).toFixed(2)}%.
-          Cash earns 0% by default, and no weights are redistributed. The original is a snapshot of current holdings, not
-          historical holdings. Added or dropped companies affect only the modified copy and never update your saved portfolio.
+          Cash earns 0% by default, and no weights are redistributed. The original replays today’s saved holdings and weights
+          across the whole selected period; it is not the Fund’s realized historical return. Added or dropped companies
+          affect only the modified copy and never update your saved portfolio.
         </p>
         <p className="text-xs text-muted-foreground">
           Fixed weights are rebalanced daily · USD total returns · Dividends
@@ -508,8 +509,25 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
   );
   const months = [...new Set(result.days.map((d) => d.date.slice(0, 7)))];
   const byDate = new Map(result.days.map((d) => [d.date, d]));
+  const benchmarkReturn = result.benchmarkMetrics.totalReturn;
+  const summary = [
+    { label: "Current-weight replay", value: result.original.totalReturn, points: false },
+    { label: "Modified replay", value: result.modified.totalReturn, points: false },
+    { label: `${result.benchmark} benchmark return`, value: benchmarkReturn, points: false },
+    { label: `Current replay vs ${result.benchmark}`, value: result.original.totalReturn - benchmarkReturn, points: true },
+    { label: `Modified replay vs ${result.benchmark}`, value: result.modified.totalReturn - benchmarkReturn, points: true },
+    { label: "Weight-change delta", value: result.modified.totalReturn - result.original.totalReturn, points: true },
+  ];
   return (
     <div className="space-y-6">
+      <Card className="p-4 text-sm">
+        <p className="font-medium">Hypothetical replay, not the Fund’s actual YTD return</p>
+        <p className="text-muted-foreground">
+          Today’s holdings and cash weights are held fixed and rebalanced daily from {result.from} through {result.to}.
+          Past trades, weight changes, and cash flows are not reconstructed. The benchmark uses adjusted total returns for
+          {" "}{result.benchmark}; it may differ from the SPX figure in a YTD report.
+        </p>
+      </Card>
       {result.cashSubstitutions.length > 0 && (
         <Card className="p-4 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Early history treated as cash:</span>{" "}
@@ -517,23 +535,14 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
           The fixed weights were kept; those allocations earned 0% during the listed periods.
         </Card>
       )}
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          ["Original return", result.original.totalReturn],
-          ["Modified return", result.modified.totalReturn],
-          [
-            "Weight-change delta",
-            result.modified.totalReturn - result.original.totalReturn,
-          ],
-        ].map(([label, value]) => (
-          <Card key={String(label)} className="gap-1 p-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {summary.map(({ label, value, points }) => (
+          <Card key={label} className="gap-1 p-4">
             <span className="text-xs text-muted-foreground">{label}</span>
             <strong
-              className={cn("text-2xl font-semibold tnum", tone(Number(value)))}
+              className={cn("text-2xl font-semibold tnum", tone(value))}
             >
-              {label === "Weight-change delta"
-                ? pp(Number(value))
-                : pct(Number(value))}
+              {points ? pp(value) : pct(value)}
             </strong>
           </Card>
         ))}
@@ -547,8 +556,8 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
           label="Backtest cumulative returns"
           note="Compounded daily total returns, rebased to the same closing baseline."
           series={[
-            { key: "original", label: "Original", color: "var(--foreground)" },
-            { key: "modified", label: "Modified", color: "var(--up)" },
+            { key: "original", label: "Current-weight replay", color: "var(--foreground)" },
+            { key: "modified", label: "Modified replay", color: "var(--up)" },
             {
               key: "benchmark",
               label: result.benchmark,
@@ -559,7 +568,7 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
         />
       </Card>
       <Card className="p-4">
-        <SectionTitle>Daily active return</SectionTitle>
+        <SectionTitle>Daily replay versus benchmark</SectionTitle>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm">
           <label className="flex items-center gap-2">
             Color by
@@ -569,14 +578,14 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
               onChange={(e) => setMode(e.target.value as typeof mode)}
               className="rounded border bg-background p-2"
             >
-              <option value="modifiedActive">Modified vs benchmark</option>
-              <option value="originalActive">Original vs benchmark</option>
-              <option value="delta">Modified − original</option>
+              <option value="modifiedActive">Modified replay vs {result.benchmark}</option>
+              <option value="originalActive">Current replay vs {result.benchmark}</option>
+              <option value="delta">Modified − current replay</option>
             </select>
           </label>
           <span className="text-xs text-muted-foreground">
-            Red: negative · neutral: zero · green: positive · darker: larger (up
-            to 1 pp)
+            Green: ahead that day · red: behind that day · neutral: equal · darker: larger (up to 1 pp).
+            Daily colors do not show the full-period result.
           </span>
         </div>
         <div className="grid max-h-[36rem] gap-6 overflow-auto sm:grid-cols-2 xl:grid-cols-3">
@@ -660,8 +669,8 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
             <thead>
               <tr>
                 <th className={head}>Return</th>
-                <th className={cell}>Original</th>
-                <th className={cell}>Modified</th>
+                <th className={cell}>Current replay</th>
+                <th className={cell}>Modified replay</th>
                 <th className={cell}>Difference</th>
               </tr>
             </thead>
@@ -697,8 +706,8 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
               <tr>
                 <th className={head}>Holding</th>
                 <th className={cell}>Holding return</th>
-                <th className={cell}>Original</th>
-                <th className={cell}>Modified</th>
+                <th className={cell}>Current replay</th>
+                <th className={cell}>Modified replay</th>
                 <th className={cell}>Difference</th>
               </tr>
             </thead>
@@ -785,10 +794,10 @@ function Summary({ result }: { result: BacktestResult }) {
         <thead>
           <tr>
             <th className={head}>Metric</th>
-            <th className={cell}>Original</th>
-            <th className={cell}>Modified</th>
+            <th className={cell}>Current replay</th>
+            <th className={cell}>Modified replay</th>
             <th className={cell}>Benchmark</th>
-            <th className={cell}>Delta (modified − original)</th>
+            <th className={cell}>Delta (modified − current)</th>
           </tr>
         </thead>
         <tbody>
@@ -854,8 +863,8 @@ function Contributors({ result }: { result: BacktestResult }) {
           onChange={(e) => setSort(e.target.value as typeof sort)}
           className="rounded border bg-background p-2"
         >
-          <option value="modified">Modified</option>
-          <option value="original">Original</option>
+          <option value="modified">Modified replay</option>
+          <option value="original">Current replay</option>
           <option value="delta">Weight-change delta</option>
         </select>
       </label>
@@ -888,8 +897,8 @@ function Contributors({ result }: { result: BacktestResult }) {
           <thead>
             <tr>
               <th className={head}>Holding</th>
-              <th className={cell}>Original contribution</th>
-              <th className={cell}>Modified contribution</th>
+              <th className={cell}>Current replay contribution</th>
+              <th className={cell}>Modified replay contribution</th>
               <th className={cell}>Delta</th>
             </tr>
           </thead>
