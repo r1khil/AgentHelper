@@ -685,8 +685,8 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
                 const hits = await searchWeb({ query, topic, timeRange, limit, domains });
                 const retrievedAt = now();
                 const sources = hits.map((h) => ({ ...src("web", h.title, h.url, new URL(h.url).hostname.replace(/^www\./, ""), h.publishedAt), sourceType: "Web search result", excerpt: h.snippet.slice(0, 360), retrievedAt }));
-                const unrated = hits.length > 0 && hits.every((h) => h.tier === "other");
-                const note = !hits.length ? "No relevant results (off-topic matches are filtered out). Rephrase with the company name and the event, use topic 'news' for a recent move, or search specific outlets with domains." : `Results are ordered by relevance, with a boost for primary and established sources. Snippets are search-engine excerpts; read_url the page before quoting or citing a figure.${unrated ? " None of these come from a primary source or established outlet: corroborate before relying on them, or retry with domains." : ""}`;
+                const unrated = !domains?.length && hits.length > 0 && hits.every((h) => h.tier === "other");
+                const note = !hits.length ? "No relevant results (off-topic matches are filtered out). Rephrase with the company name and the event, use topic 'news' for a recent move, or search specific outlets with domains." : `Results are ordered by relevance, with a boost for primary and established sources. Snippets are search-engine excerpts; read_url the page before quoting or citing a figure.${unrated ? " No primary source or established outlet had this, even in a search limited to them: treat these as unconfirmed and say so." : ""}`;
                 return { data: { query, topic, timeRange: timeRange ?? null, domains: domains ?? null, retrievedAt, results: hits.map((h, i) => ({ title: h.title, url: h.url, reliability: h.tier, snippet: h.snippet.slice(0, 300), publishedAt: h.publishedAt ?? null, score: h.score, sourceId: sources[i].id })), note }, sources };
               } catch (e) {
                 return fail(e, null);
