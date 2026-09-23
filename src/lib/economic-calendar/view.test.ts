@@ -4,7 +4,9 @@ import {
   daySummary,
   isAhead,
   nextRelease,
+  openingTab,
   rangeLabel,
+  releaseGroups,
   shownActual,
   surprise,
   untilText,
@@ -152,5 +154,79 @@ describe("labels", () => {
     expect(rangeLabel({ from: "2026-12-28", to: "2027-01-03" })).toBe(
       "Dec 28, 2026 – Jan 3, 2027",
     );
+  });
+});
+
+describe("releaseGroups", () => {
+  const eia = (
+    name: string,
+    importance: 1 | 2,
+    period = "Week ending Sep 18",
+  ) =>
+    event({
+      name,
+      importance,
+      period,
+      time: "10:30 AM",
+      timestamp: "2026-09-23T14:30:00Z",
+      source: "EIA",
+    });
+  const day = [
+    event({
+      name: "PMI",
+      time: "9:45 AM",
+      timestamp: "2026-09-23T13:45:00Z",
+      source: "S&P Global",
+      period: "Sep 2026",
+    }),
+    eia("Crude Imports", 1),
+    eia("Crude Stocks", 2),
+    event({
+      name: "Barr Speech",
+      time: "10:30 AM",
+      timestamp: "2026-09-23T14:30:00Z",
+      source: "Federal Reserve",
+      importance: 3,
+    }),
+    eia("Gasoline Stocks", 2, "Week ending Sep 11"),
+    event({ name: "UN General Assembly", time: "All day", source: "TV" }),
+  ];
+  const groups = releaseGroups(day);
+
+  it("puts untimed items first, then each slot in time order", () => {
+    expect(groups.map((g) => [g.time, g.source])).toEqual([
+      ["All day", "TV"],
+      ["9:45 AM", "S&P Global"],
+      ["10:30 AM", "Federal Reserve"],
+      [null, "EIA"],
+    ]);
+  });
+  it("keeps every event, most important first within a report", () => {
+    expect(groups.flatMap((g) => g.events).length).toBe(day.length);
+    expect(groups[3].events.map((e) => e.name)).toEqual([
+      "Crude Stocks",
+      "Gasoline Stocks",
+      "Crude Imports",
+    ]);
+  });
+  it("lifts a period to the group only when every event shares it", () => {
+    expect(groups[1].period).toBe("Sep 2026");
+    expect(groups[3].period).toBeNull();
+    expect(
+      releaseGroups([eia("Crude Stocks", 2), eia("Crude Imports", 1)])[0]
+        .period,
+    ).toBe("Week ending Sep 18");
+  });
+});
+
+describe("openingTab", () => {
+  const week = { from: "2026-09-21", to: "2026-09-27" };
+  it("opens on today's weekday during the week shown", () => {
+    expect(openingTab(week, "2026-09-23")).toBe("2026-09-23");
+  });
+  it("opens on the whole week on weekends and other weeks", () => {
+    expect(openingTab(week, "2026-09-26")).toBe("week");
+    expect(openingTab(week, "2026-09-30")).toBe("week");
+    expect(openingTab(week, null)).toBe("week");
   });
 });
