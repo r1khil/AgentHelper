@@ -11,11 +11,15 @@ import {
   loadConfiguredCalendar,
 } from "./provider-selection";
 
-/** The FXStreet overlay asks alongside every provider; answer it empty so ordered mocks stay in order. */
+/** The FXStreet and Kalshi overlays ask alongside every provider; answer them empty so ordered mocks stay in order. */
 type Fetch = (input: string | URL | Request) => Promise<Response>;
 function besideFxStreet(provider: Fetch) {
   return vi.fn(async (input: string | URL | Request) =>
-    String(input).includes("fxstreet.com") ? Response.json([]) : provider(input),
+    String(input).includes("fxstreet.com")
+      ? Response.json([])
+      : String(input).includes("kalshi.com")
+        ? Response.json({ events: [] })
+        : provider(input),
   );
 }
 

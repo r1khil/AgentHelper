@@ -126,8 +126,7 @@ describe("provider chain", () => {
       previous: "196K",
       previousBeforeRevision: "195K",
     });
-    expect(result.sources?.at(-1)).toMatchObject({
-      name: "FXStreet consensus and revisions",
+    expect(result.sources?.find((s) => s.name.startsWith("FXStreet"))).toMatchObject({
       status: "ok",
       count: 1,
     });
@@ -140,7 +139,7 @@ describe("provider chain", () => {
       hosts({ "tradingview.com": tradingView }),
     );
     expect(without.events[0].previousBeforeRevision).toBeNull();
-    expect(without.sources?.at(-1)).toMatchObject({ status: "unavailable" });
+    expect(without.sources?.find((s) => s.name.startsWith("FXStreet"))).toMatchObject({ status: "unavailable" });
     expect(without.coverage).toBeUndefined();
   });
   it("restores consensus from FXStreet when the fallback feed has none", async () => {
@@ -205,6 +204,42 @@ describe("provider chain", () => {
     expect(result.coverage?.message).toMatch(
       /^TradingView \(HTTP 500\), biquote \(free\) \(Feed could not be loaded or validated\) are unavailable/,
     );
+  });
+  it("names an unpublished week plainly when TradingView has nothing that far ahead", async () => {
+    const result = await loadConfiguredCalendar(
+      range,
+      calendarConfiguration({}),
+      hosts({ "tradingview.com": () => Response.json({ status: "ok" }), "biquote.io": biquote }),
+    );
+    expect(result.provider).toBe("biquote (free)");
+    expect(result.coverage?.message).toMatch(/^TradingView \(not published this far ahead\) is unavailable/);
+  });
+  it("attaches Kalshi prices to the releases they cover, apart from consensus", async () => {
+    const market = { strike_type: "greater_or_equal", close_time: "2026-09-24T12:25:00Z" };
+    const result = await loadConfiguredCalendar(
+      range,
+      calendarConfiguration({}),
+      hosts({
+        "tradingview.com": tradingView,
+        "kalshi.com": () =>
+          Response.json({
+            events: [
+              {
+                event_ticker: "KXJOBLESSCLAIMS-26SEP24",
+                markets: [
+                  { ...market, floor_strike: 195000, yes_bid_dollars: "0.6000", yes_ask_dollars: "0.7000" },
+                  { ...market, floor_strike: 205000, yes_bid_dollars: "0.3000", yes_ask_dollars: "0.4000" },
+                ],
+              },
+            ],
+          }),
+      }),
+    );
+    expect(result.events[0]).toMatchObject({
+      estimate: "201K",
+      marketImplied: { value: "200K", detail: "median", source: "Kalshi" },
+    });
+    expect(result.sources?.at(-1)).toMatchObject({ name: "Kalshi market prices", status: "ok", count: 1 });
   });
   it("reports every failure, safely, when nothing answers", async () => {
     const fetcher = vi.fn(async () => {

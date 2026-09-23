@@ -19,6 +19,7 @@ const rowSchema = z.object({
   consensus: num,
   previous: num,
   revised: num,
+  unit: z.string().nullish(),
 });
 export type FxStreetRow = z.infer<typeof rowSchema>;
 
@@ -122,8 +123,14 @@ export function overlayFxStreet(events: EconomicEvent[], rows: FxStreetRow[]) {
     if (!row) return event;
     matched++;
     const next = { ...event };
+    // TradingView leaves units off releases a few weeks out; FXStreet knows a percent is a percent.
+    if (row.unit === "%")
+      for (const key of ["actual", "estimate", "previous", "previousBeforeRevision"] as const) {
+        const v = next[key];
+        if (v && /^[+-]?\d[\d,]*(?:\.\d+)?$/.test(v.trim())) next[key] = `${v.trim()}%`;
+      }
     if (next.estimate === null && row.consensus != null) {
-      next.estimate = styledLike(row.consensus, event.previous!);
+      next.estimate = styledLike(row.consensus, next.previous!);
       next.estimateSource = "FXStreet";
       consensus++;
     }
@@ -133,7 +140,7 @@ export function overlayFxStreet(events: EconomicEvent[], rows: FxStreetRow[]) {
       row.previous != null &&
       !same(row.previous, row.revised)
     )
-      next.previousBeforeRevision = styledLike(row.previous, event.previous!);
+      next.previousBeforeRevision = styledLike(row.previous, next.previous!);
     return next;
   });
   return { events: out, matched, consensus };

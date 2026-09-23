@@ -57,6 +57,13 @@ describe("FXStreet overlay", () => {
     ).events;
     expect(filled).toMatchObject({ estimate: "-$90B", previousBeforeRevision: "-$73.3B" });
   });
+  it("adds a percent sign the provider left off, using FXStreet's unit", () => {
+    const cpi = makeEvent({ ...claims, id: "tv:7", name: "Inflation Rate MoM", previous: "0.4" });
+    const row = fx({ name: "Consumer Price Index (MoM)", consensus: 0.3, previous: 0.4, revised: null, unit: "%" });
+    expect(overlayFxStreet([cpi], [row]).events[0]).toMatchObject({ previous: "0.4%", estimate: "0.3%" });
+    // Without FXStreet's unit, a bare figure stays bare.
+    expect(overlayFxStreet([cpi], [{ ...row, unit: null }]).events[0]).toMatchObject({ previous: "0.4", estimate: "0.3" });
+  });
   it("never replaces the provider's own consensus or revision", () => {
     const own = { ...claims, estimate: "200K", estimateSource: "TradingView", previousBeforeRevision: "190K" };
     expect(overlayFxStreet([own], [fx({})]).events[0]).toEqual(own);

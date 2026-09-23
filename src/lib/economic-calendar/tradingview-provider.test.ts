@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { inRange } from "./normalize";
+import { CalendarNotice, inRange } from "./normalize";
 import {
   formatValue,
   parseTradingView,
@@ -139,6 +139,12 @@ describe("TradingView calendar", () => {
       expect.objectContaining({ name: "TradingView", status: "ok", count: 2 }),
     ]);
     expect(result.coverage).toBeUndefined();
+  });
+  it("says a week isn't published yet instead of calling the feed broken", async () => {
+    const provider = tradingViewProvider(vi.fn(async () => Response.json({ status: "ok" })));
+    const error = await provider.getEvents(range).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(CalendarNotice);
+    expect((error as Error).message).toBe("not published this far ahead");
   });
   it("fails on HTTP errors so the next provider can answer", async () => {
     await expect(

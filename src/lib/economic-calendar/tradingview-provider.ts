@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import { z } from "zod";
 import { NY } from "@/lib/providers/calendar";
-import { inRange, makeEvent, text } from "./normalize";
+import { CalendarNotice, inRange, makeEvent, text } from "./normalize";
 import type { EconomicCalendarProvider } from "./types";
 
 // The feed behind tradingview.com/economic-calendar. It carries Trading Economics' calendar: exact
@@ -121,7 +121,11 @@ export function tradingViewProvider(fetcher: typeof fetch = fetch): EconomicCale
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const raw = await response.text();
       if (raw.length > 5_000_000) throw new Error("Oversized TradingView response");
-      const events = inRange(parseTradingView(JSON.parse(raw)), range);
+      const body: unknown = JSON.parse(raw);
+      // About five weeks out the feed answers {"status":"ok"} with no result at all: nothing published yet.
+      if (body && typeof body === "object" && !("result" in body))
+        throw new CalendarNotice("not published this far ahead");
+      const events = inRange(parseTradingView(body), range);
       return {
         events,
         sources: [{ name: "TradingView", url: TRADINGVIEW_PAGE, status: "ok", count: events.length }],
