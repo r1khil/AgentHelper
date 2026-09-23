@@ -9,5 +9,5 @@ export default async function EconomicCalendarPage({
 }) {
   const { team: slug } = await params;
   await loadScope(slug);
-  return <EconomicCalendar initialRange={calendarWeek()} />;
+  return <EconomicCalendar initialRange={calendarWeek()} teamSlug={slug} />;
 }
