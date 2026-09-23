@@ -35,6 +35,7 @@ const backtesting = z.object({
   benchmark: z.enum(["SPY", "QQQ", "IWM"]),
   /** Weights the member changed from the saved portfolio, in percent. */
   changed: z.array(z.object({ ticker, savedPct: z.number().min(0).max(100), scenarioPct: z.number().min(0).max(100) })).max(60),
+  addedTickers: z.array(ticker).max(12).default([]),
   /** Whether a result is on screen and still matches the inputs above. */
   ran: z.boolean(),
 });
@@ -82,9 +83,10 @@ export function pageContextBlock(ctx: PageContext): string {
   }
   if (ctx.kind === "backtesting") {
     const weights = ctx.changed.length ? `{ ${ctx.changed.map((c) => `${q(c.ticker)}: ${c.scenarioPct}`).join(", ")} }` : null;
+    const addedTickers = ctx.addedTickers.length ? `, addedTickers: [${ctx.addedTickers.map(q).join(", ")}]` : "";
     return `${head}
 - Their scenario: ${ctx.from} to ${ctx.to} against ${ctx.benchmark}${ctx.changed.length ? `, with ${ctx.changed.map((c) => `${c.ticker} ${c.savedPct}% → ${c.scenarioPct}%`).join(", ")}` : ", saved weights unchanged"}.${ctx.ran ? "" : " They have not run it with these inputs yet."}
-- For questions about it, call run_backtest with { from: ${q(ctx.from)}, to: ${q(ctx.to)}, benchmark: ${q(ctx.benchmark)}${weights ? `, weights: ${weights}` : ""} } first, then explain what changed and why in plain language (which holdings' contributions moved), ending every line that uses one of its figures with its [src:ID]. A backtest is hindsight on today's holdings: say so, and never present it as a recommendation.`;
+- For questions about it, call run_backtest with { from: ${q(ctx.from)}, to: ${q(ctx.to)}, benchmark: ${q(ctx.benchmark)}${addedTickers}${weights ? `, weights: ${weights}` : ""} } first, then explain what changed and why in plain language (which holdings' contributions moved), ending every line that uses one of its figures with its [src:ID]. A backtest uses a current holding snapshot with any scenario additions: say so, and never present it as a recommendation.`;
   }
   return head;
 }

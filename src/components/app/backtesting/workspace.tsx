@@ -13,13 +13,22 @@ import {
   type Snapshot,
 } from "@/lib/backtesting/engine";
 import { cn } from "@/lib/utils";
+import {
+  addedPositionId,
+  MAX_SCENARIO_COMPANIES,
+  normalizeScenarioTicker,
+  withAddedCompanies,
+} from "@/lib/backtesting/scenario";
 import { usePathname } from "next/navigation";
 import { usePageContext } from "@/components/app/hoot/page-context";
 
 const pct = (v: number | null) =>
   v === null ? "—" : `${(v * 100).toFixed(2)}%`;
-const pp = (v: number | null) =>
-  v === null ? "—" : `${v >= 0 ? "+" : ""}${(v * 100).toFixed(2)} pp`;
+const pp = (v: number | null) => {
+  if (v === null) return "—";
+  const rounded = Math.round(v * 10000) / 100;
+  return `${rounded >= 0 ? "+" : ""}${rounded.toFixed(2)} pp`;
+};
 const tone = (v: number) =>
   v > 1e-12 ? "text-up" : v < -1e-12 ? "text-down" : "text-muted-foreground";
 const cell = "px-3 py-2.5 text-right tnum whitespace-nowrap";
@@ -42,14 +51,20 @@ export function BacktestingWorkspace({
   defaultFrom,
   defaultTo,
   endpoint = "/api/backtesting",
+  tickerEndpoint = "/api/backtesting/ticker",
 }: {
   snapshot: Snapshot;
   defaultFrom: string;
   defaultTo: string;
   endpoint?: string;
+  tickerEndpoint?: string;
 }) {
   const [weights, setWeights] = useState(() => initialWeights(snapshot));
   const [edited, setEdited] = useState<Set<string>>(() => new Set());
+  const [added, setAdded] = useState<{ ticker: string; name: string }[]>([]);
+  const [tickerInput, setTickerInput] = useState("");
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [lookupError, setLookupError] = useState("");
   const [from, setFrom] = useState(defaultFrom),
     [to, setTo] = useState(defaultTo);
   const [benchmark, setBenchmark] = useState<keyof typeof BENCHMARKS>("SPY");
@@ -57,10 +72,12 @@ export function BacktestingWorkspace({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const inFlight = useRef(false),
-    runs = useRef(0);
-  const values = Object.values(weights);
+    runs = useRef(0),
+    lookupInFlight = useRef(false);
+  const positions = withAddedCompanies(snapshot, added).positions;
+  const values = positions.map((p) => weights[p.id] ?? "");
   const scenarioWeights = Object.fromEntries(
-    snapshot.positions.map((p) => [
+    positions.map((p) => [
       p.id,
       edited.has(p.id) ? Number(weights[p.id]) / 100 : p.weight,
     ]),
@@ -92,7 +109,8 @@ export function BacktestingWorkspace({
           from,
           to,
           benchmark,
-          changed: snapshot.positions
+          addedTickers: added.map((p) => p.ticker),
+          changed: positions
             .filter((p) => {
               const w = scenarioWeights[p.id];
               return weights[p.id]?.trim() !== "" && Number.isFinite(w) && w >= 0 && w <= 1 && Math.abs(w - p.weight) > 1e-8;
@@ -102,6 +120,62 @@ export function BacktestingWorkspace({
         }
       : null,
   );
+  async function addCompany() {
+    if (lookupInFlight.current) return;
+    setLookupError("");
+    let ticker: string;
+    try {
+      ticker = normalizeScenarioTicker(tickerInput);
+      if (positions.some((p) => p.ticker.toUpperCase() === ticker))
+        throw new Error(`${ticker} is already in this portfolio or scenario.`);
+      if (added.length >= MAX_SCENARIO_COMPANIES)
+        throw new Error(`Add at most ${MAX_SCENARIO_COMPANIES} companies to one scenario.`);
+    } catch (e) {
+      setLookupError(e instanceof Error ? e.message : "Enter a valid ticker.");
+      return;
+    }
+    lookupInFlight.current = true;
+    setLookupBusy(true);
+    try {
+      const response = await fetch(tickerEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (response.redirected || !response.headers.get("content-type")?.includes("application/json"))
+        throw new Error("Your session expired. Sign in again, then reload this page.");
+      const company = await response.json();
+      if (!response.ok) throw new Error(company.error ?? `Could not recognize ${ticker}.`);
+      const canonical = normalizeScenarioTicker(company.ticker);
+      if (typeof company.name !== "string" || !company.name.trim())
+        throw new Error(`Could not recognize ${ticker}.`);
+      const next = [...added, { ticker: canonical, name: company.name }];
+      withAddedCompanies(snapshot, next);
+      setAdded(next);
+      setWeights((current) => ({ ...current, [addedPositionId(canonical)]: "0.00" }));
+      setTickerInput("");
+    } catch (e) {
+      setLookupError(e instanceof Error ? e.message : "Could not add this ticker.");
+    } finally {
+      lookupInFlight.current = false;
+      setLookupBusy(false);
+    }
+  }
+  function removeAdded(ticker: string) {
+    const id = addedPositionId(ticker);
+    setAdded((current) => current.filter((p) => p.ticker !== ticker));
+    setWeights((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    setEdited((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
+  }
   async function run(event: FormEvent) {
     event.preventDefault();
     if (!valid || inFlight.current) return;
@@ -118,6 +192,7 @@ export function BacktestingWorkspace({
           benchmark,
           version: snapshot.version,
           weights: scenarioWeights,
+          addedTickers: added.map((p) => p.ticker),
         }),
         signal: AbortSignal.timeout(120000),
       });
@@ -161,7 +236,7 @@ export function BacktestingWorkspace({
         <p className="text-muted-foreground">
           Invested holdings total {snapshot.savedWeightTotal.toFixed(2)}%; uninvested cash is {((snapshot.positions.find((p) => p.kind === "cash")?.weight ?? 0) * 100).toFixed(2)}%.
           Cash earns 0% by default, and no weights are redistributed. The original is a snapshot of current holdings, not
-          historical holdings. Changes here never update your saved portfolio.
+          historical holdings. Added or dropped companies affect only the modified copy and never update your saved portfolio.
         </p>
         <p className="text-xs text-muted-foreground">
           Fixed weights are rebalanced daily · USD total returns · Dividends
@@ -224,6 +299,36 @@ export function BacktestingWorkspace({
                 · edit the modified copy
               </span>
             </summary>
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+              <label className="space-y-1 text-sm">
+                Add company by ticker
+                <Input
+                  className="w-44 uppercase"
+                  aria-label="Ticker to add"
+                  placeholder="Enter ticker"
+                  value={tickerInput}
+                  disabled={lookupBusy}
+                  maxLength={10}
+                  onChange={(e) => {
+                    setTickerInput(e.target.value);
+                    setLookupError("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void addCompany();
+                    }
+                  }}
+                />
+              </label>
+              <Button type="button" variant="outline" disabled={lookupBusy} onClick={() => void addCompany()}>
+                {lookupBusy ? "Looking up…" : "Add company"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                New companies start at 0.00%. Offset changes yourself, including with cash.
+              </p>
+            </div>
+            {lookupError && <p role="alert" className="mt-2 text-sm text-destructive">{lookupError}</p>}
             <div className="mt-3 max-h-80 overflow-auto rounded-md border">
               <table className="w-full text-sm">
                 <caption className="sr-only">
@@ -235,15 +340,16 @@ export function BacktestingWorkspace({
                     <th className={cell}>Original</th>
                     <th className={cell}>Modified (%)</th>
                     <th className={cell}>Change</th>
+                    <th className={cell}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {snapshot.positions.map((p) => (
+                  {positions.map((p) => (
                     <tr key={p.id} className="border-t">
                       <th className="px-3 py-2 text-left font-medium">
                         {p.ticker}
                         <span className="mt-1 block max-w-60 truncate text-xs font-normal text-muted-foreground">
-                          {p.name}
+                          {p.name}{p.kind === "scenario" ? " · Added to scenario" : ""}
                         </span>
                       </th>
                       <td className={cell}>{pct(p.weight)}</td>
@@ -278,6 +384,31 @@ export function BacktestingWorkspace({
                       >
                         {weights[p.id]?.trim() === "" ? "—" : pp(scenarioWeights[p.id] - p.weight)}
                       </td>
+                      <td className={cell}>
+                        {p.kind === "scenario" ? (
+                          <Button type="button" size="sm" variant="ghost" disabled={lookupBusy} onClick={() => removeAdded(p.ticker)}>
+                            Remove
+                          </Button>
+                        ) : p.kind !== "cash" && scenarioWeights[p.id] > 0 ? (
+                          <Button type="button" size="sm" variant="ghost" onClick={() => {
+                            setWeights((current) => ({ ...current, [p.id]: "0.00" }));
+                            setEdited((current) => new Set(current).add(p.id));
+                          }}>
+                            Drop
+                          </Button>
+                        ) : p.kind !== "cash" && p.weight > 0 ? (
+                          <Button type="button" size="sm" variant="ghost" onClick={() => {
+                            setWeights((current) => ({ ...current, [p.id]: (p.weight * 100).toFixed(2) }));
+                            setEdited((current) => {
+                              const next = new Set(current);
+                              next.delete(p.id);
+                              return next;
+                            });
+                          }}>
+                            Restore
+                          </Button>
+                        ) : null}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -287,6 +418,7 @@ export function BacktestingWorkspace({
                     <td className={cell}>100.00%</td>
                     <td className={cell}>{Number.isFinite(sum) ? `${sum.toFixed(2)}%` : "—"}</td>
                     <td className={cell}>{Number.isFinite(sum) ? pp(sum / 100 - 1) : "—"}</td>
+                    <td className={cell} />
                   </tr>
                 </tfoot>
               </table>
@@ -305,9 +437,13 @@ export function BacktestingWorkspace({
               <Button
                 type="button"
                 variant="outline"
+                disabled={lookupBusy}
                 onClick={() => {
                   setWeights(initialWeights(snapshot));
                   setEdited(new Set());
+                  setAdded([]);
+                  setTickerInput("");
+                  setLookupError("");
                 }}
               >
                 Reset weights

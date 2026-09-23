@@ -13,7 +13,8 @@ import { loadSeries } from "@/lib/attribution/store";
 import { attributionHeadline, summarizeAttribution } from "@/lib/attribution/summary";
 import { qualityNotices } from "@/lib/attribution/view";
 import { BENCHMARKS, type Metrics } from "@/lib/backtesting/engine";
-import { loadSnapshot, runBacktest } from "@/lib/backtesting/load";
+import { loadSnapshot, resolveScenarioSnapshot, runBacktest } from "@/lib/backtesting/load";
+import { MAX_SCENARIO_COMPANIES } from "@/lib/backtesting/scenario";
 import { weightsFromOverrides } from "@/lib/backtesting/overrides";
 import { NY } from "@/lib/providers/calendar";
 import { sourceId, type Source } from "@/lib/providers/types";
@@ -111,23 +112,25 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
 
     run_backtest: tool({
       description:
-        "Replay the current holdings over past prices with the saved weights and, optionally, a changed set of weights, exactly as the Backtesting page does (fixed weights rebalanced daily, Yahoo adjusted closes, dividends included). Returns total return, volatility, max drawdown, up/down capture and days ahead of the benchmark for the saved and the scenario portfolio and the benchmark, plus each holding's contribution and the change the scenario made. A sandbox: it never changes the real portfolio. Execs and admins backtest the whole Fund; everyone else their team.",
+        "Replay the current holdings over past prices with saved weights and an optional modified scenario. The scenario may add recognized company tickers and change or drop weights with explicit offsets. Fixed weights rebalance daily using Yahoo adjusted closes. Returns performance metrics and holding contributions. This sandbox never changes the real portfolio. Execs and admins backtest the Fund; everyone else their team.",
       inputSchema: z.object({
         from: iso.optional().describe("First session; defaults to three months before `to`"),
         to: iso.optional().describe("Last session; defaults to the last completed session"),
         benchmark: z.enum(Object.keys(BENCHMARKS) as [keyof typeof BENCHMARKS, ...(keyof typeof BENCHMARKS)[]]).default("SPY"),
+        addedTickers: z.array(z.string()).max(MAX_SCENARIO_COMPANIES).optional().describe("Company tickers to add only to the modified scenario. Resolve them before assigning weights; each starts at 0%, so include explicit offsets in weights."),
         weights: z
           .record(z.string(), z.number().min(0).max(100))
           .optional()
           .describe("Scenario weights in percent by ticker, including CASH. Named tickers get exactly that weight; unspecified holdings keep their current weights. Supply offsetting edits so the full portfolio totals 100.00%. Omit to replay saved weights only."),
       }),
-      execute: async ({ from, to, benchmark, weights: overrides }): Promise<ToolResult<unknown>> => {
+      execute: async ({ from, to, benchmark, addedTickers, weights: overrides }): Promise<ToolResult<unknown>> => {
         try {
           const yesterday = DateTime.now().setZone(NY).minus({ days: 1 }).toISODate()!;
           const end = to && to < yesterday ? to : yesterday;
           // Same default window as the Backtesting page: three months back from the end date.
           const start = from ?? DateTime.fromISO(end, { zone: NY }).minus({ months: 3 }).toISODate()!;
-          const snapshot = await loadSnapshot(viewer);
+          const saved = await loadSnapshot(viewer);
+          const snapshot = addedTickers?.length ? await resolveScenarioSnapshot(saved, addedTickers) : saved;
           const weights = weightsFromOverrides(snapshot.positions, overrides ?? {});
           const r = await runBacktest(snapshot, weights, benchmark, start, end);
           const changed = snapshot.positions
@@ -138,7 +141,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
             .slice(0, 12)
             .map((c) => ({ ticker: c.ticker, savedContributionPct: pct(c.original), scenarioContributionPct: pct(c.modified), changePct: pct(c.delta) }));
           const source: Source = {
-            id: sourceId("backtest", `${snapshot.version}:${benchmark}:${r.from}:${r.to}:${JSON.stringify(overrides ?? {})}`),
+            id: sourceId("backtest", `${snapshot.version}:${benchmark}:${r.from}:${r.to}:${JSON.stringify(addedTickers ?? [])}:${JSON.stringify(overrides ?? {})}`),
             title: `Backtest · ${snapshot.scope} · ${r.from} to ${r.to} vs ${benchmark}${changed.length ? ` · ${changed.length} weight${changed.length === 1 ? "" : "s"} changed` : ""}`,
             url: appUrl("/backtesting"),
             publisher: "Owl Fund backtest (Yahoo adjusted closes)",

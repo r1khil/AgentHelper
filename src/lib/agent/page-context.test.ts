@@ -35,4 +35,8 @@ describe("page context", () => {
     expect(pageContextBlock(ctx)).toContain('run_backtest with { from: "2026-06-22", to: "2026-09-21", benchmark: "SPY", weights: { "NVDA": 10 } }');
     expect(pageContextLabel(ctx)).toBe("Backtesting · 2026-06-22 to 2026-09-21 · 1 weight changed");
   });
+  it("includes added historical company tickers when handing a scenario to Hoot", () => {
+    const ctx = parsePageContext({ kind: "backtesting", path: "/backtesting", title: "Backtesting", from: "2026-06-22", to: "2026-09-21", benchmark: "SPY", addedTickers: ["IBM"], changed: [{ ticker: "IBM", savedPct: 0, scenarioPct: 5 }, { ticker: "CASH", savedPct: 10, scenarioPct: 5 }], ran: false })!;
+    expect(pageContextBlock(ctx)).toContain('addedTickers: ["IBM"], weights: { "IBM": 5, "CASH": 5 }');
+  });
 });
