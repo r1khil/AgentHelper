@@ -386,7 +386,7 @@ export function BacktestingWorkspace({
                       </td>
                       <td className={cell}>
                         {p.kind === "scenario" ? (
-                          <Button type="button" size="sm" variant="ghost" onClick={() => removeAdded(p.ticker)}>
+                          <Button type="button" size="sm" variant="ghost" disabled={lookupBusy} onClick={() => removeAdded(p.ticker)}>
                             Remove
                           </Button>
                         ) : p.kind !== "cash" && scenarioWeights[p.id] > 0 ? (

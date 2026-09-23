@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { holdings } from "@/db/schema";
 import type { CurrentUser } from "@/lib/auth";
 import { isFundWide } from "@/lib/roles";
-import { getAdjustedBarsRange, lookupCompany } from "@/lib/providers/yahoo";
+import { getAdjustedBarsRange, resolveCompany } from "@/lib/providers/yahoo";
 import { NY } from "@/lib/providers/calendar";
 import { snapshotPositions } from "./snapshot";
 import {
@@ -77,7 +77,12 @@ export async function resolveScenarioSnapshot(
     if (existing.has(ticker))
       throw new Error(`${ticker} is already in the saved portfolio.`);
   const companies = await Promise.all(tickers.map(async (ticker) => {
-    const company = await lookupCompany(ticker);
+    let company;
+    try {
+      company = await resolveCompany(ticker);
+    } catch {
+      throw new Error(`The market data provider is unavailable for ${ticker}. Please retry.`);
+    }
     if (!company)
       throw new Error(`Could not recognize ${ticker} with the market data provider.`);
     return { ticker: normalizeScenarioTicker(company.symbol), name: company.name };

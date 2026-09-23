@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { lookupCompany } from "@/lib/providers/yahoo";
+import { resolveCompany } from "@/lib/providers/yahoo";
 import { normalizeScenarioTicker } from "@/lib/backtesting/scenario";
 
 const schema = z.object({ ticker: z.string().max(20) }).strict();
@@ -20,7 +20,12 @@ export async function POST(request: Request) {
   } catch {
     return json({ error: "Enter a valid ticker symbol." }, 400);
   }
-  const company = await lookupCompany(ticker);
+  let company;
+  try {
+    company = await resolveCompany(ticker);
+  } catch {
+    return json({ error: `The market data provider is unavailable for ${ticker}. Please retry.` }, 502);
+  }
   if (!company)
     return json({ error: `Could not recognize ${ticker} with the market data provider.` }, 404);
   try {

@@ -82,11 +82,21 @@ export async function getQuotes(symbols: string[]): Promise<Record<string, Quote
   });
 }
 
-export async function lookupCompany(symbol: string): Promise<{ symbol: string; name: string } | null> {
-  try {
+/**
+ * Company name for a symbol. Returns null only when Yahoo has no quote for it; provider failures throw,
+ * so callers can tell an unknown ticker from an outage. Names rarely change, so a day's cache is safe.
+ */
+export async function resolveCompany(symbol: string): Promise<{ symbol: string; name: string } | null> {
+  return cached(`yahoo:company:${symbol}`, 60 * 60 * 24, async () => {
     const q = await spaced(HOST, GAP_MS, () => retry(() => yf().quote(symbol)));
     if (!q) return null;
     return { symbol: q.symbol, name: q.longName ?? q.shortName ?? q.symbol };
+  });
+}
+
+export async function lookupCompany(symbol: string): Promise<{ symbol: string; name: string } | null> {
+  try {
+    return await resolveCompany(symbol);
   } catch {
     return null;
   }
