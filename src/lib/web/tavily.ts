@@ -1,7 +1,7 @@
 import { tavily, type TavilyClient } from "@tavily/core";
 import { cached } from "@/lib/providers/cache";
 import { capText } from "@/lib/drive/text";
-import { ESTABLISHED_DOMAINS, LOW_QUALITY_DOMAINS, PRIMARY_DOMAINS, rankByReliability, sourceTier, type SourceTier } from "@/lib/web/sources";
+import { ESTABLISHED_DOMAINS, isQuotePage, LOW_QUALITY_DOMAINS, pageTier, PRIMARY_DOMAINS, rankByReliability, type SourceTier } from "@/lib/web/sources";
 
 /**
  * Web search and page reading through Tavily (tavily.com). Tavily fetches the page, so the app never requests
@@ -65,7 +65,7 @@ export function acceptWebUrl(raw: string): URL {
  * Web search, one credit per call (searchDepth pinned to basic; advanced costs two). Cached for an hour.
  *
  * Without `domains`, Tavily is asked to prefer primary and established sources and to exclude low-quality ones;
- * a wider pool is then filtered for relevance (the preference pads results with off-topic pages from trusted sites),
+ * a wider pool drops stock-quote pages and syndicated low-quality articles, is filtered for relevance (the preference pads results with off-topic pages from trusted sites),
  * ranked by relevance plus a reliability bonus, and trimmed to `limit`. With `domains`, results are restricted to those sites.
  */
 export async function searchWeb(p: { query: string; topic?: WebTopic; timeRange?: WebTimeRange; limit?: number; domains?: string[] }): Promise<WebSearchHit[]> {
@@ -81,7 +81,8 @@ export async function searchWeb(p: { query: string; topic?: WebTopic; timeRange?
         ? { includeDomains: domains, includeDomainsMode: "restrict" as const }
         : { includeDomains: [...PRIMARY_DOMAINS, ...ESTABLISHED_DOMAINS], includeDomainsMode: "prefer" as const, excludeDomains: LOW_QUALITY_DOMAINS };
       const r = await getClient().search(query, { searchDepth: "basic", topic, timeRange: p.timeRange, maxResults: SEARCH_POOL, includeRawContent: false, includeAnswer: false, ...scope });
-      const hits: WebSearchHit[] = (r.results ?? []).map((x) => ({ title: x.title, url: x.url, snippet: x.content, publishedAt: x.publishedDate || undefined, score: x.score, tier: sourceTier(x.url) }));
+      // Quote pages go before the relevance floor is set: they score highest for "why did X move" and explain nothing.
+      const hits: WebSearchHit[] = (r.results ?? []).filter((x) => !isQuotePage(x.url)).map((x) => ({ title: x.title, url: x.url, snippet: x.content, publishedAt: x.publishedDate || undefined, score: x.score, tier: pageTier({ url: x.url, title: x.title }).tier }));
       // With an explicit site list the caller chose the sources; still drop off-topic padding.
       return rankByReliability(hits, (h) => (domains.length && h.tier === "low" ? "other" : h.tier), (h) => h.score).slice(0, limit);
     } catch (e) {

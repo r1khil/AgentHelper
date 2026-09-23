@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publisherTier, rankByReliability, sourceTier } from "./sources";
+import { isQuotePage, pageTier, publisherTier, rankByReliability, sourceTier, syndicatedFrom } from "./sources";
 
 describe("sourceTier", () => {
   it("rates regulators, IR sites and wires as primary", () => {
@@ -59,5 +59,44 @@ describe("rankByReliability", () => {
     ];
     expect(rankByReliability(xs, (x) => x.t, (x) => x.s).map((x) => x.id)).toEqual(["a", "b"]);
     expect(rankByReliability([], () => "other", () => 0)).toEqual([]);
+  });
+});
+
+describe("syndication", () => {
+  // Pages Hoot read in production on 2026-09-23.
+  it("rates a Benzinga story reposted on TradingView as Benzinga", () => {
+    const url = "https://www.tradingview.com/news/benzinga:d85307743094b:0-what-s-going-on-with-amazon-stock-wednesday";
+    expect(syndicatedFrom({ url })).toEqual({ name: "benzinga", tier: "low" });
+    expect(pageTier({ url, title: "What's Going On With Amazon Stock Wednesday? - TradingView" })).toEqual({ tier: "low", syndicatedFrom: "benzinga" });
+  });
+  it("rates a 24/7 Wall St. piece behind a Finnhub/Yahoo link by its title suffix", () => {
+    const p = { url: "https://finnhub.io/api/news?id=e61c2b877a19", title: "Shopify Sinks 5%, Meta Ticks Up as Muse Deal Rally Unwinds; Amazon Slips - 24/7 Wall St." };
+    expect(pageTier(p)).toEqual({ tier: "low", syndicatedFrom: "24/7 Wall St" });
+  });
+  it("reads a publisher byline on the first line of the text", () => {
+    expect(pageTier({ url: "https://finance.yahoo.com/news/x.html", title: "Some headline", text: "Motley Fool\nSome headline\nBody" }).tier).toBe("low");
+  });
+  it("leaves ordinary titles and trusted hosts alone, and never upgrades a host", () => {
+    expect(pageTier({ url: "https://www.cnbc.com/2026/09/23/x.html", title: "CCTV Script 23/09/26 - CNBC" })).toEqual({ tier: "established", syndicatedFrom: null });
+    expect(pageTier({ url: "https://www.wsj.com/a", title: "Stocks Slip - The Wall Street Journal" }).tier).toBe("established");
+    expect(pageTier({ url: "https://blog.example/a", title: "Rates, risk - and what comes next" }).syndicatedFrom).toBeNull();
+    expect(pageTier({ url: "https://finance.yahoo.com/news/y.html", title: "Fed holds rates - Reuters" })).toEqual({ tier: "other", syndicatedFrom: "Reuters" });
+  });
+});
+
+describe("isQuotePage", () => {
+  it("spots quote and ticker hub pages", () => {
+    expect(isQuotePage("https://www.wsj.com/market-data/quotes/AMZN")).toBe(true);
+    expect(isQuotePage("https://www.marketwatch.com/investing/stock/amzn?countrycode=ch")).toBe(true);
+    expect(isQuotePage("https://finance.yahoo.com/quote/GOOG/")).toBe(true);
+    expect(isQuotePage("https://www.cnbc.com/quotes/AMZN")).toBe(true);
+    expect(isQuotePage("https://www.google.com/finance/quote/AMZN:NASDAQ")).toBe(true);
+    expect(isQuotePage("https://www.nasdaq.com/market-activity/stocks/amzn")).toBe(true);
+  });
+  it("keeps articles and live coverage", () => {
+    expect(isQuotePage("https://www.cnbc.com/2026/09/23/cctv-script-23/09/26.html")).toBe(false);
+    expect(isQuotePage("https://www.marketwatch.com/livecoverage/stock-market-today-dow-s-p-500-nasdaq-firm-start")).toBe(false);
+    expect(isQuotePage("https://finance.yahoo.com/markets/stocks/articles/alphabet-drops-4-meta-edges-165741579.html")).toBe(false);
+    expect(isQuotePage("https://www.barchart.com/story/news/4760039/how-to-play-google-stock")).toBe(false);
   });
 });
