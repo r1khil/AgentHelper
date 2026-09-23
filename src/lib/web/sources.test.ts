@@ -9,6 +9,9 @@ describe("sourceTier", () => {
     expect(sourceTier("https://www.nhtsa.gov/recalls")).toBe("primary");
     expect(sourceTier("https://investor.apple.com/news/default.aspx")).toBe("primary");
     expect(sourceTier("https://ir.aboutamazon.com/news-release")).toBe("primary");
+    // Investor's Business Daily, rated primary in production on 2026-09-23 before the subdomain check.
+    expect(sourceTier("https://www.investors.com/news/technology/meta-stock")).toBe("established");
+    expect(sourceTier("https://ir.example")).toBe("other");
     expect(sourceTier("https://www.businesswire.com/news/home/1")).toBe("primary");
     expect(sourceTier("https://edge.prnewswire.com/c/link?t=0&u=https%3A%2F%2Fwww.marketwatch.com%2Finvesting%2Fstock%2FSTLA")).toBe("established");
     expect(sourceTier("https://edge.prnewswire.com/c/link?t=0&u=https%3A%2F%2Fblog.example%2Fa")).toBe("other");

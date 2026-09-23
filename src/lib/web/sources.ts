@@ -62,6 +62,7 @@ export const ESTABLISHED_DOMAINS = [
   "moodys.com",
   "fitchratings.com",
   "morningstar.com",
+  "investors.com",
   "investopedia.com",
 ];
 
@@ -118,12 +119,15 @@ function hostOf(hostOrUrl: string): string {
 
 const matches = (host: string, domains: string[]) => domains.some((d) => host === d || host.endsWith(`.${d}`));
 
+/** A company's investor-relations subdomain (investor.apple.com, ir.aboutamazon.com), not a site named "investors". */
+const isInvestorRelationsHost = (host: string) => /^(investors?|ir)\./.test(host) && host.split(".").length >= 3;
+
 /** Tier for a URL or hostname. Government hosts and company investor-relations subdomains count as primary. */
 export function sourceTier(hostOrUrl: string): SourceTier {
   const host = hostOf(hostOrUrl);
   if (!host) return "other";
   if (matches(host, LOW_QUALITY_DOMAINS)) return "low";
-  if (matches(host, PRIMARY_DOMAINS) || host.endsWith(".gov") || /^(investors?|ir)\./.test(host)) return "primary";
+  if (matches(host, PRIMARY_DOMAINS) || host.endsWith(".gov") || isInvestorRelationsHost(host)) return "primary";
   if (matches(host, ESTABLISHED_DOMAINS)) return "established";
   return "other";
 }
