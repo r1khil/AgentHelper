@@ -2,7 +2,7 @@ import { DateTime } from "luxon";
 import type { AttributionSummary } from "@/lib/attribution/summary";
 import type { Source } from "@/lib/providers/types";
 
-/** Who gets Hoot's 5:15 p.m. daily attribution email. */
+/** Who gets Hoot's 5:15 p.m. daily attribution email, in the order they are addressed (first in To, the rest in Cc). */
 export const DAILY_BRIEF_RECIPIENTS = [
   { name: "Aadi Patil", email: "apatil@theowlfund.com" },
   { name: "Saad Quddus", email: "squddus@theowlfund.com" },
