@@ -227,6 +227,25 @@ export function rankByReliability<T>(items: T[], tier: (x: T) => SourceTier, sco
     .map((e) => e.x);
 }
 
+/** Outlets whose articles are subscriber-only; read_url usually gets the teaser and site chrome. */
+export const HARD_PAYWALL_DOMAINS = ["wsj.com", "ft.com", "bloomberg.com", "barrons.com", "economist.com", "theinformation.com", "investors.com", "nytimes.com", "washingtonpost.com"];
+const PAYWALL_PHRASES = /subscribe (now )?to (continue|keep) reading|continue reading (with|your) (a )?subscription|already a subscriber|subscriber[- ]only|subscribers only|to continue reading|create a free account to (continue|read)|this (article|content) is (reserved|available) (for|to) (subscribers|members)|sign in to (continue|read)|unlock this article|become a (member|subscriber) to read/i;
+/** Readable text below this on a hard-paywall outlet is a teaser. */
+export const PAYWALL_TEASER_CHARS = 5000;
+
+/** Whether read_url most likely got a paywall teaser rather than the article. */
+export function looksPaywalled(url: string, text: string): boolean {
+  let host = "";
+  try {
+    host = new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return false;
+  }
+  const hard = HARD_PAYWALL_DOMAINS.some((d) => host === d || host.endsWith(`.${d}`));
+  if (hard && text.trim().length < PAYWALL_TEASER_CHARS) return true;
+  return text.length < 20_000 && PAYWALL_PHRASES.test(text);
+}
+
 export const TIER_LABEL: Record<SourceTier, string> = {
   primary: "Primary source (regulator, exchange, company, or press-release wire)",
   established: "Established news outlet",
