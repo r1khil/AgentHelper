@@ -104,6 +104,8 @@ export function briefEmail(opts: { sessionDate: string; facts: string; analysis:
     ...(opts.sources.length ? ["", sourcesFooter(opts.sources)] : []),
     ...(link ? ["", `The full breakdown is on the Attribution page: ${link}`] : []),
     "",
+    "Feel free to reply with any questions.",
+    "",
     "Best,",
     "Hoot",
   ].join("\n");
