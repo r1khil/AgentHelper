@@ -199,15 +199,15 @@ export async function sendDailyBrief(opts: { sessionDate?: string; force?: boole
     appUrl: process.env.APP_URL,
   });
 
-  const recipients = opts.to ?? DAILY_BRIEF_RECIPIENTS.map((r) => r.email);
-  progress.step("send email", { recipients: recipients.length, analysis: result.analysis });
-  for (const to of recipients) {
-    try {
-      await sendEmail({ to, subject, text: body });
-      result.sent.push(to);
-    } catch (e) {
-      result.failed[to] = e instanceof Error ? e.message : String(e);
-    }
+  // One email for everyone, addressed in the list's order: the first person in To, the rest in Cc
+  // (OpenMail takes a single To address).
+  const [to, ...cc] = opts.to ?? DAILY_BRIEF_RECIPIENTS.map((r) => r.email);
+  progress.step("send email", { to, cc, analysis: result.analysis });
+  try {
+    await sendEmail({ to, cc, subject, text: body });
+    result.sent.push(to, ...cc);
+  } catch (e) {
+    result.failed[[to, ...cc].join(", ")] = e instanceof Error ? e.message : String(e);
   }
   if (!result.sent.length) {
     result.status = "failed";
