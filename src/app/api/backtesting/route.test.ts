@@ -2,11 +2,12 @@ import { beforeEach, expect, it, vi } from "vitest";
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/lib/backtesting/load", () => ({
   loadSnapshot: vi.fn(),
+  resolveScenarioSnapshot: vi.fn(),
   runBacktest: vi.fn(),
 }));
 import { POST } from "./route";
 import { getCurrentUser } from "@/lib/auth";
-import { loadSnapshot, runBacktest } from "@/lib/backtesting/load";
+import { loadSnapshot, resolveScenarioSnapshot, runBacktest } from "@/lib/backtesting/load";
 const id = "00000000-0000-4000-8000-000000000001";
 const body = {
   from: "2025-01-06",
@@ -74,6 +75,18 @@ it("passes the authenticated user's current snapshot and disables response cachi
     body.from,
     body.to,
   );
+});
+it("resolves scenario-only companies before replaying and accepts their IDs in weights", async () => {
+  const added = { id: "added:IBM", ticker: "IBM", name: "IBM", weight: 0, kind: "scenario" as const };
+  vi.mocked(resolveScenarioSnapshot).mockResolvedValue({
+    positions: [added], version: body.version, scope: "own team", capturedAt: "test", savedWeightTotal: 100,
+  });
+  vi.mocked(runBacktest).mockResolvedValue({ days: [] } as unknown as Awaited<ReturnType<typeof runBacktest>>);
+  const weights = { [id]: 0.8, [added.id]: 0.2 };
+  const r = await POST(request({ ...body, weights, addedTickers: ["IBM"] }));
+  expect(r.status).toBe(200);
+  expect(resolveScenarioSnapshot).toHaveBeenCalledWith(expect.objectContaining({ version: body.version }), ["IBM"]);
+  expect(runBacktest).toHaveBeenCalledWith(expect.objectContaining({ positions: [added] }), weights, "SPY", body.from, body.to);
 });
 it("handles malformed JSON", async () => {
   expect(

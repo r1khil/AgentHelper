@@ -13,7 +13,7 @@ export async function proxy(request: NextRequest) {
   }
   // Only synthetic QA endpoints, behind an explicit development flag; live backtesting stays authenticated.
   if (process.env.NODE_ENV === "development" && process.env.BACKTESTING_PREVIEW === "1" &&
-      ["/dev/backtesting", "/api/dev/backtesting"].includes(request.nextUrl.pathname)) {
+      ["/dev/backtesting", "/api/dev/backtesting", "/api/dev/backtesting/ticker"].includes(request.nextUrl.pathname)) {
     return NextResponse.next({ request });
   }
   let response = NextResponse.next({ request });

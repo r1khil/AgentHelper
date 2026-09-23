@@ -21,3 +21,15 @@ it("previews uninvested cash and a holding that starts trading during the range"
   const result = previewReplay(weights, "SPY", "2026-06-01", "2026-07-10");
   expect(result.cashSubstitutions).toEqual([{ ticker: "BETA", through: "2026-07-01" }]);
 });
+it("replays an added former company and dropped current holding with explicit cash offset", () => {
+  const weights = Object.fromEntries(previewSnapshot.positions.map((p) => [p.id, p.weight]));
+  weights[previewSnapshot.positions[1].id] = 0;
+  weights["added:GAMMA"] = 0.2;
+  weights[previewSnapshot.positions.at(-1)!.id] = 0.2;
+  const result = previewReplay(weights, "SPY", "2026-06-01", "2026-07-10", ["GAMMA"]);
+  expect(result.contributions.find((p) => p.ticker === "GAMMA")).toMatchObject({ original: 0 });
+  expect(result.contributions.find((p) => p.ticker === "BETA")).toMatchObject({ modified: 0 });
+  expect(result.cashSubstitutions).toEqual([{ ticker: "BETA", through: "2026-07-01" }]);
+  expect(() => previewReplay({ ...weights, ["added:GAMMA"]: 0.21 }, "SPY", "2026-06-01", "2026-07-10", ["GAMMA"]))
+    .toThrow(/100%/);
+});

@@ -1,9 +1,9 @@
 import { beforeEach, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/providers/yahoo", () => ({ getAdjustedBarsRange: vi.fn() }));
+vi.mock("@/lib/providers/yahoo", () => ({ getAdjustedBarsRange: vi.fn(), lookupCompany: vi.fn() }));
 vi.mock("@/db/client", () => ({ db: { select: vi.fn() } }));
-import { runBacktest } from "./load";
-import { getAdjustedBarsRange } from "@/lib/providers/yahoo";
+import { resolveScenarioSnapshot, runBacktest } from "./load";
+import { getAdjustedBarsRange, lookupCompany } from "@/lib/providers/yahoo";
 import type { Snapshot } from "./engine";
 const snapshot: Snapshot = {
   positions: [{ id: "a", ticker: "A", name: "A", weight: 1 }],
@@ -13,6 +13,17 @@ const snapshot: Snapshot = {
   capturedAt: "test",
 };
 beforeEach(() => vi.clearAllMocks());
+it("resolves added tickers using the provider and rejects duplicate or unknown symbols", async () => {
+  vi.mocked(lookupCompany).mockResolvedValue({ symbol: "IBM", name: "International Business Machines" });
+  const scenario = await resolveScenarioSnapshot(snapshot, [" ibm "]);
+  expect(lookupCompany).toHaveBeenCalledWith("IBM");
+  expect(scenario.positions.at(-1)).toMatchObject({ id: "added:IBM", ticker: "IBM", weight: 0 });
+  expect(snapshot.positions).toHaveLength(1);
+  await expect(resolveScenarioSnapshot(snapshot, ["A"])).rejects.toThrow(/already/);
+  await expect(resolveScenarioSnapshot(snapshot, ["IBM", "ibm"])).rejects.toThrow(/once/);
+  vi.mocked(lookupCompany).mockResolvedValue(null);
+  await expect(resolveScenarioSnapshot(snapshot, ["XYZ"])).rejects.toThrow(/Could not recognize/);
+});
 it("loads both portfolio and benchmark on the server with a pre-period baseline", async () => {
   vi.mocked(getAdjustedBarsRange).mockResolvedValue([
     { date: "2025-01-03", close: 100 },

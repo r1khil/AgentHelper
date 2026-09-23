@@ -5,7 +5,7 @@ export type Position = {
   ticker: string;
   name: string;
   weight: number;
-  kind?: "cash";
+  kind?: "cash" | "scenario";
 };
 export type Snapshot = {
   positions: Position[];

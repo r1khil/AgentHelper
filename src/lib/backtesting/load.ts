@@ -6,9 +6,14 @@ import { db } from "@/db/client";
 import { holdings } from "@/db/schema";
 import type { CurrentUser } from "@/lib/auth";
 import { isFundWide } from "@/lib/roles";
-import { getAdjustedBarsRange } from "@/lib/providers/yahoo";
+import { getAdjustedBarsRange, lookupCompany } from "@/lib/providers/yahoo";
 import { NY } from "@/lib/providers/calendar";
 import { snapshotPositions } from "./snapshot";
+import {
+  MAX_SCENARIO_COMPANIES,
+  normalizeScenarioTicker,
+  withAddedCompanies,
+} from "./scenario";
 import {
   BENCHMARKS,
   replay,
@@ -55,6 +60,29 @@ export async function loadSnapshot(user: CurrentUser): Promise<Snapshot> {
       ? "Fund portfolio"
       : `${user.team?.name ?? "Team"} portfolio`,
   };
+}
+
+/** Resolve user-added symbols again on the server before replaying a scenario. */
+export async function resolveScenarioSnapshot(
+  snapshot: Snapshot,
+  addedTickers: string[],
+): Promise<Snapshot> {
+  if (addedTickers.length > MAX_SCENARIO_COMPANIES)
+    throw new Error(`Add at most ${MAX_SCENARIO_COMPANIES} companies to one scenario.`);
+  const tickers = addedTickers.map(normalizeScenarioTicker);
+  if (new Set(tickers).size !== tickers.length)
+    throw new Error("Each added ticker may appear only once.");
+  const existing = new Set(snapshot.positions.map((p) => p.ticker.toUpperCase()));
+  for (const ticker of tickers)
+    if (existing.has(ticker))
+      throw new Error(`${ticker} is already in the saved portfolio.`);
+  const companies = await Promise.all(tickers.map(async (ticker) => {
+    const company = await lookupCompany(ticker);
+    if (!company)
+      throw new Error(`Could not recognize ${ticker} with the market data provider.`);
+    return { ticker: normalizeScenarioTicker(company.symbol), name: company.name };
+  }));
+  return withAddedCompanies(snapshot, companies);
 }
 export async function runBacktest(
   snapshot: Snapshot,

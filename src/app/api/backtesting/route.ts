@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { loadSnapshot, runBacktest } from "@/lib/backtesting/load";
+import { loadSnapshot, resolveScenarioSnapshot, runBacktest } from "@/lib/backtesting/load";
+import { MAX_SCENARIO_COMPANIES } from "@/lib/backtesting/scenario";
 
 export const maxDuration = 120;
 const schema = z
@@ -9,7 +10,8 @@ const schema = z
     to: z.string().length(10),
     benchmark: z.enum(["SPY", "QQQ", "IWM"]),
     version: z.string().length(64),
-    weights: z.record(z.string().uuid(), z.number().finite().min(0).max(1)),
+    weights: z.record(z.string().min(1).max(64), z.number().finite().min(0).max(1)),
+    addedTickers: z.array(z.string().max(20)).max(MAX_SCENARIO_COMPANIES).default([]),
   })
   .strict();
 const json = (body: unknown, status = 200) =>
@@ -47,8 +49,11 @@ export async function POST(request: Request) {
         },
         409,
       );
-    const { weights, benchmark, from, to } = body.data;
-    return json(await runBacktest(snapshot, weights, benchmark, from, to));
+    const { weights, benchmark, from, to, addedTickers } = body.data;
+    const scenario = addedTickers.length
+      ? await resolveScenarioSnapshot(snapshot, addedTickers)
+      : snapshot;
+    return json(await runBacktest(scenario, weights, benchmark, from, to));
   } catch (error) {
     console.error("[backtesting]", error);
     return json(

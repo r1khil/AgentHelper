@@ -15,6 +15,7 @@ export default function Preview() {
         defaultFrom="2026-06-01"
         defaultTo="2026-08-31"
         endpoint="/api/dev/backtesting"
+        tickerEndpoint="/api/dev/backtesting/ticker"
       />
     </main>
   );

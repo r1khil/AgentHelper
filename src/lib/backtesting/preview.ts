@@ -1,6 +1,7 @@
 /** Deterministic, explicitly synthetic data for local browser QA; never used by the real route. */
 import { replay, type Price, type Snapshot } from "./engine";
 import { snapshotPositions } from "./snapshot";
+import { normalizeScenarioTicker, withAddedCompanies } from "./scenario";
 export const previewEnabled = () =>
   process.env.NODE_ENV === "development" &&
   process.env.BACKTESTING_PREVIEW === "1";
@@ -18,10 +19,20 @@ export function previewReplay(
   benchmark: string,
   from: string,
   to: string,
+  addedTickers: string[] = [],
 ) {
+  const scenario = withAddedCompanies(
+    previewSnapshot,
+    addedTickers.map((value) => {
+      const ticker = normalizeScenarioTicker(value);
+      if (ticker !== "GAMMA") throw new Error("Synthetic preview recognizes GAMMA only.");
+      return { ticker, name: "Synthetic former holding" };
+    }),
+  );
   const prices: Record<string, Price[]> = {
     ALPHA: [],
     BETA: [],
+    GAMMA: [],
     SPY: [],
     QQQ: [],
     IWM: [],
@@ -54,7 +65,7 @@ export function previewReplay(
       "Synthetic preview supports June 1 through August 31, 2026.",
     );
   return replay(
-    previewSnapshot.positions,
+    scenario.positions,
     weights,
     prices,
     benchmark,

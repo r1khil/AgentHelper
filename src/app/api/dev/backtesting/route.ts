@@ -4,13 +4,14 @@ const schema = z.object({
   from: z.string(),
   to: z.string(),
   benchmark: z.enum(["SPY", "QQQ", "IWM"]),
-  weights: z.record(z.string().uuid(), z.number()),
+  weights: z.record(z.string().min(1).max(64), z.number()),
+  addedTickers: z.array(z.string()).default([]),
 });
 export async function POST(request: Request) {
   if (!previewEnabled()) return new Response(null, { status: 404 });
   try {
-    const { from, to, benchmark, weights } = schema.parse(await request.json());
-    return Response.json(previewReplay(weights, benchmark, from, to), {
+    const { from, to, benchmark, weights, addedTickers } = schema.parse(await request.json());
+    return Response.json(previewReplay(weights, benchmark, from, to, addedTickers), {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
