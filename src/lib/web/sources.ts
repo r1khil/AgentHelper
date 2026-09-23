@@ -5,7 +5,7 @@
  * content farms that repackage other people's reporting with clickbait. Everything else is "other".
  *
  * Search asks Tavily to prefer primary and established domains and to drop low-quality ones, then re-ranks
- * locally so the order holds even when the provider ignores the preference.
+ * locally by relevance plus a reliability bonus, after dropping barely relevant results.
  */
 export type SourceTier = "primary" | "established" | "other" | "low";
 
@@ -100,12 +100,16 @@ const PRIMARY_PUBLISHERS = ["sec", "business wire", "businesswire", "pr newswire
 const ESTABLISHED_PUBLISHERS = ["reuters", "associated press", "ap", "bloomberg", "wsj", "wall street journal", "dow jones", "dowjones", "financial times", "barron's", "barrons", "marketwatch", "cnbc", "the economist", "new york times", "axios", "fortune", "morningstar"];
 const LOW_PUBLISHERS = ["seekingalpha", "seeking alpha", "motley fool", "fool", "investorplace", "benzinga", "marketbeat", "tipranks", "simply wall st", "zacks", "insider monkey", "24/7 wall st", "gurufocus", "stocktwits", "reddit"];
 
-const TIER_RANK: Record<SourceTier, number> = { primary: 0, established: 1, other: 2, low: 3 };
-
 function hostOf(hostOrUrl: string): string {
   let host = hostOrUrl.trim().toLowerCase();
   try {
-    if (host.includes("/")) host = new URL(host).hostname;
+    if (host.includes("/")) {
+      const url = new URL(hostOrUrl.trim());
+      // Wire-service click trackers (edge.prnewswire.com/c/link?u=…) point elsewhere: rate the destination.
+      const target = url.hostname.startsWith("edge.") ? url.searchParams.get("u") : null;
+      if (target && /^https?:\/\//i.test(target) && !new URL(target).hostname.startsWith("edge.")) return hostOf(target);
+      host = url.hostname.toLowerCase();
+    }
   } catch {
     /* not a URL: treat as a host */
   }
@@ -135,15 +139,27 @@ export function publisherTier(name: string): SourceTier {
   return "other";
 }
 
-export function tierRank(t: SourceTier) {
-  return TIER_RANK[t];
-}
+/**
+ * Relevance bonus for reliable sources. Search relevance scores run 0–1; the bonus lets a reliable page outrank a
+ * slightly more relevant unrated one without letting an off-topic page from a trusted site jump the queue.
+ */
+export const TIER_BONUS: Record<SourceTier, number> = { primary: 0.15, established: 0.1, other: 0, low: -1 };
+/** Results scoring below this share of the best result's relevance (or below the absolute floor) are dropped. */
+export const RELATIVE_RELEVANCE_FLOOR = 0.25;
+export const ABSOLUTE_RELEVANCE_FLOOR = 0.1;
 
-/** Stable sort: better tiers first, then the given score (higher first), then original order. */
-export function rankByTier<T>(items: T[], tier: (x: T) => SourceTier, score: (x: T) => number = () => 0): T[] {
+/**
+ * Drops results that are barely relevant to the query, then orders the rest by relevance plus a reliability bonus
+ * (ties keep the original order). Searches that prefer trusted domains pad the pool with off-topic pages from
+ * those domains; the floor removes them.
+ */
+export function rankByReliability<T>(items: T[], tier: (x: T) => SourceTier, score: (x: T) => number): T[] {
+  const top = Math.max(0, ...items.map(score));
+  const floor = Math.max(ABSOLUTE_RELEVANCE_FLOOR, top * RELATIVE_RELEVANCE_FLOOR);
   return items
-    .map((x, i) => ({ x, i, r: tierRank(tier(x)), s: score(x) }))
-    .sort((a, b) => a.r - b.r || b.s - a.s || a.i - b.i)
+    .map((x, i) => ({ x, i, s: score(x), t: tier(x) }))
+    .filter((e) => e.s >= floor && e.t !== "low")
+    .sort((a, b) => b.s + TIER_BONUS[b.t] - (a.s + TIER_BONUS[a.t]) || a.i - b.i)
     .map((e) => e.x);
 }
 
