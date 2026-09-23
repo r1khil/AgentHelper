@@ -251,20 +251,13 @@ describe("requests and fallback", () => {
       eodhdProvider("secret", "UTC", truncated).getEvents(range),
     ).rejects.toThrow("truncated");
   });
-  it("redacts transport errors and fails if all configured providers fail", async () => {
+  it("redacts transport errors and scopes the cache to credentials", async () => {
     const fetcher = vi
       .fn()
       .mockRejectedValue(new Error("https://host/?c=secret"));
     await expect(
       tradingEconomicsProvider("secret", fetcher).getEvents(range),
     ).rejects.toThrow("Calendar request failed");
-    await expect(
-      loadConfiguredCalendar(
-        range,
-        calendarConfiguration({ TRADING_ECONOMICS_API_KEY: "secret" }),
-        fetcher,
-      ),
-    ).rejects.toThrow("Configured calendar providers");
     expect(
       calendarConfiguration({ TRADING_ECONOMICS_API_KEY: "a" }).cacheScope,
     ).not.toBe(

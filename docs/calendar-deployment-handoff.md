@@ -1,34 +1,27 @@
-# Economic calendar handoff for deployment
+# Economic calendar data sources
 
-The calendar implementation is already merged into `main` in `r1khil/AgentHelper`.
-Implementation commit: `e8452b1`; integrated main commit: `4f60cbe`.
-Pull the latest main before deploying; preserve any newer changes. Do not rebuild or redesign the calendar UI.
-
-## Required configuration
-
-Set this server environment variable on the existing deployment, then rebuild/redeploy:
+## Configuration
 
 ```dotenv
-ECONOMIC_CALENDAR_PROVIDER=biquote
+ECONOMIC_CALENDAR_PROVIDER=auto
 ```
 
-This explicitly selects the free biquote feed even if old Trading Economics or EODHD keys exist. Neither paid API access nor an EODHD token is needed for this mode. Do not switch to `auto` or `public` for this rollout. Hosting account permissions and deployment restrictions are separate from calendar data access; do not purchase a hosting or API plan for this change.
+`auto` (also the default when unset) tries each feed in turn and shows the first one that answers:
 
-## Expected behavior
+1. Trading Economics, then EODHD, only if their API keys are set.
+2. **TradingView**: free, no key. The feed behind tradingview.com/economic-calendar, carrying Trading Economics' data: exact times, actuals within minutes, previous values and the consensus forecast shown as Estimate.
+3. **biquote**: free, no key. Times, actuals and previous values; its forecast isn't verified consensus, so Estimate stays blank.
+4. **Public agency feeds**: BLS, BEA, Census and Federal Reserve schedules plus XOOMAR values. Set `CALENDAR_CONTACT_EMAIL` or BLS answers 403.
 
-- Keep the current calendar UI, filters, navigation and caching.
-- Show provider-supplied periods, previous values and released actuals where available.
-- Estimates stay blank: biquote forecasts are not verified economist consensus.
-- Future unreleased actuals stay blank.
-- Preserve units, revision metadata, importance and Eastern time handling.
-- Missing source data stays blank; do not fabricate values.
+`tradingview`, `biquote` or `public` puts that feed first and ignores paid keys; the other free feeds stay behind it as fallbacks. No new fallback starts after 18 s, so the route stays inside its 30 s limit.
+
+When a fallback answers, the page shows "Coverage incomplete" naming the feeds that failed and the one showing. When every feed fails, the page shows the last copy of that week that loaded (kept 30 days in `provider_cache`) with its load time, and retries every 30 s. It returns an error only when no copy exists.
+
+## Caveats
+
+- TradingView's feed is not a documented API. It answers only requests carrying its calendar page's `Origin` header and could change or close without notice; the chain falls through to biquote if it does.
+- biquote.io is blocked by Palo Alto DNS Security (it resolves to `sinkhole.paloaltonetworks.com` on networks using it), so it fails on some local networks even when it works on Vercel.
 
 ## Verification
 
-Run `npm test`, `npm run lint` and `npm run build -- --webpack`.
-Then sign into the deployed app and open the team's Economic Calendar.
-Check a recently released week for periods, previous values and actuals; check an upcoming week for previous values where available, blank actuals and blank estimates. Confirm the provider is biquote.
-
-The merged implementation passed 318 tests, lint, TypeScript and a production build. Real-provider verification for September 21–27, 2026 returned 55 events, 49 with previous values, zero actuals and zero estimates. Earlier released-week verification showed periods, previous values, actuals and revisions. These are dated verification results, not hardcoded data or promises of future coverage.
-
-The GitHub push succeeded. Vercel reported "Deployment was blocked" for commit `4f60cbe`; production calendar verification has not been completed. The project owner must inspect the deployment restriction in their account and redeploy using their existing hosting arrangement. Do not assume a successful GitHub push means the application is live.
+Run `npm test`, `npm run lint` and `npm run build -- --webpack`. In the deployed app, open the team's Economic Calendar: the status line should name TradingView, with no "Coverage incomplete" note, and released high-importance events should show Actual, Estimate and Previous. Expand "Data sources" to see what each feed returned.

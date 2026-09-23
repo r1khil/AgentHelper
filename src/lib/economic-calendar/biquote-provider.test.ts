@@ -119,7 +119,7 @@ describe("free calendar provider", () => {
       ).getEvents(range),
     ).rejects.toThrow("HTTP 503");
   });
-  it("explicit free mode bypasses a saved unentitled paid key and auto uses free without keys", async () => {
+  it("explicit free mode bypasses a saved unentitled paid key", async () => {
     const fetcher = vi.fn(async () => Response.json([row]));
     const config = calendarConfiguration({
       ECONOMIC_CALENDAR_PROVIDER: "biquote",
@@ -128,11 +128,8 @@ describe("free calendar provider", () => {
     expect(
       (await loadConfiguredCalendar(range, config, fetcher)).provider,
     ).toBe("biquote (free)");
-    expect(fetcher.mock.calls[0] as unknown[]).not.toContain("unused-secret");
-    expect(
-      (await loadConfiguredCalendar(range, calendarConfiguration({}), fetcher))
-        .provider,
-    ).toBe("biquote (free)");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(fetcher.mock.calls)).not.toContain("unused-secret");
     expect(
       calendarConfiguration({ ECONOMIC_CALENDAR_PROVIDER: "biquote" })
         .cacheScope,
