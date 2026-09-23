@@ -154,11 +154,31 @@ export async function getBarsRange(symbol: string, from: string, to?: string): P
 /** Dividend- and split-adjusted daily closes for total-return backtesting. Never fall back to raw close. */
 export async function getAdjustedBarsRange(symbol: string, from: string, to: string): Promise<{ date: string; close: number }[]> {
   return cached(`yahoo:backtest-adjusted:v1:${symbol}:${from}:${to}`, 60 * 15, async () => {
-    const res = await spaced(HOST, GAP_MS, () => retry(() => yf().chart(symbol, {
-      period1: DateTime.fromISO(from, { zone: NY }).startOf("day").toJSDate(),
-      period2: DateTime.fromISO(to, { zone: NY }).plus({ days: 1 }).startOf("day").toJSDate(),
-      interval: "1d",
-    })));
+    let res;
+    try {
+      res = await spaced(HOST, GAP_MS, () => retry(() => yf().chart(symbol, {
+        period1: DateTime.fromISO(from, { zone: NY }).startOf("day").toJSDate(),
+        period2: DateTime.fromISO(to, { zone: NY }).plus({ days: 1 }).startOf("day").toJSDate(),
+        interval: "1d",
+      })));
+    } catch (error) {
+      // Yahoo rejects ranges entirely before a listing instead of returning zero quotes.
+      // Confirm the symbol still has current USD history and that its first trade is after
+      // this range. Other failures remain errors so bad data is never silently cash.
+      if (!/Data doesn't exist for startDate|No data found/i.test(String(error))) throw error;
+      const recentEnd = DateTime.now().setZone(NY).minus({ days: 1 }).startOf("day");
+      const probe = await spaced(HOST, GAP_MS, () => retry(() => yf().chart(symbol, {
+        period1: recentEnd.minus({ days: 30 }).toJSDate(),
+        period2: recentEnd.plus({ days: 1 }).toJSDate(),
+        interval: "1d",
+      })));
+      const firstTrade = probe.meta.firstTradeDate
+        ? DateTime.fromJSDate(new Date(probe.meta.firstTradeDate)).setZone(NY).toISODate()
+        : null;
+      if (probe.meta.currency !== "USD" || !probe.quotes?.length || !firstTrade || firstTrade <= to)
+        throw error;
+      return [];
+    }
     if (res.meta.currency !== "USD") throw new Error("Backtesting requires USD-denominated history.");
     // Yahoo emits the occasional all-null row; drop it like getBarsRange does. The engine refuses to fill
     // gaps, so a dropped session still fails the replay if it is needed. Present but unusable values throw.
@@ -167,6 +187,16 @@ export async function getAdjustedBarsRange(symbol: string, from: string, to: str
       if (q.adjclose == null) continue;
       if (!Number.isFinite(q.adjclose) || q.adjclose <= 0) throw new Error(`Invalid adjusted close for ${symbol}`);
       bars.push({ date: DateTime.fromJSDate(q.date).setZone(NY).toISODate()!, close: q.adjclose });
+    }
+    // The engine treats history that starts late as pre-listing cash, so only return a late or empty
+    // series when Yahoo's first trade date confirms the listing came after the requested start.
+    const near = (a: string, b: string) => DateTime.fromISO(b).diff(DateTime.fromISO(a), "days").days <= 7;
+    if (!bars.length || !near(from, bars[0].date)) {
+      const firstTrade = res.meta.firstTradeDate
+        ? DateTime.fromJSDate(new Date(res.meta.firstTradeDate)).setZone(NY).toISODate()
+        : null;
+      const listedLater = firstTrade && firstTrade > from && (bars.length ? near(firstTrade, bars[0].date) : firstTrade > to);
+      if (!listedLater) throw new Error(`Adjusted history for ${symbol} starts late without a later listing date.`);
     }
     return bars;
   });

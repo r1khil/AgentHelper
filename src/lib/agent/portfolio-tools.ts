@@ -119,7 +119,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
         weights: z
           .record(z.string(), z.number().min(0).max(100))
           .optional()
-          .describe("Scenario weights in percent by ticker, e.g. {\"NVDA\": 10, \"XOM\": 0}. Named tickers get exactly that weight; the other holdings keep their saved proportions of the rest. Omit to replay the saved weights only."),
+          .describe("Scenario weights in percent by ticker, including CASH. Named tickers get exactly that weight; unspecified holdings keep their current weights. Supply offsetting edits so the full portfolio totals 100.00%. Omit to replay saved weights only."),
       }),
       execute: async ({ from, to, benchmark, weights: overrides }): Promise<ToolResult<unknown>> => {
         try {

@@ -1,27 +1,17 @@
 /** Deterministic, explicitly synthetic data for local browser QA; never used by the real route. */
 import { replay, type Price, type Snapshot } from "./engine";
+import { snapshotPositions } from "./snapshot";
 export const previewEnabled = () =>
   process.env.NODE_ENV === "development" &&
   process.env.BACKTESTING_PREVIEW === "1";
 export const previewSnapshot: Snapshot = {
+  ...snapshotPositions([
+    { id: "00000000-0000-4000-8000-000000000001", ticker: "ALPHA", companyName: "Synthetic growth holding", weightPct: "60.00" },
+    { id: "00000000-0000-4000-8000-000000000002", ticker: "BETA", companyName: "Synthetic newer holding", weightPct: "30.00" },
+  ]),
   version: "0".repeat(64),
   scope: "Synthetic QA portfolio",
-  savedWeightTotal: 100,
   capturedAt: "2026-08-31T20:00:00Z",
-  positions: [
-    {
-      id: "00000000-0000-4000-8000-000000000001",
-      ticker: "ALPHA",
-      name: "Synthetic growth holding",
-      weight: 0.6,
-    },
-    {
-      id: "00000000-0000-4000-8000-000000000002",
-      ticker: "BETA",
-      name: "Synthetic defensive holding",
-      weight: 0.4,
-    },
-  ],
 };
 export function previewReplay(
   weights: Record<string, number>,
@@ -54,7 +44,8 @@ export function previewReplay(
       continue;
     for (const [j, symbol] of Object.keys(prices).entries()) {
       nav[symbol] *= 1 + Math.sin(i * 0.7 + j) * (0.009 + j * 0.001) + 0.0003;
-      prices[symbol].push({ date, close: nav[symbol] });
+      if (symbol !== "BETA" || date >= "2026-07-01")
+        prices[symbol].push({ date, close: nav[symbol] });
     }
     i++;
   }

@@ -1,10 +1,11 @@
-/** All returns and weights are decimals, never percentages. No prices are filled or interpolated. */
+/** All returns and weights are decimals, never percentages. Interior price gaps are never filled. */
 export type Price = { date: string; close: number };
 export type Position = {
   id: string;
   ticker: string;
   name: string;
   weight: number;
+  kind?: "cash";
 };
 export type Snapshot = {
   positions: Position[];
@@ -48,6 +49,7 @@ export type BacktestResult = {
   from: string;
   to: string;
   benchmark: string;
+  cashSubstitutions: { ticker: string; through: string }[];
   days: DailyResult[];
   original: Metrics;
   modified: Metrics;
@@ -186,7 +188,7 @@ export function replay(
     throw new Error("Benchmark history has a gap at the start of this range.");
   const bySymbol = new Map<string, Map<string, number>>();
   for (const p of positions)
-    if (p.weight > 0 || weights[p.id] > 0)
+    if (p.kind !== "cash" && (p.weight > 0 || weights[p.id] > 0))
       bySymbol.set(
         p.ticker,
         new Map(
@@ -216,19 +218,28 @@ export function replay(
     modified: 0,
     delta: 0,
   }));
+  const cashThrough = new Map<string, string>();
   const days: DailyResult[] = [];
   for (const session of sessions) {
     const daily = positions.map((p, i) => {
       let r = 0;
-      if (p.weight > 0 || weights[p.id] > 0) {
+      if (p.kind !== "cash" && (p.weight > 0 || weights[p.id] > 0)) {
         const values = bySymbol.get(p.ticker)!;
         const a = values.get(prior.date),
           b = values.get(session.date);
-        if (a === undefined || b === undefined)
+        const firstDate = values.keys().next().value as string | undefined;
+        // Before the first adjusted close, this holding's fixed allocation earns cash's 0%.
+        // The first close establishes the basis; trading returns begin next session.
+        if (a === undefined && (firstDate === undefined || prior.date < firstDate) &&
+            (b === undefined || session.date === firstDate)) {
+          cashThrough.set(p.ticker, session.date);
+        } else if (a === undefined || b === undefined) {
           throw new Error(
-            `${p.ticker}: missing adjusted close for ${a === undefined ? prior.date : session.date}. Choose a fully covered range; no days were filled or skipped.`,
+            `${p.ticker}: missing adjusted close for ${a === undefined ? prior.date : session.date}. Choose a range without gaps after trading began.`,
           );
-        r = b / a - 1;
+        } else {
+          r = b / a - 1;
+        }
       }
       const original = p.weight * r,
         modified = weights[p.id] * r;
@@ -272,6 +283,7 @@ export function replay(
     from,
     to,
     benchmark,
+    cashSubstitutions: [...cashThrough].map(([ticker, through]) => ({ ticker, through })),
     days,
     original: metrics(
       days.map((d) => d.original),

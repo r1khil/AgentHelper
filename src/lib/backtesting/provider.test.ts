@@ -66,3 +66,20 @@ it("rejects non-USD history without an FX return series", async () => {
     getAdjustedBarsRange("CURRENCY_TEST", "2025-01-01", "2025-01-02"),
   ).rejects.toThrow(/USD/);
 });
+it("treats a confirmed prelisting Yahoo no-data error as no bars", async () => {
+  chart.mockRejectedValueOnce(new Error("Data doesn't exist for startDate = 1, endDate = 2"));
+  chart.mockResolvedValueOnce({
+    meta: { currency: "USD", firstTradeDate: new Date("2024-03-21T13:30:00Z") },
+    quotes: [{ date: new Date("2026-09-01T20:00:00Z"), adjclose: 100 }],
+  });
+  expect(await getAdjustedBarsRange("PRELISTING_TEST", "2023-06-01", "2023-06-30")).toEqual([]);
+  expect(chart).toHaveBeenCalledTimes(2);
+});
+it("does not hide a no-data error when the stock traded during the requested range", async () => {
+  chart.mockRejectedValueOnce(new Error("Data doesn't exist for startDate = 1, endDate = 2"));
+  chart.mockResolvedValueOnce({
+    meta: { currency: "USD", firstTradeDate: new Date("2020-01-01T13:30:00Z") },
+    quotes: [{ date: new Date("2026-09-01T20:00:00Z"), adjclose: 100 }],
+  });
+  await expect(getAdjustedBarsRange("GAPPED_TEST", "2023-06-01", "2023-06-30")).rejects.toThrow(/Data doesn't exist/);
+});

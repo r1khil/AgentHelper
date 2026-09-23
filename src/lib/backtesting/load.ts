@@ -42,18 +42,18 @@ export async function loadSnapshot(user: CurrentUser): Promise<Snapshot> {
       );
     });
   // weight_pct is the fund-level weight copied onto every active row for a ticker, so a stock two teams
-  // both cover appears twice in the fund-wide query; keep one row per ticker before normalizing.
+  // both cover appears twice in the fund-wide query; keep one row per ticker before deriving cash.
   const rows = isFundWide(user)
     ? held.filter((r, i) => held.findIndex((o) => o.ticker === r.ticker) === i)
     : held;
-  const snapshot = snapshotPositions(rows);
+  const snapshot = snapshotPositions(rows, { sleeve: !isFundWide(user) });
   return {
     ...snapshot,
     version: createHash("sha256").update(JSON.stringify(rows)).digest("hex"),
     capturedAt: new Date().toISOString(),
     scope: isFundWide(user)
-      ? "Fund invested holdings"
-      : `${user.team?.name ?? "Team"} invested holdings`,
+      ? "Fund portfolio"
+      : `${user.team?.name ?? "Team"} portfolio`,
   };
 }
 export async function runBacktest(
@@ -73,7 +73,7 @@ export async function runBacktest(
     ...new Set([
       benchmark,
       ...snapshot.positions
-        .filter((p) => p.weight > 0 || weights[p.id] > 0)
+        .filter((p) => p.kind !== "cash" && (p.weight > 0 || weights[p.id] > 0))
         .map((p) => p.ticker),
     ]),
   ];
