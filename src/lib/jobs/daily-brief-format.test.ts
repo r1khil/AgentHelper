@@ -38,7 +38,7 @@ describe("briefEmail", () => {
 
   it("opens with the analysis and signs off as Hoot", () => {
     const { body } = briefEmail({ sessionDate: "2026-09-22", facts: "Fund return: +0.4%", analysis: "The fund beat the S&P 500.", sources: [] });
-    expect(body).toBe("Hi all,\n\nHere's what drove the fund on Tuesday, September 22.\n\nThe fund beat the S&P 500.\n\nThe numbers, close to close:\n\nFund return: +0.4%\n\nBest,\nHoot");
+    expect(body).toBe("Hi all,\n\nHere's what drove the fund on Tuesday, September 22.\n\nThe fund beat the S&P 500.\n\nThe numbers, close to close:\n\nFund return: +0.4%\n\nFeel free to reply with any questions.\n\nBest,\nHoot");
   });
 
   it("lists sources in the footer", () => {

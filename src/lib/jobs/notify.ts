@@ -37,7 +37,17 @@ export function emailConfigured() {
   return openmailConfigured() || gmailConfigured() || Boolean(process.env.RESEND_API_KEY);
 }
 
-type OutgoingEmail = { to: string; cc?: string[]; subject: string; text: string; replyTo?: string; headers?: Record<string, string> };
+type OutgoingEmail = {
+  to: string;
+  cc?: string[];
+  /** Omit when replying on `threadId`; OpenMail then uses the thread's subject with "Re:". */
+  subject?: string;
+  text: string;
+  replyTo?: string;
+  headers?: Record<string, string>;
+  /** OpenMail only: send as a reply in this thread (without quoting the previous message). */
+  threadId?: string;
+};
 
 /**
  * Send one plain-text email and return the provider's id: OpenMail when OPENMAIL_API_KEY and OPENMAIL_INBOX
@@ -52,7 +62,7 @@ export async function sendEmail(msg: OutgoingEmail): Promise<string> {
 let openmailInboxId: string | undefined;
 
 /** OPENMAIL_INBOX may be the inbox id or its address; the send endpoint wants the id. */
-async function resolveOpenMailInbox(key: string): Promise<string> {
+export async function resolveOpenMailInbox(key: string): Promise<string> {
   const inbox = process.env.OPENMAIL_INBOX!;
   if (!inbox.includes("@")) return inbox;
   if (openmailInboxId) return openmailInboxId;
@@ -72,7 +82,14 @@ async function sendWithOpenMail(msg: OutgoingEmail): Promise<string> {
   const res = await fetch(`https://api.openmail.sh/v1/inboxes/${inboxId}/send`, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ to: msg.to, ...(msg.cc?.length ? { cc: msg.cc } : {}), subject: msg.subject, body: msg.text, ...(replyTo ? { replyTo } : {}) }),
+    body: JSON.stringify({
+      to: msg.to,
+      ...(msg.cc?.length ? { cc: msg.cc } : {}),
+      ...(msg.subject ? { subject: msg.subject } : {}),
+      ...(msg.threadId ? { threadId: msg.threadId, includeQuote: false } : {}),
+      body: msg.text,
+      ...(replyTo ? { replyTo } : {}),
+    }),
   });
   const data = (await res.json().catch(() => ({}))) as { messageId?: string; status?: string; error?: string; message?: string };
   if (!res.ok || data.status === "failed") throw new Error(`OpenMail ${res.status}: ${data.message ?? data.error ?? data.status ?? "send failed"}`);
@@ -90,7 +107,7 @@ async function sendWithGmail(msg: OutgoingEmail): Promise<string> {
     from: { name: process.env.GMAIL_FROM_NAME || "The Owl's Nest", address: process.env.GMAIL_USER! },
     to: msg.to,
     ...(msg.cc?.length ? { cc: msg.cc } : {}),
-    subject: msg.subject,
+    subject: msg.subject ?? "",
     text: msg.text,
     ...(msg.replyTo ? { replyTo: msg.replyTo } : {}),
     ...(msg.headers ? { headers: msg.headers } : {}),
@@ -106,7 +123,7 @@ async function sendWithResend(msg: OutgoingEmail): Promise<string> {
     from,
     to: msg.to,
     ...(msg.cc?.length ? { cc: msg.cc } : {}),
-    subject: msg.subject,
+    subject: msg.subject ?? "",
     text: msg.text,
     ...(msg.replyTo ? { replyTo: msg.replyTo } : {}),
     ...(msg.headers ? { headers: msg.headers } : {}),

@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // /api/drive/webhook receives Google Drive push notifications; it authenticates with its own per-channel token.
 // /api/email/inbound receives Resend inbound email; it verifies the svix signature made with RESEND_WEBHOOK_SECRET.
-const PUBLIC_PATHS = ["/login", "/not-invited", "/auth/callback", "/auth/google/callback", "/api/cron", "/api/health", "/api/version", "/api/drive/webhook", "/api/email/inbound"];
+const PUBLIC_PATHS = ["/login", "/not-invited", "/auth/callback", "/auth/google/callback", "/api/cron", "/api/health", "/api/version", "/api/drive/webhook", "/api/email/inbound", "/api/openmail/webhook"];
 
 export async function proxy(request: NextRequest) {
   // Explicit local-only, synthetic calendar preview; never bypass app or live API authentication.
