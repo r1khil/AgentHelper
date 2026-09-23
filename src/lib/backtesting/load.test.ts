@@ -98,8 +98,8 @@ it("scopes portfolio reads to the analyst's team and rejects unassigned users", 
   const query = new PgDialect().sqlToQuery(where.mock.calls[0][0] as SQL);
   expect(query.params).toEqual(["active", "own-team"]);
   expect(snapshot.scope).toBe("IT portfolio");
-  expect(snapshot.positions[0].weight).toBe(0.2);
-  expect(snapshot.positions[1]).toMatchObject({ ticker: "CASH", weight: 0.8 });
+  expect(snapshot.positions[0].weight).toBe(1);
+  expect(snapshot.positions[1]).toMatchObject({ ticker: "CASH", weight: 0 });
   expect(snapshot.version).toHaveLength(64);
   await expect(loadSnapshot({ ...user, teamId: null })).rejects.toThrow(
     /Join a team/,

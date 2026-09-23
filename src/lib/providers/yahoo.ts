@@ -188,6 +188,16 @@ export async function getAdjustedBarsRange(symbol: string, from: string, to: str
       if (!Number.isFinite(q.adjclose) || q.adjclose <= 0) throw new Error(`Invalid adjusted close for ${symbol}`);
       bars.push({ date: DateTime.fromJSDate(q.date).setZone(NY).toISODate()!, close: q.adjclose });
     }
+    // The engine treats history that starts late as pre-listing cash, so only return a late or empty
+    // series when Yahoo's first trade date confirms the listing came after the requested start.
+    const near = (a: string, b: string) => DateTime.fromISO(b).diff(DateTime.fromISO(a), "days").days <= 7;
+    if (!bars.length || !near(from, bars[0].date)) {
+      const firstTrade = res.meta.firstTradeDate
+        ? DateTime.fromJSDate(new Date(res.meta.firstTradeDate)).setZone(NY).toISODate()
+        : null;
+      const listedLater = firstTrade && firstTrade > from && (bars.length ? near(firstTrade, bars[0].date) : firstTrade > to);
+      if (!listedLater) throw new Error(`Adjusted history for ${symbol} starts late without a later listing date.`);
+    }
     return bars;
   });
 }

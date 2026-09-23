@@ -9,6 +9,8 @@ export function snapshotPositions(
     companyName: string;
     weightPct: string | null;
   }[],
+  // A team's rows carry fund-level weights, so its sleeve is normalized to 100% with no cash.
+  { sleeve = false }: { sleeve?: boolean } = {},
 ): { positions: Position[]; savedWeightTotal: number } {
   if (!rows.length)
     throw new Error(
@@ -28,6 +30,9 @@ export function snapshotPositions(
   const total = rows.reduce((s, r) => s + Number(r.weightPct), 0);
   if (total > 100 + 1e-8)
     throw new Error("Saved holding weights exceed 100%. Fix the current portfolio before backtesting.");
+  if (sleeve && total <= 0)
+    throw new Error("The saved portfolio has no positive weights.");
+  const base = sleeve ? total : 100;
   return {
     savedWeightTotal: total,
     positions: [
@@ -35,13 +40,13 @@ export function snapshotPositions(
         id: r.id,
         ticker: r.ticker,
         name: r.companyName,
-        weight: Number(r.weightPct) / 100,
+        weight: Number(r.weightPct) / base,
       })),
       {
         id: CASH_ID,
         ticker: "CASH",
         name: "Uninvested cash · 0% return",
-        weight: Math.max(0, (100 - total) / 100),
+        weight: sleeve ? 0 : Math.max(0, (100 - total) / 100),
         kind: "cash" as const,
       },
     ],

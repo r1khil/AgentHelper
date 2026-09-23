@@ -46,7 +46,7 @@ export async function loadSnapshot(user: CurrentUser): Promise<Snapshot> {
   const rows = isFundWide(user)
     ? held.filter((r, i) => held.findIndex((o) => o.ticker === r.ticker) === i)
     : held;
-  const snapshot = snapshotPositions(rows);
+  const snapshot = snapshotPositions(rows, { sleeve: !isFundWide(user) });
   return {
     ...snapshot,
     version: createHash("sha256").update(JSON.stringify(rows)).digest("hex"),

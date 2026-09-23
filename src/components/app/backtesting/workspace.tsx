@@ -159,7 +159,7 @@ export function BacktestingWorkspace({
       <Card className="mb-5 gap-3 p-4 text-sm">
         <div className="font-medium">{snapshot.scope}</div>
         <p className="text-muted-foreground">
-          Invested holdings total {snapshot.savedWeightTotal.toFixed(2)}%; uninvested cash is {((1 - snapshot.savedWeightTotal / 100) * 100).toFixed(2)}%.
+          Invested holdings total {snapshot.savedWeightTotal.toFixed(2)}%; uninvested cash is {((snapshot.positions.find((p) => p.kind === "cash")?.weight ?? 0) * 100).toFixed(2)}%.
           Cash earns 0% by default, and no weights are redistributed. The original is a snapshot of current holdings, not
           historical holdings. Changes here never update your saved portfolio.
         </p>
