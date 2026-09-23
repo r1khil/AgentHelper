@@ -1,5 +1,5 @@
 import "server-only";
-import { generateText, type LanguageModel, type UIMessage } from "ai";
+import { generateText, type LanguageModel, type LanguageModelUsage, type UIMessage } from "ai";
 import type { Source } from "@/lib/providers/types";
 import { splitAssistantParts } from "./turn";
 
@@ -15,20 +15,27 @@ Output the revised answer as Markdown and nothing else.`;
  * retrieved, or moves unverifiable lines under "Not retrieved". Returns null when the rewrite is
  * unusable (empty, or far shorter than the original), so the caller keeps the original.
  */
-export async function repairCitations(opts: { model: LanguageModel; message: UIMessage; sources: Source[] }): Promise<UIMessage | null> {
+export async function repairCitations(opts: {
+  model: LanguageModel;
+  message: UIMessage;
+  sources: Source[];
+  /** Receives the call's token usage, whether or not the rewrite is kept. */
+  onUsage?: (usage: LanguageModelUsage) => void;
+}): Promise<UIMessage | null> {
   const { answer } = splitAssistantParts(opts.message.parts);
   if (answer.length === 0 || opts.sources.length === 0) return null;
   const text = answer.map((p) => p.text).join("\n\n");
   const list = opts.sources
     .map((s) => `- ${s.id}: ${s.title}${s.publishedAt ? ` (${s.publishedAt.slice(0, 10)})` : ""}${s.excerpt ? ` — ${s.excerpt.replace(/\s+/g, " ").slice(0, 160)}` : ""}`)
     .join("\n");
-  const { text: fixed } = await generateText({
+  const { text: fixed, totalUsage } = await generateText({
     model: opts.model,
     instructions: INSTRUCTIONS,
     prompt: `SOURCES:\n${list}\n\nANSWER:\n${text}`,
     maxOutputTokens: 4000,
     maxRetries: 1,
   });
+  opts.onUsage?.(totalUsage);
   const out = fixed.trim();
   if (!out || out.length < text.length * 0.6) return null;
   const known = new Set(opts.sources.map((s) => s.id));

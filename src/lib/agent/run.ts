@@ -116,9 +116,14 @@ export async function runAgentTurn(opts: {
 
       let response: UIMessage = last;
       const turnSources = [...collectSources([response]).values()];
+      const [usage, steps] = await Promise.all([result.totalUsage, result.steps]).catch((e) => {
+        console.error("[agent] usage unavailable", e);
+        return [undefined, undefined] as const;
+      });
       let repaired = false;
+      let repairUsage: AgentMetadata["repairUsage"];
       if (needsCitationRepair(response, turnSources.length)) {
-        const fixed = await repairCitations({ model: def.model, message: response, sources: turnSources }).catch((e) => {
+        const fixed = await repairCitations({ model: def.model, message: response, sources: turnSources, onUsage: (u) => (repairUsage = traceUsage(u)) }).catch((e) => {
           console.error("[agent] citation repair failed", e);
           return null;
         });
@@ -129,6 +134,9 @@ export async function runAgentTurn(opts: {
       }
       const metadata: AgentMetadata = { ...(response.metadata as AgentMetadata | undefined), uncited: uncitedFactCount(response), model: def.modelId };
       if (repaired) metadata.repaired = true;
+      if (usage) metadata.usage = traceUsage(usage);
+      if (steps) metadata.steps = steps.length;
+      if (repairUsage) metadata.repairUsage = repairUsage;
       response = { ...response, metadata };
       const all = [...messages, response];
       await saveMessages(chat.id, all);
