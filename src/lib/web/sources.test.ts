@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publisherTier, rankByTier, sourceTier } from "./sources";
+import { publisherTier, rankByReliability, sourceTier } from "./sources";
 
 describe("sourceTier", () => {
   it("rates regulators, IR sites and wires as primary", () => {
@@ -10,6 +10,8 @@ describe("sourceTier", () => {
     expect(sourceTier("https://investor.apple.com/news/default.aspx")).toBe("primary");
     expect(sourceTier("https://ir.aboutamazon.com/news-release")).toBe("primary");
     expect(sourceTier("https://www.businesswire.com/news/home/1")).toBe("primary");
+    expect(sourceTier("https://edge.prnewswire.com/c/link?t=0&u=https%3A%2F%2Fwww.marketwatch.com%2Finvesting%2Fstock%2FSTLA")).toBe("established");
+    expect(sourceTier("https://edge.prnewswire.com/c/link?t=0&u=https%3A%2F%2Fblog.example%2Fa")).toBe("other");
   });
   it("rates major newsrooms as established, including subdomains", () => {
     expect(sourceTier("https://www.reuters.com/markets/")).toBe("established");
@@ -36,15 +38,26 @@ describe("publisherTier", () => {
   });
 });
 
-describe("rankByTier", () => {
-  it("sorts by tier, then score, keeping order on ties", () => {
+describe("rankByReliability", () => {
+  it("drops off-topic padding and boosts reliable sources without letting them jump far more relevant pages", () => {
+    // Scores from a real production search for why GOOG fell on 2026-09-23.
     const xs = [
-      { id: "a", t: "other" as const, s: 1 },
-      { id: "b", t: "established" as const, s: 0.2 },
-      { id: "c", t: "primary" as const, s: 0.1 },
-      { id: "d", t: "established" as const, s: 0.9 },
-      { id: "e", t: "other" as const, s: 1 },
+      { id: "stla-release", t: "primary" as const, s: 0.046 },
+      { id: "treasury", t: "primary" as const, s: 0.027 },
+      { id: "morningstar", t: "established" as const, s: 0.088 },
+      { id: "barchart-goog", t: "other" as const, s: 0.68 },
+      { id: "wsj-market", t: "established" as const, s: 0.62 },
+      { id: "yahoo-goog", t: "other" as const, s: 0.378 },
+      { id: "reddit", t: "low" as const, s: 0.9 },
     ];
-    expect(rankByTier(xs, (x) => x.t, (x) => x.s).map((x) => x.id)).toEqual(["c", "d", "b", "a", "e"]);
+    expect(rankByReliability(xs, (x) => x.t, (x) => x.s).map((x) => x.id)).toEqual(["wsj-market", "barchart-goog", "yahoo-goog"]);
+  });
+  it("keeps the original order on ties and returns nothing for an empty pool", () => {
+    const xs = [
+      { id: "a", t: "other" as const, s: 0.5 },
+      { id: "b", t: "other" as const, s: 0.5 },
+    ];
+    expect(rankByReliability(xs, (x) => x.t, (x) => x.s).map((x) => x.id)).toEqual(["a", "b"]);
+    expect(rankByReliability([], () => "other", () => 0)).toEqual([]);
   });
 });

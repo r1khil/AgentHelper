@@ -25,13 +25,12 @@ describe("searchWeb", () => {
   it("prefers reliable domains, drops low-quality ones, and ranks primary then established first", async () => {
     const hit = (url: string, score: number) => ({ title: url, url, content: "s", score });
     sdk.search.mockResolvedValue({
-      results: [hit("https://blog.example/a", 0.99), hit("https://www.reddit.com/r/stocks/x", 0.98), hit("https://www.reuters.com/markets/a", 0.7), hit("https://investor.apple.com/news/a", 0.5), hit("https://www.sec.gov/news/press", 0.4), hit("https://other.example/b", 0.9)],
+      results: [hit("https://blog.example/a", 0.8), hit("https://www.reddit.com/r/stocks/x", 0.98), hit("https://www.reuters.com/markets/a", 0.75), hit("https://investor.apple.com/news/a", 0.7), hit("https://home.treasury.gov/payments", 0.03), hit("https://other.example/b", 0.4)],
     });
-    const hits = await searchWeb({ query: "apple buyback", limit: 4 });
+    const hits = await searchWeb({ query: "apple buyback", limit: 3 });
     expect(hits.map((h) => [h.url, h.tier])).toEqual([
-      ["https://investor.apple.com/news/a", "primary"],
-      ["https://www.sec.gov/news/press", "primary"],
       ["https://www.reuters.com/markets/a", "established"],
+      ["https://investor.apple.com/news/a", "primary"],
       ["https://blog.example/a", "other"],
     ]);
     const opts = sdk.search.mock.calls[0][1];
