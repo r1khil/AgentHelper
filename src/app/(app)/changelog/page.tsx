@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { after } from "next/server";
+import { Suspense } from "react";
 import { RefreshCw } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { changelogConfigured } from "@/lib/changelog/github";
-import { loadChangelog, syncChangelog } from "@/lib/changelog";
+import { changelogBacklog, loadChangelog, syncChangelog } from "@/lib/changelog";
 import { FALLBACK_MODEL } from "@/lib/changelog/summarize";
 import { mergeDayLabel } from "@/lib/changelog/clean";
 import { refreshChangelog, regenerateEntry } from "@/lib/actions/changelog";
@@ -13,7 +15,7 @@ import { Card } from "@/components/ui/card";
 import type { ChangelogEntry } from "@/db/schema";
 
 export const metadata: Metadata = { title: "Changelog" };
-// Summaries for new pull requests are written during the request; give it room.
+// Summaries for new pull requests are written after the response (in `after()`), which shares this budget.
 export const maxDuration = 120;
 
 export default async function ChangelogPage() {
@@ -37,7 +39,7 @@ export default async function ChangelogPage() {
     );
   }
 
-  const sync = await syncChangelog();
+  // Only the database is awaited here; GitHub and the summary model never hold up the page.
   const entries = await loadChangelog();
 
   const days: { label: string; items: ChangelogEntry[] }[] = [];
@@ -63,14 +65,11 @@ export default async function ChangelogPage() {
         }
       />
 
-      {sync.error && <p className="mb-4 text-sm text-muted-foreground">Could not reach GitHub just now ({sync.error}). Showing what was already recorded.</p>}
-      {sync.pending > 0 && (
-        <p className="mb-4 text-sm text-muted-foreground">
-          {sync.pending} more {sync.pending === 1 ? "change is" : "changes are"} still being summarized. Reload or press Refresh in a moment.
-        </p>
-      )}
+      <Suspense fallback={null}>
+        <SyncStatus />
+      </Suspense>
 
-      {entries.length === 0 && !sync.error && <EmptyState title="No changes recorded yet" hoot="sleepy">Merged changes will appear here automatically.</EmptyState>}
+      {entries.length === 0 && <EmptyState title="No changes recorded yet" hoot="sleepy">Merged changes will appear here automatically.</EmptyState>}
 
       {days.map((day) => (
         <section key={day.label} className="mb-8">
@@ -105,5 +104,19 @@ export default async function ChangelogPage() {
         </section>
       ))}
     </>
+  );
+}
+
+/** Checks GitHub for merged changes without a summary, and writes those summaries once the page has been sent. */
+async function SyncStatus() {
+  const { missing, retry, error } = await changelogBacklog();
+  if (error) return <p className="mb-4 text-sm text-muted-foreground">Could not reach GitHub just now ({error}). Showing what was already recorded.</p>;
+  if (missing.length || retry.length) after(() => syncChangelog());
+  // Retries of failed summaries already show the title, so only brand-new changes are worth a note.
+  if (!missing.length) return null;
+  return (
+    <p className="mb-4 text-sm text-muted-foreground">
+      {missing.length} more {missing.length === 1 ? "change is" : "changes are"} being summarized. Reload in a minute to see {missing.length === 1 ? "it" : "them"}.
+    </p>
   );
 }

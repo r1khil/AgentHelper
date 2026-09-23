@@ -17,6 +17,7 @@ const RETRY_AFTER_MS = 5 * 60 * 1000;
 const cachedMergedPulls = unstable_cache(listMergedPulls, ["changelog-pulls", getBuildId()], { revalidate: 900, tags: [CHANGELOG_TAG] });
 
 export type SyncResult = { added: number; pending: number; error: string | null };
+export type Backlog = { missing: MergedPull[]; retry: MergedPull[]; error: string | null };
 
 /** Returns false when the model call failed (the title is stored as a stand-in and retried later). */
 async function writeEntry(pr: MergedPull): Promise<boolean> {
@@ -31,16 +32,16 @@ async function writeEntry(pr: MergedPull): Promise<boolean> {
 }
 
 /**
- * Writes summaries for merged pull requests the table does not have yet, newest first.
- * `max` bounds the model calls made in one request so a page view stays quick; the rest follow on later views.
+ * Merged pull requests that still need a summary: ones the table does not have yet, and ones whose model call failed
+ * earlier and are due for a retry. No model calls, so the page can await it.
  * `fresh` skips the 15-minute GitHub cache (Refresh button, scripts outside the Next runtime).
  */
-export async function syncChangelog({ max = 5, fresh = false }: { max?: number; fresh?: boolean } = {}): Promise<SyncResult> {
+export async function changelogBacklog({ fresh = false }: { fresh?: boolean } = {}): Promise<Backlog> {
   let pulls: MergedPull[];
   try {
     pulls = fresh ? await listMergedPulls() : await cachedMergedPulls();
   } catch (e) {
-    return { added: 0, pending: 0, error: e instanceof Error ? e.message : "GitHub request failed" };
+    return { missing: [], retry: [], error: e instanceof Error ? e.message : "GitHub request failed" };
   }
   const rows = await db.select({ n: changelogEntries.prNumber, model: changelogEntries.model, at: changelogEntries.createdAt }).from(changelogEntries);
   const known = new Map(rows.map((r) => [r.n, r]));
@@ -51,6 +52,28 @@ export async function syncChangelog({ max = 5, fresh = false }: { max?: number; 
     const k = known.get(p.number);
     return k && k.model === FALLBACK_MODEL && k.at.getTime() < retryBefore;
   });
+  return { missing, retry, error: null };
+}
+
+// One sync per instance at a time: overlapping page views would otherwise summarize the same pull requests twice
+// and trip the free tier's per-minute limit.
+let running: Promise<SyncResult> | null = null;
+
+/**
+ * Writes summaries for merged pull requests the table does not have yet, newest first.
+ * Model calls take seconds each, so pages run this in `after()` rather than awaiting it.
+ * `max` bounds the model calls made in one run; the rest follow on later runs.
+ */
+export function syncChangelog(opts: { max?: number; fresh?: boolean } = {}): Promise<SyncResult> {
+  running ??= runSync(opts).finally(() => {
+    running = null;
+  });
+  return running;
+}
+
+async function runSync({ max = 5, fresh = false }: { max?: number; fresh?: boolean }): Promise<SyncResult> {
+  const { missing, retry, error } = await changelogBacklog({ fresh });
+  if (error) return { added: 0, pending: 0, error };
   const queue = [...missing, ...retry];
   let done = 0;
   for (const pr of queue.slice(0, max)) {
