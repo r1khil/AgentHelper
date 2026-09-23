@@ -51,6 +51,8 @@ function hosts(answers: Record<string, () => Response | Promise<Response>>) {
     return answer[1]();
   });
 }
+const calls = (fetcher: ReturnType<typeof hosts>, host: string) =>
+  fetcher.mock.calls.filter(([input]) => String(input).includes(host)).length;
 const tradingView = () => Response.json({ status: "ok", result: [tvRow] });
 const biquote = () => Response.json([biquoteRow]);
 
@@ -100,7 +102,69 @@ describe("provider chain", () => {
     expect(result.provider).toBe("TradingView");
     expect(result.events[0]).toMatchObject({ estimate: "201K", previous: "196K" });
     expect(result.coverage).toBeUndefined();
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(calls(fetcher, "tradingview.com")).toBe(1);
+    expect(calls(fetcher, "biquote.io")).toBe(0);
+  });
+  it("adds FXStreet's pre-revision previous and names each consensus source", async () => {
+    const fxRow = {
+      dateUtc: "2026-09-24T12:30:00Z",
+      name: "Initial Jobless Claims",
+      countryCode: "US",
+      actual: null,
+      consensus: 203,
+      previous: 195,
+      revised: 196,
+    };
+    const result = await loadConfiguredCalendar(
+      range,
+      calendarConfiguration({}),
+      hosts({ "tradingview.com": tradingView, "fxstreet.com": () => Response.json([fxRow]) }),
+    );
+    expect(result.events[0]).toMatchObject({
+      estimate: "201K",
+      estimateSource: "TradingView",
+      previous: "196K",
+      previousBeforeRevision: "195K",
+    });
+    expect(result.sources?.at(-1)).toMatchObject({
+      name: "FXStreet consensus and revisions",
+      status: "ok",
+      count: 1,
+    });
+    expect(result.coverage).toBeUndefined();
+
+    // FXStreet being down costs the extras, never the calendar or a warning.
+    const without = await loadConfiguredCalendar(
+      range,
+      calendarConfiguration({}),
+      hosts({ "tradingview.com": tradingView }),
+    );
+    expect(without.events[0].previousBeforeRevision).toBeNull();
+    expect(without.sources?.at(-1)).toMatchObject({ status: "unavailable" });
+    expect(without.coverage).toBeUndefined();
+  });
+  it("restores consensus from FXStreet when the fallback feed has none", async () => {
+    const fxRow = {
+      dateUtc: "2026-09-24T12:30:00Z",
+      name: "Initial Jobless Claims",
+      countryCode: "US",
+      actual: null,
+      consensus: 201,
+      previous: 196,
+      revised: null,
+    };
+    const result = await loadConfiguredCalendar(
+      range,
+      calendarConfiguration({}),
+      hosts({
+        "tradingview.com": () => new Response(null, { status: 503 }),
+        "biquote.io": biquote,
+        "fxstreet.com": () => Response.json([fxRow]),
+      }),
+    );
+    expect(result.provider).toBe("biquote (free)");
+    expect(result.events[0]).toMatchObject({ estimate: "201", estimateSource: "FXStreet" });
+    expect(result.coverage?.message).toMatch(/Consensus comes from FXStreet where its releases matched\.$/);
   });
   it("falls back to biquote and says so when TradingView fails", async () => {
     const fetcher = hosts({
@@ -178,6 +242,7 @@ describe("provider chain", () => {
       fetcher,
     ).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(CalendarUnavailableError);
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(calls(fetcher, "tradingview.com")).toBe(1);
+    expect(calls(fetcher, "biquote.io")).toBe(0);
   });
 });

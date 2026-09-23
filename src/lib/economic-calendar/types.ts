@@ -9,6 +9,8 @@ export type EconomicEvent = {
   period: string | null;
   actual: string | null;
   estimate: string | null;
+  /** Who supplied the consensus in `estimate`: the feed's provider, or FXStreet where it filled a gap. */
+  estimateSource?: string | null;
   providerForecast?: string | null;
   previous: string | null;
   previousBeforeRevision: string | null;

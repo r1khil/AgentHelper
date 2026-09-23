@@ -63,6 +63,10 @@ const COLUMNS =
 const eyebrow =
   "text-xs font-semibold tracking-wider text-muted-foreground uppercase";
 const et = (iso: string) => DateTime.fromISO(iso).setZone(NY);
+const consensusSource = (e: EconomicEvent) =>
+  e.estimate && e.estimateSource
+    ? `Consensus from ${e.estimateSource}`
+    : undefined;
 
 export function EconomicCalendar({
   initialRange,
@@ -468,9 +472,10 @@ export function EconomicCalendar({
               </div>
             ) : null}
             <p className="max-w-3xl text-xs leading-[18px] text-muted-foreground">
-              All times Eastern. Consensus is provider-supplied where available:
-              Trading Economics uses economist consensus, and its model
-              forecasts are never substituted. Blue and orange show direction
+              All times Eastern. Consensus is the economist survey from the
+              feed in use, filled from FXStreet where the feed has none; model
+              forecasts are never substituted. Hover a consensus to see its
+              source. Blue and orange show direction
               against consensus, not whether a print is good or bad. Previous
               includes provider revisions, and a past time alone does not
               confirm a release. Separate measurements of one report can appear
@@ -756,7 +761,10 @@ function NextRelease({
       <dl className="grid grid-cols-3 gap-4 border-t border-border/60 pt-4">
         <div className="flex flex-col gap-1">
           <dt className="text-xs text-muted-foreground">Consensus</dt>
-          <dd className="tnum text-lg leading-6 font-semibold lg:text-xl">
+          <dd
+            className="tnum text-lg leading-6 font-semibold lg:text-xl"
+            title={consensusSource(e)}
+          >
             {e.estimate ?? "—"}
           </dd>
         </div>
@@ -1103,6 +1111,7 @@ function EventRow({
             "tnum text-right text-sm",
             e.estimate ? "text-foreground/90" : "text-muted-foreground",
           )}
+          title={consensusSource(e)}
         >
           {e.estimate ?? "—"}
         </span>

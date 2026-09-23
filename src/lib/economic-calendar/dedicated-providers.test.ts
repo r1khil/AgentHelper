@@ -11,6 +11,14 @@ import {
   loadConfiguredCalendar,
 } from "./provider-selection";
 
+/** The FXStreet overlay asks alongside every provider; answer it empty so ordered mocks stay in order. */
+type Fetch = (input: string | URL | Request) => Promise<Response>;
+function besideFxStreet(provider: Fetch) {
+  return vi.fn(async (input: string | URL | Request) =>
+    String(input).includes("fxstreet.com") ? Response.json([]) : provider(input),
+  );
+}
+
 const range = { from: "2026-09-21", to: "2026-09-27" };
 const te = {
   CalendarId: "123",
@@ -191,7 +199,7 @@ describe("requests and fallback", () => {
     expect(JSON.stringify(result)).not.toContain("secret");
   });
   it("uses TE first and does not fall back merely because a week is empty", async () => {
-    const fetcher = vi.fn().mockResolvedValue(Response.json([]));
+    const provider = vi.fn(async () => Response.json([]));
     const result = await loadConfiguredCalendar(
       range,
       calendarConfiguration({
@@ -199,18 +207,20 @@ describe("requests and fallback", () => {
         EODHD_API_KEY: "fallback",
         EODHD_CALENDAR_TIMEZONE: "UTC",
       }),
-      fetcher,
+      besideFxStreet(provider),
     );
     expect(result.provider).toBe("Trading Economics");
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(provider).toHaveBeenCalledTimes(1);
   });
   it("falls back on upstream failure and surfaces safe source status", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-21T12:00:00Z"));
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(new Response("secret", { status: 403 }))
-      .mockResolvedValueOnce(Response.json([eod]));
+    const fetcher = besideFxStreet(
+      vi
+        .fn<Fetch>()
+        .mockResolvedValueOnce(new Response("secret", { status: 403 }))
+        .mockResolvedValueOnce(Response.json([eod])),
+    );
     const result = await loadConfiguredCalendar(
       range,
       calendarConfiguration({

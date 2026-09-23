@@ -27,24 +27,28 @@ it("coalesces, caches, expires and separates configuration using the real cache"
   vi.stubEnv("DATABASE_URL", "");
   const fetcher = vi.fn(async () => Response.json([row]));
   vi.stubGlobal("fetch", fetcher);
+  const teCalls = () =>
+    fetcher.mock.calls.filter((c) =>
+      String((c as unknown[])[0]).includes("api.tradingeconomics.com"),
+    ).length;
   const feeds = await Promise.all([
     getEconomicCalendar(range),
     getEconomicCalendar(range),
   ]);
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(teCalls()).toBe(1);
   expect(feeds[0]).toEqual(feeds[1]);
   expect(feeds[0]).toMatchObject({
     provider: "Trading Economics",
     events: [{ actual: null, estimate: "2", previous: "1", period: "Aug" }],
   });
   await getEconomicCalendar(range);
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(teCalls()).toBe(1);
   vi.setSystemTime(new Date("2026-09-21T12:01:01Z"));
   await getEconomicCalendar(range);
-  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(teCalls()).toBe(2);
   vi.stubEnv("TRADING_ECONOMICS_API_KEY", "service-test-two");
   await getEconomicCalendar(range);
-  expect(fetcher).toHaveBeenCalledTimes(3);
+  expect(teCalls()).toBe(3);
 });
 /** Trading Economics answers while `up.value` is true; every other source is always down. */
 function teOnly(up: { value: boolean }) {

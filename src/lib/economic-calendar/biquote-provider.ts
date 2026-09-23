@@ -160,7 +160,7 @@ export function biquoteProvider(
         coverage: {
           status: "partial",
           message:
-            "Free biquote feed. Estimate is unavailable because its forecasts have not been verified as economist consensus. Coverage and release timing depend on the provider; missing values remain blank.",
+            "Free biquote feed. Its own forecasts aren't verified economist consensus, so they are never shown as consensus. Coverage and release timing depend on the provider; missing values remain blank.",
         },
       };
     },
