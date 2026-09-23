@@ -71,6 +71,15 @@ describe("turnSources", () => {
       ["sec-1", 2, 1],
     ]);
   });
+  it("counts a mistyped citation toward the one source it meant, and skips ambiguous ones", () => {
+    const typo = [messages[0], { ...messages[1], parts: [...messages[1].parts.slice(0, 2), { type: "text", text: "Fell [src:yq-11]. Filed [src:sec-l]." }] }] as UIMessage[];
+    const rows = turnSources(pairTurns(typo)[0], collectSources(typo));
+    expect(rows.map((r) => [r.source.id, r.cited])).toEqual([
+      ["yq-1", 1],
+      ["sec-1", 0],
+      ["sec-2", 0],
+    ]);
+  });
 });
 
 describe("marketFigure", () => {

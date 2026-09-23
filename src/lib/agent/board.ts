@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai";
 import type { Source } from "@/lib/providers/types";
-import { CITATION_RE } from "./citations";
+import { CITATION_RE, resolveCitedId } from "./citations";
 import { enrichLegacySource } from "./source-resolution";
 import { isToolPart, splitAssistantParts, summarizeActivity, type Part } from "./turn";
 
@@ -75,7 +75,8 @@ export function turnSources(turn: Turn, all: Map<string, Source>): TurnSource[] 
       add(all.get(s.id) ?? enrichLegacySource(s, out?.data), row);
     }
   }
-  for (const id of citedIds(turn.answerText)) {
+  for (const cited of citedIds(turn.answerText)) {
+    const id = resolveCitedId(cited, all) ?? cited;
     const s = all.get(id);
     if (s) add(s);
     const row = ordered.get(id);
