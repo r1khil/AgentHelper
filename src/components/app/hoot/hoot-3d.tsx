@@ -124,6 +124,11 @@ function Owl({ pointer, pokes, onReady }: { pointer: React.RefObject<Pointer>; p
   return <primitive object={gltf.scene} position={[0, -0.95, 0]} />;
 }
 
+/** Framing that fits Hoot at rest; the canvas bleeds this much past his box on every side so flapped wings and hops aren't clipped. */
+const BASE_FOV = 21;
+const BLEED = 0.3;
+const CANVAS_FOV = (2 * Math.atan((1 + 2 * BLEED) * Math.tan((BASE_FOV / 2) * (Math.PI / 180))) * 180) / Math.PI;
+
 /**
  * Hoot in real 3D, for a few hero spots. He watches what you do (the pointer, the field you're typing in, where you
  * click), tilts his head, blinks, breathes, fluffs his feathers now and then, looks away while you type a password,
@@ -168,10 +173,12 @@ export default function Hoot3D({ size, className }: { size: number; className?: 
         <img src="/hoot/hoot-768.webp" alt="" width={size} height={size} className="absolute inset-0 size-full" />
       )}
       <Canvas
-        className={cn("transition-opacity duration-300", ready ? "opacity-100" : "opacity-0")}
+        // Wider than the box with a matching wider lens, so he renders at the same size with room to flap.
+        className={cn("pointer-events-none transition-opacity duration-300", ready ? "opacity-100" : "opacity-0")}
+        style={{ position: "absolute", inset: `${-BLEED * 100}%`, width: "auto", height: "auto" }}
         frameloop={onScreen ? "always" : "never"}
         dpr={[1, 2]}
-        camera={{ position: [0, 0.35, 7.2], fov: 21 }}
+        camera={{ position: [0, 0.35, 7.2], fov: CANVAS_FOV }}
         gl={{ antialias: true, alpha: true, toneMapping: THREE.AgXToneMapping, powerPreference: "low-power" }}
       >
         <hemisphereLight args={["#ffffff", "#cfc8bd", 0.45]} />
