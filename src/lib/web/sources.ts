@@ -166,8 +166,25 @@ export function syndicatedFrom(p: { url: string; title?: string | null; text?: s
   const suffix = p.title ? /\s[-|–—]\s([^-|–—]{2,40})$/.exec(p.title.trim())?.[1] : null;
   const fromTitle = suffix ? rated(suffix) : null;
   if (fromTitle) return fromTitle;
-  const firstLine = p.text?.trimStart().split("\n", 1)[0] ?? "";
-  return firstLine.length <= 40 ? rated(firstLine) : null;
+  return bylineNearHeadline(p.text, p.title, rated);
+}
+
+/**
+ * Aggregators print the original publisher as a line of its own: first on the page (TradingView), or just above or
+ * below the headline, after the site's menus (AOL: headline, "24/7 Wall St", author). Only short lines are checked.
+ */
+function bylineNearHeadline<T>(text: string | null | undefined, title: string | null | undefined, rated: (name: string) => T | null): T | null {
+  if (!text) return null;
+  const lines = text.slice(0, 6000).split("\n").map((l) => l.trim()).filter(Boolean);
+  const candidates = [lines[0]];
+  const headline = title?.replace(/\s[-|–—]\s[^-|–—]{2,40}$/, "").trim().toLowerCase();
+  const at = headline && headline.length >= 12 ? lines.findIndex((l) => l.toLowerCase() === headline) : -1;
+  if (at >= 0) candidates.push(lines[at - 1], lines[at + 1], lines[at + 2]);
+  for (const line of candidates) {
+    const hit = line && line.length <= 40 ? rated(line) : null;
+    if (hit) return hit;
+  }
+  return null;
 }
 
 /**

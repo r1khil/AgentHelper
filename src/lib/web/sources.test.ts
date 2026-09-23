@@ -76,6 +76,14 @@ describe("syndication", () => {
     const p = { url: "https://finnhub.io/api/news?id=e61c2b877a19", title: "Shopify Sinks 5%, Meta Ticks Up as Muse Deal Rally Unwinds; Amazon Slips - 24/7 Wall St." };
     expect(pageTier(p)).toEqual({ tier: "low", syndicatedFrom: "24/7 Wall St" });
   });
+  it("reads a publisher byline next to the headline, below the site's menus", () => {
+    // The AOL page Hoot read in production on 2026-09-23.
+    const title = "Micron Wall Street Target Hits $2,000 as Traders Pile In Before Earnings";
+    const text = `Home\nLocal News\nFinance\n${"Menu item\n".repeat(80)}${title}\n24/7 Wall St\nOmor Ibne Ehsan\n0\nA composite image displays a processor socket`;
+    expect(pageTier({ url: "https://www.aol.com/articles/micron-wall-street-target-hits-132024000.html", title, text })).toEqual({ tier: "low", syndicatedFrom: "24/7 Wall St" });
+    // A menu entry far from the headline does not count.
+    expect(pageTier({ url: "https://news.example/a", title, text: `Home\nBenzinga\n${"Menu\n".repeat(20)}${title}\nJane Doe\nBody` }).tier).toBe("other");
+  });
   it("reads a publisher byline on the first line of the text", () => {
     expect(pageTier({ url: "https://finance.yahoo.com/news/x.html", title: "Some headline", text: "Motley Fool\nSome headline\nBody" }).tier).toBe("low");
   });
