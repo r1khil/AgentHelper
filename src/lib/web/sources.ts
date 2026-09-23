@@ -171,13 +171,35 @@ export function syndicatedFrom(p: { url: string; title?: string | null; text?: s
 }
 
 /**
+ * Wire copy carried by a licensed redistributor (Investing.com, Yahoo): the story opens with the agency's dateline,
+ * "SHANGHAI (Reuters) -" or "(Bloomberg) --", within its first few hundred characters.
+ */
+const WIRE_DATELINES: { name: string; tier: SourceTier; re: RegExp }[] = [
+  { name: "Reuters", tier: "established", re: /\(Reuters\)\s*[-–—]/ },
+  { name: "AP", tier: "established", re: /\(AP\)\s*[-–—]/ },
+  { name: "Bloomberg", tier: "established", re: /\(Bloomberg\)\s*[-–—]/ },
+  { name: "Dow Jones", tier: "established", re: /\b(Provided by|By) Dow Jones\b|\(MarketWatch\)\s*[-–—]/ },
+];
+export const WIRE_DATELINE_WINDOW = 800;
+export function wireCopyOf(text: string | null | undefined): { name: string; tier: SourceTier } | null {
+  if (!text) return null;
+  const head = text.slice(0, WIRE_DATELINE_WINDOW);
+  const hit = WIRE_DATELINES.find((w) => w.re.test(head));
+  return hit ? { name: hit.name, tier: hit.tier } : null;
+}
+
+/**
  * Tier of a page, taking syndication into account: a Benzinga story reposted on TradingView, or a 24/7 Wall St. piece
- * served through Yahoo, is rated as its original publisher when that is lower than the host.
+ * served through Yahoo, is rated as its original publisher when that is lower than the host. The one upgrade: an
+ * unrated redistributor carrying an agency's wire copy (a dateline, not a mention) is rated as the agency. Low-rated
+ * hosts are never upgraded, so a content farm cannot borrow a dateline.
  */
 export function pageTier(p: { url: string; title?: string | null; text?: string | null }): { tier: SourceTier; syndicatedFrom: string | null } {
   const host = sourceTier(p.url);
   const orig = syndicatedFrom(p);
   if (orig && tierRank(orig.tier) > tierRank(host)) return { tier: orig.tier, syndicatedFrom: orig.name };
+  const wire = host === "other" ? wireCopyOf(p.text) : null;
+  if (wire && tierRank(wire.tier) < tierRank(host)) return { tier: wire.tier, syndicatedFrom: wire.name };
   return { tier: host, syndicatedFrom: orig && orig.tier !== host ? orig.name : null };
 }
 
