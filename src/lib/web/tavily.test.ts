@@ -19,8 +19,32 @@ describe("searchWeb", () => {
   it("maps results, pins basic depth, and caps the result count", async () => {
     sdk.search.mockResolvedValue({ results: [{ title: "T", url: "https://x.example/a", content: "snippet", score: 0.9, publishedDate: "2026-09-20" }] });
     const hits = await searchWeb({ query: "  american express q2 results ", topic: "finance", timeRange: "week", limit: 25 });
-    expect(hits).toEqual([{ title: "T", url: "https://x.example/a", snippet: "snippet", publishedAt: "2026-09-20", score: 0.9 }]);
-    expect(sdk.search).toHaveBeenCalledWith("american express q2 results", expect.objectContaining({ searchDepth: "basic", topic: "finance", timeRange: "week", maxResults: 10, includeRawContent: false }));
+    expect(hits).toEqual([{ title: "T", url: "https://x.example/a", snippet: "snippet", publishedAt: "2026-09-20", score: 0.9, tier: "other" }]);
+    expect(sdk.search).toHaveBeenCalledWith("american express q2 results", expect.objectContaining({ searchDepth: "basic", topic: "finance", timeRange: "week", maxResults: 15, includeRawContent: false }));
+  });
+  it("prefers reliable domains, drops low-quality ones, and ranks primary then established first", async () => {
+    const hit = (url: string, score: number) => ({ title: url, url, content: "s", score });
+    sdk.search.mockResolvedValue({
+      results: [hit("https://blog.example/a", 0.99), hit("https://www.reddit.com/r/stocks/x", 0.98), hit("https://www.reuters.com/markets/a", 0.7), hit("https://investor.apple.com/news/a", 0.5), hit("https://www.sec.gov/news/press", 0.4), hit("https://other.example/b", 0.9)],
+    });
+    const hits = await searchWeb({ query: "apple buyback", limit: 4 });
+    expect(hits.map((h) => [h.url, h.tier])).toEqual([
+      ["https://investor.apple.com/news/a", "primary"],
+      ["https://www.sec.gov/news/press", "primary"],
+      ["https://www.reuters.com/markets/a", "established"],
+      ["https://blog.example/a", "other"],
+    ]);
+    const opts = sdk.search.mock.calls[0][1];
+    expect(opts.includeDomainsMode).toBe("prefer");
+    expect(opts.includeDomains).toEqual(expect.arrayContaining(["sec.gov", "reuters.com"]));
+    expect(opts.excludeDomains).toEqual(expect.arrayContaining(["reddit.com", "seekingalpha.com"]));
+  });
+  it("restricts to the given domains, normalized", async () => {
+    sdk.search.mockResolvedValue({ results: [] });
+    await searchWeb({ query: "q3 release", domains: ["https://www.Investor.Apple.com/news", "reuters.com", "  "] });
+    const opts = sdk.search.mock.calls[0][1];
+    expect(opts).toMatchObject({ includeDomains: ["investor.apple.com", "reuters.com"], includeDomainsMode: "restrict" });
+    expect(opts.excludeDomains).toBeUndefined();
   });
   it("turns Tavily limits into readable errors", async () => {
     sdk.search.mockRejectedValue(Object.assign(new Error("Request failed with status code 432"), { status: 432 }));

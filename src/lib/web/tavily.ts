@@ -1,6 +1,7 @@
 import { tavily, type TavilyClient } from "@tavily/core";
 import { cached } from "@/lib/providers/cache";
 import { capText } from "@/lib/drive/text";
+import { ESTABLISHED_DOMAINS, LOW_QUALITY_DOMAINS, PRIMARY_DOMAINS, rankByTier, sourceTier, type SourceTier } from "@/lib/web/sources";
 
 /**
  * Web search and page reading through Tavily (tavily.com). Tavily fetches the page, so the app never requests
@@ -14,7 +15,9 @@ export const PAGE_MAX_CHARS = 200_000;
 
 export type WebTopic = "general" | "news" | "finance";
 export type WebTimeRange = "day" | "week" | "month" | "year";
-export type WebSearchHit = { title: string; url: string; snippet: string; publishedAt?: string; score: number };
+export type WebSearchHit = { title: string; url: string; snippet: string; publishedAt?: string; score: number; tier: SourceTier };
+/** Results fetched per search before re-ranking; a basic search costs one credit regardless of count. */
+export const SEARCH_POOL = 15;
 export type WebPageText = { url: string; title: string | null; text: string; fetchedAt: string };
 
 export function tavilyConfigured() {
@@ -58,21 +61,44 @@ export function acceptWebUrl(raw: string): URL {
   return url;
 }
 
-/** Web search, one credit per call (searchDepth pinned to basic; advanced costs two). Cached for an hour. */
-export async function searchWeb(p: { query: string; topic?: WebTopic; timeRange?: WebTimeRange; limit?: number }): Promise<WebSearchHit[]> {
+/**
+ * Web search, one credit per call (searchDepth pinned to basic; advanced costs two). Cached for an hour.
+ *
+ * Without `domains`, Tavily is asked to prefer primary and established sources and to exclude low-quality ones;
+ * a wider pool is then re-ranked locally (primary, established, other) and trimmed to `limit`, so reliable pages
+ * lead even when the provider ignores the preference. With `domains`, results are restricted to those sites.
+ */
+export async function searchWeb(p: { query: string; topic?: WebTopic; timeRange?: WebTimeRange; limit?: number; domains?: string[] }): Promise<WebSearchHit[]> {
   const query = p.query.trim().slice(0, SEARCH_QUERY_CHARS);
   if (!query) return [];
   const topic = p.topic ?? "general";
   const limit = Math.max(1, Math.min(p.limit ?? 5, 10));
-  const key = `web:search:${topic}:${p.timeRange ?? "any"}:${limit}:${query.toLowerCase()}`;
+  const domains = [...new Set((p.domains ?? []).map(normalizeDomain).filter(Boolean))].slice(0, 20).sort();
+  const key = `web:search:v2:${topic}:${p.timeRange ?? "any"}:${limit}:${domains.join(",")}:${query.toLowerCase()}`;
   return cached(key, SEARCH_CACHE_SECONDS, async () => {
     try {
-      const r = await getClient().search(query, { searchDepth: "basic", topic, timeRange: p.timeRange, maxResults: limit, includeRawContent: false, includeAnswer: false });
-      return (r.results ?? []).map((x) => ({ title: x.title, url: x.url, snippet: x.content, publishedAt: x.publishedDate || undefined, score: x.score }));
+      const scope = domains.length
+        ? { includeDomains: domains, includeDomainsMode: "restrict" as const }
+        : { includeDomains: [...PRIMARY_DOMAINS, ...ESTABLISHED_DOMAINS], includeDomainsMode: "prefer" as const, excludeDomains: LOW_QUALITY_DOMAINS };
+      const r = await getClient().search(query, { searchDepth: "basic", topic, timeRange: p.timeRange, maxResults: SEARCH_POOL, includeRawContent: false, includeAnswer: false, ...scope });
+      const hits: WebSearchHit[] = (r.results ?? []).map((x) => ({ title: x.title, url: x.url, snippet: x.content, publishedAt: x.publishedDate || undefined, score: x.score, tier: sourceTier(x.url) }));
+      const kept = domains.length ? hits : hits.filter((h) => h.tier !== "low");
+      return rankByTier(kept, (h) => h.tier, (h) => h.score).slice(0, limit);
     } catch (e) {
       throw explain(e);
     }
   });
+}
+
+/** "https://www.Example.com/path" → "example.com"; anything unparseable → "". */
+function normalizeDomain(raw: string): string {
+  const s = raw.trim().toLowerCase();
+  if (!s) return "";
+  try {
+    return new URL(s.includes("://") ? s : `https://${s}`).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
 }
 
 /**
