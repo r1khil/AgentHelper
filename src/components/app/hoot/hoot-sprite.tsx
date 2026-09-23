@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 import type { HootMood } from "@/lib/hoot/types";
+import { gazeFor, watchAttention } from "./attention";
 import eyes from "./eyes.json";
 
 type Gaze = { x: number; y: number };
@@ -40,8 +41,9 @@ export function preloadHoot(moods: HootMood[]) {
 }
 
 /**
- * Hoot, pre-rendered from Blender in layers: the pose, and his pupils on top so they can follow the pointer.
- * Blinks every few seconds. With reduced motion he holds still and looks straight ahead.
+ * Hoot, pre-rendered from Blender in layers: the pose, and his pupils on top so they can follow what you do
+ * (typing, clicking, scrolling, the pointer; see attention.ts). Blinks every few seconds, closes his eyes while
+ * a password is typed. With reduced motion he holds still and looks straight ahead.
  */
 export function HootSprite({
   mood,
@@ -49,6 +51,7 @@ export function HootSprite({
   track = false,
   gaze,
   bob = false,
+  lean = false,
   className,
   label,
 }: {
@@ -61,6 +64,8 @@ export function HootSprite({
   gaze?: Gaze;
   /** Gentle breathing loop. */
   bob?: boolean;
+  /** Lean a little toward whatever he's watching. */
+  lean?: boolean;
   className?: string;
   /** Accessible name; decorative (hidden from screen readers) when omitted. */
   label?: string;
@@ -69,6 +74,7 @@ export function HootSprite({
   const reduced = usePrefersReducedMotion();
   const [blink, setBlink] = useState(false);
   const [look, setLook] = useState<Gaze>({ x: 0, y: 0 });
+  const [secret, setSecret] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const fixed = gaze ?? FIXED_GAZE[mood];
   const following = track && !fixed && !reduced && !pose.closed;
@@ -104,62 +110,47 @@ export function HootSprite({
     };
   }, [pose.closed, reduced, mood]);
 
-  // Follow the pointer: nearer targets need less eye movement. Drift back to centre when the pointer rests.
+  // Watch what the member is doing. Updates arrive from outside React, a few times a second at most.
   useEffect(() => {
     if (!following) return;
-    let frame = 0;
-    let rest: ReturnType<typeof setTimeout>;
-    const onMove = (e: PointerEvent) => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const el = root.current;
-        if (!el) return;
-        const r = el.getBoundingClientRect();
-        const dx = e.clientX - (r.left + r.width / 2);
-        const dy = e.clientY - (r.top + r.height * 0.48);
-        const dist = Math.hypot(dx, dy) || 1;
-        const reach = Math.min(dist / 260, 1);
-        setLook({ x: (dx / dist) * reach, y: (dy / dist) * reach });
-      });
-      clearTimeout(rest);
-      rest = setTimeout(() => setLook({ x: 0, y: 0 }), 6000);
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      cancelAnimationFrame(frame);
-      clearTimeout(rest);
-    };
+    return watchAttention((a) => {
+      setLook(gazeFor(a, root.current?.getBoundingClientRect() ?? null));
+      setSecret(a.secret);
+    });
   }, [following]);
 
   const g = fixed && !reduced ? fixed : following ? look : { x: 0, y: 0 };
   const travel = pose.eyes ? Math.min(pose.eyes.L.travel, pose.eyes.R.travel) * size : 0;
-  const base = pose.closed ? mood : blink ? `${mood}-blink` : mood;
+  const shut = blink || (following && secret);
+  const base = pose.closed ? mood : shut ? `${mood}-blink` : mood;
+  const tilt = lean && following ? g.x * 4 : 0;
 
   return (
     <div
       ref={root}
-      className={cn("relative shrink-0 select-none", bob && !reduced && "hoot-bob", className)}
-      style={{ width: size, height: size }}
+      className={cn("relative shrink-0 select-none", lean && "transition-transform duration-500 ease-out", className)}
+      style={{ width: size, height: size, transform: tilt ? `rotate(${tilt.toFixed(2)}deg)` : undefined, transformOrigin: "50% 90%" }}
       role={label ? "img" : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
     >
-      {/* Plain <img>: tiny static WebPs that must swap instantly, so no optimizer round-trip. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={hootSrc(base)} alt="" width={size} height={size} draggable={false} className="absolute inset-0 size-full" />
-      {!pose.closed && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={hootSrc(`${mood}-pupils`)}
-          alt=""
-          width={size}
-          height={size}
-          draggable={false}
-          className="absolute inset-0 size-full transition-transform duration-150 ease-out"
-          style={{ transform: `translate(${(g.x * travel).toFixed(2)}px, ${(g.y * travel).toFixed(2)}px)`, opacity: blink ? 0 : 1 }}
-        />
-      )}
+      <div className={cn("absolute inset-0", bob && !reduced && "hoot-bob")}>
+        {/* Plain <img>: tiny static WebPs that must swap instantly, so no optimizer round-trip. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={hootSrc(base)} alt="" width={size} height={size} draggable={false} className="absolute inset-0 size-full" />
+        {!pose.closed && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={hootSrc(`${mood}-pupils`)}
+            alt=""
+            width={size}
+            height={size}
+            draggable={false}
+            className="absolute inset-0 size-full transition-transform duration-150 ease-out"
+            style={{ transform: `translate(${(g.x * travel).toFixed(2)}px, ${(g.y * travel).toFixed(2)}px)`, opacity: shut ? 0 : 1 }}
+          />
+        )}
+      </div>
     </div>
   );
 }

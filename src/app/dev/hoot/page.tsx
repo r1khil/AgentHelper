@@ -12,7 +12,7 @@ export default function HootGallery() {
     <main className="mx-auto max-w-5xl space-y-10 px-6 py-10">
       <section>
         <h1 className="text-lg font-semibold">Hoot</h1>
-        <p className="text-sm text-muted-foreground">Sprites follow the pointer and blink; the 3D hero turns, blinks, and hops when clicked.</p>
+        <p className="text-sm text-muted-foreground">Sprites watch the pointer, the caret, clicks and scrolling, and blink; they close their eyes for passwords. The 3D hero does the same, tilts his head, fluffs up now and then, and hops when clicked.</p>
       </section>
       <section className="flex flex-wrap items-end gap-8">
         {MOODS.map((m) => (
