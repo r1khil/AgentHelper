@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { Tooltip } from "@base-ui/react/tooltip";
 import type { Source } from "@/lib/providers/types";
 import { remarkCitations } from "@/lib/agent/citation-markdown";
+import { resolveCitedId } from "@/lib/agent/citations";
 import { externalUrl, resolveSource, sourceType } from "@/lib/agent/source-resolution";
 import { SourceViewer } from "./source-viewer";
 
@@ -58,8 +59,10 @@ export function ResearchSources({
   );
 }
 
-export function Citation({ id, full = false }: { id: string; full?: boolean }) {
+export function Citation({ id: cited, full = false }: { id: string; full?: boolean }) {
   const { sources, numbers, open, links } = useContext(SourceContext);
+  // Answers saved (or still streaming) with a mistyped id still point at the one source they meant.
+  const id = resolveCitedId(cited, sources) ?? cited;
   const source = sources.get(id);
   const target = resolveSource(source);
   const title = source?.title?.trim() || "Untitled source";

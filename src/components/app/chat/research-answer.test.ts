@@ -13,6 +13,7 @@ const sources = [
   { id: "xbrl-1", title: "Financial data", url: "https://www.sec.gov/Archives/report.htm", publisher: "SEC EDGAR XBRL", retrievedAt: "2026-09-19" },
   { id: "drive-1", title: "Internal transcript", documentId: "file_123", publisher: "Analyst Drive", retrievedAt: "2026-09-19" },
   { id: "missing-url", title: "Missing URL", publisher: "Unknown", retrievedAt: "2026-09-19" },
+  { id: "web-1jo7h58", title: "AMZN coverage", url: "https://news.example.com/amzn", publisher: "Example News", retrievedAt: "2026-09-23" },
 ];
 const messages = [
   {
@@ -54,6 +55,12 @@ describe("research answer rendering (actual react-markdown pipeline)", () => {
     expect(html.match(/<button/g)).toHaveLength(3);
     expect(html).not.toContain("href=");
     expect(html).toContain("Source unavailable");
+  });
+  it("links an already-saved citation with a mistyped id to the one source it meant", () => {
+    const html = render("AWS grew [src:web-1jo7h8]. Again [src:web-1jo7h8].");
+    expect(html.match(/href="https:\/\/news\.example\.com\/amzn"/g)).toHaveLength(2);
+    expect(html).toContain("[6]</a>");
+    expect(html).not.toContain("[?]");
   });
   it("does not transform code examples or loosen Markdown URL protection", () => {
     const html = render("`[src:sec-1]`\n\n```\n[src:doc-1]\n```\n\n[Unsafe](javascript:alert%281%29)");

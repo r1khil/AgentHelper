@@ -72,11 +72,11 @@ const idPrefix = (id: string) => id.slice(0, id.indexOf("-") + 1);
  * (e.g. "web-") within edit distance 1, or 2 for ids of 8+ characters. Null when there is no such id
  * or several, since guessing between sources would cite the wrong evidence.
  */
-export function resolveCitedId(cited: string, known: Set<string>): string | null {
+export function resolveCitedId(cited: string, known: ReadonlySet<string> | ReadonlyMap<string, unknown>): string | null {
   if (known.has(cited)) return cited;
   const max = cited.length >= 8 ? 2 : 1;
   const prefix = idPrefix(cited);
-  const matches = [...known].filter((id) => idPrefix(id) === prefix && editDistance(cited, id, max) <= max);
+  const matches = [...known.keys()].filter((id) => idPrefix(id) === prefix && editDistance(cited, id, max) <= max);
   return matches.length === 1 ? matches[0] : null;
 }
 
