@@ -66,6 +66,7 @@ export function publicCalendarProvider(
 ): EconomicCalendarProvider {
   return {
     name: "Public agency feeds",
+    url: "https://www.bls.gov/schedule/",
     async getEvents(range) {
       const through = DateTime.fromISO(range.to).plus({ days: 1 }).toISODate()!;
       const valuesURL = `${AGENCY_URLS.xoomar}?${new URLSearchParams({ from: range.from, to: through })}`;

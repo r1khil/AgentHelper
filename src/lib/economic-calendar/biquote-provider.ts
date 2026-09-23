@@ -99,6 +99,7 @@ export function biquoteProvider(
 ): EconomicCalendarProvider {
   return {
     name: "biquote (free)",
+    url: "https://biquote.io/docs/",
     async getEvents(range) {
       const start = DateTime.fromISO(range.from, { zone: NY }).startOf("day");
       const end = DateTime.fromISO(range.to, { zone: NY })
@@ -118,7 +119,7 @@ export function biquoteProvider(
         }).toString();
         const response = await fetcher(url, {
           cache: "no-store",
-          signal: AbortSignal.timeout(15_000),
+          signal: AbortSignal.timeout(8_000),
           headers: { Accept: "application/json" },
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);

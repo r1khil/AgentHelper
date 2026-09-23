@@ -38,8 +38,12 @@ export type CalendarFeed = CalendarRange &
     provider: string;
     mode: "live" | "demo";
     fetchedAt: string;
+    /** Every source failed, so this is the last copy that loaded, as of fetchedAt. */
+    stale?: boolean;
   };
 export interface EconomicCalendarProvider {
   name: string;
+  /** Where a person can see the source, listed when it is unavailable. */
+  url: string;
   getEvents(range: CalendarRange): Promise<CalendarResult>;
 }

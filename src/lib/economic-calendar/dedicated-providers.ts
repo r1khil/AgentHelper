@@ -140,7 +140,7 @@ async function request(url: URL, fetcher: typeof fetch): Promise<unknown> {
     const response = await fetcher(url, {
       cache: "no-store",
       redirect: "error",
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(8_000),
       headers: { Accept: "application/json" },
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -165,6 +165,7 @@ export function tradingEconomicsProvider(
 ): EconomicCalendarProvider {
   return {
     name: "Trading Economics",
+    url: "https://docs.tradingeconomics.com/economic_calendar/",
     async getEvents(range) {
       const url = new URL(
         `https://api.tradingeconomics.com/calendar/country/united%20states/${range.from}/${through(range)}`,
@@ -195,6 +196,7 @@ export function eodhdProvider(
 ): EconomicCalendarProvider {
   return {
     name: "EODHD",
+    url: "https://eodhd.com/financial-apis/economic-events-data-api",
     async getEvents(range) {
       // Validate configuration before spending an API call.
       parseEodhd([], timezone);

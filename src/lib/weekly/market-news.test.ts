@@ -48,6 +48,57 @@ describe("pickMarketNews", () => {
     expect(picks.map((p) => p.name)).toEqual(["Continuing Jobless Claims", "Core PCE Price Index"]);
   });
 
+  it("lists an event running several days once, on its first day", () => {
+    const picks = pickMarketNews(
+      ["2026-09-21", "2026-09-22", "2026-09-23"].map((d) => ev(d, 2, "UN General Assembly")),
+      range,
+    );
+    expect(picks.map((p) => `${p.date} ${p.name}`)).toEqual(["2026-09-21 UN General Assembly"]);
+  });
+
+  it("drops mortgage surveys and weekly series in Trading Economics naming", () => {
+    const picks = pickMarketNews(
+      [
+        ev("2026-09-23", 2, "MBA 30-Year Mortgage Rate"),
+        ev("2026-09-22", 2, "ADP Employment Change Weekly"),
+        ev("2026-09-24", 2, "Initial Jobless Claims"),
+      ],
+      range,
+    );
+    expect(picks.map((p) => p.name)).toEqual(["Initial Jobless Claims"]);
+  });
+
+  it("collapses CPI, FOMC, flash PMI, GDP and ex-item variants into one line each", () => {
+    const picks = pickMarketNews(
+      [
+        ev("2026-09-21", 3, "Inflation Rate YoY"),
+        ev("2026-09-21", 3, "Inflation Rate MoM"),
+        ev("2026-09-21", 3, "Core Inflation Rate MoM"),
+        ev("2026-09-21", 2, "CPI"),
+        ev("2026-09-21", 2, "CPI s.a"),
+        ev("2026-09-22", 3, "Fed Interest Rate Decision"),
+        ev("2026-09-22", 2, "Fed Press Conference"),
+        ev("2026-09-22", 2, "FOMC Economic Projections"),
+        ev("2026-09-23", 2, "S&P Global Composite PMI Flash"),
+        ev("2026-09-23", 2, "S&P Global Manufacturing PMI Flash"),
+        ev("2026-09-23", 2, "S&P Global Services PMI Flash"),
+        ev("2026-09-24", 3, "GDP Growth Rate QoQ Final"),
+        ev("2026-09-24", 2, "GDP Price Index QoQ Final"),
+        ev("2026-09-25", 3, "Retail Sales MoM"),
+        ev("2026-09-25", 2, "Retail Sales Ex Autos MoM"),
+        ev("2026-09-25", 2, "Retail Sales Control Group MoM"),
+      ],
+      range,
+    );
+    expect(picks.map((p) => `${p.date} ${p.name}`)).toEqual([
+      "2026-09-21 Inflation Rate",
+      "2026-09-22 Fed Interest Rate Decision",
+      "2026-09-23 S&P Global Composite PMI",
+      "2026-09-24 GDP Growth Rate",
+      "2026-09-25 Retail Sales",
+    ]);
+  });
+
   it("ignores low importance, out-of-range dates, and caps the list", () => {
     const many = Array.from({ length: 15 }, (_, i) => ev("2026-09-22", 3 as const, `Release ${String(i).padStart(2, "0")}`));
     const picks = pickMarketNews([...many, ev("2026-09-22", 1, "Minor"), ev("2026-09-28", 3, "Next week")], range, 5);

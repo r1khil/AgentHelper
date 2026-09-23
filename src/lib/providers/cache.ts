@@ -82,6 +82,28 @@ export async function cached<T>(key: string, ttlSeconds: number, fn: () => Promi
   return payload;
 }
 
+/** Write a value directly, for callers that keep a copy on the side, such as a last good snapshot. */
+export async function storeCached(key: string, ttlSeconds: number, payload: unknown, opts: { db?: boolean } = {}) {
+  const entry = { payload, expiresAt: Date.now() + ttlSeconds * 1000 };
+  memory.set(key, entry);
+  if (opts.db !== false && process.env.DATABASE_URL) await dbSet(key, entry);
+}
+
+/** Read an unexpired value from memory or the provider_cache table without loading anything. */
+export async function readCached<T>(key: string, opts: { db?: boolean } = {}): Promise<T | null> {
+  const now = Date.now();
+  const mem = memory.get(key);
+  if (mem && mem.expiresAt > now) return mem.payload as T;
+  if (opts.db !== false && process.env.DATABASE_URL) {
+    const hit = await dbGet(key);
+    if (hit && hit.expiresAt > now) {
+      memory.set(key, hit);
+      return hit.payload as T;
+    }
+  }
+  return null;
+}
+
 async function cachedUntraced<T>(key: string, ttlSeconds: number, fn: () => Promise<T>, opts: { db?: boolean }): Promise<T> {
   const now = Date.now();
   const mem = memory.get(key);
