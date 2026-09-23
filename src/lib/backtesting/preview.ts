@@ -7,7 +7,7 @@ export const previewEnabled = () =>
 export const previewSnapshot: Snapshot = {
   ...snapshotPositions([
     { id: "00000000-0000-4000-8000-000000000001", ticker: "ALPHA", companyName: "Synthetic growth holding", weightPct: "60.00" },
-    { id: "00000000-0000-4000-8000-000000000002", ticker: "BETA", companyName: "Synthetic newer holding", weightPct: "37.61" },
+    { id: "00000000-0000-4000-8000-000000000002", ticker: "BETA", companyName: "Synthetic newer holding", weightPct: "30.00" },
   ]),
   version: "0".repeat(64),
   scope: "Synthetic QA portfolio",

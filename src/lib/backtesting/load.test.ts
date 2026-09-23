@@ -119,8 +119,17 @@ it("fund roles read active fund holdings and produce stable, weight-sensitive sn
     new PgDialect().sqlToQuery(where.mock.calls[0][0] as SQL).params,
   ).toEqual(["active"]);
   expect(a.version).toBe(b.version);
+  expect(a.positions.map((p) => [p.ticker, p.weight])).toEqual([
+    ["A", 0.2],
+    ["CASH", 0.8],
+  ]);
   rows[0].weightPct = "25";
-  expect((await loadSnapshot(user)).version).not.toBe(a.version);
+  const updated = await loadSnapshot(user);
+  expect(updated.version).not.toBe(a.version);
+  expect(updated.positions.map((p) => [p.ticker, p.weight])).toEqual([
+    ["A", 0.25],
+    ["CASH", 0.75],
+  ]);
 });
 it("fund roles count a ticker covered by two teams once, since weight_pct is the fund-level weight on both rows", async () => {
   const rows = [
