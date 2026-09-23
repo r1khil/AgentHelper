@@ -1,8 +1,9 @@
 import "server-only";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import type { UIMessage } from "ai";
 import { db } from "@/db/client";
 import { chatMessages, chats, holdings, profiles } from "@/db/schema";
+import { inTeams, type TeamIds } from "@/lib/team-filter";
 
 export async function listChats(teamId: string) {
   return db
@@ -76,7 +77,9 @@ export type HoldingChatStats = {
 };
 
 /** Research activity per holding, for the agent index cards. */
-export async function listHoldingChatStats(teamId: string): Promise<Map<string, HoldingChatStats>> {
+export async function listHoldingChatStats(teamId: TeamIds): Promise<Map<string, HoldingChatStats>> {
+  const ids = Array.isArray(teamId) ? teamId : [teamId];
+  if (ids.length === 0) return new Map();
   const [stats, live] = await Promise.all([
     db.execute<{ holding_id: string; chats: string; sources: string; last_activity: string }>(sql`
       select c.holding_id,
@@ -89,14 +92,14 @@ export async function listHoldingChatStats(teamId: string): Promise<Map<string, 
       left join lateral jsonb_array_elements(
         case when jsonb_typeof(p->'output'->'sources') = 'array' then p->'output'->'sources' else '[]'::jsonb end
       ) s on true
-      where c.team_id = ${teamId} and c.holding_id is not null
+      where c.team_id in (${sql.join(ids.map((id) => sql`${id}`), sql`, `)}) and c.holding_id is not null
       group by c.holding_id
     `),
     db
       .select({ c: chats, authorName: profiles.fullName })
       .from(chats)
       .leftJoin(profiles, eq(profiles.id, chats.createdBy))
-      .where(and(eq(chats.teamId, teamId), eq(chats.runStatus, "running"))),
+      .where(and(inTeams(chats.teamId, teamId), eq(chats.runStatus, "running"))),
   ]);
   const map = new Map<string, HoldingChatStats>();
   for (const r of stats) {
@@ -125,5 +128,24 @@ export async function listHoldingChats(holdingId: string): Promise<HoldingChat[]
     .where(eq(chats.holdingId, holdingId))
     .orderBy(desc(chats.updatedAt))
     .limit(100);
+  return rows.map((r) => ({ ...r, questions: Number(r.questions) }));
+}
+
+export type GeneralChat = { c: typeof chats.$inferSelect; authorName: string | null; questions: number };
+
+/**
+ * Hoot conversations that aren't about one holding (asked from attribution, backtesting, Today…), newest first.
+ * Chats that never got a question are left out: Hoot creates the chat before the first message is sent.
+ */
+export async function listGeneralChats(teamId: TeamIds, limit = 50): Promise<GeneralChat[]> {
+  if (Array.isArray(teamId) && teamId.length === 0) return [];
+  const questions = sql<number>`(select count(*) from chat_messages m where m.chat_id = ${chats.id} and m.role = 'user')`;
+  const rows = await db
+    .select({ c: chats, authorName: profiles.fullName, questions })
+    .from(chats)
+    .leftJoin(profiles, eq(profiles.id, chats.createdBy))
+    .where(and(inTeams(chats.teamId, teamId), isNull(chats.holdingId), sql`${questions} > 0`))
+    .orderBy(desc(chats.updatedAt))
+    .limit(limit);
   return rows.map((r) => ({ ...r, questions: Number(r.questions) }));
 }

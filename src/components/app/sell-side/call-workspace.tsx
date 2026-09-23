@@ -1,19 +1,21 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Mic, Pause, Play, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
 import { MODEL_BUCKET } from "@/lib/models/upload";
 import { localParts, removeLocalPart, saveLocalPart, type LocalPart } from "@/lib/sell-side/local-audio";
+import { ANALYSIS_ERROR, TRANSCRIPT_ERROR, callStatusLabel } from "@/lib/sell-side/status";
 import { clock, MAX_AUDIO_BYTES, MAX_PARTS, PART_MS, type Segment } from "@/lib/sell-side/types";
 
 type State = {
   call: { status: string; error: string | null; expectedParts: number | null; updatedAt: string };
   parts: { seq: number; offset: string; duration: string; segments: Segment[] | null; summary: string | null }[];
 };
-export function CallWorkspace({ callId, configured }: { callId: string; configured: boolean }) {
+export function CallWorkspace({ callId, configured, children }: { callId: string; configured: boolean; children?: ReactNode }) {
   const router = useRouter();
+  const [now, setNow] = useState(() => Date.now());
   const [data, setData] = useState<State | null>(null);
   const [error, setError] = useState("");
   const [recording, setRecording] = useState(false);
@@ -43,8 +45,8 @@ export function CallWorkspace({ callId, configured }: { callId: string; configur
         `/api/sell-side/${callId}`,
         body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : { cache: "no-store" },
       );
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error ?? "Request failed");
+      const result = await res.json().catch(() => null);
+      if (!res.ok || !result) throw new Error(result?.error ?? "The request could not finish. Your saved work is safe; please retry.");
       return result;
     },
     [callId],
@@ -52,8 +54,11 @@ export function CallWorkspace({ callId, configured }: { callId: string; configur
   const refresh = useCallback(async () => {
     const next = await request();
     setData(next);
+    setNow(Date.now());
+    // Fast synthesis can finish before the first polling interval is installed.
+    if (next.call.status === "ready") router.refresh();
     return next as State;
-  }, [request]);
+  }, [request, router]);
   useEffect(() => {
     let active = true;
     const load = async () => {
@@ -74,15 +79,7 @@ export function CallWorkspace({ callId, configured }: { callId: string; configur
   }, [callId, request]);
   useEffect(() => {
     if (data?.call.status !== "analyzing") return;
-    const timer = setInterval(
-      () =>
-        void refresh()
-          .then((s) => {
-            if (s.call.status === "ready") router.refresh();
-          })
-          .catch(report),
-      3000,
-    );
+    const timer = setInterval(() => void refresh().catch(report), 3000);
     return () => clearInterval(timer);
   }, [data?.call.status, refresh, router]);
   useEffect(() => {
@@ -285,10 +282,10 @@ export function CallWorkspace({ callId, configured }: { callId: string; configur
       const state = await refresh();
       const count = state.call.expectedParts ?? state.parts.length;
       if (!count) throw new Error("Record some audio first.");
-      for (;;) {
-        setProgress("Transcribing audio and preparing part notes…");
+      while (!(await refresh()).parts.every((p) => p.summary)) {
+        setProgress(state.parts.every((p) => p.segments !== null) ? "Preparing key points from your saved transcript…" : "Preparing your transcript…");
         const result = await request({ action: "process", expectedParts: count });
-        setProgress(`Transcribed ${result.completed ?? count} of ${count} parts`);
+        setProgress(`Reviewed ${result.completed ?? count} of ${count} saved audio sections`);
         await refresh();
         if (result.done) break;
       }
@@ -299,6 +296,8 @@ export function CallWorkspace({ callId, configured }: { callId: string; configur
       report(e);
     } finally {
       setBusy(false);
+      setProgress("");
+      await refresh().catch(report);
     }
   }
   async function downloadLocal() {
@@ -314,23 +313,32 @@ export function CallWorkspace({ callId, configured }: { callId: string; configur
   }
   if (!data) return <p role="status">{error || "Loading saved call…"}</p>;
   const segments = data.parts.flatMap((p) => p.segments ?? []);
+  const transcriptReady = data.parts.length > 0 && data.parts.every((p) => p.segments !== null);
+  const analysisFailed = data.call.error === ANALYSIS_ERROR || (data.call.status === "error" && data.parts.find((p) => !p.summary)?.segments != null);
   const analyzing = data.call.status === "analyzing";
-  const stale = analyzing && Date.now() - new Date(data.call.updatedAt).getTime() > 360_000;
+  const stale = analyzing && now - new Date(data.call.updatedAt).getTime() > 360_000;
   return (
     <div className="space-y-4">
       {!configured && (
         <p className="rounded-lg border p-3 text-sm">
-          Transcription / analysis needs OPENROUTER_API_KEY on the server. Audio can still be recorded and saved.
+          Analysis is temporarily unavailable. Your audio can still be recorded and saved. Contact your workspace administrator.
         </p>
       )}
       <section className="space-y-4 rounded-lg border bg-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-semibold">
-              {recording ? (paused ? "Recording paused" : "Recording live") : data.call.status === "ready" ? "Call saved" : "Call recording"}
+              {recording
+                ? paused
+                  ? "Recording paused"
+                  : "Recording live"
+                : data.call.status === "ready"
+                  ? "Call saved"
+                  : (callStatusLabel[data.call.status] ?? "Call recording")}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {recording ? clock(elapsed) : `${data.parts.length} audio parts`} · {pending} waiting to upload
+              {recording ? clock(elapsed) : clock(data.parts.reduce((total, part) => total + Number(part.duration), 0))} ·{" "}
+              {pending ? `${pending} audio sections waiting to save` : data.parts.length ? "Audio saved securely" : "Ready when you are"}
             </p>
           </div>
           {recording && (
@@ -378,7 +386,17 @@ export function CallWorkspace({ callId, configured }: { callId: string; configur
           {data.call.status !== "ready" && (
             <Button variant="outline" disabled={busy || (analyzing && !stale) || (!recording && !data.parts.length && !pending)} onClick={process}>
               <Square />
-              {recording ? "Stop & analyze" : busy ? "Processing…" : analyzing && !stale ? "Analyzing…" : "Process / retry saved call"}
+              {recording
+                ? "Stop & analyze"
+                : busy
+                  ? "Working…"
+                  : analyzing && !stale
+                    ? "Analyzing…"
+                    : transcriptReady || analysisFailed
+                      ? "Retry analysis"
+                      : data.call.status === "error"
+                        ? "Retry transcription"
+                        : "Analyze saved call"}
             </Button>
           )}
           {pending > 0 && (
@@ -392,16 +410,23 @@ export function CallWorkspace({ callId, configured }: { callId: string; configur
             ? "Transcript and analysis saved. Continue in the chat below."
             : analyzing
               ? "Summary and internal-file cross-check are running. You can reopen this call later."
-              : progress}
+              : busy
+                ? progress
+                : data.call.status === "error"
+                  ? ""
+                  : transcriptReady
+                    ? "Transcript saved. Your call is ready for analysis."
+                    : ""}
         </p>
         {(error || data.call.error) && (
           <p role="alert" className="text-sm text-destructive">
-            {error || data.call.error}
+            {error || (transcriptReady || analysisFailed ? ANALYSIS_ERROR : TRANSCRIPT_ERROR)}
           </p>
         )}
       </section>
+      {children}
       {segments.length > 0 && (
-        <section className="space-y-3">
+        <section className="space-y-3 rounded-xl border bg-card p-5" aria-label="Call transcript">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-semibold">Transcript · {segments.length} passages</h2>
             <input
@@ -413,8 +438,7 @@ export function CallWorkspace({ callId, configured }: { callId: string; configur
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Passages carry timestamps but no speaker labels; nothing here is attributed to a speaker. This transcript is available as a source in future team
-            agent chats.
+            Searchable, timestamped evidence for this call and future team research. Speaker attribution is shown only when available.
           </p>
           <div className="max-h-96 space-y-3 overflow-y-auto rounded-lg border p-4">
             {segments

@@ -18,7 +18,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <UpdateBanner buildId={getBuildId()} />
         {children}
-        <Toaster position="bottom-right" />
+        {/* Offset so toasts stack above Hoot rather than on top of him. */}
+        <Toaster position="bottom-right" offset={{ bottom: 96, right: 20 }} mobileOffset={{ bottom: 80, right: 12 }} />
       </body>
     </html>
   );

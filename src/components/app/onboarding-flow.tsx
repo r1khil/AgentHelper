@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Activity, Briefcase, CalendarDays, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { HootHero } from "@/components/app/hoot/hoot-hero";
 import { completeOnboarding } from "@/lib/actions/onboarding";
 import type { ActionResult } from "@/lib/actions/holdings";
 import { BOUNDARY_IMPLICATIONS, LEARNING_BOUNDARY, ONBOARDING_STEPS, TOUR_CARDS } from "@/lib/onboarding";
@@ -63,9 +64,12 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
 
       {current.id === "profile" && (
         <section className="space-y-5">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">Welcome to The Owl&apos;s Nest</h1>
-            <p className="mt-1 text-sm text-muted-foreground">A quick setup before you reach the workspace. It takes about a minute.</p>
+          <div className="flex items-center gap-4">
+            <HootHero size={112} className="shrink-0" />
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight">Welcome to The Owl&apos;s Nest</h1>
+              <p className="mt-1 text-sm text-muted-foreground">A quick setup before you reach the workspace. It takes about a minute. I&apos;m Hoot, and I&apos;ll be in the corner if you need me.</p>
+            </div>
           </div>
           <Card>
             <CardContent className="grid gap-3 sm:grid-cols-3">

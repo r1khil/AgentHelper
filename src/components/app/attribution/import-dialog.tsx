@@ -117,22 +117,7 @@ export function ImportDialog() {
               <div>
                 <div className="mb-1 font-medium">Share counts that change</div>
                 <p className="mb-2 text-muted-foreground">Compare the “After import” column with the latest brokerage statement. Small fractions come from reinvested dividends, which are added once prices load.</p>
-                <div className="max-h-48 overflow-y-auto rounded-lg border">
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-muted text-xs text-muted-foreground">
-                      <tr><th className="px-3 py-1.5 text-left font-medium">Ticker</th><th className="px-3 py-1.5 text-right font-medium">Now</th><th className="px-3 py-1.5 text-right font-medium">After import</th></tr>
-                    </thead>
-                    <tbody>
-                      {preview.positionChanges.map((r) => (
-                        <tr key={r.ticker} className="border-t">
-                          <td className="px-3 py-1 font-medium">{r.ticker}</td>
-                          <td className="tnum px-3 py-1 text-right">{shares(r.now)}</td>
-                          <td className="tnum px-3 py-1 text-right">{shares(r.after)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <PositionChanges rows={preview.positionChanges} afterLabel="After import" />
               </div>
             )}
             {preview.errors.length === 0 && preview.positionChanges.length === 0 && preview.trades > 0 && (
@@ -158,5 +143,26 @@ export function ImportDialog() {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function PositionChanges({ rows, afterLabel }: { rows: Ready["positionChanges"]; afterLabel: string }) {
+  return (
+    <div className="max-h-48 overflow-y-auto rounded-lg border">
+      <table className="w-full text-sm">
+        <thead className="sticky top-0 bg-muted text-xs text-muted-foreground">
+          <tr><th className="px-3 py-1.5 text-left font-medium">Ticker</th><th className="px-3 py-1.5 text-right font-medium">Now</th><th className="px-3 py-1.5 text-right font-medium">{afterLabel}</th></tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.ticker} className="border-t">
+              <td className="px-3 py-1 font-medium">{r.ticker}</td>
+              <td className="tnum px-3 py-1 text-right">{shares(r.now)}</td>
+              <td className="tnum px-3 py-1 text-right">{shares(r.after)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

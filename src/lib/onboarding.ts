@@ -51,7 +51,7 @@ export const TOUR_CARDS: TourCard[] = [
   },
   {
     id: "agent",
-    title: "Research agent",
-    body: "Chat with tools for quotes, price history, EDGAR filings, XBRL facts, news, and the earnings calendar. Filings and company releases come first, news second, and every claim carries a source chip.",
+    title: "Hoot",
+    body: "Your research companion: click him in the corner or open Hoot in the sidebar. He works with tools for quotes, price history, EDGAR filings, XBRL facts, news, and the earnings calendar. Filings and company releases come first, news second, and every claim carries a source chip.",
   },
 ];

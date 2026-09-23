@@ -3,7 +3,7 @@ import { signInWithGoogle, signInWithPassword } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { OwlMark } from "@/components/app/owl-mark";
+import { HootHero } from "@/components/app/hoot/hoot-hero";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -16,12 +16,10 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted/40 p-6">
       <div className="w-full max-w-sm">
-        <div className="mb-8 flex items-center gap-3">
-          <OwlMark className="size-9" />
-          <div>
-            <div className="text-lg font-semibold leading-tight">The Owl&apos;s Nest</div>
-            <div className="text-sm text-muted-foreground">Research workspace</div>
-          </div>
+        <div className="mb-8 flex flex-col items-center text-center">
+          <HootHero size={168} className="-mb-1" />
+          <div className="text-lg font-semibold leading-tight">The Owl&apos;s Nest</div>
+          <div className="text-sm text-muted-foreground">Research workspace</div>
         </div>
 
         {error && (

@@ -4,13 +4,14 @@ import { db } from "@/db/client";
 import { earnings, evidenceItems, holdings, sectorBellwethers, securities, teams } from "@/db/schema";
 import type { GicsSector } from "@/lib/attribution/sectors";
 import type { HoldingEventRow } from "@/lib/earnings-calendar";
+import { inTeams, type TeamIds } from "@/lib/team-filter";
 
-export async function listTeamEarnings(teamId: string) {
+export async function listTeamEarnings(teamId: TeamIds) {
   return db
     .select({ e: earnings, h: holdings })
     .from(earnings)
     .innerJoin(holdings, eq(holdings.id, earnings.holdingId))
-    .where(eq(holdings.teamId, teamId))
+    .where(inTeams(holdings.teamId, teamId))
     .orderBy(desc(earnings.reportDate), asc(holdings.ticker))
     .limit(200);
 }

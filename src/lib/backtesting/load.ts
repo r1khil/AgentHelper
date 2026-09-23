@@ -4,7 +4,8 @@ import { and, asc, eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
 import { holdings } from "@/db/schema";
-import { isFundWide, type CurrentUser } from "@/lib/auth";
+import type { CurrentUser } from "@/lib/auth";
+import { isFundWide } from "@/lib/roles";
 import { getAdjustedBarsRange } from "@/lib/providers/yahoo";
 import { NY } from "@/lib/providers/calendar";
 import { snapshotPositions } from "./snapshot";
@@ -41,7 +42,7 @@ export async function loadSnapshot(user: CurrentUser): Promise<Snapshot> {
       );
     });
   // weight_pct is the fund-level weight copied onto every active row for a ticker, so a stock two teams
-  // both cover appears twice in the fund-wide query; keep one row per ticker before normalizing.
+  // both cover appears twice in the fund-wide query; keep one row per ticker before deriving cash.
   const rows = isFundWide(user)
     ? held.filter((r, i) => held.findIndex((o) => o.ticker === r.ticker) === i)
     : held;
@@ -51,8 +52,8 @@ export async function loadSnapshot(user: CurrentUser): Promise<Snapshot> {
     version: createHash("sha256").update(JSON.stringify(rows)).digest("hex"),
     capturedAt: new Date().toISOString(),
     scope: isFundWide(user)
-      ? "Fund invested holdings"
-      : `${user.team?.name ?? "Team"} invested holdings`,
+      ? "Fund portfolio"
+      : `${user.team?.name ?? "Team"} portfolio`,
   };
 }
 export async function runBacktest(
@@ -72,7 +73,7 @@ export async function runBacktest(
     ...new Set([
       benchmark,
       ...snapshot.positions
-        .filter((p) => p.weight > 0 || weights[p.id] > 0)
+        .filter((p) => p.kind !== "cash" && (p.weight > 0 || weights[p.id] > 0))
         .map((p) => p.ticker),
     ]),
   ];

@@ -157,9 +157,9 @@ export default async function MovementPage({ params }: { params: Promise<{ team:
                 ))}
               </div>
             )}
-            <p className="mt-3 text-xs text-muted-foreground">Evidence proximity is not causation. Open the agent to dig into any item.</p>
-            <Button nativeButton={false} render={<Link href={`/t/${team.slug}/agent`} />} size="sm" variant="outline" className="mt-2">
-              Ask the agent about {h.ticker}
+            <p className="mt-3 text-xs text-muted-foreground">Evidence proximity is not causation. Ask Hoot to dig into any item.</p>
+            <Button nativeButton={false} render={<Link href={`/t/${team.slug}/agent/h/${h.ticker}`} />} size="sm" variant="outline" className="mt-2">
+              Ask Hoot about {h.ticker}
             </Button>
           </Card>
         </div>

@@ -11,6 +11,8 @@ import type { Source } from "@/lib/providers/types";
 import { collectSources } from "@/lib/agent/citations";
 import { marketFigure, pairTurns, stepLabel, traceLine, turnSources, type Turn, type TurnSource } from "@/lib/agent/board";
 import { resolveSource, sourceType } from "@/lib/agent/source-resolution";
+import { clearHootQuestion, peekHootQuestion } from "@/components/app/hoot/handoff";
+import { HootSprite } from "@/components/app/hoot/hoot-sprite";
 import { createHoldingChat, deleteChat } from "@/lib/actions/chats";
 import { ResearchAnswer, ResearchSources, type CitationLinks } from "@/components/app/chat/research-answer";
 import { SourceViewer } from "@/components/app/chat/source-viewer";
@@ -148,7 +150,7 @@ export function HoldingBoard(props: Props) {
       <div className="flex items-center gap-2 text-[12.8px] text-muted-foreground">
         <Link href={`/t/${team.slug}/agent`} className="inline-flex items-center gap-1.5 hover:text-foreground">
           <ArrowLeft className="size-3.5" />
-          All holdings
+          Hoot
         </Link>
         {chat && chat.canDelete && (
           <form
@@ -331,7 +333,7 @@ function EmptyBoard({
               if (draft.trim()) onAsk(draft);
             }}
             disabled={busy || !configured}
-            placeholder={configured ? `Ask about ${holding.ticker}…` : "Agent is not configured: add OPENROUTER_API_KEY"}
+            placeholder={configured ? `Ask about ${holding.ticker}…` : "Hoot is not configured: add OPENROUTER_API_KEY"}
           />
         </>
       }
@@ -350,7 +352,7 @@ function EmptySources() {
   return (
     <div className="m-6 grid flex-1 place-items-center rounded-xl border border-dashed p-6 text-center text-[13px] text-muted-foreground">
       <p>
-        Sources appear here as the agent reads them.
+        Sources appear here as Hoot reads them.
         <br />
         Click a card, or a number in the answer, to read the cited passage.
       </p>
@@ -436,14 +438,20 @@ function BoardThread({
 
   // Deferred a tick: the SDK's sendMessage awaits before it queues the message, and a stop() in that window
   // (React's development double-invoke of effects calls the hook's cleanup) makes it return silently.
+  // A question asked through Hoot arrives the same way, handed over in sessionStorage with the chat preselected.
   useEffect(() => {
-    if (!autoSend) return;
+    const asked = autoSend ? { text: autoSend, page: null } : peekHootQuestion(chatId);
+    if (!asked) return;
+    const { text } = asked;
     const t = setTimeout(() => {
-      if (send(autoSend)) onSent(autoSend);
+      if (send(text, asked.page)) {
+        clearHootQuestion(chatId);
+        onSent(text);
+      }
     }, 0);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoSend]);
+  }, [autoSend, chatId]);
 
   const turns = useMemo(() => pairTurns(messages), [messages]);
   const allSources = useMemo(() => collectSources(messages), [messages]);
@@ -569,7 +577,7 @@ function BoardThread({
                           </div>
                         </ResearchSources>
                       ) : t.assistant && !turnLive && !catchingUp ? (
-                        <div className="mt-2 text-xs text-warning-foreground">The agent stopped before writing an answer. Its lookups are on the right; ask again to get a written answer.</div>
+                        <div className="mt-2 text-xs text-warning-foreground">Hoot stopped before writing an answer. Its lookups are on the right; ask again to get a written answer.</div>
                       ) : null}
                       {(t.assistant || turnLive) && (
                         <div className="tnum mt-1.5 flex items-center gap-1.5 text-[11px] leading-4 text-muted-foreground">
@@ -587,7 +595,7 @@ function BoardThread({
                 })}
                 {status === "submitted" && !last?.assistant && (
                   <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <Loader2 className="size-[11px] animate-spin" /> Reading the question…
+                    <HootSprite mood="thinking" size={28} bob /> Reading the question…
                   </div>
                 )}
                 {catchingUp && (
@@ -606,7 +614,7 @@ function BoardThread({
               onStop={stopWatching}
               streaming={streaming}
               disabled={!configured || catchingUp}
-              placeholder={!configured ? "Agent is not configured: add OPENROUTER_API_KEY" : catchingUp ? "Waiting for the current answer…" : turns.length ? `Follow up on ${holding.ticker}…` : `Ask about ${holding.ticker}…`}
+              placeholder={!configured ? "Hoot is not configured: add OPENROUTER_API_KEY" : catchingUp ? "Waiting for the current answer…" : turns.length ? `Follow up on ${holding.ticker}…` : `Ask about ${holding.ticker}…`}
             />
           </>
         }

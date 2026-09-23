@@ -1,6 +1,7 @@
 import type { Position } from "./engine";
 
-/** Current saved holding weights define the invested sleeve; never invent missing weights. */
+/** Current saved holding weights and their unallocated remainder define the portfolio. */
+export const CASH_ID = "00000000-0000-4000-8000-000000000000";
 export function snapshotPositions(
   rows: {
     id: string;
@@ -25,15 +26,24 @@ export function snapshotPositions(
       `Saved weights are missing or invalid for ${missing.map((r) => r.ticker).join(", ")}. Update position sizes before backtesting.`,
     );
   const total = rows.reduce((s, r) => s + Number(r.weightPct), 0);
-  if (total <= 0)
-    throw new Error("The saved portfolio has no positive weights.");
+  if (total > 100 + 1e-8)
+    throw new Error("Saved holding weights exceed 100%. Fix the current portfolio before backtesting.");
   return {
     savedWeightTotal: total,
-    positions: rows.map((r) => ({
-      id: r.id,
-      ticker: r.ticker,
-      name: r.companyName,
-      weight: Number(r.weightPct) / total,
-    })),
+    positions: [
+      ...rows.map((r) => ({
+        id: r.id,
+        ticker: r.ticker,
+        name: r.companyName,
+        weight: Number(r.weightPct) / 100,
+      })),
+      {
+        id: CASH_ID,
+        ticker: "CASH",
+        name: "Uninvested cash · 0% return",
+        weight: Math.max(0, (100 - total) / 100),
+        kind: "cash" as const,
+      },
+    ],
   };
 }

@@ -10,6 +10,9 @@ import { instrumentTools } from "./trace";
 import { withModelFallback } from "./fallback";
 import { compactForStep } from "./turn";
 import { loadMcpTools } from "./mcp";
+import { makePortfolioTools } from "./portfolio-tools";
+import type { PageContext } from "./page-context";
+import type { CurrentUser } from "@/lib/auth";
 
 /** Steps the model may spend on tools; the last step is forced to be a written answer. */
 export const MAX_STEPS = 10;
@@ -27,6 +30,10 @@ export type AgentContext = {
   sources?: Source[];
   sink?: TraceSink | null;
   purpose?: AgentPurpose;
+  /** The signed-in member behind a chat turn; enables the attribution and backtest tools under their access rules. */
+  viewer?: CurrentUser | null;
+  /** Where the member asked from (Hoot attaches it). */
+  page?: PageContext | null;
 };
 
 export type AgentDefinition = {
@@ -72,7 +79,10 @@ export async function agentModelWithFallback(sink?: TraceSink | null): Promise<{
 
 export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefinition> {
   const { modelId: primary, model } = await agentModelWithFallback(ctx.sink);
-  const native = makeTools({ teamId: ctx.teamId, holdingId: ctx.holdingId, userId: ctx.user.id, sources: ctx.sources });
+  const native = {
+    ...makeTools({ teamId: ctx.teamId, holdingId: ctx.holdingId, userId: ctx.user.id, sources: ctx.sources }),
+    ...(ctx.viewer ? makePortfolioTools({ viewer: ctx.viewer, teamId: ctx.teamId }) : {}),
+  };
   // Admin-registered MCP servers add tools under their prefix; a native name always wins.
   const mcp = await loadMcpTools();
   const merged: ToolSet = { ...mcp.tools, ...native };
@@ -82,6 +92,8 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
     userName: ctx.user.fullName,
     userRole: ctx.user.role,
     purpose: ctx.purpose ?? "chat",
+    portfolioTools: Boolean(ctx.viewer),
+    page: ctx.page ?? null,
     externalTools: mcp.servers.length ? { servers: mcp.servers, instructions: mcp.instructions, toolNames: Object.keys(mcp.tools) } : undefined,
   });
   return {

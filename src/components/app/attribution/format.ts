@@ -18,3 +18,10 @@ export function fmtSigned(v: number, digits = 2, unit = "%") {
   const s = n.toFixed(digits);
   return `${n > 0 && Number(s) !== 0 ? "+" : ""}${s}${unit}`;
 }
+
+/** Basis points without the unit, for inline hints like "Cash drag −68 · sectors +41". */
+export function fmtBpsShort(v: number) {
+  const n = v * 10_000;
+  const s = n.toFixed(0);
+  return `${n > 0 && Number(s) !== 0 ? "+" : ""}${s}`;
+}

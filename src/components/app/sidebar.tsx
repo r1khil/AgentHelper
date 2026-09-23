@@ -9,6 +9,7 @@ import {
   Activity,
   CalendarDays,
   CalendarClock,
+  CalendarRange,
   ChevronsUpDown,
   History,
   Home,
@@ -16,19 +17,18 @@ import {
   Menu,
   ScanEye,
   Settings,
-  Sparkles,
   Mic,
   Table2,
   Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ROLE_LABELS } from "@/lib/constants";
+import { FUND_SCOPE_SLUG, ROLE_LABELS } from "@/lib/constants";
 import type { Role, Team } from "@/db/schema";
 import { OwlMark } from "./owl-mark";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { setTransparencyMode } from "@/lib/actions/preferences";
+import { setHootEnabled, setTransparencyMode } from "@/lib/actions/preferences";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,15 +39,29 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export type SidebarUser = { fullName: string; role: Role; teamId: string | null; email: string; username: string | null; transparencyMode: boolean };
+export type SidebarUser = { fullName: string; role: Role; teamId: string | null; email: string; username: string | null; transparencyMode: boolean; hootEnabled: boolean };
 
 type Props = { user: SidebarUser; teams: Team[]; signOut: () => Promise<void> };
 
-function useCurrentTeam(teams: Team[], user: SidebarUser) {
+/** Which team the section nav points at. Execs and admins default to the whole fund; everyone else to their team. */
+function useCurrentTeam(teams: Team[], user: SidebarUser, fundWide: boolean): Team | "fund" | null {
   const pathname = usePathname();
   const m = pathname.match(/^\/t\/([^/]+)/);
   const fromPath = m ? teams.find((t) => t.slug === m[1]) : undefined;
-  return fromPath ?? teams.find((t) => t.id === user.teamId) ?? teams[0] ?? null;
+  if (fromPath) return fromPath;
+  if (fundWide) return "fund";
+  return teams.find((t) => t.id === user.teamId) ?? teams[0] ?? null;
+}
+
+/** The list page under /t/<slug>/ being viewed ("" for Holdings), so switching scope keeps the reader on it. */
+function useTeamSection() {
+  const pathname = usePathname();
+  // A general Hoot conversation isn't under any team; switching scope from one lands on that scope's Hoot page.
+  if (/^\/hoot(\/|$)/.test(pathname)) return "/agent";
+  const m = pathname.match(/^\/t\/[^/]+(\/[^/]+)?/);
+  const section = m?.[1] ?? "";
+  // Holding pages (/h/<ticker>) have no fund-wide list of their own; land on Holdings instead.
+  return section === "/h" ? "" : section;
 }
 
 export function Sidebar(props: Props) {
@@ -85,21 +99,23 @@ function MobileBar(props: Props) {
 
 function SidebarBody({ user, teams, signOut }: Props) {
   const pathname = usePathname();
-  const team = useCurrentTeam(teams, user);
   const fundWide = user.role === "exec" || user.role === "admin";
-  const base = team ? `/t/${team.slug}` : null;
+  const current = useCurrentTeam(teams, user, fundWide);
+  const section = useTeamSection();
+  const team = current === "fund" ? null : current;
+  const base = current === "fund" ? `/t/${FUND_SCOPE_SLUG}` : team ? `/t/${team.slug}` : null;
 
   const teamNav = base
     ? [
         { href: base, label: "Holdings", icon: Briefcase, exact: true },
-        { href: `${base}/agent`, label: "Agent", icon: Sparkles },
+        { href: `${base}/agent`, label: "Hoot", icon: HootIcon, also: "/hoot" },
         { href: `${base}/sell-side`, label: "Sell-side analyzer", icon: Mic },
         { href: `${base}/movements`, label: "Movements", icon: Activity },
         { href: `${base}/earnings`, label: "Earnings", icon: CalendarDays },
         { href: `${base}/economic-calendar`, label: "Economic Calendar", icon: CalendarClock },
         { href: `${base}/models`, label: "Models", icon: Table2 },
-        // Position sizes and P&L: leads of this team and fund-wide roles only.
-        ...(fundWide || (user.role === "lead_analyst" && user.teamId === team?.id)
+        // Position sizes and P&L: leads of this team and fund-wide roles only. The fund view has Fund attribution above.
+        ...(team && (fundWide || (user.role === "lead_analyst" && user.teamId === team.id))
           ? [{ href: `${base}/attribution`, label: "Attribution", icon: ChartColumn }]
           : []),
       ]
@@ -107,6 +123,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
 
   const isActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+  const teamNavActive = (n: { href: string; exact?: boolean; also?: string }) => isActive(n.href, n.exact) || (!!n.also && isActive(n.also));
 
   return (
     <>
@@ -131,14 +148,18 @@ function SidebarBody({ user, teams, signOut }: Props) {
                 <button className="flex w-full items-center justify-between rounded-md border bg-background px-2.5 py-1.5 text-left text-sm hover:bg-muted" />
               }
             >
-              <span className="truncate font-medium">{team?.name ?? "Choose a team"}</span>
+              <span className="truncate font-medium">{team?.name ?? "Whole fund"}</span>
               <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
               <DropdownMenuGroup>
-                <DropdownMenuLabel>Sector teams</DropdownMenuLabel>
+                <DropdownMenuItem render={<Link href={`/t/${FUND_SCOPE_SLUG}${section}`} />}>Whole fund</DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Filter to a sector</DropdownMenuLabel>
                 {teams.map((t) => (
-                  <DropdownMenuItem key={t.id} render={<Link href={`/t/${t.slug}`} />}>
+                  <DropdownMenuItem key={t.id} render={<Link href={`/t/${t.slug}${section}`} />}>
                     {t.name}
                   </DropdownMenuItem>
                 ))}
@@ -147,25 +168,27 @@ function SidebarBody({ user, teams, signOut }: Props) {
           </DropdownMenu>
         ) : (
           <div className="px-2.5 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-            {team?.name ?? "No team"}
+            {current === "fund" ? "Whole fund" : (team?.name ?? "No team")}
           </div>
         )}
       </div>
 
       <nav className="mt-1.5 px-3">
         {teamNav.map((n) => (
-          <NavItem key={n.href} href={n.href} label={n.label} icon={n.icon} active={isActive(n.href, n.exact)} />
+          <NavItem key={n.href} href={n.href} label={n.label} icon={n.icon} active={teamNavActive(n)} />
         ))}
       </nav>
 
       {fundWide && (
         <nav className="mt-4 px-3">
+          <NavItem href="/weekly" label="Weekly update" icon={CalendarRange} active={isActive("/weekly")} />
           <NavItem href="/changelog" label="Changelog" icon={History} active={isActive("/changelog")} />
           <NavItem href="/admin" label="Admin" icon={Settings} active={isActive("/admin")} />
         </nav>
       )}
 
       <div className="mt-auto border-t p-3">
+        <HootToggle on={user.hootEnabled} />
         {fundWide && <TransparencyToggle on={user.transparencyMode} />}
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -194,6 +217,34 @@ function SidebarBody({ user, teams, signOut }: Props) {
         </DropdownMenu>
       </div>
     </>
+  );
+}
+
+function HootIcon({ className }: { className?: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/hoot/mark.webp" alt="" width={16} height={16} className={className} />;
+}
+
+/** Show or hide Hoot, the companion in the corner. Persisted on the profile. */
+function HootToggle({ on }: { on: boolean }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return (
+    <label className="mb-1 flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-sidebar-accent" title="Hoot in the corner of every page: flags deadlines and takes quick questions">
+      <HootIcon className="size-4 shrink-0" />
+      <span className="min-w-0 flex-1 text-sm">Floating Hoot</span>
+      <Switch
+        checked={on}
+        disabled={pending}
+        aria-label="Show Hoot"
+        onCheckedChange={(next) =>
+          startTransition(async () => {
+            await setHootEnabled(next);
+            router.refresh();
+          })
+        }
+      />
+    </label>
   );
 }
 

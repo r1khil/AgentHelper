@@ -7,7 +7,7 @@ import { embeddingModelId } from "@/lib/agent/retrieval-models";
 import { DriveNotConnected, driveConfigured, loadConnection } from "@/lib/drive/auth";
 import { chunkHeader } from "@/lib/drive/chunk";
 import { getDocumentText } from "@/lib/documents/adapters";
-import { ingestNeeds, isIngestible, isTransientIngestError, pickIngestCandidates, type IngestConfig, type IngestRow } from "@/lib/documents/ingest-plan";
+import { ingestNeeds, ingestRunSummary, isIngestible, isTransientIngestError, pickIngestCandidates, type IngestConfig, type IngestRow } from "@/lib/documents/ingest-plan";
 import { chunkDocument } from "@/lib/documents/sections";
 import { requeueOversizedEmbeds } from "@/lib/documents/index";
 import { replaceChunks } from "@/lib/documents/search";
@@ -102,7 +102,7 @@ export async function runIngest(opts: IngestOptions): Promise<IngestResult> {
       result.considered += 1;
       await ingestOne(row.id, cfg, result);
     }
-    await db.update(jobRuns).set({ finishedAt: new Date(), ok: result.status !== "rate_limited", summary: { ...done(result), reason: opts.reason, kinds, failed: result.failed.slice(0, 20) } }).where(eq(jobRuns.id, jobRow.id));
+    await db.update(jobRuns).set({ finishedAt: new Date(), ok: result.status !== "rate_limited", summary: ingestRunSummary(done(result), { reason: opts.reason, kinds }) }).where(eq(jobRuns.id, jobRow.id));
     return done(result);
   } catch (e) {
     const message = msg(e);

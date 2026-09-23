@@ -26,6 +26,7 @@ import { getCurrentUser, canAccessTeam } from "@/lib/auth";
 import { signModelUpload } from "@/lib/storage";
 import { getCall, callParts } from "@/lib/sell-side/store";
 import { analyzeCall, processPart } from "@/lib/sell-side/process";
+import { ANALYSIS_ERROR } from "@/lib/sell-side/status";
 import { POST, GET } from "./route";
 const id = "11111111-1111-4111-8111-111111111111";
 const ctx = { params: Promise.resolve({ callId: id }) };
@@ -94,6 +95,6 @@ describe("recording API access and recovery", () => {
     expect((await post({ action: "analyze" })).status).toBe(202);
     expect(analyzeCall).not.toHaveBeenCalled();
     await mocks.after[0]();
-    expect(mocks.sets).toContainEqual(expect.objectContaining({ lease: null, status: "error", error: "Model outage" }));
+    expect(mocks.sets).toContainEqual(expect.objectContaining({ lease: null, status: "error", error: ANALYSIS_ERROR }));
   });
 });

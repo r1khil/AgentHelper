@@ -13,12 +13,17 @@ const POLL_MS = 2000;
 const AFTER_SUBMIT_MS = 15_000;
 
 export function summarizeJob(summary: Record<string, unknown>) {
-  const s = summary as { status?: string; reason?: string; qualified?: string[]; created?: string[]; sessionDate?: string; reminders?: number; overdue?: number; evidenceFinished?: number; files?: number; matched?: number; unmatched?: string[]; error?: string; updated?: string[]; remaining?: string[] };
+  const s = summary as { status?: string; reason?: string; qualified?: string[]; created?: string[]; sessionDate?: string; reminders?: number; overdue?: number; evidenceFinished?: number; files?: number; matched?: number; unmatched?: string[]; error?: string; updated?: string[]; remaining?: string[] | number; embedded?: number; considered?: number; stopped?: string };
   if (s.files !== undefined) return `${s.reason ?? ""} · ${s.files} files, ${s.matched} matched${s.unmatched?.length ? `, ${s.unmatched.length} unmatched` : ""}`;
   if (s.error) return `${s.reason ?? ""} · ${s.error}`;
+  if (s.embedded !== undefined)
+    return `${s.reason ?? ""} · ${s.status === "rate_limited" ? "rate limited" : (s.status ?? "")} · ${s.embedded} embedded, ${typeof s.remaining === "number" ? s.remaining : 0} remaining${s.stopped ? ` · ${s.stopped}` : ""}`;
   if (s.sessionDate) return `${s.sessionDate} ${s.status ?? ""}${s.reason ? ` (${s.reason})` : ""}${s.qualified?.length ? ` · qualified ${s.qualified.join(", ")}` : ""}`;
   if (s.reminders !== undefined) return `reminders ${s.reminders}, overdue ${s.overdue}, evidence ${s.evidenceFinished}`;
-  if (s.updated !== undefined) return `${s.status ?? ""}${s.reason ? ` (${s.reason})` : ""} · ${s.updated.length} updated${s.remaining?.length ? `, ${s.remaining.length} remaining` : ""}`;
+  if (s.updated !== undefined) {
+    const left = Array.isArray(s.remaining) ? s.remaining.length : 0;
+    return `${s.status ?? ""}${s.reason ? ` (${s.reason})` : ""} · ${s.updated.length} updated${left ? `, ${left} remaining` : ""}`;
+  }
   return "";
 }
 

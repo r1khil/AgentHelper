@@ -59,7 +59,7 @@ Setup (one time, by the admin whose account owns the folder):
 
 ## Scheduled jobs
 
-`vercel.json` runs the close check at 23:00 UTC on weekdays, the price history job at 23:30 UTC, and the morning sweep (pending evidence, reminders, overdue notices, earnings calendar, email retries, Drive channel renewal, crawl, and file reading) at 14:00 UTC. Both endpoints accept `Authorization: Bearer $CRON_SECRET` and can be run from the Admin page, with a date for backfills:
+`vercel.json` runs the close check at 23:00 UTC on weekdays, the price history job at 23:30 UTC, the morning sweep (pending evidence, reminders, overdue notices, earnings calendar, email retries, Drive channel renewal, crawl, and file reading) at 14:00 UTC, and the weekly update pack at 13:00 UTC on Sundays (see `docs/weekly-update.md`). Both endpoints accept `Authorization: Bearer $CRON_SECRET` and can be run from the Admin page, with a date for backfills:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/close?date=2026-08-28"
@@ -86,4 +86,12 @@ The team sidebar includes Economic Calendar next to Earnings. Live public agency
 
 ## Sell-side analyzer
 
-Team sidebar tab for recording, speaker transcripts, automatically cross-checking company documents, and saved transcript chat. Reuses the research agent, Drive retrieval, and citation viewer. See [setup, recovery, and verification](docs/sell-side-analyzer.md); apply `drizzle/0011_sell_side.sql` and configure the transcription key before using processing.
+Team sidebar tab for recording, timestamped transcripts, structured call briefs, automatic internal-file cross-checks, and saved transcript chat. Choose a holding or enter another company and ticker. Reuses the existing OpenRouter configuration, agent retrieval, chat, and citation viewer. See [setup, recovery, and verification](docs/sell-side-analyzer.md); apply `drizzle/0011_sell_side.sql` and `drizzle/0014_sell_side_other_company.sql`. No separate transcription key is needed.
+
+## Hoot
+
+Hoot is the owl companion in the bottom-right corner. His face shows the state of things at a glance: dozing after the close, alert on earnings day, worried about an overdue write-up. Clicking him (or ⌘J / Ctrl J) opens a quick ask that starts a research chat fitted to the page, pinned to the holding when you're on one. The same panel lists what needs you: movement deadlines, earnings this week, finished sell-side briefs, Drive proposals, the weekly pack and what's new. He speaks up on his own at most once per page and three times per session. Anyone can hide him from the sidebar. Apply `drizzle/0016_hoot.sql`.
+
+He stays quietly alive without asking for attention: his eyes follow the caret while you type, glance where you click and the way you scroll, and wander when nothing is happening (`src/components/app/hoot/attention.ts`, one set of listeners for every Hoot on the page). He closes his eyes and looks away while a password is typed. Every 20 to 50 seconds of inactivity he fidgets (a shuffle, a feather ruffle, a nod when dozing). He glances over when you change pages, waves when you come back after five minutes away, hops once when something urgent turns up, and closes his eyes happily if you rest the pointer on him. Drag him, or use the panel's Move button, to switch bottom corners; the choice is kept per device. None of it runs with reduced motion or in a hidden tab.
+
+He is built from code in Blender: `scripts/blender/hoot.py` models, poses and renders him (run it through the Blender MCP addon or `Blender -b -P`), and `node scripts/blender/hoot-sprites.mjs <render dir>` turns the renders into `public/hoot/`, the eye positions and the app icons. `/dev/hoot` in development shows every pose and the live 3D version.

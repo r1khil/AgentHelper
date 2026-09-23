@@ -5,8 +5,12 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { profiles, teams, type Profile, type Role, type Team } from "@/db/schema";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { canAccessTeam, isFundWide } from "./roles";
 
 export type CurrentUser = Profile & { team: Team | null };
+
+// The pure role checks live in ./roles so scripts and tools can use them without Next's request APIs.
+export { canAccessTeam, canManageTeam, isFundWide, transparencyEnabled } from "./roles";
 
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createSupabaseServer();
@@ -38,24 +42,6 @@ export async function requireOnboardedUser(): Promise<CurrentUser> {
   const user = await requireUser();
   if (!user.onboardedAt) redirect("/onboarding");
   return user;
-}
-
-export function isFundWide(user: Pick<Profile, "role">) {
-  return user.role === "exec" || user.role === "admin";
-}
-
-/** Transparency mode is an exec/admin preference; the role check here makes a stale flag on a demoted user harmless. */
-export function transparencyEnabled(user: Pick<Profile, "role" | "transparencyMode">) {
-  return isFundWide(user) && user.transparencyMode;
-}
-
-export function canAccessTeam(user: Pick<Profile, "role" | "teamId">, teamId: string) {
-  return isFundWide(user) || user.teamId === teamId;
-}
-
-export function canManageTeam(user: Pick<Profile, "role" | "teamId">, teamId: string) {
-  if (user.role === "admin" || user.role === "exec") return true;
-  return user.role === "lead_analyst" && user.teamId === teamId;
 }
 
 export async function requireTeamAccess(teamId: string) {

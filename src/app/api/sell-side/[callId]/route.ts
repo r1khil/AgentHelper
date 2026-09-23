@@ -8,6 +8,8 @@ import { agentConfigured } from "@/lib/agent/model";
 import { signModelUpload } from "@/lib/storage";
 import { callParts, getCall } from "@/lib/sell-side/store";
 import { analyzeCall, processPart } from "@/lib/sell-side/process";
+import { logAnalysisFailure } from "@/lib/sell-side/generate";
+import { ANALYSIS_ERROR, TRANSCRIPT_ERROR } from "@/lib/sell-side/status";
 import { MAX_PARTS, assertComplete } from "@/lib/sell-side/types";
 
 export const maxDuration = 300;
@@ -42,7 +44,17 @@ export async function GET(_req: Request, ctx: Context) {
   if (auth.response) return auth.response;
   const parts = await callParts(auth.call.id);
   return Response.json(
-    { call: auth.call, parts: parts.map((p) => ({ seq: p.seq, offset: p.offset, duration: p.duration, segments: p.segments, summary: p.summary })) },
+    {
+      call: {
+        ...auth.call,
+        error: auth.call.error
+          ? parts.find((p) => !p.summary)?.segments != null || parts.every((p) => p.segments !== null)
+            ? ANALYSIS_ERROR
+            : TRANSCRIPT_ERROR
+          : null,
+      },
+      parts: parts.map((p) => ({ seq: p.seq, offset: p.offset, duration: p.duration, segments: p.segments, summary: p.summary })),
+    },
     { headers },
   );
 }
@@ -64,7 +76,7 @@ export async function POST(req: Request, ctx: Context) {
       return Response.json(await signModelUpload(path));
     }
     if (!agentConfigured())
-      return Response.json({ error: "Configure OPENROUTER_API_KEY for transcription and analysis. Your audio remains saved." }, { status: 503 });
+      return Response.json({ error: "Analysis is temporarily unavailable. Your audio remains saved; contact your workspace administrator." }, { status: 503 });
     if (call.status === "ready") return Response.json({ done: true });
     const lease = crypto.randomUUID();
     const [claimed] = await db
@@ -73,10 +85,19 @@ export async function POST(req: Request, ctx: Context) {
       .where(and(eq(sellSideCalls.id, call.id), sql`(${sellSideCalls.lease} IS NULL OR ${sellSideCalls.updatedAt} < now() - interval '6 minutes')`))
       .returning();
     if (!claimed) return Response.json({ error: "This call is already processing. Try again shortly." }, { status: 409 });
+    let publicError = TRANSCRIPT_ERROR;
     const release = async (error?: unknown) => {
+      if (error) {
+        logAnalysisFailure(p.action, error);
+        const saved = await callParts(call.id);
+        publicError =
+          saved.length && (saved.find((part) => !part.summary)?.segments != null || saved.every((part) => part.segments !== null))
+            ? ANALYSIS_ERROR
+            : TRANSCRIPT_ERROR;
+      }
       await db
         .update(sellSideCalls)
-        .set({ lease: null, updatedAt: new Date(), ...(error ? { status: "error", error: error instanceof Error ? error.message : String(error) } : {}) })
+        .set({ lease: null, updatedAt: new Date(), ...(error ? { status: "error", error: publicError } : {}) })
         .where(and(eq(sellSideCalls.id, call.id), eq(sellSideCalls.lease, lease)));
     };
     if (p.action === "process") {
@@ -92,7 +113,7 @@ export async function POST(req: Request, ctx: Context) {
         return Response.json({ completed, total: p.expectedParts, done: completed === p.expectedParts });
       } catch (e) {
         await release(e);
-        throw e;
+        return Response.json({ error: publicError }, { status: 502 });
       }
     }
     try {
@@ -112,6 +133,10 @@ export async function POST(req: Request, ctx: Context) {
     });
     return Response.json({ status: "analyzing" }, { status: 202 });
   } catch (e) {
-    return Response.json({ error: e instanceof Error ? e.message : "Processing failed; retry." }, { status: 502 });
+    logAnalysisFailure(p.action, e);
+    return Response.json(
+      { error: p.action === "upload" ? "Audio could not be uploaded. Keep this page open and retry when connected." : ANALYSIS_ERROR },
+      { status: 502 },
+    );
   }
 }

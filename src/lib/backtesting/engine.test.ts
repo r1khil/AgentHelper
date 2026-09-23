@@ -91,16 +91,33 @@ describe("fixed weight replay", () => {
         dates[2],
       ),
     ).toThrow(/A: missing adjusted close/);
-    expect(() =>
-      replay(
-        positions,
-        { a: 1, b: 0 },
-        { ...prices, B: [] },
-        "SPY",
-        dates[1],
-        dates[2],
-      ),
-    ).toThrow(/B: missing adjusted close/);
+    const earlyCash = replay(positions, { a: 1, b: 0 }, { ...prices, B: [] }, "SPY", dates[1], dates[2]);
+    expect(earlyCash.days.every((d) => d.contributions[1].return === 0)).toBe(true);
+    expect(earlyCash.cashSubstitutions).toEqual([{ ticker: "B", through: dates[2] }]);
+  });
+  it("keeps unavailable prelisting weight in cash, then starts returns after the first close", () => {
+    const cashPositions: Position[] = [
+      { id: "a", ticker: "A", name: "A", weight: 0.5 },
+      { id: "b", ticker: "B", name: "B", weight: 0.4 },
+      { id: "cash", ticker: "CASH", name: "Cash", weight: 0.1, kind: "cash" },
+    ];
+    const extended = ["2026-01-07", "2026-01-08"];
+    const r = replay(cashPositions, { a: 0.6, b: 0.4, cash: 0 }, {
+      A: [...prices.A, { date: extended[0], close: 99 }, { date: extended[1], close: 99 }],
+      B: [{ date: dates[2], close: 100 }, { date: extended[0], close: 110 }, { date: extended[1], close: 121 }],
+      SPY: [...prices.SPY, { date: extended[0], close: 100 }, { date: extended[1], close: 100 }],
+    }, "SPY", dates[1], extended[1]);
+    expect(r.days[0].contributions[1].return).toBe(0);
+    expect(r.days[1].contributions[1].return).toBe(0);
+    expect(r.days[2].contributions[1].return).toBeCloseTo(0.1);
+    expect(r.days[2].original).toBeCloseTo(0.04);
+    expect(r.days[2].modified).toBeCloseTo(0.04);
+    expect(r.cashSubstitutions).toEqual([{ ticker: "B", through: dates[2] }]);
+    expect(r.days.every((d) => d.contributions[2].return === 0)).toBe(true);
+    expect(() => replay(cashPositions, { a: 0.6, b: 0.4, cash: 0 }, {
+      ...prices,
+      B: [{ date: dates[0], close: 100 }, { date: dates[2], close: 110 }],
+    }, "SPY", dates[1], dates[2])).toThrow(/B: missing adjusted close/);
   });
   it("blocks a missing benchmark session that is observed in holding history", () => {
     expect(() =>
@@ -225,20 +242,19 @@ describe("input normalization", () => {
       expect(() => validateWeights(positions, weights)).toThrow();
     expect(() => validateWeights(positions, { a: 1 })).toThrow();
   });
-  it("normalizes saved percentages into decimal invested-sleeve weights, never guesses missing ones", () => {
+  it("keeps saved percentages unnormalized and adds the remaining cash weight", () => {
     const row = { id: "a", ticker: "A", companyName: "A", weightPct: "20" };
     expect(
       snapshotPositions([row, { ...row, id: "b", weightPct: "30" }]),
     ).toMatchObject({
       savedWeightTotal: 50,
-      positions: [{ weight: 0.4 }, { weight: 0.6 }],
+      positions: [{ weight: 0.2 }, { weight: 0.3 }, { ticker: "CASH", weight: 0.5 }],
     });
     expect(() => snapshotPositions([{ ...row, weightPct: null }])).toThrow(
       /missing/,
     );
-    expect(() => snapshotPositions([{ ...row, weightPct: "0" }])).toThrow(
-      /positive/,
-    );
+    expect(snapshotPositions([{ ...row, weightPct: "0" }]).positions.at(-1)?.weight).toBe(1);
+    expect(() => snapshotPositions([row, { ...row, id: "b", weightPct: "81" }])).toThrow(/exceed 100/);
     expect(() => snapshotPositions([])).toThrow(/No active/);
   });
 });

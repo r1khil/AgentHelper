@@ -2,9 +2,6 @@ import { beforeEach, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/providers/yahoo", () => ({ getAdjustedBarsRange: vi.fn() }));
 vi.mock("@/db/client", () => ({ db: { select: vi.fn() } }));
-vi.mock("@/lib/auth", () => ({
-  isFundWide: (u: { role: string }) => ["admin", "exec"].includes(u.role),
-}));
 import { runBacktest } from "./load";
 import { getAdjustedBarsRange } from "@/lib/providers/yahoo";
 import type { Snapshot } from "./engine";
@@ -57,6 +54,25 @@ it("reports provider failure without returning a partial replay", async () => {
     runBacktest(snapshot, { a: 1 }, "SPY", "2025-01-06", "2025-01-07"),
   ).rejects.toThrow(/Adjusted history unavailable/);
 });
+it("keeps cash out of provider calls while using the current unnormalized weights", async () => {
+  vi.mocked(getAdjustedBarsRange).mockResolvedValue([
+    { date: "2025-01-03", close: 100 },
+    { date: "2025-01-06", close: 110 },
+  ]);
+  const current: Snapshot = {
+    ...snapshot,
+    positions: [
+      { id: "a", ticker: "A", name: "A", weight: 0.8 },
+      { id: "cash", ticker: "CASH", name: "Cash", weight: 0.2, kind: "cash" },
+    ],
+    savedWeightTotal: 80,
+  };
+  const r = await runBacktest(current, { a: 0.9, cash: 0.1 }, "SPY", "2025-01-06", "2025-01-06");
+  expect(r.original.totalReturn).toBeCloseTo(0.08);
+  expect(r.modified.totalReturn).toBeCloseTo(0.09);
+  expect(getAdjustedBarsRange).toHaveBeenCalledTimes(2);
+  expect(vi.mocked(getAdjustedBarsRange).mock.calls.map((c) => c[0])).not.toContain("CASH");
+});
 
 import { loadSnapshot } from "./load";
 import { db } from "@/db/client";
@@ -81,8 +97,9 @@ it("scopes portfolio reads to the analyst's team and rejects unassigned users", 
   const snapshot = await loadSnapshot(user);
   const query = new PgDialect().sqlToQuery(where.mock.calls[0][0] as SQL);
   expect(query.params).toEqual(["active", "own-team"]);
-  expect(snapshot.scope).toBe("IT invested holdings");
-  expect(snapshot.positions[0].weight).toBe(1);
+  expect(snapshot.scope).toBe("IT portfolio");
+  expect(snapshot.positions[0].weight).toBe(0.2);
+  expect(snapshot.positions[1]).toMatchObject({ ticker: "CASH", weight: 0.8 });
   expect(snapshot.version).toHaveLength(64);
   await expect(loadSnapshot({ ...user, teamId: null })).rejects.toThrow(
     /Join a team/,
@@ -117,7 +134,8 @@ it("fund roles count a ticker covered by two teams once, since weight_pct is the
   } as unknown as ReturnType<typeof db.select>);
   const snapshot = await loadSnapshot({ role: "exec", teamId: null } as CurrentUser);
   expect(snapshot.positions.map((p) => [p.ticker, p.weight])).toEqual([
-    ["A", 0.5],
-    ["B", 0.5],
+    ["A", 0.2],
+    ["B", 0.2],
+    ["CASH", 0.6],
   ]);
 });

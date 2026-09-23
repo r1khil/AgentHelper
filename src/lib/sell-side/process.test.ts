@@ -31,10 +31,33 @@ vi.mock("@/db/client", () => ({
   },
 }));
 vi.mock("@/lib/storage", () => ({ downloadModelFile: vi.fn(async () => Buffer.from("fake encoded audio")) }));
-vi.mock("@/lib/agent/model", () => ({ agentModel: vi.fn(async () => "existing-model") }));
-vi.mock("ai", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("ai")>()),
-  generateText: vi.fn(async () => ({ text: "Call says FY27 revenue is $3.2 billion; uncertain margins." })),
+vi.mock("./generate", () => ({
+  generateStructured: vi.fn(async (args) => {
+    if (!args.validate)
+      return { keyPoints: ["Call says FY27 revenue is $3.2 billion; uncertain margins."], numbers: [], positives: [], risks: [], themes: [], questions: [] };
+    const sourceId = JSON.parse(args.prompt).availableSources.find((s: { sourceType?: string }) => s.sourceType === "Call transcript").id;
+    return args.validate({
+      overview: { text: "Revenue outlook; margins uncertain.", sourceIds: [sourceId] },
+      keyPoints: [{ text: "FY27 revenue $3.2 billion.", sourceIds: [sourceId] }],
+      numbers: [],
+      positives: [],
+      risks: [],
+      themes: [],
+      catalysts: [],
+      questions: [],
+      crossChecks: [
+        {
+          claim: "Revenue outlook",
+          assessment: "Not retrieved",
+          evidence: "No comparable-period internal evidence",
+          followUp: "Obtain FY27 model",
+          callSourceIds: [sourceId],
+          internalSourceIds: [],
+        },
+      ],
+      coverage: "Limited internal evidence; fiscal periods differ.",
+    });
+  }),
 }));
 vi.mock("./store", () => ({
   callParts: vi.fn(async () => [state.part]),
@@ -62,23 +85,9 @@ vi.mock("@/lib/chats", () => ({
     state.chatStatus = status;
   }),
 }));
-vi.mock("@/lib/agent/run", () => ({
-  runAgentTurn: vi.fn(async ({ messages }) => {
-    state.messages = [
-      ...messages,
-      {
-        id: "answer",
-        role: "assistant",
-        parts: [{ type: "text", text: "## Executive summary\nRevenue outlook.\n## Internal-file cross-check\nDifferent fiscal periods; follow up." }],
-      },
-    ];
-    state.chatStatus = "idle";
-    return { persisted: Promise.resolve(), clientStream: new ReadableStream() };
-  }),
-}));
 import { processPart, analyzeCall } from "./process";
-import { generateText, type UIMessage } from "ai";
-import { runAgentTurn } from "@/lib/agent/run";
+import type { UIMessage } from "ai";
+import { generateStructured } from "./generate";
 import { downloadModelFile } from "@/lib/storage";
 import { collectSources } from "@/lib/agent/citations";
 
@@ -118,12 +127,13 @@ beforeEach(() => {
 describe("call processing integration with existing agent pipeline", () => {
   it("transcribes, persists, summarizes, automatically retrieves company files, and preserves both citation types", async () => {
     await processPart("call");
+    await processPart("call");
     expect(state.part.text).toContain("[00:00:06–00:00:12] What about margin uncertainty?");
     expect(state.part.summary).toContain("$3.2 billion");
     await analyzeCall("call", { id: "user", fullName: "Analyst", role: "associate_analyst" });
-    expect(tools.find).toHaveBeenCalledWith({ ticker: "ABC", limit: 10 }, expect.anything());
-    expect(tools.read).toHaveBeenCalledWith({ documentId: "internal1", offset: 0, maxChars: 12000 }, expect.anything());
-    expect(runAgentTurn).toHaveBeenCalledOnce();
+    expect(tools.find).toHaveBeenCalledWith({ ticker: "ABC", kind: "drive", limit: 10 }, expect.anything());
+    expect(tools.read).toHaveBeenCalledWith({ documentId: "internal1", offset: 0, maxChars: 6000 }, expect.anything());
+    expect(generateStructured).toHaveBeenCalledTimes(2);
     expect(state.callStatus).toBe("ready");
     const sources = [...collectSources(state.messages as UIMessage[]).values()];
     expect(sources.map((s) => s.documentId)).toEqual(expect.arrayContaining(["internal1", "call-11111111-1111-4111-8111-111111111111"]));
@@ -131,7 +141,8 @@ describe("call processing integration with existing agent pipeline", () => {
     expect(JSON.stringify(state.messages)).toContain("Supports / Contradicts / Not covered / Not retrieved");
   });
   it("saves transcription before summary failure and reuses it on retry", async () => {
-    vi.mocked(generateText).mockRejectedValueOnce(new Error("Model offline"));
+    await processPart("call");
+    vi.mocked(generateStructured).mockRejectedValueOnce(new Error("Model offline"));
     await expect(processPart("call")).rejects.toThrow("Model offline");
     expect(state.part.text).toContain("$3.2 billion");
     expect(state.part.summary).toBeNull();
@@ -139,25 +150,34 @@ describe("call processing integration with existing agent pipeline", () => {
     expect(fetch).toHaveBeenCalledOnce();
     expect(downloadModelFile).toHaveBeenCalledOnce();
     await processPart("call");
-    expect(generateText).toHaveBeenCalledTimes(2);
+    expect(generateStructured).toHaveBeenCalledTimes(2);
   });
   it("blocks partial recordings before any retrieval or generation", async () => {
     await expect(analyzeCall("call", { id: "user", fullName: "Analyst", role: "admin" })).rejects.toThrow("missing or unprocessed");
     expect(tools.find).not.toHaveBeenCalled();
-    expect(runAgentTurn).not.toHaveBeenCalled();
+    expect(generateStructured).not.toHaveBeenCalled();
   });
   it("retains explicit evidence failures when internal files are unavailable", async () => {
+    await processPart("call");
     await processPart("call");
     tools.find.mockResolvedValue({ data: null, sources: [], error: "Drive not connected" });
     await analyzeCall("call", { id: "user", fullName: "Analyst", role: "admin" });
     expect(JSON.stringify(state.messages)).toContain("Drive not connected");
     expect(tools.read).not.toHaveBeenCalled();
   });
-  it("does not claim success if the existing agent fails to save an answer", async () => {
+  it("does not claim success if structured synthesis fails", async () => {
     await processPart("call");
-    vi.mocked(runAgentTurn).mockRejectedValueOnce(new Error("Provider unavailable"));
+    await processPart("call");
+    vi.mocked(generateStructured).mockRejectedValueOnce(new Error("Provider unavailable"));
     await expect(analyzeCall("call", { id: "user", fullName: "Analyst", role: "admin" })).rejects.toThrow("Provider unavailable");
     expect(state.chatStatus).toBe("error");
     expect(state.callStatus).not.toBe("ready");
+    await analyzeCall("call", { id: "user", fullName: "Analyst", role: "admin" });
+    expect(state.callStatus).toBe("ready");
+    expect(tools.find).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledOnce();
+    const count = state.messages.length;
+    await analyzeCall("call", { id: "user", fullName: "Analyst", role: "admin" });
+    expect(state.messages).toHaveLength(count);
   });
 });

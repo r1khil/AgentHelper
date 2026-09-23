@@ -3,11 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { UIMessage } from "ai";
 import { FetchRows, latestLabel, StepDivider, TraceHeader, type TraceView } from "./trace-panel";
-import { ArrowUp, ChevronRight, Loader2, Wrench } from "lucide-react";
+import Link from "next/link";
+import { ArrowUp, ChevronRight, Eye, Loader2, Wrench } from "lucide-react";
 import { Citation, ResearchAnswer, ResearchSources } from "./research-answer";
 import { useResearchChat } from "./use-research-chat";
+import { clearHootQuestion, peekHootQuestion } from "@/components/app/hoot/handoff";
+import { HootSprite } from "@/components/app/hoot/hoot-sprite";
+import { HootHero } from "@/components/app/hoot/hoot-hero";
 import { cn } from "@/lib/utils";
 import { collectSources } from "@/lib/agent/citations";
+import { pageContextLabel, parsePageContext } from "@/lib/agent/page-context";
 import { isToolPart, splitAssistantParts, summarizeActivity, toolDone, toolFailed, toolName, type Part, type ToolPart } from "@/lib/agent/turn";
 import type { RunStatus } from "@/lib/chats";
 import { Button } from "@/components/ui/button";
@@ -21,7 +26,7 @@ const SUGGESTIONS = [
   "Explain how to read the segment disclosure in {T}'s latest 10-K.",
 ];
 
-/** Team-wide chats (no pinned holding). Holding chats use the research board instead. */
+/** General Hoot conversations (no pinned holding). Holding chats use the research board instead. */
 export function ChatPanel({
   chatId,
   initialMessages,
@@ -48,6 +53,17 @@ export function ChatPanel({
 
   const sources = useMemo(() => collectSources(messages), [messages]);
 
+  // A question asked through Hoot: send it once the chat is ready. Deferred a tick, like the research board,
+  // because the SDK's sendMessage returns silently if React's development double-invoke stops it mid-flight.
+  useEffect(() => {
+    const asked = peekHootQuestion(chatId);
+    if (!asked) return;
+    const t = setTimeout(() => {
+      if (send(asked.text, asked.page)) clearHootQuestion(chatId);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [chatId, send]);
+
   const submit = useCallback(() => {
     if (send(input)) setInput("");
   }, [input, send]);
@@ -60,10 +76,11 @@ export function ChatPanel({
       <div className="flex min-w-0 flex-1 flex-col rounded-lg border bg-card">
         <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
           {messages.length === 0 && (
-            <div className="mx-auto max-w-lg pt-10 text-center">
+            <div className="mx-auto max-w-lg pt-6 text-center">
+              <HootHero size={128} className="mx-auto mb-1" />
               <div className="text-sm font-medium">Ask for evidence, not conclusions</div>
               <p className="mt-1 text-sm text-muted-foreground">
-                The agent pulls prices, SEC filings, financials, news, and your team&rsquo;s notes, with a source on every fact. It will not write your update or thesis.
+                Hoot pulls prices, SEC filings, financials, news, and your team&rsquo;s notes, with a source on every fact. It will not write your update or thesis.
               </p>
               <div className="mt-5 grid gap-2 text-left">
                 {SUGGESTIONS.map((s) => (
@@ -84,7 +101,7 @@ export function ChatPanel({
           ))}
           {status === "submitted" && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="size-3.5 animate-spin" /> Thinking…
+              <HootSprite mood="thinking" size={32} bob /> Thinking…
             </div>
           )}
           {traceView && (status === "submitted" || last?.role !== "assistant") && (
@@ -118,7 +135,7 @@ export function ChatPanel({
                   submit();
                 }
               }}
-              placeholder={configured ? (catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…") : "Agent is not configured: add OPENROUTER_API_KEY"}
+              placeholder={configured ? (catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…") : "Hoot is not configured: add OPENROUTER_API_KEY"}
               disabled={!configured || catchingUp}
               rows={2}
               className="min-h-10 resize-none"
@@ -161,14 +178,20 @@ export function ChatPanel({
 
 function Message({ message, live, trace, now }: { message: UIMessage; live: boolean; trace: TraceView | null; now: number }) {
   const isUser = message.role === "user";
-  const meta = (message.metadata ?? {}) as { uncited?: number };
+  const meta = (message.metadata ?? {}) as { uncited?: number; page?: unknown };
 
   if (isUser) {
+    const page = parsePageContext(meta.page);
     return (
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-1">
         <div className="max-w-[85%] space-y-2 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground">
           {message.parts.map((p, i) => (p.type === "text" ? <p key={i} className="whitespace-pre-wrap">{p.text}</p> : null))}
         </div>
+        {page && page.kind !== "page" && (
+          <Link href={page.path} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground">
+            <Eye className="size-3" aria-hidden /> Asked from {pageContextLabel(page)}
+          </Link>
+        )}
       </div>
     );
   }
@@ -210,6 +233,8 @@ const TOOL_LABELS: Record<string, string> = {
   read_url: "Web page",
   search_web: "Web search",
   read_document: "Document",
+  get_attribution: "Attribution",
+  run_backtest: "Backtest",
 };
 
 const TOOL_PROGRESS: Record<string, string> = {
@@ -231,6 +256,8 @@ const TOOL_PROGRESS: Record<string, string> = {
   read_url: "Reading a web page",
   search_web: "Searching the web",
   read_document: "Reading a document",
+  get_attribution: "Reading the Fund's attribution",
+  run_backtest: "Running a backtest",
 };
 
 /**

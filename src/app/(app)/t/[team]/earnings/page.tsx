@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { loadTeam } from "@/lib/teams";
+import { loadScope } from "@/lib/teams";
+import type { Team } from "@/db/schema";
 import { isFundWide, listAccessibleTeams } from "@/lib/auth";
 import { listBellwethers, listCalendarHoldingEvents, listHoldingIndustries, listTeamEarnings } from "@/lib/earnings";
 import { buildMonthGrid, defaultSelectedDay, filterCalendarEvents, groupByDate, inGrid, industryOptions, parseCalendarQuery, toCalendarEvents } from "@/lib/earnings-calendar";
@@ -21,27 +22,30 @@ export const metadata: Metadata = { title: "Earnings" };
 
 export default async function EarningsPage({ params, searchParams }: PageProps<"/t/[team]/earnings">) {
   const [{ team: slug }, sp] = await Promise.all([params, searchParams]);
-  const { team, user } = await loadTeam(slug);
+  const scope = await loadScope(slug);
+  const { team, user, teamById } = scope;
   const today = todayNY();
-  const query = parseCalendarQuery(sp, today);
+  const parsed = parseCalendarQuery(sp, today);
+  // Sector and Industry are relative to one team's sectors, so the fund-wide page always shows the Fund calendar.
+  const query = team ? parsed : { ...parsed, view: "fund" as const, industry: undefined };
   const grid = buildMonthGrid(query.month);
-  const sectors = (await loadTeamSectors()).get(team.id) ?? [];
+  const sectors = team ? ((await loadTeamSectors()).get(team.id) ?? []) : [];
   const [rows, holdingEvents, bellwethers, holdingIndustries, accessibleTeams] = await Promise.all([
-    listTeamEarnings(team.id),
+    listTeamEarnings(scope.teamIds),
     listCalendarHoldingEvents(grid.start, grid.end),
     listBellwethers(),
-    listHoldingIndustries(team.id, sectors),
+    team ? listHoldingIndustries(team.id, sectors) : [],
     listAccessibleTeams(user),
   ]);
   const accessibleTeamIds = accessibleTeams.map((t) => t.id);
-  const base = `/t/${team.slug}/earnings`;
+  const base = `/t/${scope.slug}/earnings`;
 
   const all = toCalendarEvents(holdingEvents, bellwethers).filter((ev) => inGrid(grid, ev.date));
-  const events = filterCalendarEvents(all, { view: query.view, teamId: team.id, teamSectors: sectors, industry: query.industry });
+  const events = filterCalendarEvents(all, { view: query.view, teamId: team?.id ?? "", teamSectors: sectors, industry: query.industry });
   const byDate = groupByDate(events);
   const selected = query.day && inGrid(grid, query.day) ? query.day : defaultSelectedDay(grid, byDate, today);
   const industries = industryOptions(holdingIndustries, bellwethers, sectors);
-  const unclassifiedOwn = query.view === "industry" ? all.filter((ev) => ev.kind === "holding" && ev.teamId === team.id && !ev.industry).length : 0;
+  const unclassifiedOwn = query.view === "industry" ? all.filter((ev) => ev.kind === "holding" && ev.teamId === team?.id && !ev.industry).length : 0;
 
   const upcoming = rows.filter((r) => r.e.status === "upcoming" && r.e.reportDate >= today).sort((a, b) => (a.e.reportDate < b.e.reportDate ? -1 : 1));
   const past = rows.filter((r) => !(r.e.status === "upcoming" && r.e.reportDate >= today));
@@ -79,7 +83,7 @@ export default async function EarningsPage({ params, searchParams }: PageProps<"
       <PageHeader
         title="Earnings"
         description="Upcoming reports for the Fund's holdings and the names that move each sector. Record your expectations before each report; afterwards the agent gathers the sourced results and you write the reflection."
-        actions={<EarningsScopeToggle base={base} query={query} industries={industries} />}
+        actions={team ? <EarningsScopeToggle base={base} query={query} industries={industries} /> : undefined}
       />
       {notices.length > 0 && (
         <div className="mb-4 space-y-1">
@@ -93,18 +97,18 @@ export default async function EarningsPage({ params, searchParams }: PageProps<"
       <EarningsCalendar base={base} query={query} grid={grid} byDate={byDate} today={today} selected={selected} accessibleTeamIds={accessibleTeamIds} />
       <EarningsDayList date={selected} events={byDate.get(selected) ?? []} accessibleTeamIds={accessibleTeamIds} />
       {rows.length === 0 ? (
-        <EmptyState title="No earnings dates yet">Dates are pulled each morning for every holding. An admin can run the morning sweep now from the Admin page.</EmptyState>
+        <EmptyState title="No earnings dates yet" hoot="sleepy">Dates are pulled each morning for every holding. An admin can run the morning sweep now from the Admin page.</EmptyState>
       ) : (
         <>
-          <Section title="Upcoming" rows={upcoming} slug={team.slug} />
-          {past.length > 0 && <Section title="Reported" rows={past} slug={team.slug} />}
+          <Section title="Upcoming" rows={upcoming} teamById={teamById} showTeam={!team} />
+          {past.length > 0 && <Section title="Reported" rows={past} teamById={teamById} showTeam={!team} />}
         </>
       )}
     </>
   );
 }
 
-function Section({ title, rows, slug }: { title: string; rows: Awaited<ReturnType<typeof listTeamEarnings>>; slug: string }) {
+function Section({ title, rows, teamById, showTeam }: { title: string; rows: Awaited<ReturnType<typeof listTeamEarnings>>; teamById: Map<string, Team>; showTeam: boolean }) {
   return (
     <div className="mb-6">
       <h2 className="mb-2 text-sm font-semibold">{title} <span className="text-muted-foreground">{rows.length}</span></h2>
@@ -116,6 +120,7 @@ function Section({ title, rows, slug }: { title: string; rows: Awaited<ReturnTyp
             <TableHeader>
               <TableRow>
                 <TableHead>Ticker</TableHead>
+                {showTeam && <TableHead>Team</TableHead>}
                 <TableHead>Report date</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="text-right">EPS est.</TableHead>
@@ -126,7 +131,8 @@ function Section({ title, rows, slug }: { title: string; rows: Awaited<ReturnTyp
             <TableBody>
               {rows.map(({ e, h }) => (
                 <TableRow key={e.id}>
-                  <TableCell><Link href={`/t/${slug}/earnings/${e.id}`} className="font-semibold hover:underline">{h.ticker}</Link></TableCell>
+                  <TableCell><Link href={`/t/${teamById.get(h.teamId)?.slug}/earnings/${e.id}`} className="font-semibold hover:underline">{h.ticker}</Link></TableCell>
+                  {showTeam && <TableCell className="text-muted-foreground">{teamById.get(h.teamId)?.name}</TableCell>}
                   <TableCell className="tnum">{fmtDate(e.reportDate)}{e.reportHour ? <span className="ml-1 text-xs text-muted-foreground">{e.reportHour.toUpperCase()}</span> : null}</TableCell>
                   <TableCell><Badge variant="outline">{e.dateStatus}</Badge></TableCell>
                   <TableCell className="tnum text-right">{e.epsEstimate ? fmtMoney(e.epsEstimate) : "—"}</TableCell>

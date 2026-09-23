@@ -13,6 +13,8 @@ import {
   type Snapshot,
 } from "@/lib/backtesting/engine";
 import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
+import { usePageContext } from "@/components/app/hoot/page-context";
 
 const pct = (v: number | null) =>
   v === null ? "—" : `${(v * 100).toFixed(2)}%`;
@@ -24,7 +26,7 @@ const cell = "px-3 py-2.5 text-right tnum whitespace-nowrap";
 const head = "px-3 py-2.5 text-left font-medium text-muted-foreground";
 const initialWeights = (snapshot: Snapshot) =>
   Object.fromEntries(
-    snapshot.positions.map((p) => [p.id, String(p.weight * 100)]),
+    snapshot.positions.map((p) => [p.id, (p.weight * 100).toFixed(2)]),
   );
 
 type Completed = {
@@ -47,6 +49,7 @@ export function BacktestingWorkspace({
   endpoint?: string;
 }) {
   const [weights, setWeights] = useState(() => initialWeights(snapshot));
+  const [edited, setEdited] = useState<Set<string>>(() => new Set());
   const [from, setFrom] = useState(defaultFrom),
     [to, setTo] = useState(defaultTo);
   const [benchmark, setBenchmark] = useState<keyof typeof BENCHMARKS>("SPY");
@@ -56,7 +59,13 @@ export function BacktestingWorkspace({
   const inFlight = useRef(false),
     runs = useRef(0);
   const values = Object.values(weights);
-  const sum = values.reduce((s, w) => s + Number(w), 0);
+  const scenarioWeights = Object.fromEntries(
+    snapshot.positions.map((p) => [
+      p.id,
+      edited.has(p.id) ? Number(weights[p.id]) / 100 : p.weight,
+    ]),
+  );
+  const sum = Object.values(scenarioWeights).reduce((s, w) => s + w, 0) * 100;
   const valid =
     values.every(
       (w) =>
@@ -71,6 +80,28 @@ export function BacktestingWorkspace({
       completed.to !== to ||
       completed.benchmark !== benchmark ||
       JSON.stringify(completed.weights) !== JSON.stringify(weights));
+  // Hoot attaches the scenario on screen to a question asked from this page.
+  const pathname = usePathname();
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  usePageContext(
+    /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to)
+      ? {
+          kind: "backtesting",
+          path: pathname,
+          title: "Backtesting",
+          from,
+          to,
+          benchmark,
+          changed: snapshot.positions
+            .filter((p) => {
+              const w = scenarioWeights[p.id];
+              return weights[p.id]?.trim() !== "" && Number.isFinite(w) && w >= 0 && w <= 1 && Math.abs(w - p.weight) > 1e-8;
+            })
+            .map((p) => ({ ticker: p.ticker, savedPct: round2(p.weight * 100), scenarioPct: round2(scenarioWeights[p.id] * 100) })),
+          ran: Boolean(completed && !dirty),
+        }
+      : null,
+  );
   async function run(event: FormEvent) {
     event.preventDefault();
     if (!valid || inFlight.current) return;
@@ -86,12 +117,7 @@ export function BacktestingWorkspace({
           to,
           benchmark,
           version: snapshot.version,
-          weights: Object.fromEntries(
-            Object.entries(weights).map(([id, weight]) => [
-              id,
-              Number(weight) / 100,
-            ]),
-          ),
+          weights: scenarioWeights,
         }),
         signal: AbortSignal.timeout(120000),
       });
@@ -133,9 +159,8 @@ export function BacktestingWorkspace({
       <Card className="mb-5 gap-3 p-4 text-sm">
         <div className="font-medium">{snapshot.scope}</div>
         <p className="text-muted-foreground">
-          Saved weights total {snapshot.savedWeightTotal.toFixed(2)}%. The
-          invested holdings are normalized to 100% for this comparison; cash is
-          excluded. The original is a snapshot of current holdings, not
+          Invested holdings total {snapshot.savedWeightTotal.toFixed(2)}%; uninvested cash is {((1 - snapshot.savedWeightTotal / 100) * 100).toFixed(2)}%.
+          Cash earns 0% by default, and no weights are redistributed. The original is a snapshot of current holdings, not
           historical holdings. Changes here never update your saved portfolio.
         </p>
         <p className="text-xs text-muted-foreground">
@@ -229,25 +254,41 @@ export function BacktestingWorkspace({
                           type="number"
                           min="0"
                           max="100"
-                          step="any"
+                          step="0.01"
                           value={weights[p.id]}
-                          onChange={(e) =>
-                            setWeights({ ...weights, [p.id]: e.target.value })
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (!/^\d{0,3}(?:\.\d{0,2})?$/.test(value)) return;
+                            setWeights({ ...weights, [p.id]: value });
+                            setEdited(new Set(edited).add(p.id));
+                          }}
+                          onBlur={(e) => {
+                            const value = Number(e.target.value);
+                            if (e.target.value.trim() !== "" && Number.isFinite(value))
+                              setWeights((current) => ({ ...current, [p.id]: value.toFixed(2) }));
+                          }}
                           required
                         />
                       </td>
                       <td
                         className={cn(
                           cell,
-                          tone(Number(weights[p.id]) / 100 - p.weight),
+                          tone(scenarioWeights[p.id] - p.weight),
                         )}
                       >
-                        {pp(Number(weights[p.id]) / 100 - p.weight)}
+                        {weights[p.id]?.trim() === "" ? "—" : pp(scenarioWeights[p.id] - p.weight)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
+                <tfoot className="border-t bg-muted/40 font-medium">
+                  <tr>
+                    <th className="px-3 py-2.5 text-left">Total</th>
+                    <td className={cell}>100.00%</td>
+                    <td className={cell}>{Number.isFinite(sum) ? `${sum.toFixed(2)}%` : "—"}</td>
+                    <td className={cell}>{Number.isFinite(sum) ? pp(sum / 100 - 1) : "—"}</td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </details>
@@ -257,16 +298,17 @@ export function BacktestingWorkspace({
               className={cn("text-sm tnum", !valid && "text-destructive")}
             >
               Modified total:{" "}
-              {Number.isFinite(sum)
-                ? sum.toFixed(6).replace(/0+$/, "").replace(/\.$/, "")
-                : "—"}
+              {Number.isFinite(sum) ? sum.toFixed(2) : "—"}
               %{!valid && " · must total 100%"}
             </div>
             <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setWeights(initialWeights(snapshot))}
+                onClick={() => {
+                  setWeights(initialWeights(snapshot));
+                  setEdited(new Set());
+                }}
               >
                 Reset weights
               </Button>
@@ -332,6 +374,13 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
   const byDate = new Map(result.days.map((d) => [d.date, d]));
   return (
     <div className="space-y-6">
+      {result.cashSubstitutions.length > 0 && (
+        <Card className="p-4 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Early history treated as cash:</span>{" "}
+          {result.cashSubstitutions.map((p) => `${p.ticker} through ${p.through}`).join("; ")}.
+          The fixed weights were kept; those allocations earned 0% during the listed periods.
+        </Card>
+      )}
       <div className="grid gap-3 sm:grid-cols-3">
         {[
           ["Original return", result.original.totalReturn],
@@ -571,11 +620,12 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
             percentage points; active returns are not compounded separately.
           </p>
           <p>
-            This is a hypothetical replay of current holdings. It excludes cash,
-            trading costs, taxes and historical changes in membership; current
-            selection introduces survivorship and hindsight bias. Missing
-            holding prices block a run. The benchmark’s observed sessions define
-            the replay calendar.
+            This is a hypothetical replay of current holdings plus uninvested cash.
+            Cash earns 0%; a holding without earlier adjusted closes earns 0% until its
+            first close establishes a return basis. Later missing prices still block a
+            run. Trading costs, fees, taxes and historical changes in membership are
+            excluded; current selection introduces survivorship and hindsight bias.
+            The benchmark’s observed sessions define the replay calendar.
           </p>
         </div>
       </details>
