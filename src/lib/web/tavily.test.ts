@@ -20,7 +20,7 @@ describe("searchWeb", () => {
     sdk.search.mockResolvedValue({ results: [{ title: "T", url: "https://x.example/a", content: "snippet", score: 0.9, publishedDate: "2026-09-20" }] });
     const hits = await searchWeb({ query: "  american express q2 results ", topic: "finance", timeRange: "week", limit: 25 });
     expect(hits).toEqual([{ title: "T", url: "https://x.example/a", snippet: "snippet", publishedAt: "2026-09-20", score: 0.9, tier: "other" }]);
-    expect(sdk.search).toHaveBeenCalledWith("american express q2 results", expect.objectContaining({ searchDepth: "basic", topic: "finance", timeRange: "week", maxResults: 15, includeRawContent: false }));
+    expect(sdk.search).toHaveBeenCalledWith("american express q2 results", expect.objectContaining({ searchDepth: "basic", topic: "news", timeRange: "week", maxResults: 15, includeRawContent: false }));
   });
   it("prefers reliable domains, drops low-quality ones, and ranks primary then established first", async () => {
     const hit = (url: string, score: number) => ({ title: url, url, content: "s", score });
@@ -82,6 +82,16 @@ describe("searchWeb", () => {
     sdk.search.mockReset();
     sdk.search.mockResolvedValueOnce({ results: [hit("https://blog.example/a", 0.9)] }).mockRejectedValueOnce(new Error("boom"));
     expect((await searchWeb({ query: "two" })).map((h) => h.url)).toEqual(["https://blog.example/a"]);
+  });
+  it("searches news instead of finance for a recent window, and rates wire copies from the snippet", async () => {
+    sdk.search.mockResolvedValue({ results: [{ title: "China reviews Broadcom", url: "https://www.investing.com/news/x", content: "SHANGHAI (Reuters) - Chinese authorities are reviewing", score: 0.7 }] });
+    const hits = await searchWeb({ query: "broadcom china", topic: "finance", timeRange: "day" });
+    expect(sdk.search.mock.calls[0][1].topic).toBe("news");
+    expect(hits[0].tier).toBe("established");
+    expect(sdk.search).toHaveBeenCalledTimes(1);
+    sdk.search.mockClear();
+    await searchWeb({ query: "broadcom segments", topic: "finance", timeRange: "year" });
+    expect(sdk.search.mock.calls[0][1].topic).toBe("finance");
   });
   it("restricts to the given domains, normalized", async () => {
     sdk.search.mockResolvedValue({ results: [] });

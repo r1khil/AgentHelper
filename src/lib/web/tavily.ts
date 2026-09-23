@@ -72,7 +72,7 @@ export function acceptWebUrl(raw: string): URL {
 export async function searchWeb(p: { query: string; topic?: WebTopic; timeRange?: WebTimeRange; limit?: number; domains?: string[] }): Promise<WebSearchHit[]> {
   const query = p.query.trim().slice(0, SEARCH_QUERY_CHARS);
   if (!query) return [];
-  const topic = p.topic ?? "general";
+  const topic = effectiveTopic(p.topic, p.timeRange);
   const limit = Math.max(1, Math.min(p.limit ?? 5, 10));
   const domains = [...new Set((p.domains ?? []).map(normalizeDomain).filter(Boolean))].slice(0, 20).sort();
   const key = `web:search:v3:${topic}:${p.timeRange ?? "any"}:${limit}:${domains.join(",")}:${query.toLowerCase()}`;
@@ -81,7 +81,7 @@ export async function searchWeb(p: { query: string; topic?: WebTopic; timeRange?
       try {
         const r = await getClient().search(query, { searchDepth: "basic", topic, timeRange: p.timeRange, maxResults: SEARCH_POOL, includeRawContent: false, includeAnswer: false, ...scope });
         // Quote pages go before the relevance floor is set: they score highest for "why did X move" and explain nothing.
-        return (r.results ?? []).filter((x) => !isQuotePage(x.url)).map((x) => ({ title: x.title, url: x.url, snippet: x.content, publishedAt: x.publishedDate || undefined, score: x.score, tier: pageTier({ url: x.url, title: x.title }).tier }));
+        return (r.results ?? []).filter((x) => !isQuotePage(x.url)).map((x) => ({ title: x.title, url: x.url, snippet: x.content, publishedAt: x.publishedDate || undefined, score: x.score, tier: pageTier({ url: x.url, title: x.title, text: x.content }).tier }));
       } catch (e) {
         throw explain(e);
       }
@@ -102,6 +102,15 @@ export async function searchWeb(p: { query: string; topic?: WebTopic; timeRange?
     }
     return ranked.slice(0, limit);
   });
+}
+
+/**
+ * Tavily's "finance" topic returns company profile and quote pages. With a day or week window the question is about
+ * recent events, which is "news"; Hoot kept choosing "finance" for "why did it move" despite its instructions.
+ */
+export function effectiveTopic(topic: WebTopic | undefined, timeRange: WebTimeRange | undefined): WebTopic {
+  if (topic === "finance" && (timeRange === "day" || timeRange === "week")) return "news";
+  return topic ?? "general";
 }
 
 const isTrusted = (h: WebSearchHit) => h.tier === "primary" || h.tier === "established";

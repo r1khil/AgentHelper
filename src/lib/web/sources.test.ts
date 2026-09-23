@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isQuotePage, looksPaywalled, pageTier, publisherTier, rankByReliability, sourceTier, syndicatedFrom } from "./sources";
+import { isQuotePage, looksPaywalled, pageTier, wireCopyOf, publisherTier, rankByReliability, sourceTier, syndicatedFrom } from "./sources";
 
 describe("sourceTier", () => {
   it("rates regulators, IR sites and wires as primary", () => {
@@ -116,5 +116,25 @@ describe("looksPaywalled", () => {
     expect(looksPaywalled("https://www.wsj.com/finance/x", "Full article text. ".repeat(400))).toBe(false);
     expect(looksPaywalled("https://www.cnbc.com/2026/09/23/x.html", "Article body. ".repeat(200))).toBe(false);
     expect(looksPaywalled("not a url", "")).toBe(false);
+  });
+});
+
+describe("wire copies", () => {
+  it("rates an unrated redistributor carrying agency wire copy as the agency", () => {
+    const text = "China reviews Broadcom data centres\nSHANGHAI (Reuters) - Chinese authorities are reviewing the use of Broadcom hardware...";
+    expect(pageTier({ url: "https://www.investing.com/news/stock-market-news/x", text })).toEqual({ tier: "established", syndicatedFrom: "Reuters" });
+    expect(wireCopyOf("NEW YORK (AP) — Stocks fell")?.name).toBe("AP");
+    expect(wireCopyOf("(Bloomberg) -- Broadcom shares slid")?.name).toBe("Bloomberg");
+    expect(wireCopyOf("Morningstar\nHeadline\nProvided by Dow Jones\nBy Hannah Pedone")?.name).toBe("Dow Jones");
+  });
+  it("does not mistake a photo credit or a mention for authorship", () => {
+    // The Investing.com page Hoot read in production on 2026-09-23: its own write-up under a Reuters photo credit.
+    const text = "China reviews Broadcom-data centre dependency: what are the implications?\n&copy; Reuters\n© Reuters\nInvesting.com -- Chinese authorities are reviewing the use of Broadcom's hardware in state-backed data centres, the Financial Times reported";
+    expect(pageTier({ url: "https://www.investing.com/news/stock-market-news/china-reviews-broadcom", text })).toEqual({ tier: "other", syndicatedFrom: null });
+    expect(wireCopyOf("Analysts cited a Reuters report (Reuters, Sept 22) on the deal")).toBeNull();
+    expect(wireCopyOf(`${"x".repeat(900)} LONDON (Reuters) - late dateline`)).toBeNull();
+  });
+  it("never upgrades a low-rated host", () => {
+    expect(pageTier({ url: "https://www.benzinga.com/news/x", text: "NEW YORK (Reuters) - copied" }).tier).toBe("low");
   });
 });
