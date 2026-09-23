@@ -38,6 +38,22 @@ describe("searchWeb", () => {
     expect(opts.includeDomains).toEqual(expect.arrayContaining(["sec.gov", "reuters.com"]));
     expect(opts.excludeDomains).toEqual(expect.arrayContaining(["reddit.com", "seekingalpha.com"]));
   });
+  it("drops quote pages before setting the relevance floor, and syndicated low-quality reposts", async () => {
+    // The AMZN search from production on 2026-09-23: the WSJ quote page scored 0.93 and raised the floor.
+    const hit = (url: string, score: number, title = url) => ({ title, url, content: "s", score });
+    sdk.search.mockResolvedValue({
+      results: [
+        hit("https://www.wsj.com/market-data/quotes/AMZN", 0.93),
+        hit("https://www.marketwatch.com/investing/stock/amzn?countrycode=ch", 0.49),
+        hit("https://www.cnbc.com/2026/09/23/cctv-script-23/09/26.html", 0.42, "CCTV Script 23/09/26 - CNBC"),
+        hit("https://www.tradingview.com/news/benzinga:d85307743094b:0-what-s-going-on-with-amazon-stock-wednesday", 0.4),
+        hit("https://www.marketwatch.com/livecoverage/stock-market-today", 0.3),
+        hit("https://blog.example/amzn", 0.12),
+      ],
+    });
+    const hits = await searchWeb({ query: "why is amazon down today", limit: 5 });
+    expect(hits.map((h) => h.url)).toEqual(["https://www.cnbc.com/2026/09/23/cctv-script-23/09/26.html", "https://www.marketwatch.com/livecoverage/stock-market-today", "https://blog.example/amzn"]);
+  });
   it("restricts to the given domains, normalized", async () => {
     sdk.search.mockResolvedValue({ results: [] });
     await searchWeb({ query: "q3 release", domains: ["https://www.Investor.Apple.com/news", "reuters.com", "  "] });

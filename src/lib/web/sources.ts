@@ -98,7 +98,7 @@ export const LOW_QUALITY_DOMAINS = [
 /** Finnhub reports a publisher name rather than a domain. */
 const PRIMARY_PUBLISHERS = ["sec", "business wire", "businesswire", "pr newswire", "prnewswire", "globenewswire", "globe newswire"];
 const ESTABLISHED_PUBLISHERS = ["reuters", "associated press", "ap", "bloomberg", "wsj", "wall street journal", "dow jones", "dowjones", "financial times", "barron's", "barrons", "marketwatch", "cnbc", "the economist", "new york times", "axios", "fortune", "morningstar"];
-const LOW_PUBLISHERS = ["seekingalpha", "seeking alpha", "motley fool", "fool", "investorplace", "benzinga", "marketbeat", "tipranks", "simply wall st", "zacks", "insider monkey", "24/7 wall st", "gurufocus", "stocktwits", "reddit"];
+const LOW_PUBLISHERS = ["seekingalpha", "seeking alpha", "motley fool", "the motley fool", "fool", "investorplace", "benzinga", "marketbeat", "tipranks", "simply wall st", "zacks", "zacks investment research", "insider monkey", "24/7 wall st", "gurufocus", "stocktwits", "reddit"];
 
 function hostOf(hostOrUrl: string): string {
   let host = hostOrUrl.trim().toLowerCase();
@@ -130,13 +130,73 @@ export function sourceTier(hostOrUrl: string): SourceTier {
 
 /** Tier for a news publisher name as Finnhub reports it ("Reuters", "SeekingAlpha", "Yahoo"). */
 export function publisherTier(name: string): SourceTier {
-  const n = name.trim().toLowerCase();
+  const n = name.trim().toLowerCase().replace(/[.\s]+$/, "");
   if (!n) return "other";
   if (n.includes(".")) return sourceTier(n);
   if (LOW_PUBLISHERS.includes(n)) return "low";
   if (PRIMARY_PUBLISHERS.includes(n)) return "primary";
   if (ESTABLISHED_PUBLISHERS.includes(n)) return "established";
   return "other";
+}
+
+/**
+ * The outlet that actually wrote a syndicated article, when the page says so: TradingView news URLs name the wire
+ * (tradingview.com/news/benzinga:…), aggregator pages suffix the title (" - 24/7 Wall St."), and some open with the
+ * publisher's name on its own line. Only publishers this module rates are returned, so ordinary titles never match.
+ */
+export function syndicatedFrom(p: { url: string; title?: string | null; text?: string | null }): { name: string; tier: SourceTier } | null {
+  const rated = (name: string) => {
+    const tier = publisherTier(name);
+    return tier === "other" ? null : { name: name.trim().replace(/[.\s]+$/, ""), tier };
+  };
+  try {
+    const url = new URL(p.url);
+    const wire = url.hostname.endsWith("tradingview.com") ? /^\/news\/([a-z0-9_-]+):/i.exec(url.pathname)?.[1] : null;
+    const hit = wire ? rated(wire.replace(/[_-]+/g, " ")) : null;
+    if (hit) return hit;
+  } catch {
+    /* not a URL */
+  }
+  const suffix = p.title ? /\s[-|–—]\s([^-|–—]{2,40})$/.exec(p.title.trim())?.[1] : null;
+  const fromTitle = suffix ? rated(suffix) : null;
+  if (fromTitle) return fromTitle;
+  const firstLine = p.text?.trimStart().split("\n", 1)[0] ?? "";
+  return firstLine.length <= 40 ? rated(firstLine) : null;
+}
+
+/**
+ * Tier of a page, taking syndication into account: a Benzinga story reposted on TradingView, or a 24/7 Wall St. piece
+ * served through Yahoo, is rated as its original publisher when that is lower than the host.
+ */
+export function pageTier(p: { url: string; title?: string | null; text?: string | null }): { tier: SourceTier; syndicatedFrom: string | null } {
+  const host = sourceTier(p.url);
+  const orig = syndicatedFrom(p);
+  if (orig && tierRank(orig.tier) > tierRank(host)) return { tier: orig.tier, syndicatedFrom: orig.name };
+  return { tier: host, syndicatedFrom: orig && orig.tier !== host ? orig.name : null };
+}
+
+const TIER_ORDER: SourceTier[] = ["primary", "established", "other", "low"];
+const tierRank = (t: SourceTier) => TIER_ORDER.indexOf(t);
+
+/**
+ * Stock quote and ticker hub pages (prices, charts, a headline list). They rank high for "why did X move" searches
+ * but explain nothing, and prices come from the quote tools.
+ */
+const QUOTE_PAGE_PATTERNS = [
+  /\/market-data\/quotes\//i,
+  /\/quotes?\/[a-z0-9.^:=-]{1,12}\/?$/i,
+  /\/investing\/(stock|fund|index)\/[a-z0-9.^-]{1,12}\/?$/i,
+  /\/finance\/quote\//i,
+  /\/market-activity\/(stocks|etf|funds)\/[a-z0-9.^-]{1,12}\/?$/i,
+  /\/(stocks|symbols)\/[a-z0-9.^-]{1,12}\/?$/i,
+];
+export function isQuotePage(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return QUOTE_PAGE_PATTERNS.some((re) => re.test(u.pathname));
+  } catch {
+    return false;
+  }
 }
 
 /**
