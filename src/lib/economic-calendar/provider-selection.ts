@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { tradingEconomicsProvider, eodhdProvider } from "./dedicated-providers";
 import { publicCalendarProvider } from "./public-provider";
 import { FXSTREET_PAGE, loadFxStreet, overlayFxStreet } from "./fxstreet";
+import { KALSHI_PAGE, loadKalshi, overlayKalshi } from "./kalshi";
+import { CalendarNotice } from "./normalize";
 import { tradingViewProvider } from "./tradingview-provider";
 import type {
   CalendarRange,
@@ -76,6 +78,7 @@ export class CalendarUnavailableError extends Error {
 }
 
 function safeError(error: unknown) {
+  if (error instanceof CalendarNotice) return error.message;
   if (error instanceof Error && error.name === "TimeoutError")
     return "Timed out";
   // Only expose operational codes, never upstream bodies or credential-bearing URLs.
@@ -92,6 +95,10 @@ export async function loadConfiguredCalendar(
   const started = Date.now();
   // Runs alongside the chain, so whichever provider answers gets its gaps filled without waiting twice.
   const second = loadFxStreet(range, fetcher).then(
+    (rows) => ({ rows }),
+    (error: unknown) => ({ error }),
+  );
+  const markets = loadKalshi(range, fetcher).then(
     (rows) => ({ rows }),
     (error: unknown) => ({ error }),
   );
@@ -130,7 +137,19 @@ export async function loadConfiguredCalendar(
       filled = merged.consensus;
       Object.assign(fx, { status: "ok", count: merged.matched });
     } else fx.error = safeError(overlay.error);
-    const sources = [...failures, ...(result.sources ?? []), fx];
+    const priced = await markets;
+    const kalshi: CalendarSourceStatus = {
+      name: "Kalshi market prices",
+      url: KALSHI_PAGE,
+      status: "unavailable",
+      count: 0,
+    };
+    if ("rows" in priced) {
+      const merged = overlayKalshi(events, priced.rows);
+      events = merged.events;
+      Object.assign(kalshi, { status: "ok", count: merged.priced });
+    } else kalshi.error = safeError(priced.error);
+    const sources = [...failures, ...(result.sources ?? []), fx, kalshi];
     if (!failures.length)
       return { ...result, events, sources, provider: provider.name };
     // A fallback is never passed off as the preferred feed: say what failed and what is showing.

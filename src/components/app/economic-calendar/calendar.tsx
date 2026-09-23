@@ -67,6 +67,26 @@ const consensusSource = (e: EconomicEvent) =>
   e.estimate && e.estimateSource
     ? `Consensus from ${e.estimateSource}`
     : undefined;
+const marketText = (e: EconomicEvent) =>
+  e.marketImplied &&
+  `${e.marketImplied.source}\u00a0${e.marketImplied.value}${e.marketImplied.detail === "median" ? "" : ` (${e.marketImplied.detail})`}`;
+
+/** A prediction market's price for a release, set apart from consensus: it isn't a survey. */
+function MarketPrice({ e, className }: { e: EconomicEvent; className?: string }) {
+  const m = e.marketImplied;
+  if (!m) return null;
+  return (
+    <a
+      href={m.url}
+      target="_blank"
+      rel="noreferrer"
+      className={cn("tnum text-muted-foreground hover:underline", className)}
+      title={`${m.source} prediction-market price (${m.detail === "median" ? "median outcome" : `likeliest outcome, ${m.detail}`}), not an economist survey`}
+    >
+      {marketText(e)}
+    </a>
+  );
+}
 
 export function EconomicCalendar({
   initialRange,
@@ -475,7 +495,9 @@ export function EconomicCalendar({
               All times Eastern. Consensus is the economist survey from the
               feed in use, filled from FXStreet where the feed has none; model
               forecasts are never substituted. Hover a consensus to see its
-              source. Blue and orange show direction
+              source. Kalshi figures are prediction-market prices before a
+              release (the median outcome, or the likeliest for Fed decisions),
+              not consensus, and never drive the colors. Blue and orange show direction
               against consensus, not whether a print is good or bad. Previous
               includes provider revisions, and a past time alone does not
               confirm a release. Separate measurements of one report can appear
@@ -730,7 +752,7 @@ function NextRelease({
         toast.error(res.error);
         return;
       }
-      const question = `What should we watch in ${e.name}${e.period ? ` (${e.period})` : ""}, due ${at.toFormat("cccc h:mm a")} ET? Consensus is ${e.estimate ?? "not available"} and the previous reading was ${e.previous ?? "not available"}. Which of our holdings are most exposed to a surprise either way?`;
+      const question = `What should we watch in ${e.name}${e.period ? ` (${e.period})` : ""}, due ${at.toFormat("cccc h:mm a")} ET? Consensus is ${e.estimate ?? "not available"} and the previous reading was ${e.previous ?? "not available"}.${e.marketImplied ? ` ${e.marketImplied.source} traders price ${e.marketImplied.detail === "median" ? `a median of ${e.marketImplied.value}` : `${e.marketImplied.value} (${e.marketImplied.detail})`}.` : ""} Which of our holdings are most exposed to a surprise either way?`;
       if (!leaveHootQuestion(res.chatId, question, pageContextFor(pathname)))
         toast("Your chat is open. Paste your question to send it.");
       router.push(res.href);
@@ -767,6 +789,7 @@ function NextRelease({
           >
             {e.estimate ?? "—"}
           </dd>
+          <MarketPrice e={e} className="text-xs" />
         </div>
         <div className="flex flex-col gap-1">
           <dt className="text-xs text-muted-foreground">Previous</dt>
@@ -857,9 +880,8 @@ function Ahead({
               <span className="tnum text-[13px] text-foreground/75">
                 {e.estimate
                   ? `Cons. ${e.estimate}`
-                  : e.previous
-                    ? "No consensus"
-                    : ""}
+                  : (marketText(e) ??
+                    (e.previous ? "No consensus" : ""))}
               </span>
             </li>
           ))}
@@ -1031,6 +1053,7 @@ function EventRow({
   // The phone layout folds consensus and previous into one line under the name; it wraps only between values.
   const parts = [
     e.estimate && `Cons\u00a0${e.estimate}`,
+    actual === null && marketText(e),
     actual === null && e.previous && `Prev\u00a0${e.previous}`,
   ].filter(Boolean);
   if (!parts.length && actual !== null) parts.push("No consensus");
@@ -1106,15 +1129,18 @@ function EventRow({
         >
           {actual ?? "—"}
         </span>
-        <span
-          className={cn(
-            "tnum text-right text-sm",
-            e.estimate ? "text-foreground/90" : "text-muted-foreground",
-          )}
-          title={consensusSource(e)}
-        >
-          {e.estimate ?? "—"}
-        </span>
+        <div className="flex flex-col items-end">
+          <span
+            className={cn(
+              "tnum text-right text-sm",
+              e.estimate ? "text-foreground/90" : "text-muted-foreground",
+            )}
+            title={consensusSource(e)}
+          >
+            {e.estimate ?? "—"}
+          </span>
+          {actual === null && <MarketPrice e={e} className="text-[11px]" />}
+        </div>
         <div className="flex flex-col items-end">
           <span
             className={cn(

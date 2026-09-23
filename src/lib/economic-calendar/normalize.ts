@@ -3,6 +3,9 @@ import { createHash } from "node:crypto";
 import { NY } from "@/lib/providers/calendar";
 import type { CalendarRange, EconomicEvent } from "./types";
 
+/** A provider failure whose message is written by us and safe to show, unlike upstream errors. */
+export class CalendarNotice extends Error {}
+
 export const text = (value: unknown): string | null => {
   if (value === null || value === undefined || String(value).trim() === "")
     return null;

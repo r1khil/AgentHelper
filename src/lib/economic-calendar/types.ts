@@ -12,6 +12,14 @@ export type EconomicEvent = {
   /** Who supplied the consensus in `estimate`: the feed's provider, or FXStreet where it filled a gap. */
   estimateSource?: string | null;
   providerForecast?: string | null;
+  /** A prediction market's price for the release: kept apart from consensus because it isn't a survey. */
+  marketImplied?: {
+    value: string;
+    /** "median", or for stepped outcomes such as Fed decisions "64% likely". */
+    detail: string;
+    source: string;
+    url: string;
+  } | null;
   previous: string | null;
   previousBeforeRevision: string | null;
   importance: 1 | 2 | 3 | null;
