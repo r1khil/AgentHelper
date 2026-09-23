@@ -31,8 +31,14 @@ describe("briefEmail", () => {
   it("falls back to the numbers when the analysis failed", () => {
     const { subject, body } = briefEmail({ sessionDate: "2026-09-22", facts: "Fund return: +0.4%", analysis: null, sources: [], failure: "model timed out", appUrl: "https://x.app/" });
     expect(subject).toBe("Hoot's daily attribution: 2026-09-22");
-    expect(body).toContain("did not finish today (model timed out)");
+    expect(body).toMatch(/^Hi all,\n\nMy analysis of Tuesday, September 22 didn't finish \(model timed out\)/);
     expect(body).toContain("https://x.app/attribution");
+    expect(body.endsWith("Best,\nHoot")).toBe(true);
+  });
+
+  it("opens with the analysis and signs off as Hoot", () => {
+    const { body } = briefEmail({ sessionDate: "2026-09-22", facts: "Fund return: +0.4%", analysis: "The fund beat the S&P 500.", sources: [] });
+    expect(body).toBe("Hi all,\n\nHere's what drove the fund on Tuesday, September 22.\n\nThe fund beat the S&P 500.\n\nThe numbers, close to close:\n\nFund return: +0.4%\n\nBest,\nHoot");
   });
 
   it("lists sources in the footer", () => {
@@ -44,6 +50,11 @@ describe("cleanBrief", () => {
   it("keeps only the tagged brief and strips Markdown", () => {
     const raw = "Now I have enough. Let me compile.\n\n<brief>\n**Daily brief**\n\nThe fund fell.\n\n- **AXP (-9 bps)**: rates.\n</brief>";
     expect(cleanBrief(raw)).toBe("Daily brief\n\nThe fund fell.\n\n- AXP (-9 bps): rates.");
+  });
+
+  it("drops a greeting and sign-off the model wrote itself", () => {
+    expect(cleanBrief("Hi all,\n\nThe fund fell.\n\nBest, Hoot")).toBe("The fund fell.");
+    expect(cleanBrief("The fund fell.\n\nBest,\nHoot")).toBe("The fund fell.");
   });
 
   it("uses the whole text when there are no tags", () => {
