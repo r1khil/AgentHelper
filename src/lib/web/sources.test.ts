@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isQuotePage, pageTier, publisherTier, rankByReliability, sourceTier, syndicatedFrom } from "./sources";
+import { isQuotePage, looksPaywalled, pageTier, publisherTier, rankByReliability, sourceTier, syndicatedFrom } from "./sources";
 
 describe("sourceTier", () => {
   it("rates regulators, IR sites and wires as primary", () => {
@@ -101,5 +101,20 @@ describe("isQuotePage", () => {
     expect(isQuotePage("https://www.marketwatch.com/livecoverage/stock-market-today-dow-s-p-500-nasdaq-firm-start")).toBe(false);
     expect(isQuotePage("https://finance.yahoo.com/markets/stocks/articles/alphabet-drops-4-meta-edges-165741579.html")).toBe(false);
     expect(isQuotePage("https://www.barchart.com/story/news/4760039/how-to-play-google-stock")).toBe(false);
+  });
+});
+
+describe("looksPaywalled", () => {
+  it("flags short text from hard-paywall outlets", () => {
+    // IBD returned 3.6k chars of site navigation in production on 2026-09-23.
+    expect(looksPaywalled("https://www.investors.com/news/technology/meta-stock", "BILL O'NEIL ARCHIVES ".repeat(170))).toBe(true);
+    expect(looksPaywalled("https://www.wsj.com/finance/x", "Teaser paragraph.")).toBe(true);
+    expect(looksPaywalled("https://markets.ft.com/data/x", "short")).toBe(true);
+  });
+  it("flags subscriber prompts anywhere, and leaves full articles alone", () => {
+    expect(looksPaywalled("https://news.example/a", "Intro. Subscribe to continue reading.")).toBe(true);
+    expect(looksPaywalled("https://www.wsj.com/finance/x", "Full article text. ".repeat(400))).toBe(false);
+    expect(looksPaywalled("https://www.cnbc.com/2026/09/23/x.html", "Article body. ".repeat(200))).toBe(false);
+    expect(looksPaywalled("not a url", "")).toBe(false);
   });
 });
