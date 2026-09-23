@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { Activity, ArrowUp, CalendarDays, CalendarRange, Eye, EyeOff, FileText, Mic, Sparkles, X } from "lucide-react";
+import { Activity, ArrowLeftRight, ArrowUp, CalendarDays, CalendarRange, Eye, EyeOff, FileText, Mic, Sparkles, X } from "lucide-react";
 import type { HootNudge, NudgeKind } from "@/lib/hoot/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +34,8 @@ export function HootPanel({
   onOpenNudge,
   onDismiss,
   onHide,
+  onMove,
+  side,
   onClose,
 }: {
   greeting: string;
@@ -50,6 +52,9 @@ export function HootPanel({
   onOpenNudge: (n: HootNudge) => void;
   onDismiss: (n: HootNudge) => void;
   onHide: () => void;
+  /** Send Hoot to the other bottom corner (he can also be dragged there). */
+  onMove: () => void;
+  side: "left" | "right";
   onClose: () => void;
 }) {
   const [text, setText] = useState("");
@@ -169,9 +174,14 @@ export function HootPanel({
       </div>
 
       <div className="flex items-center justify-between border-t px-4 py-2 text-xs text-muted-foreground">
-        <button type="button" onClick={onHide} className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 hover:text-foreground">
-          <EyeOff className="size-3.5" /> Hide Hoot
-        </button>
+        <span className="flex items-center gap-2">
+          <button type="button" onClick={onHide} className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 hover:text-foreground">
+            <EyeOff className="size-3.5" /> Hide
+          </button>
+          <button type="button" onClick={onMove} className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 hover:text-foreground" title="You can also drag him">
+            <ArrowLeftRight className="size-3.5" /> Move {side === "right" ? "left" : "right"}
+          </button>
+        </span>
         <span>
           <kbd className="rounded border bg-muted px-1 font-sans text-[10px]">{shortcutLabel()}</kbd> to open
         </span>

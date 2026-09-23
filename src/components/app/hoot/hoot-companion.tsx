@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import { startHootChat } from "@/lib/actions/chats";
@@ -10,11 +10,12 @@ import { dismissHootNudge, setHootEnabled } from "@/lib/actions/preferences";
 import { BUBBLE_VISIBLE_MS, companionHiddenOn, greeting, pickBubble, restingMood, suggestionsFor, teamSlugFromPath, tickerFromPath, tipFor, type BubbleSession } from "@/lib/hoot/policy";
 import type { HootFeed, HootMood, HootNudge } from "@/lib/hoot/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { leaveHootQuestion } from "./handoff";
 import { pageContextFor } from "./page-context";
 import { pageContextLabel } from "@/lib/agent/page-context";
 import { HootPanel } from "./hoot-panel";
-import { HootSprite, preloadHoot } from "./hoot-sprite";
+import { HootSprite, preloadHoot, usePrefersReducedMotion } from "./hoot-sprite";
 
 const REFRESH_MS = 5 * 60_000;
 const SESSION_KEY = "hoot:session";
@@ -29,6 +30,47 @@ const HOP: Keyframe[] = [
   { transform: "translateY(0) scale(1, 1)" },
 ];
 const POP: Keyframe[] = [{ transform: "scale(0.94)" }, { transform: "scale(1.03)", offset: 0.6 }, { transform: "scale(1)" }];
+// Idle fidgets: small enough to catch the corner of your eye, never enough to pull it away from the page.
+const SHUFFLE: Keyframe[] = [{ transform: "rotate(0)" }, { transform: "rotate(-4deg)", offset: 0.25 }, { transform: "rotate(3deg)", offset: 0.6 }, { transform: "rotate(0)" }];
+const RUFFLE: Keyframe[] = [{ transform: "scale(1, 1)" }, { transform: "scale(1.06, 0.95)", offset: 0.3 }, { transform: "scale(0.98, 1.02)", offset: 0.6 }, { transform: "scale(1.03, 0.98)", offset: 0.8 }, { transform: "scale(1, 1)" }];
+const HOPLET: Keyframe[] = [{ transform: "translateY(0)" }, { transform: "translateY(-4px)", offset: 0.4 }, { transform: "translateY(0)", offset: 0.7 }, { transform: "translateY(-1.5px)", offset: 0.85 }, { transform: "translateY(0)" }];
+const NOD: Keyframe[] = [{ transform: "translateY(0) rotate(0)" }, { transform: "translateY(2px) rotate(4deg)", offset: 0.55 }, { transform: "translateY(2px) rotate(4deg)", offset: 0.75 }, { transform: "translateY(0) rotate(0)" }];
+const STRETCH: Keyframe[] = [{ transform: "scale(1, 1)" }, { transform: "scale(0.97, 1.05)", offset: 0.45 }, { transform: "scale(0.97, 1.05)", offset: 0.6 }, { transform: "scale(1, 1)" }];
+const WIGGLE: Keyframe[] = [{ transform: "rotate(0)" }, { transform: "rotate(-6deg)", offset: 0.2 }, { transform: "rotate(6deg)", offset: 0.45 }, { transform: "rotate(-3deg)", offset: 0.7 }, { transform: "rotate(0)" }];
+
+// Which bottom corner he sits in: a per-device convenience, so localStorage (unavailable storage just means "right").
+type Corner = "left" | "right";
+const CORNER_KEY = "hoot:corner";
+const cornerListeners = new Set<() => void>();
+function readCorner(): Corner {
+  try {
+    return localStorage.getItem(CORNER_KEY) === "left" ? "left" : "right";
+  } catch {
+    return "right";
+  }
+}
+function saveCorner(side: Corner) {
+  try {
+    localStorage.setItem(CORNER_KEY, side);
+  } catch {
+    // Storage blocked: he moves for this page view only.
+  }
+  for (const l of cornerListeners) l();
+}
+function useCorner() {
+  return useSyncExternalStore(
+    (on) => {
+      cornerListeners.add(on);
+      window.addEventListener("storage", on);
+      return () => {
+        cornerListeners.delete(on);
+        window.removeEventListener("storage", on);
+      };
+    },
+    readCorner,
+    () => "right" as Corner,
+  );
+}
 
 function readSession(): BubbleSession {
   try {
@@ -68,7 +110,23 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   const [said, setSaid] = useState<{ nudge: HootNudge; path: string } | null>(null);
   const [hovered, setHovered] = useState(false);
   const [greetingWave, setGreetingWave] = useState(false);
+  /** A brief expression for a moment (welcome back, something new needs you). */
+  const [flash, setFlash] = useState<HootMood | null>(null);
+  /** Pointer resting on him: eyes close happily. */
+  const [petting, setPetting] = useState(false);
+  /** A quick look somewhere (toward the page after navigating), overriding what he's watching. */
+  const [glance, setGlance] = useState<{ x: number; y: number } | null>(null);
+  const [drag, setDrag] = useState<{ dx: number; dy: number } | null>(null);
+  const side = useCorner();
+  const reduced = usePrefersReducedMotion();
   const body = useRef<HTMLSpanElement>(null);
+  const petTimer = useRef<number | undefined>(undefined);
+  const flashTimer = useRef<number | undefined>(undefined);
+  const lastTouch = useRef(0);
+  const dragFrom = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const swallowClick = useRef(false);
+  const firstPage = useRef(true);
+  const knownUrgent = useRef<Set<string> | null>(null);
   const [asking, setAsking] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -139,10 +197,21 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   const setBubble = useCallback((n: HootNudge | null) => setSaid(n ? { nudge: n, path: window.location.pathname } : null), []);
 
   // New page: maybe say one thing, after the page settles and only if the member isn't busy.
+  // And glance over at the new page, like anyone would when the view changes.
   useEffect(() => {
     pageAt.current = Date.now();
     pageSpoke.current = false;
-  }, [pathname]);
+    if (firstPage.current) {
+      firstPage.current = false;
+      return;
+    }
+    const look = window.setTimeout(() => setGlance({ x: side === "right" ? -0.9 : 0.9, y: -0.3 }), 120);
+    const back = window.setTimeout(() => setGlance(null), 1100);
+    return () => {
+      window.clearTimeout(look);
+      window.clearTimeout(back);
+    };
+  }, [pathname, side]);
 
   useEffect(() => {
     if (!feed || hidden || open || bubble || pageSpoke.current) return;
@@ -200,17 +269,81 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   const teamSlug = teamSlugFromPath(pathname);
 
   const resting = feed ? restingMood(feed.marketOpen, nudges) : "idle";
-  const mood: HootMood = asking
-    ? "thinking"
-    : bubble
-      ? bubble.mood
-      : greetingWave
-        ? "wave"
-        : open || hovered
-          ? resting === "sleepy"
-            ? "idle"
-            : resting
-          : resting;
+  const awake = resting === "sleepy" ? "idle" : resting;
+  const mood: HootMood = drag
+    ? "alert"
+    : asking
+      ? "thinking"
+      : bubble
+        ? bubble.mood
+        : (flash ?? (greetingWave ? "wave" : petting ? "happy" : open || hovered ? awake : resting));
+
+  const showFlash = useCallback((m: HootMood, ms: number) => {
+    window.clearTimeout(flashTimer.current);
+    setFlash(m);
+    flashTimer.current = window.setTimeout(() => setFlash(null), ms);
+  }, []);
+
+  // Live values for the timers below, without restarting them on every render.
+  const live = useRef({ open, bubble: false, drag: false, mood });
+  useEffect(() => {
+    live.current = { open, bubble: !!bubble, drag: !!drag, mood };
+  });
+
+  // Idle fidgets every 20 to 50 seconds, only while nobody is interacting with him: a shuffle, a feather ruffle,
+  // a little bounce, or when he's dozing, a nod or a slow stretch.
+  useEffect(() => {
+    if (hidden || reduced) return;
+    let t: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      t = setTimeout(() => {
+        const l = live.current;
+        if (document.visibilityState === "visible" && !l.open && !l.bubble && !l.drag && Date.now() - lastTouch.current > 8000) {
+          const r = Math.random();
+          if (l.mood === "sleepy") play(r < 0.6 ? NOD : STRETCH, r < 0.6 ? 1600 : 1400);
+          else play(r < 0.4 ? SHUFFLE : r < 0.75 ? RUFFLE : HOPLET, r < 0.4 ? 900 : 560);
+        }
+        schedule();
+      }, 20_000 + Math.random() * 30_000);
+    };
+    schedule();
+    return () => clearTimeout(t);
+  }, [hidden, reduced, play]);
+
+  // Back after a while away: a wave.
+  useEffect(() => {
+    let away = 0;
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") away = Date.now();
+      else if (away && Date.now() - away > 5 * 60_000) showFlash("wave", 2400);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [showFlash]);
+
+  // Something urgent turned up since the last check: perk up and hop once (the bubble rules decide whether he says it).
+  useEffect(() => {
+    if (!feed) return;
+    const ids = new Set(feed.nudges.filter((n) => n.priority <= 2).map((n) => n.id));
+    const seen = knownUrgent.current;
+    knownUrgent.current = ids;
+    if (!seen || ![...ids].some((id) => !seen.has(id))) return;
+    const t = window.setTimeout(() => {
+      showFlash("alert", 1600);
+      play(HOP, 520);
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [feed, showFlash, play]);
+
+  const cancelPet = () => {
+    window.clearTimeout(petTimer.current);
+    setPetting(false);
+  };
+
+  const moveTo = (next: Corner) => {
+    saveCorner(next);
+    window.setTimeout(() => play(HOP, 520), 60);
+  };
   // A little pop whenever his expression changes.
   const lastMood = useRef(mood);
   useEffect(() => {
@@ -267,14 +400,28 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   const label = urgent ? `Hoot: ${urgent} ${urgent === 1 ? "thing needs" : "things need"} you` : "Hoot: ask a research question";
 
   return (
-    <div className="pointer-events-none fixed right-3 bottom-3 z-40 flex flex-col items-end gap-2 md:right-5 md:bottom-5" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-      {bubble && !open && (
+    <div
+      className={cn(
+        "pointer-events-none fixed bottom-3 z-40 flex flex-col gap-2 md:bottom-5",
+        // On the left he sits just past the sidebar, never over its account menu.
+        side === "right" ? "right-3 items-end md:right-5" : "left-3 items-start md:left-[calc(15rem+1.25rem)]",
+      )}
+      style={{ paddingBottom: "env(safe-area-inset-bottom)", transform: drag ? `translate(${drag.dx}px, ${drag.dy}px)` : undefined }}
+      // A drag ends with a click on the trigger; don't let it open the panel.
+      onClickCapture={(e) => {
+        if (!swallowClick.current) return;
+        swallowClick.current = false;
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      {bubble && !open && !drag && (
         <div
           role="status"
           aria-live="polite"
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
-          className="hoot-arrive pointer-events-auto relative mr-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-3 pr-8 text-sm text-popover-foreground shadow-lg"
+          className="hoot-arrive pointer-events-auto relative mx-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-3 pr-8 text-sm text-popover-foreground shadow-lg"
         >
           <div className="leading-snug font-medium">{bubble.title}</div>
           {bubble.detail && <div className="mt-1 text-xs leading-snug text-muted-foreground">{bubble.detail}</div>}
@@ -302,7 +449,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
             <X className="size-3.5" />
           </button>
           {/* Tail pointing at Hoot. */}
-          <span aria-hidden className="absolute -bottom-1.5 right-8 size-3 rotate-45 border-r border-b bg-popover" />
+          <span aria-hidden className={cn("absolute -bottom-1.5 size-3 rotate-45 border-r border-b bg-popover", side === "right" ? "right-8" : "left-8")} />
         </div>
       )}
 
@@ -322,17 +469,65 @@ export function HootCompanion({ firstName }: { firstName: string }) {
               type="button"
               aria-label={label}
               onClick={() => play(HOP, 520)}
-              onMouseEnter={() => setHovered(true)}
-              onMouseLeave={() => setHovered(false)}
-              className="hoot-arrive group pointer-events-auto relative rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              onMouseEnter={() => {
+                setHovered(true);
+                lastTouch.current = Date.now();
+                // Rest the pointer on him for a moment and he closes his eyes, pleased.
+                window.clearTimeout(petTimer.current);
+                petTimer.current = window.setTimeout(() => {
+                  setPetting(true);
+                  play(WIGGLE, 620);
+                }, 1100);
+              }}
+              onMouseLeave={() => {
+                setHovered(false);
+                cancelPet();
+              }}
+              // Drag him to the other bottom corner. A short movement is still a click.
+              onPointerDown={(e) => {
+                if (e.button !== 0) return;
+                cancelPet();
+                lastTouch.current = Date.now();
+                dragFrom.current = { x: e.clientX, y: e.clientY, moved: false };
+                e.currentTarget.setPointerCapture(e.pointerId);
+              }}
+              onPointerMove={(e) => {
+                const d = dragFrom.current;
+                if (!d) return;
+                const dx = e.clientX - d.x;
+                const dy = e.clientY - d.y;
+                if (!d.moved && Math.hypot(dx, dy) < 8) return;
+                d.moved = true;
+                setDrag({ dx, dy });
+              }}
+              onPointerUp={(e) => {
+                const d = dragFrom.current;
+                dragFrom.current = null;
+                if (!d?.moved) return;
+                swallowClick.current = true;
+                setDrag(null);
+                moveTo(e.clientX < window.innerWidth / 2 ? "left" : "right");
+              }}
+              onPointerCancel={() => {
+                dragFrom.current = null;
+                setDrag(null);
+              }}
+              style={{ touchAction: "none" }}
+              className={cn(
+                "hoot-arrive group pointer-events-auto relative rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                drag ? "cursor-grabbing" : "cursor-pointer",
+              )}
             />
           }
         >
           {/* Soft floor shadow grounds him on the page. Nothing inside the button takes pointer events, so a
               mood change under the cursor can never swallow the click. */}
           <span aria-hidden className="pointer-events-none absolute inset-x-3 bottom-0.5 h-2 rounded-[50%] bg-black/15 blur-[3px]" />
-          <span ref={body} className="pointer-events-none relative block">
-            <HootSprite mood={mood} size={64} track bob className="max-md:size-[52px]!" />
+          {/* Perks up a little under the pointer. */}
+          <span className="pointer-events-none relative block transition-transform duration-300 ease-out group-hover:-translate-y-0.5">
+            <span ref={body} className="relative block">
+              <HootSprite mood={mood} size={64} track bob lean gaze={glance ?? undefined} className="max-md:size-[52px]!" />
+            </span>
           </span>
           {mood === "sleepy" && (
             <span aria-hidden className="hoot-zzz absolute -top-1 right-1 text-[11px] font-semibold text-muted-foreground">
@@ -345,7 +540,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
             </span>
           )}
         </PopoverTrigger>
-        <PopoverContent side="top" align="end" sideOffset={10} className="w-[22rem] max-w-[calc(100vw-1.5rem)] gap-0 overflow-hidden p-0">
+        <PopoverContent side="top" align={side === "right" ? "end" : "start"} sideOffset={10} className="w-[22rem] max-w-[calc(100vw-1.5rem)] gap-0 overflow-hidden p-0">
           <HootPanel
             greeting={greeting(new Date(), firstName)}
             suggestions={suggestionsFor(pathname, ticker)}
@@ -362,6 +557,11 @@ export function HootCompanion({ firstName }: { firstName: string }) {
             }}
             onDismiss={(n) => persistDismiss(n.id)}
             onHide={hide}
+            side={side}
+            onMove={() => {
+              setOpen(false);
+              moveTo(side === "right" ? "left" : "right");
+            }}
             onClose={() => setOpen(false)}
           />
         </PopoverContent>

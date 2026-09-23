@@ -6,8 +6,10 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { cn } from "@/lib/utils";
+import { watchAttention } from "./attention";
 
-type Pointer = { x: number; y: number; at: number };
+/** Where he looks, -1..1 on each axis (see attention.ts), and whether a password is being typed. */
+type Pointer = { x: number; y: number; secret: boolean };
 
 /** Soft studio reflections for the glossy eyes and beak, generated locally (no HDR download). */
 function Studio() {
@@ -41,22 +43,19 @@ function collectParts(scene: THREE.Object3D) {
 
 const ease = (current: number, target: number, rate: number, dt: number) => current + (target - current) * (1 - Math.exp(-rate * dt));
 
-type Clock = { nextBlink: number; blinkUntil: number; happyUntil: number; hopAt: number; wander: { x: number; y: number; next: number } };
+type Clock = { nextBlink: number; blinkUntil: number; happyUntil: number; hopAt: number; ruffleAt: number; nextRuffle: number };
 
 /** One frame of Hoot: gaze, breathing, hop, wings and eyes. Mutates the scene graph directly, as three.js expects. */
 function animate(P: ReturnType<typeof collectParts>, c: Clock, p: Pointer, t: number, dt: number) {
   const now = performance.now() / 1000;
 
-  // Where to look: the pointer while it's moving, otherwise an idle glance around now and then.
-  let gx = p.x;
-  let gy = p.y;
-  if (now - p.at > 4) {
-    if (t > c.wander.next) c.wander = { x: (Math.random() - 0.5) * 0.9, y: (Math.random() - 0.6) * 0.5, next: t + 2 + Math.random() * 3 };
-    gx = c.wander.x;
-    gy = c.wander.y;
-  }
+  // Where to look: whatever the member is doing. While a password is typed he turns politely away.
+  const gx = p.secret ? -0.6 : p.x;
+  const gy = p.secret ? 0.4 : p.y;
   P.root.rotation.y = ease(P.root.rotation.y, gx * 0.45, 5, dt);
   P.root.rotation.x = ease(P.root.rotation.x, gy * 0.18, 5, dt);
+  // A curious head tilt toward the side he's looking at.
+  P.root.rotation.z = ease(P.root.rotation.z, -gx * 0.12, 4, dt);
   for (const e of P.eyes) {
     e.rotation.y = ease(e.rotation.y, gx * 0.14, 12, dt);
     e.rotation.x = ease(e.rotation.x, gy * 0.12, 12, dt);
@@ -67,8 +66,15 @@ function animate(P: ReturnType<typeof collectParts>, c: Clock, p: Pointer, t: nu
   const air = hop < 0.55 ? Math.sin((hop / 0.55) * Math.PI) : 0;
   const squash = hop < 0.1 ? Math.sin((hop / 0.1) * Math.PI) * 0.08 : hop > 0.5 && hop < 0.65 ? Math.sin(((hop - 0.5) / 0.15) * Math.PI) * 0.06 : 0;
   const breath = Math.sin(t * 1.7) * 0.008;
+  // Now and then he fluffs his feathers.
+  if (t > c.nextRuffle) {
+    c.ruffleAt = t;
+    c.nextRuffle = t + 12 + Math.random() * 14;
+  }
+  const since = t - c.ruffleAt;
+  const ruffle = since < 0.5 ? Math.sin((since / 0.5) * Math.PI * 3) * 0.025 * (1 - since / 0.5) : 0;
   P.root.position.y = air * 0.35;
-  P.root.scale.set(1 + squash * 0.6 - breath * 0.4, 1 - squash + breath + air * 0.04, 1 + squash * 0.6 - breath * 0.4);
+  P.root.scale.set(1 + squash * 0.6 - breath * 0.4 + ruffle, 1 - squash + breath + air * 0.04 - ruffle * 0.6, 1 + squash * 0.6 - breath * 0.4 + ruffle);
   const flap = now < c.happyUntil ? Math.sin(now * 18) * 0.35 + 0.45 : 0;
   P.wings[0].rotation.z = ease(P.wings[0].rotation.z, -flap, 14, dt);
   P.wings[1].rotation.z = ease(P.wings[1].rotation.z, flap, 14, dt);
@@ -79,7 +85,7 @@ function animate(P: ReturnType<typeof collectParts>, c: Clock, p: Pointer, t: nu
     c.nextBlink = t + 2.4 + Math.random() * 4;
   }
   const happy = now < c.happyUntil;
-  const closed = !happy && t < c.blinkUntil;
+  const closed = !happy && (p.secret || t < c.blinkUntil);
   for (const o of P.open) o.visible = !happy && !closed;
   for (const o of P.closed) o.visible = closed;
   for (const o of P.happy) o.visible = happy;
@@ -89,7 +95,7 @@ function Owl({ pointer, pokes, onReady }: { pointer: React.RefObject<Pointer>; p
   const gltf = useLoader(GLTFLoader, "/hoot/hoot.glb");
   // Scene-graph handles live in a ref: three.js objects are mutated every frame, which React state must never be.
   const parts = useRef<ReturnType<typeof collectParts> | null>(null);
-  const clock = useRef<Clock>({ nextBlink: 2, blinkUntil: 0, happyUntil: 0, hopAt: -10, wander: { x: 0, y: 0, next: 0 } });
+  const clock = useRef<Clock>({ nextBlink: 2, blinkUntil: 0, happyUntil: 0, hopAt: -10, ruffleAt: -10, nextRuffle: 8 });
 
   useEffect(() => {
     const p = (parts.current = collectParts(gltf.scene));
@@ -119,12 +125,13 @@ function Owl({ pointer, pokes, onReady }: { pointer: React.RefObject<Pointer>; p
 }
 
 /**
- * Hoot in real 3D, for a few hero spots. He turns toward the pointer anywhere on the page, blinks, breathes,
+ * Hoot in real 3D, for a few hero spots. He watches what you do (the pointer, the field you're typing in, where you
+ * click), tilts his head, blinks, breathes, fluffs his feathers now and then, looks away while you type a password,
  * and hops when clicked. Loaded on demand (see HootHero); renders only while on screen.
  */
 export default function Hoot3D({ size, className }: { size: number; className?: string }) {
   const box = useRef<HTMLDivElement>(null);
-  const pointer = useRef<Pointer>({ x: 0, y: 0, at: 0 });
+  const pointer = useRef<Pointer>({ x: 0, y: 0, secret: false });
   const [onScreen, setOnScreen] = useState(true);
   const [ready, setReady] = useState(false);
   const [pokes, setPokes] = useState(0);
@@ -135,16 +142,21 @@ export default function Hoot3D({ size, className }: { size: number; className?: 
     if (!el) return;
     const io = new IntersectionObserver(([e]) => setOnScreen(e.isIntersecting));
     io.observe(el);
-    const onMove = (e: PointerEvent) => {
-      const r = el.getBoundingClientRect();
-      const nx = (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2);
-      const ny = (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2);
-      pointer.current = { x: Math.max(-1, Math.min(1, nx)), y: Math.max(-1, Math.min(1, ny)), at: performance.now() / 1000 };
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
+    const unwatch = watchAttention(({ target, secret }) => {
+      let x = 0;
+      let y = 0;
+      if (target.kind === "dir") ({ x, y } = target);
+      else if (target.kind === "point") {
+        // Relative to the whole window, so he turns his head toward the far side of the page too.
+        const r = el.getBoundingClientRect();
+        x = Math.max(-1, Math.min(1, (target.x - (r.left + r.width / 2)) / (window.innerWidth / 2)));
+        y = Math.max(-1, Math.min(1, (target.y - (r.top + r.height / 2)) / (window.innerHeight / 2)));
+      }
+      pointer.current = { x, y, secret };
+    });
     return () => {
       io.disconnect();
-      window.removeEventListener("pointermove", onMove);
+      unwatch();
     };
   }, []);
 
