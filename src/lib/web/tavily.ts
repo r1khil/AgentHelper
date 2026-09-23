@@ -66,7 +66,8 @@ export function acceptWebUrl(raw: string): URL {
  *
  * Without `domains`, Tavily is asked to prefer primary and established sources and to exclude low-quality ones;
  * a wider pool drops stock-quote pages and syndicated low-quality articles, is filtered for relevance (the preference pads results with off-topic pages from trusted sites),
- * ranked by relevance plus a reliability bonus, and trimmed to `limit`. With `domains`, results are restricted to those sites.
+ * ranked by relevance plus a reliability bonus, and trimmed to `limit`. When no primary or established result survives,
+ * a second search restricted to those sites is merged in (one more credit). With `domains`, results are restricted to those sites.
  */
 export async function searchWeb(p: { query: string; topic?: WebTopic; timeRange?: WebTimeRange; limit?: number; domains?: string[] }): Promise<WebSearchHit[]> {
   const query = p.query.trim().slice(0, SEARCH_QUERY_CHARS);
@@ -74,22 +75,36 @@ export async function searchWeb(p: { query: string; topic?: WebTopic; timeRange?
   const topic = p.topic ?? "general";
   const limit = Math.max(1, Math.min(p.limit ?? 5, 10));
   const domains = [...new Set((p.domains ?? []).map(normalizeDomain).filter(Boolean))].slice(0, 20).sort();
-  const key = `web:search:v2:${topic}:${p.timeRange ?? "any"}:${limit}:${domains.join(",")}:${query.toLowerCase()}`;
+  const key = `web:search:v3:${topic}:${p.timeRange ?? "any"}:${limit}:${domains.join(",")}:${query.toLowerCase()}`;
   return cached(key, SEARCH_CACHE_SECONDS, async () => {
-    try {
-      const scope = domains.length
-        ? { includeDomains: domains, includeDomainsMode: "restrict" as const }
-        : { includeDomains: [...PRIMARY_DOMAINS, ...ESTABLISHED_DOMAINS], includeDomainsMode: "prefer" as const, excludeDomains: LOW_QUALITY_DOMAINS };
-      const r = await getClient().search(query, { searchDepth: "basic", topic, timeRange: p.timeRange, maxResults: SEARCH_POOL, includeRawContent: false, includeAnswer: false, ...scope });
-      // Quote pages go before the relevance floor is set: they score highest for "why did X move" and explain nothing.
-      const hits: WebSearchHit[] = (r.results ?? []).filter((x) => !isQuotePage(x.url)).map((x) => ({ title: x.title, url: x.url, snippet: x.content, publishedAt: x.publishedDate || undefined, score: x.score, tier: pageTier({ url: x.url, title: x.title }).tier }));
+    const run = async (scope: Record<string, unknown>): Promise<WebSearchHit[]> => {
+      try {
+        const r = await getClient().search(query, { searchDepth: "basic", topic, timeRange: p.timeRange, maxResults: SEARCH_POOL, includeRawContent: false, includeAnswer: false, ...scope });
+        // Quote pages go before the relevance floor is set: they score highest for "why did X move" and explain nothing.
+        return (r.results ?? []).filter((x) => !isQuotePage(x.url)).map((x) => ({ title: x.title, url: x.url, snippet: x.content, publishedAt: x.publishedDate || undefined, score: x.score, tier: pageTier({ url: x.url, title: x.title }).tier }));
+      } catch (e) {
+        throw explain(e);
+      }
+    };
+    if (domains.length) {
       // With an explicit site list the caller chose the sources; still drop off-topic padding.
-      return rankByReliability(hits, (h) => (domains.length && h.tier === "low" ? "other" : h.tier), (h) => h.score).slice(0, limit);
-    } catch (e) {
-      throw explain(e);
+      const hits = await run({ includeDomains: domains, includeDomainsMode: "restrict" });
+      return rankByReliability(hits, (h) => (h.tier === "low" ? "other" : h.tier), (h) => h.score).slice(0, limit);
     }
+    const trusted = [...PRIMARY_DOMAINS, ...ESTABLISHED_DOMAINS];
+    let ranked = rankByReliability(await run({ includeDomains: trusted, includeDomainsMode: "prefer", excludeDomains: LOW_QUALITY_DOMAINS }), (h) => h.tier, (h) => h.score);
+    if (!ranked.some(isTrusted)) {
+      // Nothing trusted survived: one more credit for a search restricted to trusted sites, merged in. Hoot was told
+      // to do this itself and did not, so the tool does it. A failure here keeps the first search's results.
+      const extra = await run({ includeDomains: trusted, includeDomainsMode: "restrict" }).catch(() => []);
+      const seen = new Set(ranked.map((h) => h.url));
+      ranked = rankByReliability([...ranked, ...extra.filter((h) => !seen.has(h.url))], (h) => h.tier, (h) => h.score);
+    }
+    return ranked.slice(0, limit);
   });
 }
+
+const isTrusted = (h: WebSearchHit) => h.tier === "primary" || h.tier === "established";
 
 /** "https://www.Example.com/path" → "example.com"; anything unparseable → "". */
 function normalizeDomain(raw: string): string {

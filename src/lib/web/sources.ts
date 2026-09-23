@@ -49,6 +49,8 @@ export const ESTABLISHED_DOMAINS = [
   "economist.com",
   "nytimes.com",
   "washingtonpost.com",
+  "latimes.com",
+  "bloomberglaw.com",
   "axios.com",
   "fortune.com",
   "theinformation.com",

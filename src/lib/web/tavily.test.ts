@@ -62,6 +62,27 @@ describe("searchWeb", () => {
     });
     expect(await searchWeb({ query: "Broadcom AVGO stock decline today", limit: 10 })).toEqual([]);
   });
+  it("runs one search restricted to trusted sites when none survive, and merges it in", async () => {
+    // The GOOG search from production on 2026-09-23 kept only unrated sites.
+    const hit = (url: string, score: number) => ({ title: url, url, content: "s", score });
+    sdk.search
+      .mockResolvedValueOnce({ results: [hit("https://www.tradingkey.com/news/goog", 0.91), hit("https://pluang.com/goog", 0.87), hit("https://www.fxleaders.com/goog", 0.64)] })
+      .mockResolvedValueOnce({ results: [hit("https://www.cnbc.com/2026/09/23/alphabet.html", 0.7), hit("https://www.reuters.com/tech/alphabet", 0.5), hit("https://www.wsj.com/unrelated", 0.1), hit("https://www.tradingkey.com/news/goog", 0.91)] });
+    const hits = await searchWeb({ query: "Alphabet stock drop", topic: "news", timeRange: "day", limit: 4 });
+    expect(hits.map((h) => h.url)).toEqual(["https://www.tradingkey.com/news/goog", "https://pluang.com/goog", "https://www.cnbc.com/2026/09/23/alphabet.html", "https://www.fxleaders.com/goog"]);
+    expect(sdk.search).toHaveBeenCalledTimes(2);
+    expect(sdk.search.mock.calls[1][1]).toMatchObject({ includeDomainsMode: "restrict", topic: "news", timeRange: "day" });
+    expect(sdk.search.mock.calls[1][1].includeDomains).toEqual(expect.arrayContaining(["reuters.com", "sec.gov"]));
+  });
+  it("skips the trusted-only search when a trusted result is already there, and survives its failure", async () => {
+    const hit = (url: string, score: number) => ({ title: url, url, content: "s", score });
+    sdk.search.mockResolvedValueOnce({ results: [hit("https://www.reuters.com/a", 0.6), hit("https://blog.example/a", 0.9)] });
+    await searchWeb({ query: "one" });
+    expect(sdk.search).toHaveBeenCalledTimes(1);
+    sdk.search.mockReset();
+    sdk.search.mockResolvedValueOnce({ results: [hit("https://blog.example/a", 0.9)] }).mockRejectedValueOnce(new Error("boom"));
+    expect((await searchWeb({ query: "two" })).map((h) => h.url)).toEqual(["https://blog.example/a"]);
+  });
   it("restricts to the given domains, normalized", async () => {
     sdk.search.mockResolvedValue({ results: [] });
     await searchWeb({ query: "q3 release", domains: ["https://www.Investor.Apple.com/news", "reuters.com", "  "] });
