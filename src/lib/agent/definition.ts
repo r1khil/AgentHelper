@@ -104,6 +104,7 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
     stopWhen: isStepCount(MAX_STEPS),
     prepareStep: prepareAgentStep(instructions),
     maxRetries: 2,
-    maxOutputTokens: 4000,
+    // Reasoning models spend part of this before writing; 4000 cut long answers off mid-table.
+    maxOutputTokens: 10_000,
   };
 }

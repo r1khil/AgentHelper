@@ -32,7 +32,8 @@ export async function repairCitations(opts: {
     model: opts.model,
     instructions: INSTRUCTIONS,
     prompt: `SOURCES:\n${list}\n\nANSWER:\n${text}`,
-    maxOutputTokens: 4000,
+    // The whole answer comes back, after the model's reasoning; 4000 cut long answers off and the rewrite was dropped.
+    maxOutputTokens: 10_000,
     maxRetries: 1,
   });
   opts.onUsage?.(totalUsage);
