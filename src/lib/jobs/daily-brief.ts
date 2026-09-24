@@ -11,6 +11,7 @@ import { qualityNotices } from "@/lib/attribution/view";
 import { agentConfigured } from "@/lib/agent/model";
 import { agentModelWithFallback, prepareAgentStep } from "@/lib/agent/definition";
 import { makeTools } from "@/lib/agent/tools";
+import { finalReply, writeUpFromEvidence } from "@/lib/agent/write-up";
 import { isTradingDay, todayNY } from "@/lib/providers/calendar";
 import type { Source } from "@/lib/providers/types";
 import { briefEmail, cleanBrief, DAILY_BRIEF_RECIPIENTS, factsBlock, numberCitations } from "./daily-brief-format";
@@ -21,7 +22,8 @@ import { createJobReporter } from "./progress";
 const ANALYSIS_JOB = "daily_brief";
 const SEND_JOB = "daily_brief_email";
 /** Leave room inside the 300 s function limit for saving the result. */
-const ANALYSIS_BUDGET_MS = 220_000;
+const ANALYSIS_BUDGET_MS = 210_000;
+const WRITE_UP_BUDGET_MS = 45_000;
 const MAX_STEPS = 8;
 /** Research tools that explain a price move. The rest (Drive, filings text, memory) are for chats about one holding. */
 const BRIEF_TOOLS = ["get_news", "search_web", "read_url", "get_quote", "get_relative_moves", "get_filings", "get_earnings_calendar", "get_analyst_estimates"];
@@ -104,11 +106,12 @@ export async function runDailyBriefAnalysis(opts: { sessionDate?: string } = {})
     const tools = Object.fromEntries(Object.entries(all).filter(([name]) => BRIEF_TOOLS.includes(name))) as ToolSet;
     const { modelId, model } = await agentModelWithFallback();
     const instructions = BRIEF_INSTRUCTIONS(todayNY());
+    const prompt = `Today's whole-fund attribution (JSON; returns in %, effects and contributions in bps):\n${JSON.stringify(facts.summary)}\n\nResearch the movers and write the brief.`;
     progress.step("hoot researches the movers", { model: modelId, tools: Object.keys(tools) });
     const result = await generateText({
       model,
       instructions,
-      prompt: `Today's whole-fund attribution (JSON; returns in %, effects and contributions in bps):\n${JSON.stringify(facts.summary)}\n\nResearch the movers and write the brief.`,
+      prompt,
       tools,
       stopWhen: isStepCount(MAX_STEPS),
       prepareStep: ({ stepNumber, messages }) => {
@@ -127,7 +130,14 @@ export async function runDailyBriefAnalysis(opts: { sessionDate?: string } = {})
         for (const s of Array.isArray(out?.sources) ? out.sources : []) if (s && typeof s.id === "string") known.set(s.id, s);
       }
     }
-    const { text, sources } = numberCitations(cleanBrief(result.text), known);
+    // Out of steps, some free models write their next tool call as text instead of the brief, or spend
+    // the token cap reasoning and stop mid-sentence; both get written up from the evidence instead.
+    let draft = result.finishReason === "length" ? null : finalReply(result.text, "brief");
+    if (!draft && result.steps.some((s) => s.toolResults.length)) {
+      progress.step("write up the evidence");
+      draft = finalReply(await writeUpFromEvidence({ model, instructions, prompt, steps: result.steps, timeoutMs: WRITE_UP_BUDGET_MS }), "brief");
+    }
+    const { text, sources } = numberCitations(cleanBrief(draft ?? ""), known);
     if (!text) return finish({ ...base, status: "failed", reason: `Hoot returned no text (finish: ${result.finishReason})`, model: modelId, steps: result.steps.length });
     return finish({ ...base, analysis: text, sources, model: modelId, steps: result.steps.length });
   } catch (e) {
