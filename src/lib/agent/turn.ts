@@ -1,4 +1,5 @@
 import type { ModelMessage, UIMessage } from "ai";
+import { hasToolCallText, stripToolCallText } from "./tool-call-text";
 
 export type Part = UIMessage["parts"][number];
 export type TextPart = Extract<Part, { type: "text" }>;
@@ -30,10 +31,25 @@ export function toolDone(p: ToolPart) {
 }
 
 /**
+ * The parts with any tool call the model wrote as text (instead of making it) cut out of its text,
+ * dropping text parts left empty. Returns the input array when there is nothing to cut.
+ */
+export function withoutToolCallText(parts: Part[]): Part[] {
+  if (!parts.some((p) => p.type === "text" && hasToolCallText(p.text))) return parts;
+  return parts.flatMap((p) => {
+    if (p.type !== "text" || !hasToolCallText(p.text)) return [p];
+    const text = stripToolCallText(p.text);
+    return text ? [{ ...p, text }] : [];
+  });
+}
+
+/**
  * Split an assistant message into the research activity (every tool call plus any narration
  * written before the last tool call) and the answer (text written after the last tool call).
+ * Tool calls written as text never count as either; they stay hidden even while they stream.
  */
-export function splitAssistantParts(parts: Part[]): { activity: Part[]; answer: TextPart[] } {
+export function splitAssistantParts(all: Part[]): { activity: Part[]; answer: TextPart[] } {
+  const parts = withoutToolCallText(all);
   let lastTool = -1;
   for (let i = parts.length - 1; i >= 0; i--) {
     if (isToolPart(parts[i])) {

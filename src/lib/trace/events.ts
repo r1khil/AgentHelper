@@ -1,4 +1,5 @@
 import type { PageContext } from "@/lib/agent/page-context";
+import type { WriteUpReason } from "@/lib/agent/turn-finish";
 import type { UIMessage } from "ai";
 
 /** Where a provider call was answered from. `network` is a live upstream request. */
@@ -24,7 +25,7 @@ type Base = {
 export type TraceEvent = Base &
   (
     | { t: "run.start"; chatId: string; modelId: string; maxSteps: number }
-    | { t: "step.start"; modelId: string; provider: string; toolChoice: string; final: boolean }
+    | { t: "step.start"; modelId: string; provider: string; toolChoice: string; final: boolean; writeUp?: WriteUpReason }
     | { t: "step.end"; finishReason: string; rawFinishReason?: string; ms: number; usage: TraceUsage; toolCalls: number }
     | { t: "tool.start"; tool: string; args: unknown }
     | { t: "tool.end"; tool: string; ms: number; ok: boolean; error?: string; sources: number; bytes?: number }
@@ -52,6 +53,12 @@ export type AgentMetadata = {
   steps?: number;
   /** Tokens spent by the citation-repair call, billed on top of `usage`. */
   repairUsage?: TraceUsage;
+  /** Why the research ended without a usable answer and went to a write-up from the evidence. */
+  writeUp?: WriteUpReason;
+  /** Tokens spent by that write-up, billed on top of `usage`. */
+  writeUpUsage?: TraceUsage;
+  /** The saved answer is the notice that none could be written. */
+  unanswered?: boolean;
 };
 export type AgentDataParts = { trace: TraceEvent };
 export type AgentUIMessage = UIMessage<AgentMetadata, AgentDataParts>;

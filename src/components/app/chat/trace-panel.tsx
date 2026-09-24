@@ -3,6 +3,7 @@
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TraceEvent, TraceUsage } from "@/lib/trace/events";
+import type { WriteUpReason } from "@/lib/agent/turn-finish";
 
 /** Everything the chat UI derives from the live trace of one turn. */
 export type TraceView = {
@@ -54,7 +55,8 @@ export function buildTraceView(events: TraceEvent[]): TraceView {
         v.startedAt = e.at;
         break;
       case "step.start": {
-        v.stepsStarted = Math.max(v.stepsStarted, (e.step ?? 0) + 1);
+        // The write-up after the research is not one of the research steps the header counts.
+        if (!e.writeUp) v.stepsStarted = Math.max(v.stepsStarted, (e.step ?? 0) + 1);
         const s = v.steps.get(e.step ?? 0) ?? {};
         s.start = e;
         v.steps.set(e.step ?? 0, s);
@@ -118,6 +120,12 @@ export function TraceHeader({ view, now }: { view: TraceView; now: number }) {
   );
 }
 
+const WRITE_UP_REASONS: Record<WriteUpReason, string> = {
+  length: "the last step hit the token cap",
+  "tool-call-text": "the last step wrote a tool call as text",
+  empty: "the last step wrote no answer",
+};
+
 /** Divider between model steps: tool choice, whether the final answer was forced, usage and finish reason. */
 export function StepDivider({ n, view }: { n: number; view: TraceView }) {
   const s = view.steps.get(n);
@@ -125,9 +133,13 @@ export function StepDivider({ n, view }: { n: number; view: TraceView }) {
   const end = s.end;
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-0.5 pt-1 text-[11px] text-muted-foreground">
-      <span className="font-medium text-foreground">Step {n + 1}</span>
+      <span className="font-medium text-foreground">{s.start.writeUp ? "Write-up" : `Step ${n + 1}`}</span>
       <span>tools: {s.start.toolChoice}</span>
-      {s.start.final && <span className="text-warning-foreground">final step, prose forced</span>}
+      {s.start.writeUp ? (
+        <span className="text-warning-foreground">from the evidence, {WRITE_UP_REASONS[s.start.writeUp]}</span>
+      ) : (
+        s.start.final && <span className="text-warning-foreground">final step, prose forced</span>
+      )}
       {end ? (
         <>
           <span className="tnum">

@@ -40,6 +40,12 @@ describe("shouldDistill", () => {
     expect(shouldDistill(msg("I can't write your update."), 3)).toBe(false);
     expect(shouldDistill(msg("x".repeat(200)), 3)).toBe(true);
   });
+  it("skips the notice saved when no answer could be written", () => {
+    expect(shouldDistill({ ...msg("x".repeat(200)), metadata: { unanswered: true } }, 3)).toBe(false);
+  });
+  it("never distills a tool call the model wrote as text", () => {
+    expect(shouldDistill(msg(`<tool_call>read_filing\n<arg_key>url</arg_key>\n<arg_value>https://www.sec.gov/${"x".repeat(200)}</arg_value>\n</tool_call>`), 3)).toBe(false);
+  });
 });
 
 describe("newestEvidenceDate", () => {

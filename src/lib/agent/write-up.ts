@@ -1,30 +1,8 @@
 import "server-only";
 import { generateText, type LanguageModel, type StepResult, type ToolSet } from "ai";
+import { hasToolCallText, stripToolCallText } from "./tool-call-text";
 
-/**
- * Tool calls a model wrote as plain text instead of making them, in the formats of the admin's models:
- * `<tool_call>` (Ling, Nemotron, Qwen), `<function=…>`, Kimi's `<|tool_call_begin|>` and DeepSeek's
- * `<｜tool▁calls▁begin｜>`. An unterminated block runs to the end of the text.
- */
-const TOOL_CALL_TEXT = [
-  /<tool_calls?>[\s\S]*?(?:<\/tool_calls?>|$)/gi,
-  /<function_calls>[\s\S]*?(?:<\/function_calls>|$)/gi,
-  /<function=[^>]*>[\s\S]*?(?:<\/function>|$)/gi,
-  /<\|tool_calls_section_begin\|>[\s\S]*?(?:<\|tool_calls_section_end\|>|$)/gi,
-  /<\|tool_call_begin\|>[\s\S]*?(?:<\|tool_call_end\|>|$)/gi,
-  /<｜tool▁calls▁begin｜>[\s\S]*?(?:<｜tool▁calls▁end｜>|$)/gi,
-  /<｜tool▁call▁begin｜>[\s\S]*?(?:<｜tool▁call▁end｜>|$)/gi,
-];
-
-export function hasToolCallText(text: string): boolean {
-  return TOOL_CALL_TEXT.some((re) => text.search(re) !== -1);
-}
-
-export function stripToolCallText(text: string): string {
-  return TOOL_CALL_TEXT.reduce((t, re) => t.replace(re, ""), text)
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
+export { hasToolCallText, stripToolCallText };
 
 /**
  * The reply a job's last step wrote: the text inside `<tag>` when the model used it, else the whole text.
@@ -39,7 +17,8 @@ export function finalReply(text: string, tag: string): string | null {
 }
 
 const EVIDENCE_CHARS = 48_000;
-const WRITE_UP_MAX_TOKENS = 10_000;
+/** Reasoning models spend much of this before the first word of the reply. */
+export const WRITE_UP_MAX_TOKENS = 10_000;
 const MAX_RESULT_CHARS = 6_000;
 
 /**
@@ -69,6 +48,8 @@ type WriteUpInput = {
   /** The run's original prompt (the question or the job's input). */
   prompt: string;
   steps: Pick<StepResult<ToolSet>, "toolResults">[];
+  /** The closing order; the default asks for the jobs' tagged plain-text reply. */
+  order?: string;
 };
 
 /**
@@ -78,7 +59,7 @@ type WriteUpInput = {
 export function writeUpRequest(opts: WriteUpInput): { instructions: string; prompt: string } {
   return {
     instructions: `${WRITE_UP_ROLE}\n\n${opts.instructions}`,
-    prompt: `EVIDENCE THE RESEARCH GATHERED (tool results, oldest first):\n\n${evidenceText(opts.steps)}\n\n---\n\n${opts.prompt}\n\n${WRITE_UP_NOW}`,
+    prompt: `EVIDENCE THE RESEARCH GATHERED (tool results, oldest first):\n\n${evidenceText(opts.steps)}\n\n---\n\n${opts.prompt}\n\n${opts.order ?? WRITE_UP_NOW}`,
   };
 }
 
@@ -90,7 +71,6 @@ export async function writeUpFromEvidence(opts: WriteUpInput & { model: Language
   const { text } = await generateText({
     model: opts.model,
     ...writeUpRequest(opts),
-    // Reasoning models spend much of this before the first word of the reply.
     maxOutputTokens: WRITE_UP_MAX_TOKENS,
     maxRetries: 1,
     abortSignal: AbortSignal.timeout(opts.timeoutMs),

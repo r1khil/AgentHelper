@@ -267,7 +267,8 @@ const TOOL_PROGRESS: Record<string, string> = {
 export function ActivityRow({ parts, live, trace, now }: { parts: Part[]; live: boolean; trace: TraceView | null; now: number }) {
   const [open, setOpen] = useState(false);
   const { lookups, sources, failed, current } = summarizeActivity(parts);
-  const running = live && (current !== null || lookups === 0);
+  // Live with no answer yet covers the gaps between lookups and the wait for the answer (or its write-up).
+  const running = live;
   const liveDetail = running && trace ? latestLabel(trace) : null;
   const label = running
     ? current

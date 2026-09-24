@@ -5,6 +5,7 @@ import { collectSources } from "@/lib/agent/citations";
 import { splitAssistantParts } from "@/lib/agent/turn";
 import { agentModelWithFallback } from "@/lib/agent/definition";
 import { MARKET_FACT_TTL_DAYS, rememberMemory } from "./store";
+import type { AgentMetadata } from "@/lib/trace/events";
 
 export type Distilled = {
   summary: string;
@@ -52,9 +53,9 @@ export function parseDistilled(raw: string): Distilled | null {
   return { summary, facts, lessons: strs(j.lessons, 3, 300), nextQuestions: strs(j.nextQuestions, 3, 200) };
 }
 
-/** Only answers with real evidence are worth a distillation call; refusals and chit-chat are not. */
+/** Only answers with real evidence are worth a distillation call; refusals, chit-chat and the no-answer notice are not. */
 export function shouldDistill(response: UIMessage, sourceCount: number) {
-  if (sourceCount === 0) return false;
+  if (sourceCount === 0 || (response.metadata as AgentMetadata | undefined)?.unanswered) return false;
   const { answer } = splitAssistantParts(response.parts);
   return answer.map((p) => p.text).join("").trim().length >= 80;
 }

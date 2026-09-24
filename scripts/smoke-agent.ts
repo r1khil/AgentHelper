@@ -4,17 +4,19 @@
 // --trace runs the turn in transparency mode and checks that trace parts stream but are never saved.
 // It also prints model fallbacks and whether the citation-repair pass rewrote the answer.
 // After the turn it distills the answer into the holding's research log (like the chat route does) and lists
-// the holding's memories; --print-instructions shows the prompt the next turn would get, research log included.
+// the holding's memories (--no-distill skips that, so a test answer never reaches the research log);
+// --print-instructions shows the prompt the next turn would get, research log included.
 // (tsx needs the react-server condition because the agent modules import "server-only".)
 import { config } from "dotenv";
 config({ path: ".env.local" });
 import { eq } from "drizzle-orm";
-import type { UIMessage } from "ai";
+import { readUIMessageStream, type UIMessage, type UIMessageChunk } from "ai";
 import { db } from "@/db/client";
 import { chatMessages, chats, holdings, teams } from "@/db/schema";
 import { runAgentTurn } from "@/lib/agent/run";
 import { loadMessages, saveMessages, setRunStatus } from "@/lib/chats";
 import { splitAssistantParts, summarizeActivity } from "@/lib/agent/turn";
+import { hasToolCallText } from "@/lib/agent/tool-call-text";
 import type { TraceEvent } from "@/lib/trace/events";
 import { distillTurn } from "@/lib/agent/memory/distill";
 import { listHoldingMemories } from "@/lib/agent/memory/store";
@@ -40,20 +42,28 @@ async function main() {
   if (trace) {
     // Read the whole client stream and account for the transparency trace.
     const events: TraceEvent[] = [];
+    const received: UIMessageChunk[] = [];
     let chunks = 0;
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       chunks++;
+      received.push(value as UIMessageChunk);
       const c = value as { type: string; data?: TraceEvent };
       if (c.type === "data-trace" && c.data) events.push(c.data);
     }
+    // What the browser ends up showing: a failed last step must be gone from the live message too, not only the saved one.
+    let live: UIMessage | undefined;
+    for await (const m of readUIMessageStream({ stream: new ReadableStream<UIMessageChunk>({ start: (c) => (received.forEach((x) => c.enqueue(x)), c.close()) }) })) live = m;
+    const liveLeaks = live?.parts.filter((p) => p.type === "text" && hasToolCallText(p.text)).length ?? 0;
+    console.log(`live message: ${live?.parts.length ?? 0} parts, answer ${splitAssistantParts(live?.parts ?? []).answer.length ? "present" : "EMPTY"}, ${liveLeaks} text parts with tool calls written as text`);
+    if (liveLeaks) throw new Error("the browser's message still contains tool calls written as text");
     const fetches = events.filter((e) => e.t === "fetch");
     const network = fetches.filter((e) => e.t === "fetch" && e.layer === "network").length;
     const stepEnds = events.filter((e): e is Extract<TraceEvent, { t: "step.end" }> => e.t === "step.end");
     console.log(`trace: ${events.length} events in ${chunks} chunks · ${fetches.length} fetches (${network} network) · ${stepEnds.length} steps · run.end ${events.some((e) => e.t === "run.end") ? "yes" : "no"}`);
     for (const e of events) {
-      if (e.t === "step.start") console.log(`  step ${e.step! + 1}: tools=${e.toolChoice}${e.final ? " (final)" : ""}`);
+      if (e.t === "step.start") console.log(e.writeUp ? `  write-up (${e.writeUp}): tools=${e.toolChoice}` : `  step ${e.step! + 1}: tools=${e.toolChoice}${e.final ? " (final)" : ""}`);
       else if (e.t === "step.end") console.log(`    end: ${e.finishReason} · ${e.usage.input ?? "?"} in / ${e.usage.output ?? "?"} out · ${e.ms} ms`);
       else if (e.t === "tool.start") console.log(`    ${e.tool} ${JSON.stringify(e.args)}`);
       else if (e.t === "fetch") console.log(`      ${e.layer.padEnd(7)} ${e.host} ${e.key ?? e.url ?? ""} ${e.ms} ms${e.bytes ? ` ${e.bytes} B` : ""}${e.error ? ` ERROR ${e.error}` : ""}`);
@@ -90,12 +100,18 @@ async function main() {
     if (p.type === "text") console.log("  narration:", p.text.slice(0, 80).replace(/\n/g, " "));
     else console.log("  tool:", p.type, JSON.stringify((p as { input?: unknown }).input), (p as { output?: { error?: string; sources?: unknown[] } }).output?.error ?? `${(p as { output?: { sources?: unknown[] } }).output?.sources?.length ?? 0} sources`);
   }
-  console.log("metadata", JSON.stringify(assistant.metadata), (assistant.metadata as { repaired?: boolean } | undefined)?.repaired ? "(citation repair ran)" : "");
+  const meta = assistant.metadata as { repaired?: boolean; writeUp?: string; unanswered?: boolean } | undefined;
+  console.log("metadata", JSON.stringify(assistant.metadata), meta?.repaired ? "(citation repair ran)" : "", meta?.writeUp ? `(written up from the evidence: ${meta.writeUp})` : "", meta?.unanswered ? "(UNANSWERED)" : "");
+  const leaked = assistant.parts.filter((p) => p.type === "text" && hasToolCallText(p.text)).length;
+  if (leaked) throw new Error(`${leaked} saved text parts still contain tool calls written as text`);
   console.log("----- answer -----\n" + answer.map((p) => p.text).join("\n"));
 
-  const t1 = Date.now();
-  const distilled = await distillTurn({ chat, question, response: assistant });
-  console.log("distilled", JSON.stringify(distilled), "in", Date.now() - t1, "ms");
+  if (process.argv.includes("--no-distill")) console.log("distillation skipped");
+  else {
+    const t1 = Date.now();
+    const distilled = await distillTurn({ chat, question, response: assistant });
+    console.log("distilled", JSON.stringify(distilled), "in", Date.now() - t1, "ms");
+  }
   if (chat.holdingId) {
     const mem = await listHoldingMemories(chat.holdingId, 20);
     console.log(`memories for ${axp?.ticker}: ${mem.length}`);

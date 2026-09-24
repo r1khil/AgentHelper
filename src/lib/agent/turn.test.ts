@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UIMessage } from "ai";
-import { compactForStep, compactHistory, shrinkToolData, splitAssistantParts, summarizeActivity, type Part } from "./turn";
+import { compactForStep, compactHistory, shrinkToolData, splitAssistantParts, summarizeActivity, withoutToolCallText, type Part } from "./turn";
 
 const text = (t: string): Part => ({ type: "text", text: t });
 const tool = (name: string, state: string, output?: unknown, id = name): Part =>
@@ -25,6 +25,27 @@ describe("splitAssistantParts", () => {
     const { activity, answer } = splitAssistantParts([{ type: "step-start" } as Part, tool("get_news", "output-available", {}), text("  ")]);
     expect(activity).toHaveLength(1);
     expect(answer).toEqual([]);
+  });
+
+  it("never shows a tool call the model wrote as text, finished or still streaming", () => {
+    const leaked = "<tool_call>read_filing\n<arg_key>url</arg_key>\n<arg_value>https://www.sec.gov/x.htm</arg_value>\n</tool_call>";
+    const research = tool("read_filing", "output-available", {});
+    expect(splitAssistantParts([research, text(leaked)]).answer).toEqual([]);
+    expect(splitAssistantParts([research, text("<tool_call>read_filing\n<arg_key>url</arg_ke")]).answer).toEqual([]);
+    expect(splitAssistantParts([research, text(`Continuing with the MD&A.\n${leaked}`)]).answer.map((p) => p.text)).toEqual(["Continuing with the MD&A."]);
+    expect(splitAssistantParts([text(leaked), research, text("Revenue $19.6B [src:a].")]).activity.map((p) => p.type)).toEqual(["tool-read_filing"]);
+  });
+});
+
+describe("withoutToolCallText", () => {
+  it("returns the same parts when nothing leaked", () => {
+    const parts = [tool("get_news", "output-available", {}), text("Revenue < guidance [src:a].")];
+    expect(withoutToolCallText(parts)).toBe(parts);
+  });
+
+  it("cuts leaked calls and drops text parts left empty, keeping tool parts", () => {
+    const parts = [tool("get_news", "output-available", {}), text('<tool_call>\n{"name": "get_news"}\n</tool_call>'), text("Answer.<function=get_quote>\n<parameter=ticker>AXP</parameter>\n</function>")];
+    expect(withoutToolCallText(parts)).toEqual([parts[0], text("Answer.")]);
   });
 });
 

@@ -57,6 +57,15 @@ function approxBytes(v: unknown) {
   }
 }
 
+/** Two calls' usage added field by field; a field neither reported stays undefined. */
+export function sumTraceUsage(a: TraceUsage, b: TraceUsage): TraceUsage {
+  const out: TraceUsage = {};
+  for (const k of ["input", "output", "total", "reasoning", "cacheRead", "cacheWrite"] as const) {
+    if (a[k] !== undefined || b[k] !== undefined) out[k] = (a[k] ?? 0) + (b[k] ?? 0);
+  }
+  return out;
+}
+
 export function traceUsage(u: LanguageModelUsage | undefined): TraceUsage {
   if (!u) return {};
   return {
