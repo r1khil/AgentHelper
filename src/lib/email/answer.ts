@@ -14,12 +14,14 @@ import { claimJobLock } from "@/lib/jobs/lock";
 import { createJobReporter } from "@/lib/jobs/progress";
 import { resolveOpenMailInbox, sendEmail } from "@/lib/jobs/notify";
 import { cleanBrief, numberCitations, sourcesFooter } from "@/lib/jobs/daily-brief-format";
+import { finalReply, writeUpFromEvidence } from "@/lib/agent/write-up";
 import { answerBody, bareAddress, failureBody, firstName, isAutoReply, isFundAddress, newReplyText, receiptBody, replyRecipients, type InboundEvent } from "./inbound";
 
 const JOB = "email_reply";
 /** Keeps a runaway thread (or a forwarding loop) from spending the free model budget. */
 const MAX_PER_SENDER_PER_DAY = 15;
 const ANSWER_BUDGET_MS = 200_000;
+const WRITE_UP_BUDGET_MS = 45_000;
 const MAX_STEPS = 8;
 const TOOLS = ["get_news", "search_web", "read_url", "get_quote", "get_price_history", "get_relative_moves", "get_filings", "read_filing", "get_key_financials", "get_earnings_calendar", "get_analyst_estimates"];
 
@@ -146,11 +148,12 @@ export async function answerEmail(ev: InboundEvent, opts: { dryRun?: (text: stri
     } as ToolSet;
     const { modelId, model } = await agentModelWithFallback();
     const instructions = INSTRUCTIONS(todayNY(), sender.name, sender.viewer.role);
+    const prompt = `${history ? `Earlier in this email thread:\n\n${history}\n\n` : ""}${sender.name}'s new email (subject "${msg.subject ?? ""}"):\n\n${question.slice(0, 6000)}`;
     progress.step("hoot researches the question", { model: modelId });
     const result = await generateText({
       model,
       instructions,
-      prompt: `${history ? `Earlier in this email thread:\n\n${history}\n\n` : ""}${sender.name}'s new email (subject "${msg.subject ?? ""}"):\n\n${question.slice(0, 6000)}`,
+      prompt,
       tools,
       stopWhen: isStepCount(MAX_STEPS),
       prepareStep: ({ stepNumber, messages }) => {
@@ -169,8 +172,14 @@ export async function answerEmail(ev: InboundEvent, opts: { dryRun?: (text: stri
         for (const s of Array.isArray(out?.sources) ? out.sources : []) if (s && typeof s.id === "string") known.set(s.id, s);
       }
     }
-    const tagged = /<answer>([\s\S]*?)(?:<\/answer>|$)/i.exec(result.text);
-    const { text, sources } = numberCitations(cleanBrief(tagged ? tagged[1] : result.text), known);
+    // Out of steps, some free models write their next tool call as text instead of answering, or spend
+    // the token cap reasoning and stop mid-sentence; both get written up from the evidence instead.
+    let draft = result.finishReason === "length" ? null : finalReply(result.text, "answer");
+    if (!draft && result.steps.some((s) => s.toolResults.length)) {
+      progress.step("write up the evidence");
+      draft = finalReply(await writeUpFromEvidence({ model, instructions, prompt, steps: result.steps, timeoutMs: WRITE_UP_BUDGET_MS }), "answer");
+    }
+    const { text, sources } = numberCitations(cleanBrief(draft ?? ""), known);
     if (!text) throw new Error(`no answer text (finish: ${result.finishReason})`);
     progress.step("send answer", { sources: sources.length });
     await reply(answerBody({ name: sender.name, answer: text, sourcesFooter: sourcesFooter(sources) }));
