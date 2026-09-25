@@ -14,8 +14,9 @@ import { WEEKLY_RECIPIENTS_SETTING, inboundConfigured } from "@/lib/weekly/ask";
 import { FILINGS_LAST_SYNC_SETTING } from "@/lib/jobs/filings";
 import { tavilyConfigured } from "@/lib/web/tavily";
 import { disconnectDrive, ingestDriveNow, renewDriveWatchNow, setDriveRoot, syncDriveNow } from "@/lib/actions/drive";
-import { addMcpServer, removeMcpServer, testMcpServerNow, toggleMcpServer } from "@/lib/actions/mcp";
+import { addMcpServer, removeMcpServer, setMcpDailyCap, testMcpServerNow, toggleMcpServer } from "@/lib/actions/mcp";
 import { listMcpServers } from "@/lib/agent/mcp";
+import { mcpBudgets } from "@/lib/agent/mcp-budget";
 import { driveStatus } from "@/lib/drive/index";
 import { jobRuns } from "@/db/schema";
 import { fmtDateTime } from "@/lib/format";
@@ -57,6 +58,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const [drive, lastDriveRun] = await Promise.all([driveStatus(), db.select().from(jobRuns).where(eq(jobRuns.job, "drive_sync")).orderBy(desc(jobRuns.startedAt)).limit(1).then((r) => r[0] ?? null)]);
   const currentModelId = await agentModelId();
   const mcp = await listMcpServers().catch(() => []);
+  const mcpBudget = await mcpBudgets(mcp.map((m) => m.name)).catch(() => ({}) as Awaited<ReturnType<typeof mcpBudgets>>);
   const currentModel = AGENT_MODELS.find((m) => m.id === currentModelId);
   const [embedId, rerankId, filingsLastSync, weeklyRecipients] = await Promise.all([embeddingModelId(), rerankModelId(), getSetting(FILINGS_LAST_SYNC_SETTING), getSetting(WEEKLY_RECIPIENTS_SETTING)]);
   const weeklyLabel = `Cron Sunday 13:00 UTC · inbound email ${inboundConfigured() ? "on" : "not configured"}`;
@@ -296,6 +298,11 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                       <Badge variant={m.enabled ? "default" : "secondary"}>{m.enabled ? "enabled" : "disabled"}</Badge>
                       <div className="mt-1 text-muted-foreground">{m.lastOkAt ? `ok ${fmtDateTime(m.lastOkAt)}` : "never connected"}</div>
                       {m.lastError && <div className="mt-1 max-w-[220px] truncate text-destructive" title={m.lastError}>{m.lastError}</div>}
+                      {mcpBudget[m.name]?.cap != null && (
+                        <div className="mt-1 text-muted-foreground">
+                          today {mcpBudget[m.name].used} of {mcpBudget[m.name].cap} calls (UTC)
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="max-w-[240px] text-xs text-muted-foreground">
                       {m.toolNames?.length ? m.toolNames.join(", ") : "—"}
@@ -318,6 +325,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
                             <Button type="submit" size="sm" variant="ghost">Remove</Button>
                           </form>
                         </div>
+                        <form action={setMcpDailyCap} className="mt-1.5 flex items-center justify-end gap-1.5">
+                          <input type="hidden" name="id" value={m.id} />
+                          <Label htmlFor={`mcp-cap-${m.id}`} className="text-xs font-normal text-muted-foreground">Daily cap</Label>
+                          <Input id={`mcp-cap-${m.id}`} name="cap" inputMode="numeric" placeholder="none" defaultValue={mcpBudget[m.name]?.cap ?? ""} className="h-7 w-16 text-xs" />
+                          <Button type="submit" size="sm" variant="outline">Save</Button>
+                        </form>
                       </TableCell>
                     )}
                   </TableRow>
