@@ -1,5 +1,6 @@
 import { activeRiskBreakdown } from "./active";
 import { buildExposure } from "./exposure";
+import { FACTOR_KEYS, FACTORS, factorReadings, isFactorReport, type FactorFit, type FactorKey } from "./factors";
 import { LOOKBACKS, type RiskReport } from "./model";
 import type { StressResult } from "./stress";
 
@@ -80,7 +81,31 @@ export function summarizeRisk(r: RiskReport, opts: { teamNames: Map<string, stri
           currentDrawdownPct: pct(r.realized.drawdown.current),
         }
       : null,
+    factorSensitivities: summarizeFactors(r),
     notices: r.notices,
+  };
+}
+
+/** The Exposure page's factor section for Hoot: every beta with its t-stat, and the page's plain-English readings. */
+export function summarizeFactors(r: RiskReport) {
+  const f = r.factors;
+  if (!isFactorReport(f)) return { note: f.reason };
+  const row = (x: FactorFit | null) =>
+    x
+      ? {
+          ...(Object.fromEntries(FACTOR_KEYS.map((k) => [k, { beta: num(x.betas[k].beta, 3), t: num(x.betas[k].t, 1), significant: x.betas[k].significant }])) as Record<FactorKey, { beta: number | null; t: number | null; significant: boolean }>),
+          rSquared: num(x.r2, 2),
+        }
+      : null;
+  const read = factorReadings(f, { basis: r.scope === "fund" ? "NAV" : "the team's holdings" });
+  return {
+    method: `One OLS regression with an intercept per holding of daily total returns on seven factors over ${f.sample.n} days (${f.sample.from} to ${f.sample.to}): ${FACTORS.map((x) => `${x.label} = ${x.definition}`).join("; ")}. The portfolio's beta is the weight-sum of holding betas (identical to regressing the portfolio's return). |t| < 2 means not statistically significant: describe it as no clear exposure, never as a position. Descriptive of past co-movement only; not a recommendation.`,
+    portfolio: row(f.fund),
+    benchmark: row(f.benchmark),
+    activeVsBenchmark: row(f.active),
+    readings: read.fund.map((x) => x.text),
+    clearActiveTilts: read.active.map((x) => x.text),
+    holdingsModeledWithSectorEtf: f.holdings.filter((h) => h.source === "proxy").map((h) => `${h.ticker} via ${h.proxy}`),
   };
 }
 

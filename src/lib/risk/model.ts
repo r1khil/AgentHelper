@@ -14,6 +14,7 @@ import {
   stdev,
   sum,
 } from "./math";
+import { buildFactorReport, type FactorReport, type FactorUnavailable } from "./factors";
 
 /**
  * Holdings-based (ex-ante) risk: today's weights applied to each asset's daily total returns over a
@@ -176,6 +177,8 @@ export type RiskReport = {
   coverage: Coverage[];
   riskFree: { annual: number; asOf: string } | null;
   notices: string[];
+  /** Factor and macro sensitivities over the same window and filled return columns, or why they can't be estimated. */
+  factors: FactorReport | FactorUnavailable;
   /** The exact return columns and weights the statistics were computed from, for the downloadable inputs. Server-side only. */
   matrix: { dates: string[]; tickers: string[]; columns: number[][]; weights: number[]; active: number[] | null; covariance: number[][] };
 };
@@ -362,6 +365,14 @@ export function buildRiskReport(input: RiskInput): RiskReport {
   const correlation = { tickers: corrTickers.map((x) => x.h.ticker), matrix: corrTickers.map((a) => corrTickers.map((b) => corrAll[a.i][b.i])) };
 
   if (!input.riskFree) notices.push("No Treasury bill yield (^IRX) is stored yet, so the Sharpe ratio is not shown.");
+  // Factor betas regress the same filled columns (own returns, or the sector ETF where history is short).
+  const factors = buildFactorReport({
+    dates,
+    returns: input.window.returns,
+    holdings: input.holdings.map((h, i) => ({ ticker: h.ticker, weight: h.weight, column: columns[i], source: coverage[i].source, proxy: coverage[i].proxy })),
+    benchmark: bench ? GICS_SECTORS.filter((s) => (bench[s] ?? 0) > 0).map((s) => ({ ticker: ETF_BY_SECTOR[s], weight: bench[s] ?? 0, column: columns[etfIdx(s)] })) : null,
+  });
+
   const realized = input.realized ? realizedRisk(input.realized, dates[0] ?? input.realized.dates[0] ?? input.asOf, target) : null;
 
   return {
@@ -405,6 +416,7 @@ export function buildRiskReport(input: RiskInput): RiskReport {
     coverage,
     riskFree: input.riskFree,
     notices,
+    factors,
     matrix: { dates, tickers: coverage.map((c) => c.ticker), columns, weights: w, active, covariance: cov },
   };
 }

@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader } from "@/components/app/page-header";
 import { DataNoticesButton } from "@/components/app/attribution/data-quality-notice";
 import { ExposureView } from "@/components/app/exposure/exposure-view";
+import { FactorSection } from "@/components/app/exposure/factor-section";
 import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { riskNotices } from "@/components/app/risk/notices";
 import { loadTeamSectors } from "@/lib/attribution/load";
@@ -63,7 +64,9 @@ export default async function TeamExposurePage({ params, searchParams }: PagePro
         scopeLabel={`${team.name} sleeve`}
         benchmarkLabel={sectors.length ? sectors.map((s) => ETF_BY_SECTOR[s]).join(" + ") : "team sectors"}
         weightSetAsOf={loaded.weightSetAsOf}
-      />
+      >
+        <FactorSection report={report} transparency={transparencyEnabled(user)} exportQuery={`&team=${team.slug}`} benchmarkLabel={sectors.length ? sectors.map((s) => ETF_BY_SECTOR[s]).join(" + ") : "the team's sectors"} />
+      </ExposureView>
     </>
   );
 }

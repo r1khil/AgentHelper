@@ -8,6 +8,7 @@ import { latestPositions } from "@/lib/attribution/ledger";
 import { loadAttributionSeries, loadTeamSectors } from "@/lib/attribution/load";
 import { benchmarkSymbols } from "@/lib/attribution/sectors";
 import type { DateSeries } from "@/lib/attribution/types";
+import { FACTOR_ETFS } from "./factor-symbols";
 import { assembleRiskInput } from "./inputs";
 import { buildRiskReport, LOOKBACKS, RISK_FREE, type LookbackKey, type RiskReport } from "./model";
 
@@ -49,7 +50,8 @@ export type LoadedRisk =
 
 /**
  * Per request: the risk report for the whole Fund (teamId null) or one team's holdings. Reads only
- * stored rows; the nightly price job keeps two years of closes for everything the ledger has traded.
+ * stored rows; the nightly price job keeps two years of closes for everything the ledger has traded
+ * and for the factor ETFs.
  */
 export const loadRisk = cache(async (lookback: LookbackKey, teamId: string | null): Promise<LoadedRisk> => {
   const started = Date.now();
@@ -60,7 +62,7 @@ export const loadRisk = cache(async (lookback: LookbackKey, teamId: string | nul
   const held = latestPositions(loaded.series.portfolio).map((p) => p.ticker);
   const from = windowStart(loaded.latest, lookback);
   const [{ prices, dividends }, sectorMap] = await Promise.all([
-    loadStoredPrices([...held, ...benchmarkSymbols(), RISK_FREE], loaded.inception < from ? loaded.inception : from),
+    loadStoredPrices([...held, ...benchmarkSymbols(), RISK_FREE, ...FACTOR_ETFS], loaded.inception < from ? loaded.inception : from),
     teamId ? loadTeamSectors() : Promise.resolve(null),
   ]);
 

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { ExposureView } from "@/components/app/exposure/exposure-view";
+import { FactorSection } from "@/components/app/exposure/factor-section";
 import { parseLookback } from "@/lib/risk/model";
 import { previewEnabled, previewReport } from "@/lib/risk/preview";
 
@@ -26,7 +27,9 @@ export default async function Preview({ searchParams }: PageProps<"/dev/exposure
         scopeLabel={team ? "Tech & media sleeve" : "Fund"}
         benchmarkLabel={team ? "XLK + XLC" : "S&P 500 sectors"}
         weightSetAsOf="2026-09-01"
-      />
+      >
+        <FactorSection report={report} transparency={one(query.transparency) !== "0"} exportQuery="" benchmarkLabel={team ? "XLK + XLC" : "the S&P 500 sector benchmark"} />
+      </ExposureView>
     </main>
   );
 }

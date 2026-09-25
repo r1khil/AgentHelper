@@ -2,6 +2,7 @@ import { DateTime } from "luxon";
 import { z } from "zod";
 import { NY } from "@/lib/providers/calendar";
 import { CalendarNotice, inRange, makeEvent, text } from "./normalize";
+import { TRADINGVIEW_CATEGORY } from "./tradingview-categories";
 import type { EconomicCalendarProvider } from "./types";
 
 // The feed behind tradingview.com/economic-calendar. It carries Trading Economics' calendar: exact
@@ -32,20 +33,7 @@ const rowSchema = z.object({
 });
 const bodySchema = z.object({ status: z.literal("ok"), result: z.array(rowSchema) });
 
-const CATEGORY: Record<string, string> = {
-  bnd: "Bonds",
-  bsnss: "Business",
-  cnsm: "Consumer",
-  enrg: "Energy",
-  gdp: "GDP",
-  gov: "Government",
-  hse: "Housing",
-  lbr: "Labor",
-  mny: "Money",
-  mrkt: "Markets",
-  prce: "Prices",
-  trd: "Trade",
-};
+const CATEGORY = TRADINGVIEW_CATEGORY;
 
 /** "0.4%", "201K", "-$255B", "53B": the shapes the page reads when it compares a print with consensus. */
 export function formatValue(n: number | null | undefined, unit?: string | null, scale?: string | null) {

@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import { benchmarkSectorWeights, cashFlows, dailyCloses, holdings, securities, securityEvents, trades, type Security } from "@/db/schema";
 import { getSectorProfile, lookupCompany } from "@/lib/providers/yahoo";
 import type { Db } from "@/lib/prices";
+import { FACTOR_ETFS } from "@/lib/risk/factor-symbols";
 import type { AttributionSeries } from "./attribution";
 import { buildBenchmarkDays } from "./benchmark";
 import { STRESS_HISTORY_FROM } from "@/lib/risk/stress";
@@ -140,10 +141,10 @@ export async function loadSeries(db: Db, overrides?: { trades?: Trade[]; cashFlo
   };
 }
 
-/** Symbols the price job maintains: everything ever traded, the benchmark ETFs and the risk-free rate. */
+/** Symbols the price job maintains: everything ever traded, the benchmark ETFs, the risk-free rate and the factor ETFs. */
 export async function ledgerSymbols(db: Db): Promise<string[]> {
   const rows = await db.selectDistinct({ ticker: trades.ticker }).from(trades).where(isNull(trades.voidedAt));
-  return [...new Set([...rows.map((r) => r.ticker), ...benchmarkSymbols(), RISK_FREE_SYMBOL])];
+  return [...new Set([...rows.map((r) => r.ticker), ...benchmarkSymbols(), RISK_FREE_SYMBOL, ...FACTOR_ETFS])];
 }
 
 /** Create the securities row for a ticker on first use: name, default sector and owning team. */

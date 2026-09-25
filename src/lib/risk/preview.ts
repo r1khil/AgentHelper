@@ -1,6 +1,7 @@
 /** Deterministic, explicitly synthetic data for local browser QA of the Risk page; never used by the real route. */
 import { ETF_BY_SECTOR, GICS_SECTORS, type GicsSector } from "@/lib/attribution/sectors";
 import type { DateSeries } from "@/lib/attribution/types";
+import type { FactorKey } from "./factors";
 import { buildRiskReport, LOOKBACKS, MARKET, type LookbackKey, type RiskHolding, type RiskReport } from "./model";
 import { runStressTests, STRESS_WINDOWS, stressInputFromReport, type StressResult } from "./stress";
 
@@ -39,6 +40,54 @@ const HOLDINGS: [string, GicsSector, number, number][] = [
   ["OSCR", "materials", 0.03, 1.2],
 ];
 
+/** Sector ETFs' factor tilts: banks are value and short duration, tech is growth and momentum, and so on. */
+const SECTOR_TILTS: Partial<Record<GicsSector, Partial<Record<FactorKey, number>>>> = {
+  financials: { value: 0.5, rates: -0.35, size: 0.1 },
+  information_technology: { value: -0.6, momentum: 0.35, rates: 0.1 },
+  utilities: { rates: 0.45 },
+  real_estate: { rates: 0.4, size: 0.2 },
+  energy: { oil: 0.45, value: 0.3 },
+  materials: { oil: 0.15, dollar: -0.3 },
+  consumer_staples: { rates: 0.15, dollar: -0.15 },
+};
+/** Holding-specific tilts on top of their sector's, so the Fund's row differs from the benchmark's. */
+const HOLDING_TILTS: Record<string, Partial<Record<FactorKey, number>>> = {
+  FXTR: { rates: -1.0, size: 0.5 },
+  GOLF: { rates: -0.9 },
+  KILO: { size: 0.8, momentum: -0.4 },
+  OSCR: { oil: 1.2 },
+  JULT: { oil: 0.3, dollar: -0.4 },
+  LIMA: { dollar: -0.5 },
+  ALFA: { momentum: 0.5 },
+};
+
+/**
+ * Synthetic factor ETFs: each factor gets its own return stream, and the ETFs are built so the
+ * regression's spreads come back out (IWM − SPY is the size factor, IVE − IVW value, and so on).
+ */
+function previewFactorEtfs(market: number[], returns: Map<string, number[]>): Record<FactorKey, number[]> {
+  const n = rng(77);
+  const draw = (scale: number) => market.map(() => scale * n());
+  const f: Record<FactorKey, number[]> = {
+    market,
+    size: draw(0.004),
+    value: draw(0.004),
+    momentum: draw(0.005),
+    rates: market.map((m) => -0.15 * m + 0.008 * n()),
+    dollar: draw(0.003),
+    oil: market.map((m) => 0.4 * m + 0.018 * n()),
+  };
+  const growth = market.map((m) => m + 0.0015 * n());
+  returns.set("IWM", market.map((m, t) => m + f.size[t]));
+  returns.set("IVW", growth);
+  returns.set("IVE", growth.map((g, t) => g + f.value[t]));
+  returns.set("MTUM", market.map((m, t) => m + f.momentum[t]));
+  returns.set("TLT", f.rates);
+  returns.set("UUP", f.dollar);
+  returns.set("USO", f.oil);
+  return f;
+}
+
 export function previewReport(lookback: LookbackKey, opts: { team?: boolean } = {}) {
   const T = LOOKBACKS[lookback].days;
   const dates: string[] = [];
@@ -49,10 +98,13 @@ export function previewReport(lookback: LookbackKey, opts: { team?: boolean } = 
   const market = dates.map(() => 0.0004 + 0.009 * noise());
   const sectorFactor = new Map(GICS_SECTORS.map((s) => [s, dates.map(() => 0.005 * noise())]));
   const returns = new Map<string, number[]>([[MARKET, market]]);
-  for (const s of GICS_SECTORS) returns.set(ETF_BY_SECTOR[s], market.map((m, t) => m * (s === "utilities" || s === "consumer_staples" ? 0.6 : 1) + sectorFactor.get(s)![t]));
+  // Factor ETFs from their own stream, so the rest of the synthetic data doesn't change with them.
+  const fx = previewFactorEtfs(market, returns);
+  const tilt = (loads: Partial<Record<FactorKey, number>> | undefined, t: number) => (loads ? Object.entries(loads).reduce((s, [k, b]) => s + b * fx[k as FactorKey][t], 0) : 0);
+  for (const s of GICS_SECTORS) returns.set(ETF_BY_SECTOR[s], market.map((m, t) => m * (s === "utilities" || s === "consumer_staples" ? 0.6 : 1) + sectorFactor.get(s)![t] + tilt(SECTOR_TILTS[s], t)));
   const nav = 4_650_000;
   const holdings: RiskHolding[] = HOLDINGS.map(([ticker, sector, weight, b]) => {
-    const r = market.map((m, t) => b * m + sectorFactor.get(sector)![t] + 0.012 * noise());
+    const r = market.map((m, t) => b * m + sectorFactor.get(sector)![t] + tilt(SECTOR_TILTS[sector], t) + tilt(HOLDING_TILTS[ticker], t) + 0.012 * noise());
     // One newer listing, to show the sector-ETF proxy.
     returns.set(ticker, ticker === "OSCR" ? r.map((x, t) => (t < T - 40 ? NaN : x)) : r);
     return { ticker, name: `Synthetic ${ticker.toLowerCase()}`, teamId: null, sector, value: weight * nav, weight };

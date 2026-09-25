@@ -117,7 +117,8 @@ export function pageContextBlock(ctx: PageContext): string {
     return `${head}
 - The page shows ${ctx.scope === "fund" ? "the whole Fund's" : `the ${ctx.team ?? "team"} team's`} exposure at the ${ctx.asOf} close: each sector's weight against the ${ctx.scope === "fund" ? "S&P 500's" : "team's own sector benchmark"}, sorted by active weight (over- minus underweight), the largest active sector bet, top-10 weight, effective number of positions and cash.
 - For questions about it (what the biggest bets are, how concentrated the book is, how far it is from the index), call get_portfolio_risk with { ${args} } first: it returns the page's numbers (sectors, largestActiveSectorBet, top10WeightPct, effectivePositions, cashPct, and activeRisk for how much each bet adds to tracking error). Lead with the largest active bets, then concentration, and end every line that uses one of its figures with its [src:ID].
-- Active bets here are by sector, because the benchmark is sector ETFs; say so if asked about single stocks. Describe positioning; never present it as a recommendation to trade.`;
+- Active bets here are by sector, because the benchmark is sector ETFs; say so if asked about single stocks. Describe positioning; never present it as a recommendation to trade.
+- The page also shows factor and macro sensitivities (market, size, value, momentum, rates, dollar, oil betas with t-stats): use factorSensitivities. A beta with |t| < 2 is not statistically significant; call it "no clear exposure" and never describe it as a position or a bet.`;
   }
   return head;
 }

@@ -1,6 +1,7 @@
 import { canManageTeam, getCurrentUser, isFundWide } from "@/lib/auth";
 import { activeRiskBreakdown } from "@/lib/risk/active";
 import { buildExposure } from "@/lib/risk/exposure";
+import { factorBetaRows, factorReturnRows } from "@/lib/risk/factor-csv";
 import { loadRisk } from "@/lib/risk/load";
 import { parseLookback, type RiskReport } from "@/lib/risk/model";
 import type { StressResult } from "@/lib/risk/stress";
@@ -107,6 +108,9 @@ const BUILDERS = {
   // The Risk page's historical stress tests (the same positions; the lookback doesn't affect them).
   stress: async (r: RiskReport) => buildStress(await loadStressTests(r)),
   "stress-paths": async (r: RiskReport) => buildStressPaths(await loadStressTests(r)),
+  // The Exposure page's factor section: every regression's betas, standard errors and t-stats, and the data they were fitted on.
+  factors: (r: RiskReport) => csv(factorBetaRows(r.factors)),
+  "factor-returns": (r: RiskReport) => csv(factorReturnRows(r.factors)),
 } satisfies Record<string, (r: RiskReport) => string | Promise<string>>;
 type File = keyof typeof BUILDERS;
 const isFile = (f: string | null): f is File => !!f && Object.hasOwn(BUILDERS, f);

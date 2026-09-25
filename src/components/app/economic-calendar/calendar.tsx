@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { DateTime } from "luxon";
@@ -22,6 +22,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { leaveHootQuestion } from "@/components/app/hoot/handoff";
 import { pageContextFor } from "@/components/app/hoot/page-context";
 import { startHootChat } from "@/lib/actions/chats";
+import type { CalendarFactorContext } from "@/lib/economic-calendar/factor-lines";
+import { BookSensitivity } from "./book-sensitivity";
 import { calendarWeek, rangeDays } from "@/lib/economic-calendar/dates";
 import {
   daySummary,
@@ -136,11 +138,14 @@ export function EconomicCalendar({
   teamSlug = null,
   preview = false,
   livePreview = false,
+  factorContext = null,
 }: {
   initialRange: CalendarRange;
   teamSlug?: string | null;
   preview?: boolean;
   livePreview?: boolean;
+  /** The viewer's book's factor betas for the release lines, resolved on the server; null hides the lines. */
+  factorContext?: Promise<CalendarFactorContext> | null;
 }) {
   const pathname = usePathname();
   const [range, setRange] = useState(initialRange);
@@ -377,6 +382,16 @@ export function EconomicCalendar({
               askable={!preview && !livePreview}
               onPick={pickAhead}
             />
+          )}
+          {factorContext && (
+            <Suspense fallback={null}>
+              <BookSensitivity
+                context={factorContext}
+                events={events}
+                now={now}
+                onPick={pickAhead}
+              />
+            </Suspense>
           )}
           {current.coverage?.status === "partial" && (
             <div

@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader } from "@/components/app/page-header";
 import { DataNoticesButton } from "@/components/app/attribution/data-quality-notice";
 import { ExposureView } from "@/components/app/exposure/exposure-view";
+import { FactorSection } from "@/components/app/exposure/factor-section";
 import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { riskNotices } from "@/components/app/risk/notices";
 import { requireRole, transparencyEnabled } from "@/lib/auth";
@@ -54,7 +55,9 @@ export default async function ExposurePage({ searchParams }: PageProps<"/exposur
         scopeLabel="Fund"
         benchmarkLabel="S&P 500 sectors"
         weightSetAsOf={loaded.weightSetAsOf}
-      />
+      >
+        <FactorSection report={report} transparency={transparencyEnabled(user)} exportQuery="" benchmarkLabel="the S&P 500 sector benchmark" />
+      </ExposureView>
     </>
   );
 }
