@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Source } from "@/lib/providers/types";
-import { briefEmail, cleanBrief, numberCitations, sourcesFooter } from "./daily-brief-format";
+import type { AttributionSummary } from "@/lib/attribution/summary";
+import { briefAlertEmail, briefEmail, chooseAnalysis, cleanBrief, numberCitations, researchView, sourcesFooter, type AnalysisRun } from "./daily-brief-format";
 
 const src = (id: string, title: string): Source => ({ id, title, publisher: "Reuters", url: `https://example.com/${id}`, retrievedAt: "2026-09-22T21:05:00Z", publishedAt: "2026-09-22T14:00:00Z" });
 
@@ -59,5 +60,79 @@ describe("cleanBrief", () => {
 
   it("uses the whole text when there are no tags", () => {
     expect(cleanBrief("## Brief\nThe fund rose.\n---\nDone.")).toBe("Brief\nThe fund rose.\n\nDone.");
+  });
+});
+
+describe("chooseAnalysis", () => {
+  const current = { hash: "h-now", facts: "Fund return: -0.29%" };
+
+  it("uses the newest analysis written from exactly these numbers", () => {
+    const runs: AnalysisRun[] = [
+      { status: "ok", summaryHash: "h-now", analysis: "newest" },
+      { status: "ok", summaryHash: "h-now", analysis: "older" },
+    ];
+    expect(chooseAnalysis(runs, current)).toMatchObject({ analysis: { analysis: "newest" }, reason: "", attempts: 2 });
+  });
+
+  it("never uses an analysis written from other numbers", () => {
+    expect(chooseAnalysis([{ status: "ok", summaryHash: "h-5pm", analysis: "stale" }], current)).toEqual({ analysis: null, reason: "the numbers changed after it was written", attempts: 0 });
+  });
+
+  it("matches runs from before the hash by their facts text", () => {
+    expect(chooseAnalysis([{ status: "ok", facts: "Fund return: -0.29%", analysis: "old run" }], current).analysis?.analysis).toBe("old run");
+    expect(chooseAnalysis([{ status: "ok", facts: "Fund return: -0.31%", analysis: "old run" }], current).analysis).toBeNull();
+  });
+
+  it("explains why there is none and counts the tries for these numbers", () => {
+    const runs: AnalysisRun[] = [
+      { status: "failed", summaryHash: "h-now", reason: "model timed out" },
+      { status: "ok", summaryHash: "h-5pm", analysis: "stale" },
+    ];
+    expect(chooseAnalysis(runs, current)).toEqual({ analysis: null, reason: "model timed out", attempts: 1 });
+    expect(chooseAnalysis([{ status: "failed", reason: "closing prices for 2026-09-24 have not loaded" }], current).reason).toBe("closing prices for 2026-09-24 have not loaded");
+    expect(chooseAnalysis([], current)).toEqual({ analysis: null, reason: "it did not run", attempts: 0 });
+  });
+});
+
+describe("researchView", () => {
+  it("lists every holding and sorts sectors, teams and holdings by contribution", () => {
+    const row = (ticker: string, contributionBps: number) => ({ ticker, name: ticker, sector: null, team: null, avgWeightPct: 1, returnPct: 1, contributionBps });
+    const summary = {
+      scope: "Whole fund",
+      headline: { returnPct: -0.29 },
+      sectors: [
+        { sector: "Health Care", contributionBps: -19 },
+        { sector: "Communication Services", contributionBps: 27 },
+        { sector: "Information Technology", contributionBps: -20 },
+      ],
+      teams: [
+        { team: "Healthcare", contributionBps: -19 },
+        { team: "Consumer & Communication Services", contributionBps: 23 },
+      ],
+      topContributors: [row("META", 18), row("GOOG", 6), row("TDIV", -7)],
+      bottomContributors: [],
+      dataNotices: [],
+    } as unknown as AttributionSummary;
+    const view = researchView(summary);
+    expect(view.sectors.map((s) => s.sector)).toEqual(["Communication Services", "Health Care", "Information Technology"]);
+    expect("teams" in view && view.teams?.map((t) => t.team)).toEqual(["Consumer & Communication Services", "Healthcare"]);
+    expect(view.holdings.map((h) => h.ticker)).toEqual(["META", "GOOG", "TDIV"]);
+    expect(view).not.toHaveProperty("topContributors");
+    expect(view).not.toHaveProperty("bottomContributors");
+  });
+});
+
+describe("briefAlertEmail", () => {
+  it("says the brief is late, why, and how to send it by hand", () => {
+    const { subject, body } = briefAlertEmail({ sessionDate: "2026-09-24", final: false, error: "OpenMail: 502 Application failed to respond", appUrl: "https://x.app/" });
+    expect(subject).toBe("Daily attribution email not sent (24-Sep-2026)");
+    expect(body).toContain("The daily attribution email for Thursday, September 24 hasn't gone out yet. I'll keep trying every 15 minutes until midnight New York time.");
+    expect(body).toContain("What went wrong: OpenMail: 502 Application failed to respond");
+    expect(body).toContain("https://x.app/admin");
+    expect(body).toContain("to 2026-09-24");
+  });
+
+  it("says when the evening's retries ran out", () => {
+    expect(briefAlertEmail({ sessionDate: "2026-09-24", final: true, error: "x" }).body).toContain("never went out");
   });
 });

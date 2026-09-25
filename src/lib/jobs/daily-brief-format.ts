@@ -29,6 +29,40 @@ export function factsBlock(s: AttributionSummary): string {
   return lines.join("\n");
 }
 
+const byContribution = <T extends { contributionBps: number | null }>(rows: T[]) => [...rows].sort((a, b) => (b.contributionBps ?? 0) - (a.contributionBps ?? 0));
+
+/**
+ * The attribution Hoot reads, from a summary built without a holdings limit: every holding, and sectors,
+ * teams and holdings each sorted from the largest contribution to the smallest, so that "best", "worst" and
+ * "only" come from the data rather than from the model's arithmetic.
+ */
+export function researchView(all: AttributionSummary) {
+  const { topContributors, bottomContributors, ...rest } = all;
+  return {
+    ...rest,
+    sectors: byContribution(rest.sectors),
+    ...("teams" in rest && Array.isArray(rest.teams) ? { teams: byContribution(rest.teams) } : {}),
+    holdings: byContribution([...topContributors, ...bottomContributors]),
+  };
+}
+
+/** What a daily_brief job run stored (runDailyBriefAnalysis's result). */
+export type AnalysisRun = { status: "ok" | "skipped" | "failed"; reason?: string; facts?: string; summaryHash?: string; analysis?: string; sources?: Source[] };
+
+/**
+ * Hoot's newest analysis written from exactly the numbers the email will print (same summary hash; runs from
+ * before the hash existed compare their facts text), or why there is none. `runs` are newest first;
+ * `attempts` counts the runs made for these numbers.
+ */
+export function chooseAnalysis(runs: AnalysisRun[], current: { hash: string; facts: string }): { analysis: AnalysisRun | null; reason: string; attempts: number } {
+  const same = runs.filter((r) => (r.summaryHash ? r.summaryHash === current.hash : r.facts === current.facts));
+  const ok = same.find((r) => r.status === "ok" && r.analysis);
+  if (ok) return { analysis: ok, reason: "", attempts: same.length };
+  const latest = runs[0];
+  const reason = same[0]?.reason ?? (!latest ? "it did not run" : latest.status === "ok" ? "the numbers changed after it was written" : (latest.reason ?? "it failed"));
+  return { analysis: null, reason, attempts: same.length };
+}
+
 /**
  * Hoot cites with [src:ID] tokens, which mean nothing in an email. Number the sources it actually cited
  * in order of first use, drop tokens for ids no tool returned, and return the list for a footer.
@@ -110,4 +144,24 @@ export function briefEmail(opts: { sessionDate: string; facts: string; analysis:
     "Hoot",
   ].join("\n");
   return { subject, body };
+}
+
+/** Tells the admins the brief has not gone out: once while the evening's retries continue, once when they run out. */
+export function briefAlertEmail(opts: { sessionDate: string; final: boolean; error: string; appUrl?: string }) {
+  const day = longDate(opts.sessionDate);
+  const admin = opts.appUrl ? `the Admin page (${opts.appUrl.replace(/\/$/, "")}/admin)` : "the Admin page";
+  const body = [
+    "Hi,",
+    "",
+    opts.final
+      ? `The daily attribution email for ${day} never went out. I tried at 5:15 p.m. and every 15 minutes after that until 11:45 p.m.`
+      : `The daily attribution email for ${day} hasn't gone out yet. I'll keep trying every 15 minutes until midnight New York time.`,
+    "",
+    `What went wrong: ${opts.error}`,
+    "",
+    `To send it yourself, open ${admin}, set the date under "Hoot's daily attribution brief" to ${opts.sessionDate}, tick "Email everyone on the list, not just me" and press Run.`,
+    "",
+    "Hoot",
+  ].join("\n");
+  return { subject: `Daily attribution email not sent (${DateTime.fromISO(opts.sessionDate).toFormat("dd-LLL-yyyy")})`, body };
 }

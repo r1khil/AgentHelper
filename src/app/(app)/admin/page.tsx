@@ -137,7 +137,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               <input type="checkbox" name="everyone" className="size-3.5" /> Email everyone on the list, not just me
             </label>
-            <p className="text-xs text-muted-foreground">Weekdays: prices and close check at 5:00 p.m., Hoot&apos;s analysis at 5:05, email to Aadi, Saad, Rikhil and Max at 5:15 (New York).</p>
+            <p className="text-xs text-muted-foreground">Weekdays: prices and close check at 5:00 p.m., Hoot&apos;s analysis at 5:05, email to Aadi, Saad, Rikhil and Max at 5:15 (New York). If the email fails it is retried every 15 minutes until midnight, through Gmail when OpenMail is down, and admins are emailed once it is late.</p>
           </form>
           <form action={runBellwethersNow} className="mt-3 flex items-center justify-between gap-2 border-t pt-3">
             <span className="text-sm">Sector bellwethers (ETF constituents, earnings dates, industries)</span>
