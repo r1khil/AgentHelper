@@ -21,7 +21,7 @@ export function parseHootCommand(text: string): HootCommand | null {
   const disable = q.match(/^(?:turn off|disable) (light|dark) (?:mode|theme)$/) ?? q.match(/^turn (light|dark) (?:mode|theme) off$/);
   if (disable) return { kind: "theme", theme: disable[1] === "light" ? "dark" : "light" };
   if (/^(?:toggle|switch) (?:the )?(?:(?:light|dark) mode|theme)$/.test(q)) return { kind: "theme", theme: "toggle" };
-  const navigation = q.match(/^(?:take me to|bring me to|go to|navigate to|open|show me) (?:the )?(.+?)(?: page| section| area)?$/);
+  const navigation = q.match(/^(?:take me to|bring me to|go to|navigate to|open) (?:the )?(.+?)(?: page| section| area)?$/);
   const destination = navigation && destinations[navigation[1]];
   return destination ? { kind: "navigate", destination } : null;
 }
