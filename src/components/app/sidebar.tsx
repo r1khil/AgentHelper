@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useSyncExternalStore, useTransition } from "react";
+import { useTheme } from "next-themes";
 import {
   ChartColumn,
   ChartNoAxesCombined,
@@ -15,9 +16,13 @@ import {
   Home,
   LogOut,
   Menu,
+  Monitor,
+  Moon,
   ScanEye,
   Settings,
   Mic,
+  Sun,
+  SunMoon,
   Table2,
   Briefcase,
   ShieldAlert,
@@ -195,6 +200,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
       <div className="mt-auto border-t p-3">
         <HootToggle on={user.hootEnabled} />
         {fundWide && <TransparencyToggle on={user.transparencyMode} />}
+        <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger
             render={<button className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left hover:bg-sidebar-accent" />}
@@ -273,6 +279,48 @@ function TransparencyToggle({ on }: { on: boolean }) {
         }
       />
     </label>
+  );
+}
+
+const THEMES = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "Match system", icon: Monitor },
+] as const;
+
+const noSubscribe = () => () => {};
+
+/** Light, dark or the OS setting. Remembered in this browser, not on the profile. */
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  // The stored choice is only readable in the browser; mark nothing selected until then so hydration matches.
+  const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
+  return (
+    <div className="mb-1 flex items-center gap-2.5 rounded-md px-2 py-1.5">
+      <SunMoon className="size-4 shrink-0 text-muted-foreground" />
+      <span className="min-w-0 flex-1 text-sm">Theme</span>
+      <div role="group" aria-label="Theme" className="flex rounded-md bg-muted p-0.5">
+        {THEMES.map(({ value, label, icon: Icon }) => {
+          const selected = mounted && theme === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              title={label}
+              aria-label={label}
+              aria-pressed={selected}
+              onClick={() => setTheme(value)}
+              className={cn(
+                "grid size-6 place-items-center rounded-[5px] transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                selected ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="size-3.5" />
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
