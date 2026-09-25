@@ -35,7 +35,7 @@ export type PortfolioDay = {
 };
 
 export type LedgerQuality = {
-  /** Held but no close that day; the last close was carried forward. */
+  /** Held or traded but no close that day; valued at that day's trade price, else the last close carried forward. */
   stale: { ticker: string; date: string }[];
   /** No close on or before the date; valued at trade price. */
   unpriced: string[];

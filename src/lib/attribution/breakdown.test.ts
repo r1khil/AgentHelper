@@ -142,16 +142,16 @@ describe("attribution breakdown", () => {
     }
   });
 
-  it("carries provenance: a missing close is marked carried and the ETF stale day is recorded", () => {
+  it("carries provenance: a missing close on a trade day is valued at the trade price and the ETF stale day is recorded", () => {
     const { series: s, portfolio, benchmark } = build();
     const bbb = portfolio.days[2].positions.find((p) => p.ticker === "BBB")!;
-    expect(bbb.priced).toBe("carried");
+    expect(bbb.priced).toBe("trade");
     expect(portfolio.days[3].positions.find((p) => p.ticker === "BBB")!.priced).toBe("close");
     expect(benchmark.days[2].staleEtfs).toEqual(["XLE"]);
     expect(benchmark.days.every((b) => b.weightSetAsOf === D[0])).toBe(true);
     const r = computeAttribution(s, range, { breakdown: true });
     const fin = r.breakdown!.sectors.find((x) => x.key === "financials")!;
-    expect(fin.days.find((d) => d.date === D[2])!.positions[0].priced).toBe("carried");
+    expect(fin.days.find((d) => d.date === D[2])!.positions[0].priced).toBe("trade");
   });
 
   it("works without a benchmark: rows carry weights and contributions, no effects", () => {
@@ -182,7 +182,7 @@ describe("buildSectorLineage", () => {
     expect(fin.closes).toEqual([{ ticker: "BBB", from: D[1], to: D[3], rows: 2, missingDays: [D[2]] }]);
     expect(fin.benchmark).toEqual({ etf: "XLF", from: D[1], to: D[3], rows: 3, staleDays: [] });
     expect(fin.weightSets).toEqual([{ asOf: D[0], weight: 35, appliedFrom: D[1], appliedTo: D[3] }]);
-    expect(fin.flags).toEqual([{ date: D[2], kind: "stale", ticker: "BBB" }]);
+    expect(fin.flags).toEqual([{ date: D[2], kind: "unpriced", ticker: "BBB" }]);
     expect(fin.events).toEqual([]);
 
     const tech = buildSectorLineage(inputs, "information_technology", range, r.breakdown!.sectors.find((x) => x.key === "information_technology")!);
