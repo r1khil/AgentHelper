@@ -8,6 +8,8 @@ import { db } from "@/db/client";
 import { mcpServers } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { forgetMcpClient, testMcpServer } from "@/lib/agent/mcp";
+import { mcpCapKey } from "@/lib/agent/mcp-budget";
+import { setSetting } from "@/lib/settings";
 
 function back(message?: string, ok = false): never {
   const q = message ? `?${ok ? "ok" : "error"}=${encodeURIComponent(message)}` : "";
@@ -73,4 +75,17 @@ export async function testMcpServerNow(fd: FormData) {
   const r = await testMcpServer(id);
   revalidatePath("/admin");
   back(r.ok ? `Connected: ${r.tools.length} tool${r.tools.length === 1 ? "" : "s"}${r.tools.length ? ` (${r.tools.slice(0, 6).join(", ")}${r.tools.length > 6 ? ", …" : ""})` : ""}` : `Connection failed: ${r.error}`, r.ok);
+}
+
+/** Calls per UTC day before the server's tools answer with a budget message instead; blank removes the cap. */
+export async function setMcpDailyCap(fd: FormData) {
+  const me = await requireAdmin();
+  const id = String(fd.get("id") ?? "");
+  const raw = String(fd.get("cap") ?? "").trim();
+  if (raw && !/^\d{1,6}$/.test(raw)) back("The daily cap is a whole number of calls, or blank for no cap");
+  const [row] = await db.select({ name: mcpServers.name }).from(mcpServers).where(eq(mcpServers.id, id)).limit(1);
+  if (!row) back("Server not found");
+  await setSetting(mcpCapKey(row.name), raw ? String(Number(raw)) : "", me.id);
+  revalidatePath("/admin");
+  back(raw ? `${row.name}: at most ${Number(raw)} call${Number(raw) === 1 ? "" : "s"} a day` : `${row.name}: no daily cap`, true);
 }
