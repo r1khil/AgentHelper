@@ -25,6 +25,8 @@ export type LookthroughState =
       benchmarkMissing: string | null;
       /** Held ETFs whose list is older than STALE_AFTER_DAYS. */
       stale: string[];
+      /** The benchmark's list (SPY, or the oldest of a team's sector SPDRs) is older than STALE_AFTER_DAYS. */
+      benchmarkStale: boolean;
     };
 
 /**
@@ -84,5 +86,6 @@ export function lookthroughFromRisk(r: RiskReport, lists: EtfList[], opts: { isE
   });
   const cutoff = DateTime.fromISO(r.asOf).minus({ days: STALE_AFTER_DAYS }).toISODate()!;
   const stale = heldLists.filter((l) => l.asOf < cutoff).map((l) => l.etf);
-  return { state: "ok", report, heldEtfs, benchmarkLabel, benchmarkMissing, stale };
+  const benchmarkStale = Boolean(benchmark && benchmark.asOf < cutoff);
+  return { state: "ok", report, heldEtfs, benchmarkLabel, benchmarkMissing, stale, benchmarkStale };
 }

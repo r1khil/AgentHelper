@@ -2,7 +2,7 @@ import { activeRiskBreakdown } from "./active";
 import { buildExposure } from "./exposure";
 import { FACTOR_KEYS, FACTORS, factorReadings, isFactorReport, type FactorFit, type FactorKey } from "./factors";
 import { describeExposure } from "./lookthrough";
-import type { LookthroughState } from "./lookthrough-report";
+import { STALE_AFTER_DAYS, type LookthroughState } from "./lookthrough-report";
 import { LOOKBACKS, type RiskReport } from "./model";
 import type { StressResult } from "./stress";
 
@@ -156,7 +156,7 @@ export function summarizeLookthrough(state: LookthroughState, limit = 10) {
     sectorsThroughEtfs: lt.sectors.map((s) => ({ sector: s.label, asHeldPct: pct(s.asHeld), throughEtfsPct: pct(s.lookthrough), assumedPct: s.assumed > 5e-5 ? pct(s.assumed) : undefined })),
     stockLevel: a
       ? {
-          benchmark: `${state.benchmarkLabel ?? a.benchmark.etf} holdings as of ${a.benchmark.asOf}`,
+          benchmark: `${state.benchmarkLabel ?? a.benchmark.etf} holdings as of ${a.benchmark.asOf}${state.benchmarkStale ? ` (stale: more than ${STALE_AFTER_DAYS} days older than the positions)` : ""}`,
           activeSharePct: pct(a.activeShare, 1),
           portfolioInBenchmarkNamesPct: pct(a.overlapWithBenchmark, 1),
           largestActiveBet: a.largestBet ? activeOut(a.largestBet) : null,

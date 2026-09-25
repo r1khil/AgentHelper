@@ -18,7 +18,8 @@ export const SOURCE_LABELS: Record<ConstituentSource, string> = {
   ishares: "iShares",
   "first-trust": "First Trust",
   roundhill: "Roundhill",
-  "yahoo-top10": "Yahoo top 10",
+  // Yahoo gives no holdings date, so the date shown is when the list was fetched.
+  "yahoo-top10": "Yahoo top 10 (date fetched)",
 };
 
 export type Constituent = {
@@ -89,6 +90,8 @@ export function sectorFromLabel(raw: string): GicsSector | null {
 
 const FUTURE_NAME = /\b(FUTURE|FUT|EMINI|E-MINI)\b|\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s?\d{2}\b/i;
 const CASH_NAME = /\b(CASH|DOLLAR|CURRENCY|MONEY MARKET|MMF|TREASURY BILL|T-BILL|GOVT? (?:MONEY|OBLIG)|GOVERNMENT OBLIGATIONS|REPO)\b/i;
+/** Money-market and bill funds listed with a ticker of their own; narrower than CASH_NAME so DOLLAR GENERAL stays a stock. */
+const CASH_FUND_NAME = /\b(MONEY MARKET|MMF|TREASURY BILL|T-BILL|GOVT? (?:MONEY|OBLIG)|GOVERNMENT OBLIGATIONS)\b/i;
 const OTHER_NAME = /\b(CVR|RIGHTS?|WARRANTS?|ESCROW|CONTINGENT)\b/i;
 const SWAP_NAME = /\b(SWAP|TRS|TOTAL RETURN)\b/i;
 
@@ -181,7 +184,7 @@ export function parseSsgaRows(etf: string, rows: Cell[][], opts: { sector?: Gics
     const name = str(r[iName]);
     const ticker = str(r[iTicker]);
     const symbol = ticker && ticker !== "-" ? usSymbol(ticker) : null;
-    if (!symbol || OTHER_NAME.test(name) || FUTURE_NAME.test(name)) {
+    if (!symbol || OTHER_NAME.test(name) || FUTURE_NAME.test(name) || CASH_FUND_NAME.test(name)) {
       dropped.push({ label: ticker && ticker !== "-" ? `${name} (${ticker})` : name, weight, reason: classifyNonEquity(name) });
       continue;
     }
@@ -283,7 +286,7 @@ export function parseFirstTrustHtml(etf: string, html: string): ParsedHoldings {
       continue;
     }
     const symbol = bloombergSymbol(id);
-    if (!symbol || OTHER_NAME.test(name) || FUTURE_NAME.test(name)) {
+    if (!symbol || OTHER_NAME.test(name) || FUTURE_NAME.test(name) || CASH_FUND_NAME.test(name)) {
       dropped.push({ label: `${name} (${id})`, weight, reason: classifyNonEquity(name) });
       continue;
     }
@@ -349,9 +352,19 @@ export function parseRoundhillCsv(etf: string, text: string): ParsedHoldings {
 
 // --- Yahoo fallback: the top holdings only, labelled by how much of the fund they cover. ---
 
+/** Yahoo's one-letter exchange suffixes (London, TSX Venture, Tokyo, Frankfurt); any other X.Y is a US share class. */
+const YAHOO_ONE_LETTER_EXCHANGE = new Set(["L", "V", "T", "F"]);
+
+function yahooTopSymbol(raw: string): string {
+  const v = raw.trim().toUpperCase();
+  const m = /^[A-Z]{1,5}\.([A-Z])$/.exec(v);
+  if (v.includes(".") && (!m || YAHOO_ONE_LETTER_EXCHANGE.has(m[1]))) return v;
+  return usSymbol(v) ?? v;
+}
+
 export function fromYahooTop(etf: string, asOf: string, top: { symbol: string; name: string; weightPct: number }[]): ParsedHoldings {
   const constituents: Constituent[] = top.map((h) => ({
-    symbol: h.symbol.includes(".") && !/^[A-Z]{1,5}\.[A-Z]$/.test(h.symbol) ? h.symbol.toUpperCase() : (usSymbol(h.symbol) ?? h.symbol.toUpperCase()),
+    symbol: yahooTopSymbol(h.symbol),
     name: h.name,
     weight: h.weightPct,
     sector: null,

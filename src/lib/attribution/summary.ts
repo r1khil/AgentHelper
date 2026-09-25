@@ -87,7 +87,13 @@ export function summarizeAttribution(i: AttributionSummaryInput) {
     },
     headline: {
       returnPct: pct(r.portfolioReturn),
-      ...(i.scope === "fund" ? { spxPriceReturnPct: pct(spx), activeVsSpxBps: spx === null ? null : bps(r.portfolioReturn - spx) } : {}),
+      ...(i.scope === "fund"
+        ? {
+            spxPriceReturnPct: pct(spx),
+            activeVsSpxBps: spx === null ? null : bps(r.portfolioReturn - spx),
+            activeVsSpxNote: "Fund total return (dividends reinvested) vs S&P 500 price return, the internal sheet's basis; it flatters the Fund by about the index's dividend yield (~1.3%/yr). The sector benchmark figures are total return on both sides.",
+          }
+        : {}),
       sectorBenchmark: i.scope === "fund" ? "S&P 500 sector weights on Select Sector SPDR total returns" : `S&P 500 weights of ${(i.teamSectors ?? []).map((s) => SECTOR_LABELS[s]).join(", ") || "no sectors assigned"}`,
       sectorBenchmarkReturnPct: pct(r.benchmarkReturn),
       activeVsSectorBenchmarkBps: bps(r.activeReturn),

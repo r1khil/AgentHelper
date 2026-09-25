@@ -161,9 +161,15 @@ export function buildLookthrough(input: LookthroughInput): LookthroughReport {
   const sectorThrough = new Map<BucketKey, number>();
   const sectorAssumed = new Map<BucketKey, number>();
   const add = (m: Map<BucketKey, number>, k: BucketKey, v: number) => m.set(k, (m.get(k) ?? 0) + v);
-  // The Fund's own classification of a company it holds directly wins for that company inside ETFs too.
+  // The Fund's own classification of a company it holds directly wins for that company inside ETFs too. One the
+  // Fund hasn't classified falls back to the resolver, so its direct and ETF weight land in the same sector.
   const directSector = new Map<string, GicsSector>();
-  for (const p of input.positions) if (p.sector && !lists.has(p.ticker.toUpperCase()) && !isEtf(p.ticker.toUpperCase())) directSector.set(issuerKey(p.ticker.toUpperCase()), p.sector);
+  for (const p of input.positions) {
+    const t = p.ticker.toUpperCase();
+    if (lists.has(t) || isEtf(t)) continue;
+    const s = p.sector ?? sectorOf(t);
+    if (s) directSector.set(issuerKey(t), s);
+  }
 
   for (const p of input.positions) {
     const ticker = p.ticker.toUpperCase();
@@ -177,8 +183,9 @@ export function buildLookthrough(input: LookthroughInput): LookthroughReport {
         a.name = p.name;
         a.nameFromDirect = true;
       }
-      a.sector = p.sector ?? a.sector;
-      add(sectorThrough, ownSector, p.weight);
+      const through = directSector.get(issuerKey(ticker)) ?? null;
+      a.sector = through ?? a.sector;
+      add(sectorThrough, through ?? "unclassified", p.weight);
       continue;
     }
     // A list whose weights add to more than 100% (rounding in the issuer's file) is scaled back to the ETF.

@@ -67,6 +67,13 @@ describe("lookthroughFromRisk (preview data)", () => {
     const old = new Date(Date.parse(`${fund.asOf}T00:00:00Z`) - (STALE_AFTER_DAYS + 1) * 864e5).toISOString().slice(0, 10);
     const s = lookthroughFromRisk(fund, [list("CHRL", [["ALFA", 100]], old)], { isEtf: (t) => t === "CHRL" });
     expect(s.state === "ok" && s.stale).toEqual(["CHRL"]);
+    expect(s.state === "ok" && s.benchmarkStale).toBe(false);
+  });
+
+  it("flags a stale benchmark list too", () => {
+    const old = new Date(Date.parse(`${fund.asOf}T00:00:00Z`) - (STALE_AFTER_DAYS + 1) * 864e5).toISOString().slice(0, 10);
+    const s = lookthroughFromRisk(fund, [list("CHRL", [["ALFA", 100]]), list("SPY", [["ALFA", 100]], old)], { isEtf: (t) => t === "CHRL" });
+    expect(s.state === "ok" && s.benchmarkStale).toBe(true);
   });
 
   it("gives the sector table weights through the ETFs, with the same benchmark and balanced actives", () => {

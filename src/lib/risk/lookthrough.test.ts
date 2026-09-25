@@ -34,6 +34,25 @@ const input = (): LookthroughInput => ({
 });
 
 describe("buildLookthrough", () => {
+  it("puts an unclassified direct holding in the same sector as its ETF weight", () => {
+    const XLK = list("XLK", "ssga", [["FOO", 100]]);
+    const r = buildLookthrough({
+      positions: [
+        { ticker: "FOO", name: "Foo", weight: 0.1, sector: null },
+        { ticker: "XLK", name: "Tech SPDR", weight: 0.5, sector: "information_technology" },
+      ],
+      cash: 0.4,
+      lists: [XLK],
+      benchmark: null,
+      isEtf: (t) => t === "XLK",
+      sectorOf: buildSectorResolver({ lists: [XLK], sectorEtfs: { XLK: "information_technology" } }),
+    });
+    const tech = r.sectors.find((s) => s.key === "information_technology")!;
+    expect(tech.lookthrough).toBeCloseTo(0.6, 12);
+    expect(r.sectors.find((s) => s.key === "unclassified")?.lookthrough ?? 0).toBeCloseTo(0, 12);
+    expect(r.names.find((n) => n.key === "FOO")!.sector).toBe("information_technology");
+  });
+
   it("combines direct and ETF exposure per name", () => {
     const r = buildLookthrough(input());
     const nvda = r.names.find((n) => n.key === "NVDA")!;

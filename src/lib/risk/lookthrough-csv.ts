@@ -39,7 +39,7 @@ export function lookthroughCsvRows(r: RiskReport, state: LookthroughState): unkn
   }
   if (lt.active) {
     const a = lt.active;
-    rows.push(["active share", state.benchmarkLabel ?? a.benchmark.etf, "½ × Σ|w_p − w_b|, each side scaled to 100%", "", a.activeShare, "", "", "", "", "", "", a.benchmark.coverage, a.benchmark.asOf, SOURCE_LABELS[a.benchmark.source], `left out (cash and not looked through): ${a.excluded}`]);
+    rows.push(["active share", state.benchmarkLabel ?? a.benchmark.etf, "½ × Σ|w_p − w_b|, each side scaled to 100%", "", a.activeShare, "", "", "", "", "", "", a.benchmark.coverage, a.benchmark.asOf, SOURCE_LABELS[a.benchmark.source], [`left out (cash and not looked through): ${a.excluded}`, state.benchmarkStale ? "stale" : ""].filter(Boolean).join("; ")]);
     if (a.largestBet) rows.push(["largest active bet", a.largestBet.key, a.largestBet.name, "", a.largestBet.fund, "", "", a.largestBet.benchmark, a.largestBet.active, "", "", "", "", "", ""]);
   } else if (state.benchmarkMissing) {
     rows.push(["active share", state.benchmarkLabel ?? "", "", "", "", "", "", "", "", "", "", "", "", "", state.benchmarkMissing]);

@@ -51,6 +51,12 @@ export type RealizedInput = {
   /** Sector benchmark (the attribution benchmark, or the team's sectors). */
   benchmark: (number | null)[];
   market: (number | null)[];
+  /**
+   * Market total return since the previous row's date. Same as `market` except after days a team sleeve held
+   * nothing (and skipped), where it also carries the market's move over those days. Used for the drawdown line only;
+   * beta and the other paired statistics keep one-day returns.
+   */
+  marketPath?: (number | null)[];
   /** Daily risk-free return on each date (T-bill yield / 252). */
   riskFree: (number | null)[];
 };
@@ -199,7 +205,7 @@ function fillColumn(own: number[] | undefined, proxy: number[] | undefined, T: n
 }
 
 function realizedRisk(input: RealizedInput, from: string, lookbackDays: number): RealizedRisk {
-  const all = input.dates.map((d, i) => ({ d, r: input.portfolio[i], b: input.benchmark[i], m: input.market[i], rf: input.riskFree[i] }));
+  const all = input.dates.map((d, i) => ({ d, r: input.portfolio[i], b: input.benchmark[i], m: input.market[i], mp: input.marketPath?.[i] ?? input.market[i], rf: input.riskFree[i] }));
   const win = all.filter((x) => x.d >= from).slice(-lookbackDays);
   const r = win.map((x) => x.r);
   const enough = r.length >= MIN_REALIZED_DAYS;
@@ -211,7 +217,7 @@ function realizedRisk(input: RealizedInput, from: string, lookbackDays: number):
 
   // Over the lookback window like every other realized figure, so the card and chart match the window picked.
   const dd = drawdowns(r);
-  const mdd = drawdowns(win.map((x) => (finite(x.m) ? x.m : 0)));
+  const mdd = drawdowns(win.map((x) => (finite(x.mp) ? x.mp : 0)));
   return {
     from: win[0]?.d ?? from,
     to: win.at(-1)?.d ?? from,
@@ -314,6 +320,9 @@ export function buildRiskReport(input: RiskInput): RiskReport {
   if (backfilled.length) notices.push(`${backfilled.map((c) => `${c.ticker} has its own closes for ${c.observations} of ${T} days`).join("; ")}. The missing days use the sector ETF's return.`);
   const excluded = coverage.filter((c) => c.source === "excluded");
   if (excluded.length) notices.push(`${excluded.map((c) => c.ticker).join(", ")} ${excluded.length === 1 ? "has" : "have"} no price history and no sector, so ${excluded.length === 1 ? "it is" : "they are"} treated as riskless. Set a sector on the ledger to model ${excluded.length === 1 ? "it" : "them"}.`);
+
+  const gappy = coverage.slice(H).filter((c) => c.filled > 0);
+  if (gappy.length) notices.push(`Stored closes are missing on some days for ${gappy.map((c) => `${c.ticker} (${c.filled} of ${T} days)`).join(", ")}; those days count as a 0% return, which slightly understates volatility and tracking error.`);
 
   // Sectors: the Fund's weight, the benchmark's, and each one's share of total and active risk.
   const buckets = new Map<BucketKey, SectorRisk>();
