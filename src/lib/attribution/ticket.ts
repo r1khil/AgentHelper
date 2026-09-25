@@ -19,7 +19,20 @@ export type TradeTicket = {
 };
 
 /** `ticket` is null when the file could not be read; `skip` says why a readable ticket is not recorded. */
-export type TicketRead = { file: string; ticket: TradeTicket | null; errors: string[]; warnings: string[]; skip?: string };
+export type TicketRead = {
+  file: string;
+  ticket: TradeTicket | null;
+  errors: string[];
+  warnings: string[];
+  skip?: string;
+  /** The ticket's price over that session's close, minus one, when it is far enough off to be a typo or a planned price. */
+  priceGap?: number;
+};
+
+/** parseTicket's first error for a document with none of a ticket's labels, such as a memo attached to an email. */
+export const NOT_A_TICKET = "This does not look like a trade ticket. Expected lines like “Action (Buy, Sell): Buy” and “Price: $98.19”.";
+
+export const UNREADABLE_DOCX = "Could not open this Word file.";
 
 const LABELS = {
   action: "action",
@@ -66,7 +79,7 @@ export function parseTicket(text: string, file: string): TicketRead {
   const done = (ticket: TradeTicket | null): TicketRead => ({ file, ticket: errors.length ? null : ticket, errors, warnings });
 
   if (!f.action && !f.equity && !f.price) {
-    errors.push("This does not look like a trade ticket. Expected lines like “Action (Buy, Sell): Buy” and “Price: $98.19”.");
+    errors.push(NOT_A_TICKET);
     return done(null);
   }
 

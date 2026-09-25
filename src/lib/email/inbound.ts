@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { InboundAttachment } from "./ticket-mail";
 
 /** The part of an OpenMail `message.received` webhook the app uses. */
 export type InboundEvent = {
@@ -6,7 +7,7 @@ export type InboundEvent = {
   event_id: string;
   inbox_id: string;
   thread_id: string;
-  message: { id: string; from: string; to: string; cc?: string[]; subject?: string; body_text?: string };
+  message: { id: string; from: string; to: string; cc?: string[]; subject?: string; body_text?: string; attachments?: InboundAttachment[]; raw_url?: string | null };
 };
 
 /** Only the fund's own addresses ever receive a reply from Hoot. */

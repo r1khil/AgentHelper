@@ -91,7 +91,7 @@ export default async function LedgerPage({ searchParams }: PageProps<"/attributi
             aside={
               <span className="flex items-center gap-2">
                 <ImportDialog />
-                <TicketDialog />
+                <TicketDialog emailTo={process.env.OPENMAIL_INBOX} />
                 <TradeDialog today={today} positions={positions.map((p) => ({ ticker: p.ticker, shares: p.shares }))} />
               </span>
             }
