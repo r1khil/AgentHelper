@@ -21,9 +21,11 @@ export function parseHootCommand(text: string): HootCommand | null {
   const disable = q.match(/^(?:turn off|disable) (light|dark) (?:mode|theme)$/) ?? q.match(/^turn (light|dark) (?:mode|theme) off$/);
   if (disable) return { kind: "theme", theme: disable[1] === "light" ? "dark" : "light" };
   if (/^(?:toggle|switch) (?:the )?(?:(?:light|dark) mode|theme)$/.test(q)) return { kind: "theme", theme: "toggle" };
-  const scope = q.match(/^(?:switch|change|toggle)(?: me)? to (?:the )?(.+?)(?: sector| team)?$/)
-    ?? q.match(/^(?:take me to|bring me to|go to|navigate to|open|show me|filter to) (?:the )?(.+?) (?:sector|team)$/);
-  if (scope) return { kind: "scope", scope: scope[1] };
+  // A sector is a short name ending in "sector"/"team"; prepositions mean it's a research question about one.
+  const sector = "(?!.*\\b(?:for|in|of|on|at|with|and|about|from|by|the|my|our|your|this|that)\\b)([a-z&']+(?: [a-z&']+){0,2}) (?:sector|team)";
+  const scope = q.match(new RegExp(`^(?:switch|change|toggle)(?: me)? to (?:the )?(?:(whole fund)|${sector})$`))
+    ?? q.match(new RegExp(`^(?:take me to|bring me to|go to|navigate to|open|show me|filter to) (?:the )?${sector}$`));
+  if (scope) return { kind: "scope", scope: scope[1] ?? scope[2] };
   const navigation = q.match(/^(?:take me to|bring me to|go to|navigate to|open) (?:the )?(.+?)(?: page| section| area)?$/);
   const destination = navigation && destinations[navigation[1]];
   return destination ? { kind: "navigate", destination } : null;

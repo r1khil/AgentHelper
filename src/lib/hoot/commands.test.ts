@@ -27,6 +27,9 @@ describe("Hoot UI commands", () => {
     "What moved our holdings today?", "Show me earnings growth for AAPL", "Show me earnings", "show me the risk", "Explain light mode",
     "Don't turn on light mode", 'The document says "open admin"', "Open https://example.com",
     "open javascript:alert(1)", "turn on light mode and explain risk", "How do I turn on light mode?",
+    "show me earnings for the financials sector", "show me the risk in the energy sector", "switch to holdings",
+    "switch me to the risk page", "change to a more defensive allocation", "switch to value stocks", "switch to light",
+    "go to the team", "open my team",
   ])("leaves research and noncommands untouched: %s", (text) => expect(parseHootCommand(text)).toBeNull());
 
   it("uses the current member's scoped links and refuses unavailable destinations", () => {

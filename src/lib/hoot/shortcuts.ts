@@ -8,3 +8,5 @@ export function hootShortcut(event: Pick<KeyboardEvent, "code" | "key" | "altKey
   if (event.key.toLowerCase() === "j" && !event.altKey && (event.metaKey !== event.ctrlKey)) return "toggle";
   return null;
 }
+
+export const isMac = () => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);

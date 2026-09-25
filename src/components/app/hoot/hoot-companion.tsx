@@ -1,7 +1,7 @@
 "use client";
 
 import { useHootCommand } from "@/components/app/hoot/use-hoot-command";
-import { hootShortcut } from "@/lib/hoot/shortcuts";
+import { hootShortcut, isMac } from "@/lib/hoot/shortcuts";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -91,11 +91,14 @@ function writeSession(s: BubbleSession) {
   }
 }
 
+function memberIsTyping() {
+  const el = document.activeElement as HTMLElement | null;
+  return !!el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
+}
+
 /** Someone is typing or in a dialog: never interrupt. */
 function memberIsBusy() {
-  const el = document.activeElement as HTMLElement | null;
-  const typing = !!el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
-  return typing || !!document.querySelector('[role="dialog"], [role="alertdialog"]');
+  return memberIsTyping() || !!document.querySelector('[role="dialog"], [role="alertdialog"]');
 }
 
 /**
@@ -110,7 +113,6 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   const [feed, setFeed] = useState<HootFeed | null>(null);
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(() => new Set());
   const [open, setOpen] = useState(false);
-  const [shortcutOpen, setShortcutOpen] = useState(false);
   // Tagged with the page it was said on, so it disappears the moment the member navigates.
   const [said, setSaid] = useState<{ nudge: HootNudge; path: string } | null>(null);
   const [hovered, setHovered] = useState(false);
@@ -238,21 +240,17 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   // Option/Alt+S and Mac Command+S open Hoot. Keep Command/Ctrl+J as the existing toggle.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const action = hootShortcut(e, /Mac|iPhone|iPad/.test(navigator.platform));
+      const action = hootShortcut(e, isMac());
       if (!action || touring) return;
+      // Option+S types a character (ß on Mac) in text fields; leave it to the field.
+      if (action === "open" && e.altKey && memberIsTyping()) return;
       e.preventDefault();
       setBubble(null);
-      if (action === "open") {
-        setShortcutOpen(true);
-        setOpen(true);
-      } else {
-        setShortcutOpen(!open);
-        setOpen(!open);
-      }
+      setOpen((o) => action === "open" || !o);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, touring, setBubble]);
+  }, [touring, setBubble]);
 
   /** Squash-and-stretch without remounting anything (remounting under the cursor would eat clicks). */
   const play = useCallback((frames: Keyframe[], duration: number) => {
@@ -350,7 +348,6 @@ export function HootCompanion({ firstName }: { firstName: string }) {
     if (runCommand(text)) {
       setAskError(null);
       setOpen(false);
-      setShortcutOpen(false);
       return;
     }
     setAsking(true);
@@ -368,7 +365,6 @@ export function HootCompanion({ firstName }: { firstName: string }) {
         toast("Your chat is open. Paste your question to send it.");
       }
       setOpen(false);
-      setShortcutOpen(false);
       router.push(res.href);
     } catch {
       setAskError("Couldn't open a chat just now. Try again in a moment.");
@@ -379,7 +375,6 @@ export function HootCompanion({ firstName }: { firstName: string }) {
 
   const hide = () => {
     setOpen(false);
-    setShortcutOpen(false);
     startTransition(async () => {
       await setHootEnabled(false);
       router.refresh();
@@ -394,7 +389,8 @@ export function HootCompanion({ firstName }: { firstName: string }) {
     });
   };
 
-  if (hidden && !shortcutOpen) return null;
+  // The shortcut can bring him up on pages where he normally stays hidden.
+  if (touring || (hidden && !open)) return null;
 
   const urgent = nudges.filter((n) => n.priority <= 2).length;
   // Pages that describe themselves (attribution, backtesting) are attached to the question; say so in the panel.
@@ -460,7 +456,6 @@ export function HootCompanion({ firstName }: { firstName: string }) {
         open={open}
         onOpenChange={(next) => {
           setOpen(next);
-          if (!next) setShortcutOpen(false);
           if (next) {
             setBubble(null);
             if (Date.now() - loadedAt.current > 60_000) void load();
@@ -559,17 +554,15 @@ export function HootCompanion({ firstName }: { firstName: string }) {
             onOpenNudge={(n) => {
               if (DISMISS_ON_OPEN.has(n.kind)) persistDismiss(n.id);
               setOpen(false);
-              setShortcutOpen(false);
             }}
             onDismiss={(n) => persistDismiss(n.id)}
             onHide={hide}
             side={side}
             onMove={() => {
               setOpen(false);
-              setShortcutOpen(false);
               moveTo(side === "right" ? "left" : "right");
             }}
-            onClose={() => { setOpen(false); setShortcutOpen(false); }}
+            onClose={() => setOpen(false)}
           />
         </PopoverContent>
       </Popover>
