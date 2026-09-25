@@ -46,6 +46,8 @@ const CATEGORY: Record<string, string> = {
   prce: "Prices",
   trd: "Trade",
 };
+/** The category labels TradingView events carry, so other modules can tell them from other providers' categories. */
+export const TRADINGVIEW_CATEGORIES: ReadonlySet<string> = new Set(Object.values(CATEGORY));
 
 /** "0.4%", "201K", "-$255B", "53B": the shapes the page reads when it compares a print with consensus. */
 export function formatValue(n: number | null | undefined, unit?: string | null, scale?: string | null) {
