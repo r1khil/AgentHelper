@@ -4,6 +4,8 @@ Run inside Blender (tested on 5.2):
   - from the Blender MCP addon: exec(open("scripts/blender/hoot.py").read())
   - headless: Blender -b -P scripts/blender/hoot.py -- --render <png dir> --glb public/hoot/hoot.glb
     then convert the PNGs with scripts/blender/hoot-sprites.mjs
+  - the loading screen's wave loop: Blender -b -P scripts/blender/hoot.py -- --wave <png dir>
+    then pack it with scripts/blender/hoot-wave.mjs
 
 The scene is built from code so Hoot can be tweaked and re-rendered instead of hand-edited.
 Front of the owl faces -Y; the body is a unit sphere centred at C.
@@ -519,6 +521,23 @@ def render_sheet(outdir):
     pose("idle")
 
 
+def render_wave(outdir, frames=12):
+    """One loop of Hoot waving hello (full colour, looking at you) for the app's loading screen.
+    Frames are wave-00.png ... ; scripts/blender/hoot-wave.mjs packs them into a strip."""
+    os.makedirs(outdir, exist_ok=True)
+    for i in range(frames):
+        t = 2 * math.pi * i / frames
+        pose("wave")
+        # Wing swings out and back around the wave pose; the body sways a beat behind it and bobs on each swing.
+        obj("WingPivotR").rotation_euler = Euler((math.radians(-20), math.radians(-120 + 26 * math.sin(t)), 0))
+        root = obj("Hoot")
+        root.rotation_euler = Euler((0, math.radians(-6 + 4 * math.sin(t - 0.9)), 0))
+        root.location = (0, 0, 0.03 * abs(math.sin(t)))
+        bpy.context.view_layer.update()
+        render_to(os.path.join(outdir, f"wave-{i:02d}.png"))
+    pose("idle")
+
+
 def export_glb(path):
     """Idle Hoot as glTF for the live 3D hero. Named nodes (Hoot, EyePivotL/R, ScleraL/R, WingPivotL/R, ClosedL/R,
     HappyL/R) are driven in three.js; the closed and happy eye lines ship too and the page hides them until needed."""
@@ -547,5 +566,7 @@ if __name__ == "__main__" and "--" in sys.argv:
         render_all(args[args.index("--render") + 1])
     if "--glb" in args:
         export_glb(args[args.index("--glb") + 1])
+    if "--wave" in args:
+        render_wave(args[args.index("--wave") + 1])
     if "--sheet" in args:
         render_sheet(args[args.index("--sheet") + 1])

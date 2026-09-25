@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { UpdateBanner } from "@/components/app/update-banner";
+import { BootSplash } from "@/components/app/boot-splash";
 import { getBuildId } from "@/lib/build-id";
 import "./globals.css";
 
@@ -27,6 +28,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         {/* Light, dark or the OS setting, remembered per browser. Sets the `dark` class on <html> before first paint. */}
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          {/* Hoot waves while a fresh load or refresh finishes; client navigation never shows it again. */}
+          <BootSplash />
           <UpdateBanner buildId={getBuildId()} />
           {children}
           {/* Offset so toasts stack above Hoot rather than on top of him. */}
