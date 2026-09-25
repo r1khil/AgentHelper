@@ -12,12 +12,16 @@ import { rpct } from "./format";
  * Sector weights against the benchmark, and where total and active risk come from. Rows render in the order given.
  * `activeFirst` puts the active-weight column beside the sector name (so it stays on screen on a phone), and
  * `balance` adds a footer with the sums of over- and underweights (they cancel, which checks the table).
+ * `hideRisk` drops the risk-share columns (the look-through view: risk is measured on ETFs as held), and
+ * `rowNote` adds a short line under a sector's name.
  */
-export function SectorExposure({ sectors, benchmarkLabel, activeFirst = false, balance }: {
+export function SectorExposure({ sectors, benchmarkLabel, activeFirst = false, balance, hideRisk = false, rowNote }: {
   sectors: SectorRisk[];
   benchmarkLabel: string;
   activeFirst?: boolean;
   balance?: { overweight: number | null; underweight: number | null };
+  hideRisk?: boolean;
+  rowNote?: (key: SectorRisk["key"]) => string | null;
 }) {
   const hasBench = sectors.some((s) => s.benchWeight !== null);
   const maxWeight = Math.max(...sectors.flatMap((s) => [s.weight, s.benchWeight ?? 0]), 0);
@@ -65,28 +69,32 @@ export function SectorExposure({ sectors, benchmarkLabel, activeFirst = false, b
           <TableRow>
             <TableHead>Sector</TableHead>
             {order(weightHead, activeHead)}
-            <TableHead className="text-right"><Explained align="right" label="Share of risk">{RISK_EXPLAIN.riskShare}</Explained></TableHead>
-            {hasBench && <TableHead className="text-right"><Explained align="right" label="Share of active risk">{RISK_EXPLAIN.activeRiskShare}</Explained></TableHead>}
+            {!hideRisk && <TableHead className="text-right"><Explained align="right" label="Share of risk">{RISK_EXPLAIN.riskShare}</Explained></TableHead>}
+            {!hideRisk && hasBench && <TableHead className="text-right"><Explained align="right" label="Share of active risk">{RISK_EXPLAIN.activeRiskShare}</Explained></TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {sectors.map((s) => {
             const etf = s.key !== "cash" && s.key !== "unclassified" ? ETF_BY_SECTOR[s.key] : null;
+            const note = rowNote?.(s.key);
             return (
               <TableRow key={s.key}>
                 <TableCell className="font-medium">
                   {s.label}
                   {etf && <span className="ml-1 text-[11px] font-normal text-muted-foreground">{etf}</span>}
                   {s.tickers.length > 0 && <div className="max-w-64 truncate text-[11px] font-normal text-muted-foreground" title={s.tickers.join(", ")}>{s.tickers.join(" · ")}</div>}
+                  {note && <div className="max-w-64 text-[11px] font-normal text-muted-foreground italic">{note}</div>}
                 </TableCell>
                 {order(weightCell(s), activeCell(s))}
-                <TableCell>
-                  <div className="flex items-center justify-end gap-2.5">
-                    <MagnitudeBar value={s.riskShare} max={maxRisk} color={s.riskShare < 0 ? "var(--down)" : "var(--series-1)"} className="h-1.5 w-14" />
-                    <span className="tnum w-12 text-right text-sm">{rpct(s.riskShare)}</span>
-                  </div>
-                </TableCell>
-                {hasBench && <TableCell className="tnum text-right text-sm">{rpct(s.activeRiskShare)}</TableCell>}
+                {!hideRisk && (
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-2.5">
+                      <MagnitudeBar value={s.riskShare} max={maxRisk} color={s.riskShare < 0 ? "var(--down)" : "var(--series-1)"} className="h-1.5 w-14" />
+                      <span className="tnum w-12 text-right text-sm">{rpct(s.riskShare)}</span>
+                    </div>
+                  </TableCell>
+                )}
+                {!hideRisk && hasBench && <TableCell className="tnum text-right text-sm">{rpct(s.activeRiskShare)}</TableCell>}
               </TableRow>
             );
           })}
@@ -104,8 +112,8 @@ export function SectorExposure({ sectors, benchmarkLabel, activeFirst = false, b
                   </div>
                 </TableCell>,
               )}
-              <TableCell />
-              <TableCell />
+              {!hideRisk && <TableCell />}
+              {!hideRisk && <TableCell />}
             </TableRow>
           </TableFooter>
         )}

@@ -6,10 +6,12 @@ import { PageHeader } from "@/components/app/page-header";
 import { DataNoticesButton } from "@/components/app/attribution/data-quality-notice";
 import { ExposureView } from "@/components/app/exposure/exposure-view";
 import { FactorSection } from "@/components/app/exposure/factor-section";
+import { LookthroughSections, SectorViewToggle, parseThroughEtfs, sectorViewQuery } from "@/components/app/exposure/lookthrough";
 import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { riskNotices } from "@/components/app/risk/notices";
 import { requireRole, transparencyEnabled } from "@/lib/auth";
 import { loadRisk } from "@/lib/risk/load";
+import { loadLookthrough } from "@/lib/risk/lookthrough-load";
 import { parseLookback } from "@/lib/risk/model";
 
 export const metadata: Metadata = { title: "Fund exposure" };
@@ -38,6 +40,9 @@ export default async function ExposurePage({ searchParams }: PageProps<"/exposur
   }
 
   const { report } = loaded;
+  const lookthrough = await loadLookthrough(report);
+  const throughEtfs = parseThroughEtfs(one(query.sectors)) && lookthrough.state === "ok";
+  const transparency = transparencyEnabled(user);
   return (
     <>
       <PageHeader
@@ -48,15 +53,20 @@ export default async function ExposurePage({ searchParams }: PageProps<"/exposur
       <PageContextPublisher value={{ kind: "exposure", path: "/exposure", title: "Fund exposure", scope: "fund", lookback, asOf: report.asOf }} />
       <ExposureView
         report={report}
-        transparency={transparencyEnabled(user)}
+        transparency={transparency}
         basePath="/exposure"
         riskPath="/risk"
         exportQuery=""
         scopeLabel="Fund"
         benchmarkLabel="S&P 500 sectors"
         weightSetAsOf={loaded.weightSetAsOf}
+        lookthrough={lookthrough}
+        throughEtfs={throughEtfs}
+        query={sectorViewQuery(throughEtfs)}
+        controls={<SectorViewToggle basePath="/exposure" lookback={lookback} throughEtfs={throughEtfs} available={lookthrough.state === "ok"} />}
       >
-        <FactorSection report={report} transparency={transparencyEnabled(user)} exportQuery="" benchmarkLabel="the S&P 500 sector benchmark" />
+        <FactorSection report={report} transparency={transparency} exportQuery="" benchmarkLabel="the S&P 500 sector benchmark" />
+        <LookthroughSections state={lookthrough} scope="fund" transparency={transparency} />
       </ExposureView>
     </>
   );

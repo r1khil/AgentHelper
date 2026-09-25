@@ -1,7 +1,10 @@
 /** Deterministic, explicitly synthetic data for local browser QA of the Risk page; never used by the real route. */
+import { DateTime } from "luxon";
 import { ETF_BY_SECTOR, GICS_SECTORS, type GicsSector } from "@/lib/attribution/sectors";
 import type { DateSeries } from "@/lib/attribution/types";
 import type { FactorKey } from "./factors";
+import type { EtfList } from "./lookthrough";
+import { composeBenchmark, lookthroughFromRisk, type LookthroughState } from "./lookthrough-report";
 import { buildRiskReport, LOOKBACKS, MARKET, type LookbackKey, type RiskHolding, type RiskReport } from "./model";
 import { runStressTests, STRESS_WINDOWS, stressInputFromReport, type StressResult } from "./stress";
 
@@ -87,6 +90,8 @@ function previewFactorEtfs(market: number[], returns: Map<string, number[]>): Re
   returns.set("USO", f.oil);
   return f;
 }
+/** The preview's S&P 500 sector weights (the Fund's sector benchmark). */
+const PREVIEW_SECTOR_WEIGHTS: Partial<Record<GicsSector, number>> = { information_technology: 0.34, financials: 0.13, health_care: 0.09, consumer_discretionary: 0.1, communication_services: 0.1, industrials: 0.08, consumer_staples: 0.05, energy: 0.04, utilities: 0.025, real_estate: 0.02, materials: 0.025 };
 
 export function previewReport(lookback: LookbackKey, opts: { team?: boolean } = {}) {
   const T = LOOKBACKS[lookback].days;
@@ -114,7 +119,7 @@ export function previewReport(lookback: LookbackKey, opts: { team?: boolean } = 
   const realizedDays = 64;
   const rd = dates.slice(-realizedDays);
   const fund = rd.map((_, i) => holdings.reduce((s, h) => s + h.weight * (returns.get(h.ticker)![T - realizedDays + i] || 0), 0));
-  const weights: Partial<Record<GicsSector, number>> = { information_technology: 0.34, financials: 0.13, health_care: 0.09, consumer_discretionary: 0.1, communication_services: 0.1, industrials: 0.08, consumer_staples: 0.05, energy: 0.04, utilities: 0.025, real_estate: 0.02, materials: 0.025 };
+  const weights = PREVIEW_SECTOR_WEIGHTS;
   if (opts.team) {
     // A "technology and media" team: its holdings scaled to 100%, no cash, benchmarked on its own two sectors, as loadRisk does for a team.
     const sectors: GicsSector[] = ["information_technology", "communication_services"];
@@ -221,4 +226,53 @@ export function previewStress(report: RiskReport): StressResult[] {
     if (w.key === "rates-2022") put(dividends, "LIMA", dates[Math.floor(n / 2)], 1.2);
   }
   return runStressTests(stressInputFromReport(report, { prices, dividends, firstClose: new Map([["OSCR", "2023-01-03"]]) }));
+}
+
+/** Preview holdings treated as ETFs in the look-through preview, one per coverage state the page must show. */
+export const PREVIEW_ETFS: Record<string, string> = {
+  CHRL: "full list (iShares)",
+  GOLF: "Yahoo top 10 only",
+  ECHO: "partial and stale (First Trust)",
+  NOVR: "no list stored",
+};
+
+/**
+ * Synthetic ETF holdings lists for the look-through preview: the sector SPDRs (each sector's preview names plus
+ * synthetic index names), SPY as those SPDRs at the preview's sector weights, and lists for three of the preview
+ * holdings standing in as ETFs. Run through the real look-through code.
+ */
+export function previewLookthrough(report: RiskReport): LookthroughState {
+  const asOf = DateTime.fromISO(report.asOf).minus({ days: 1 }).toISODate()!;
+  const staleAsOf = DateTime.fromISO(report.asOf).minus({ days: 40 }).toISODate()!;
+  const direct = HOLDINGS.filter(([t]) => !(t in PREVIEW_ETFS));
+  const pool = (s: GicsSector) => {
+    // Synthetic index names: N + the SPDR's sector letters + a letter (NKA, NREB).
+    const code = ETF_BY_SECTOR[s].slice(2);
+    return [...direct.filter(([, sector]) => sector === s).map(([t]) => t), ...["A", "B", "C", "D", "E", "F", "G", "H"].map((c) => `N${code}${c}`)];
+  };
+  const decay = (symbols: string[], total: number, ratio = 0.78) => {
+    const raw = symbols.map((_, i) => ratio ** i);
+    const k = total / raw.reduce((a, b) => a + b, 0);
+    return symbols.map((symbol, i) => ({ symbol, weight: +(raw[i] * k).toFixed(4) }));
+  };
+  const list = (etf: string, source: EtfList["source"], rows: { symbol: string; weight: number }[], sector: GicsSector | null, date = asOf): EtfList => ({
+    etf,
+    asOf: date,
+    source,
+    constituents: rows.map((r) => ({ symbol: r.symbol, name: `Synthetic ${r.symbol.toLowerCase()}`, weight: r.weight, sector })),
+  });
+  const spdrs = GICS_SECTORS.map((s) => list(ETF_BY_SECTOR[s], "ssga", decay(pool(s), 99.8), s));
+  const spy = composeBenchmark(
+    "SPY",
+    GICS_SECTORS.filter((s) => (PREVIEW_SECTOR_WEIGHTS[s] ?? 0) > 0).map((s) => ({ list: spdrs.find((l) => l.etf === ETF_BY_SECTOR[s])!, weight: PREVIEW_SECTOR_WEIGHTS[s]! })),
+  );
+  const it = pool("information_technology");
+  const lists: EtfList[] = [
+    ...spdrs,
+    spy,
+    list("CHRL", "ishares", decay(["SMXA", "ALFA", "SMXB", "BRVO", ...it.slice(2, 8), "SMXC", "SMXD"], 99.85, 0.85), "information_technology"),
+    list("GOLF", "yahoo-top10", decay(["FXTR", ...pool("financials").slice(2, 11)], 24.5, 0.9), null),
+    list("ECHO", "first-trust", decay(["DLTA", "ALFA", ...pool("communication_services").slice(2, 7), "CMXZ"], 94.2, 0.8), null, staleAsOf),
+  ];
+  return lookthroughFromRisk(report, lists, { isEtf: (t) => t in PREVIEW_ETFS });
 }

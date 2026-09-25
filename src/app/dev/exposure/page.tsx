@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { ExposureView } from "@/components/app/exposure/exposure-view";
 import { FactorSection } from "@/components/app/exposure/factor-section";
+import { LookthroughSections, SectorViewToggle, parseThroughEtfs, sectorViewQuery } from "@/components/app/exposure/lookthrough";
+import type { LookthroughState } from "@/lib/risk/lookthrough-report";
 import { parseLookback } from "@/lib/risk/model";
-import { previewEnabled, previewReport } from "@/lib/risk/preview";
+import { PREVIEW_ETFS, previewEnabled, previewLookthrough, previewReport } from "@/lib/risk/preview";
 
 export const dynamic = "force-dynamic";
 
@@ -12,23 +14,33 @@ export default async function Preview({ searchParams }: PageProps<"/dev/exposure
   if (!previewEnabled()) notFound();
   const query = await searchParams;
   const team = one(query.scope) === "team";
-  const report = previewReport(parseLookback(one(query.lookback)), { team });
+  const lookback = parseLookback(one(query.lookback));
+  const report = previewReport(lookback, { team });
+  // ?lookthrough=none previews the page before any ETF holdings are stored.
+  const lookthrough: LookthroughState = one(query.lookthrough) === "none" ? { state: "unavailable", reason: "no-lists", heldEtfs: Object.keys(PREVIEW_ETFS) } : previewLookthrough(report);
+  const throughEtfs = parseThroughEtfs(one(query.sectors)) && lookthrough.state === "ok";
+  const transparency = one(query.transparency) !== "0";
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
       <p className="mb-4 rounded border border-dashed p-3 text-sm">
-        Local browser QA · synthetic prices and holdings · no live portfolio data · add ?scope=team for the team view, ?transparency=0 to hide the working
+        Local browser QA · synthetic prices and holdings · no live portfolio data · add ?scope=team for the team view, ?transparency=0 to hide the working, ?lookthrough=none for no ETF lists. CHRL, GOLF, ECHO and NOVR stand in as ETFs (full list, top 10 only, partial and stale, no list).
       </p>
       <ExposureView
         report={report}
-        transparency={one(query.transparency) !== "0"}
+        transparency={transparency}
         basePath="/dev/exposure"
         riskPath="/dev/risk"
         exportQuery=""
         scopeLabel={team ? "Tech & media sleeve" : "Fund"}
         benchmarkLabel={team ? "XLK + XLC" : "S&P 500 sectors"}
         weightSetAsOf="2026-09-01"
+        lookthrough={lookthrough}
+        throughEtfs={throughEtfs}
+        query={`${sectorViewQuery(throughEtfs)}${team ? "&scope=team" : ""}`}
+        controls={<SectorViewToggle basePath="/dev/exposure" lookback={lookback} throughEtfs={throughEtfs} available={lookthrough.state === "ok"} extra={team ? "&scope=team" : ""} />}
       >
-        <FactorSection report={report} transparency={one(query.transparency) !== "0"} exportQuery="" benchmarkLabel={team ? "XLK + XLC" : "the S&P 500 sector benchmark"} />
+        <FactorSection report={report} transparency={transparency} exportQuery="" benchmarkLabel={team ? "XLK + XLC" : "the S&P 500 sector benchmark"} />
+        <LookthroughSections state={lookthrough} scope={team ? "team" : "fund"} transparency={transparency} />
       </ExposureView>
     </main>
   );

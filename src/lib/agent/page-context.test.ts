@@ -39,6 +39,7 @@ describe("page context", () => {
     const ctx = parsePageContext({ kind: "exposure", path: "/t/fig/exposure", title: "FIG exposure", scope: "team", team: "fig", lookback: "1y", asOf: "2026-09-24" })!;
     expect(ctx.kind).toBe("exposure");
     expect(pageContextBlock(ctx)).toContain('get_portfolio_risk with { scope: "team", team: "fig", lookback: "1y", page: "exposure" }');
+    expect(pageContextBlock(ctx)).toContain("etfLookThrough");
     expect(pageContextLabel(ctx)).toBe("FIG exposure · 2026-09-24 close");
     expect(parsePageContext({ ...ctx, lookback: "5y" })).toBeNull();
   });
