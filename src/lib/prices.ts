@@ -3,7 +3,7 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { DateTime } from "luxon";
 import * as schema from "@/db/schema";
 import { dailyCloses, securityEvents } from "@/db/schema";
-import { getBarsRange } from "@/lib/providers/yahoo";
+import { getBarsRange, type BarsRange } from "@/lib/providers/yahoo";
 
 // Passed in rather than imported so scripts can run these with their own connection.
 export type Db = PostgresJsDatabase<typeof schema>;
@@ -34,12 +34,25 @@ export async function upsertEvents(db: Db, ticker: string, ev: { dividends: { da
     });
 }
 
+/** Days of slack between a requested start (or a listing date) and the first stored close, for holidays. */
+const START_SLACK_DAYS = 5;
+
+/**
+ * Whether stored closes starting at `first` already reach back far enough: to within a few days
+ * of `from`, or of the symbol's first trade when it listed after `from`.
+ */
+export function historyCovers(first: string, from: string, firstTrade: string | null) {
+  const within = (start: string) => first <= DateTime.fromISO(start).plus({ days: START_SLACK_DAYS }).toISODate()!;
+  return within(from) || (!!firstTrade && firstTrade > from && within(firstTrade));
+}
+
 export type SyncPricesResult = { updated: string[]; failed: Record<string, string>; remaining: string[] };
 
 /**
  * Bring closes and dividend/split events up to date for each symbol, back to `from`.
  * One provider call per symbol: a full backfill when history is short, otherwise a one-week
- * top-up. A newly seen split forces a full refetch because Yahoo restates earlier closes.
+ * top-up. A symbol that listed after `from` counts as covered once its history reaches its
+ * first trade. A newly seen split forces a full refetch because Yahoo restates earlier closes.
  */
 export async function syncPrices(
   db: Db,
@@ -57,7 +70,6 @@ export async function syncPrices(
     .where(inArray(dailyCloses.ticker, symbols))
     .groupBy(dailyCloses.ticker);
   const coverage = new Map(have.map((r) => [r.ticker, r]));
-  const slack = DateTime.fromISO(opts.from).plus({ days: 5 }).toISODate()!;
 
   for (const [i, symbol] of symbols.entries()) {
     if (Date.now() - started > budget) {
@@ -66,9 +78,17 @@ export async function syncPrices(
     }
     try {
       const c = coverage.get(symbol);
-      const covered = c?.first && c.last && c.first <= slack;
-      const since = covered ? DateTime.fromISO(c.last!).minus({ days: 7 }).toISODate()! : opts.from;
-      let range = await getBarsRange(symbol, since);
+      const topUp = c?.last ? DateTime.fromISO(c.last).minus({ days: 7 }).toISODate()! : null;
+      let covered = !!(c?.first && historyCovers(c.first, opts.from, null));
+      let range: BarsRange;
+      if (covered) range = await getBarsRange(symbol, topUp!);
+      else if (c?.first && topUp) {
+        // Stored history starts after `from`. When that is where the symbol's trading starts
+        // (a later listing), a top-up is enough; otherwise backfill the whole range.
+        range = await getBarsRange(symbol, topUp);
+        covered = historyCovers(c.first, opts.from, range.firstTrade ?? null);
+        if (!covered) range = await getBarsRange(symbol, opts.from);
+      } else range = await getBarsRange(symbol, opts.from);
       if (covered && range.splits.length) {
         const known = await db
           .select({ exDate: securityEvents.exDate })

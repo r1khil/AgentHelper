@@ -124,6 +124,8 @@ export type BarsRange = {
   bars: { date: string; close: number }[];
   dividends: { date: string; amount: number }[];
   splits: { date: string; ratio: number }[];
+  /** Yahoo's first trade date for the symbol, when it reports one: history cannot start earlier. */
+  firstTrade?: string | null;
 };
 
 /**
@@ -155,6 +157,7 @@ export async function getBarsRange(symbol: string, from: string, to?: string): P
         bars,
         dividends: (res.events?.dividends ?? []).map((d) => ({ date: iso(d.date), amount: d.amount })),
         splits: (res.events?.splits ?? []).filter((s) => s.denominator > 0).map((s) => ({ date: iso(s.date), ratio: s.numerator / s.denominator })),
+        firstTrade: res.meta?.firstTradeDate ? iso(new Date(res.meta.firstTradeDate)) : null,
       };
     },
     { db: false },
