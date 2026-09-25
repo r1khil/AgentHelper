@@ -15,6 +15,7 @@ import { makeFredTools } from "./fred-tools";
 import { fredConfigured } from "@/lib/providers/fred";
 import { makeWikipediaTools } from "./wikipedia-tools";
 import { makePredictionMarketTools } from "./prediction-markets-tools";
+import { makeSandboxTools } from "./sandbox-tools";
 import type { PageContext } from "./page-context";
 import type { CurrentUser } from "@/lib/auth";
 
@@ -89,6 +90,7 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
     ...(fredConfigured() ? makeFredTools() : {}),
     ...makeWikipediaTools(),
     ...makePredictionMarketTools(),
+    ...(ctx.viewer ? makeSandboxTools({ viewer: ctx.viewer, teamId: ctx.teamId }) : {}),
   };
   // Admin-registered MCP servers add tools under their prefix; a native name always wins.
   const mcp = await loadMcpTools();
