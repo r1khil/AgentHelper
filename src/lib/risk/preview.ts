@@ -60,7 +60,7 @@ export function previewReport(lookback: LookbackKey) {
   const realizedDays = 64;
   const rd = dates.slice(-realizedDays);
   const fund = rd.map((_, i) => holdings.reduce((s, h) => s + h.weight * (returns.get(h.ticker)![T - realizedDays + i] || 0), 0));
-  const weights: Partial<Record<GicsSector, number>> = { information_technology: 0.34, financials: 0.13, health_care: 0.09, consumer_discretionary: 0.1, communication_services: 0.1, industrials: 0.08, consumer_staples: 0.05, energy: 0.03, utilities: 0.025, real_estate: 0.02, materials: 0.025 };
+  const weights: Partial<Record<GicsSector, number>> = { information_technology: 0.34, financials: 0.13, health_care: 0.09, consumer_discretionary: 0.1, communication_services: 0.1, industrials: 0.08, consumer_staples: 0.05, energy: 0.04, utilities: 0.025, real_estate: 0.02, materials: 0.025 };
   return buildRiskReport({
     scope: "fund",
     asOf: dates.at(-1)!,

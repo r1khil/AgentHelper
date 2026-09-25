@@ -78,6 +78,21 @@ export function riskDecomposition(weights: number[], cov: number[][]) {
   return { variance: varianceP, sigma, marginal, contribution, share };
 }
 
+/**
+ * Marginal volatility: ∂σ/∂wᵢ = (Σw)ᵢ ÷ σ, the change in σ per unit of weight added to asset i funded from a
+ * riskless asset (cash). Applied to active weights it is marginal tracking error. Daily units, like σ.
+ */
+export function marginalVol(weights: number[], cov: number[][]) {
+  const dec = riskDecomposition(weights, cov);
+  return dec.marginal.map((m) => (dec.sigma > 0 ? m / dec.sigma : 0));
+}
+
+/** σ = √(wᵀΣw) after adding `delta` to weight i: the exact recomputation that marginal volatility approximates. */
+export function volAfterBump(weights: number[], cov: number[][], i: number, delta: number) {
+  const bumped = weights.map((w, j) => (j === i ? w + delta : w));
+  return Math.sqrt(Math.max(0, dot(bumped, matVec(cov, bumped))));
+}
+
 /** Excel PERCENTILE.INC on an ascending-sorted array: rank p·(n − 1), linearly interpolated. */
 export function percentileInc(sortedAsc: number[], p: number) {
   const n = sortedAsc.length;

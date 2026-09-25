@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { beta, concentration, correlationMatrix, covariance, covarianceMatrix, drawdowns, historicalVaR, percentileInc, riskDecomposition, stdev } from "./math";
+import { beta, concentration, correlationMatrix, covariance, covarianceMatrix, drawdowns, historicalVaR, marginalVol, percentileInc, riskDecomposition, stdev, volAfterBump } from "./math";
 
 describe("risk math", () => {
   it("matches COVARIANCE.S and STDEV.S", () => {
@@ -59,5 +59,25 @@ describe("risk math", () => {
   it("measures concentration", () => {
     expect(concentration([0.25, 0.25, 0.25, 0.25]).effectiveN).toBeCloseTo(4, 12);
     expect(concentration([0.9, 0.1]).hhi).toBeCloseTo(0.82, 12);
+  });
+  it("gives marginal volatility (Σw)ᵢ ÷ σ that matches a numerical bump of each weight", () => {
+    const cov = [
+      [0.0004, 0.00012, -0.00005],
+      [0.00012, 0.0009, 0.0001],
+      [-0.00005, 0.0001, 0.0002],
+    ];
+    // Long, long and short, like active weights against a benchmark.
+    const w = [0.5, 0.3, -0.6];
+    const sigma = Math.sqrt(riskDecomposition(w, cov).variance);
+    const analytic = marginalVol(w, cov);
+    const h = 1e-6;
+    for (let i = 0; i < w.length; i++) {
+      // Central difference: (σ(w + h·eᵢ) − σ(w − h·eᵢ)) ÷ 2h.
+      const numeric = (volAfterBump(w, cov, i, h) - volAfterBump(w, cov, i, -h)) / (2 * h);
+      expect(analytic[i]).toBeCloseTo(numeric, 8);
+    }
+    // Euler: weights times marginals add back up to σ.
+    expect(w.reduce((s, wi, i) => s + wi * analytic[i], 0)).toBeCloseTo(sigma, 12);
+    expect(marginalVol([0, 0, 0], cov)).toEqual([0, 0, 0]);
   });
 });

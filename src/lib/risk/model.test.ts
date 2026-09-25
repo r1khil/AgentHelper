@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ETF_BY_SECTOR, GICS_SECTORS } from "@/lib/attribution/sectors";
+import { volAfterBump } from "./math";
 import { buildRiskReport, MARKET, type RiskInput } from "./model";
 
 // Deterministic pseudo-random daily returns.
@@ -95,5 +96,27 @@ describe("buildRiskReport", () => {
     const full = buildRiskReport(input({ realized: { dates, portfolio: market, benchmark: market, market, riskFree: Array(N).fill(0.0001) } }));
     expect(full.realized!.beta).toBeCloseTo(1, 10);
     expect(full.realized!.trackingError).toBeCloseTo(0, 10);
+  });
+  it("splits tracking error into contributions that add up, and its marginal matches a recomputation", () => {
+    const r = buildRiskReport(input());
+    const te = r.portfolio.trackingError!;
+    const contributions = r.holdings.reduce((s, h) => s + h.teContribution!, 0) + r.benchmarkLegs.reduce((s, l) => s + l.teContribution, 0);
+    expect(contributions).toBeCloseTo(te, 12);
+    // ∂TE/∂wᵢ = (Σa)ᵢ ÷ TE: bump each holding's active weight by ±1 bp, funded from cash, and recompute TE.
+    const { active, covariance, tickers } = r.matrix;
+    const h = 1e-4;
+    for (const x of r.holdings) {
+      const i = tickers.indexOf(x.ticker);
+      const numeric = ((volAfterBump(active!, covariance, i, h) - volAfterBump(active!, covariance, i, -h)) / (2 * h)) * Math.sqrt(252);
+      expect(x.marginalTe!).toBeCloseTo(numeric, 8);
+    }
+    // Euler again: Σ aᵢ × marginalᵢ is the tracking error itself.
+    const euler = r.holdings.reduce((s, x) => s + x.weight * x.marginalTe!, 0) + r.benchmarkLegs.reduce((s, l) => s + l.weight * l.marginalTe, 0);
+    expect(euler).toBeCloseTo(te, 12);
+  });
+
+  it("leaves active-risk figures empty without a benchmark", () => {
+    const r = buildRiskReport(input({ benchmarkWeights: null }));
+    expect(r.holdings.every((h) => h.marginalTe === null && h.teContribution === null && h.activeRiskShare === null)).toBe(true);
   });
 });
