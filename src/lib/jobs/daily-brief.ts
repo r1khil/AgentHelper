@@ -13,7 +13,7 @@ import { agentConfigured } from "@/lib/agent/model";
 import { agentModelWithFallback, prepareAgentStep } from "@/lib/agent/definition";
 import { makeTools } from "@/lib/agent/tools";
 import { finalReply, WRITE_UP_MAX_TOKENS, writeUpFromEvidence } from "@/lib/agent/write-up";
-import { EmailNotSentError, stableKey, type ProviderAttempt } from "@/lib/email/delivery";
+import { stableKey } from "@/lib/email/delivery";
 import { isTradingDay, todayNY } from "@/lib/providers/calendar";
 import type { Source } from "@/lib/providers/types";
 import {
@@ -43,8 +43,6 @@ const MAX_STEPS = 8;
 const MAX_ANALYSIS_ATTEMPTS = 2;
 /** What the send may spend inside the 300 s function limit before it stops starting optional work. */
 const SEND_BUDGET_MS = 280_000;
-/** The sender's name when a fallback provider (Gmail) sends; OpenMail shows the inbox's own name. */
-const HOOT_NAME = "Hoot (The Owl Fund)";
 /** Research tools that explain a price move. The rest (Drive, filings text, memory) are for chats about one holding. */
 const BRIEF_TOOLS = ["get_news", "search_web", "read_url", "get_quote", "get_relative_moves", "get_filings", "get_earnings_calendar", "get_analyst_estimates"];
 
@@ -88,11 +86,10 @@ export type DailyBriefSendResult = {
   analysis: "hoot" | "numbers only";
   sent: string[];
   failed: Record<string, string>;
-  /** The email service that delivered it, and what each service tried. */
-  provider?: string;
-  attempts?: ProviderAttempt[];
+  /** How many requests OpenMail took (it is retried after no response, a 5xx or a short rate limit). */
+  tries?: number;
   /** The admins were told the brief is late ("late") or that the evening's retries ran out ("final"). */
-  alert?: { kind: "late" | "final"; to: string[]; provider?: string; error?: string };
+  alert?: { kind: "late" | "final"; to: string[]; sent: boolean; error?: string };
 };
 
 /**
@@ -266,8 +263,8 @@ async function briefSent(sessionDate: string) {
  * 5:15 p.m., then every 15 minutes until midnight New York time while it has not gone out: email the brief to
  * the list. The numbers are recomputed from the closes as they stand at send time (missing closes are fetched
  * again first), and Hoot's analysis goes in only when it was written from exactly those numbers. Otherwise Hoot
- * writes it again (once), or the email goes out with the app's own figures and says why. The email goes through
- * OpenMail, then Gmail or Resend when OpenMail cannot take it. Sends to the list once per session unless `force`.
+ * writes it again (once), or the email goes out with the app's own figures and says why. OpenMail is the only
+ * email provider, so a failed send waits for the next retry. Sends to the list once per session unless `force`.
  */
 export async function sendDailyBrief(opts: SendOptions = {}): Promise<DailyBriefSendResult> {
   const sessionDate = opts.sessionDate ?? todayNY();
@@ -354,13 +351,12 @@ async function sendBrief(sessionDate: string, opts: SendOptions, result: DailyBr
     const idempotencyKey = list && !opts.force ? stableKey({ job: SEND_JOB, sessionDate, to, cc, subject, body }) : undefined;
     progress.step("send email", { to, cc, analysis: result.analysis });
     try {
-      const delivery = await deliverEmail({ to, cc, subject, text: body, fromName: HOOT_NAME, idempotencyKey });
+      const delivery = await deliverEmail({ to, cc, subject, text: body, idempotencyKey });
       result.sent.push(to, ...cc);
-      result.provider = delivery.provider;
-      result.attempts = delivery.attempts;
+      result.tries = delivery.tries;
     } catch (e) {
       result.failed[[to, ...cc].join(", ")] = e instanceof Error ? e.message : String(e);
-      if (e instanceof EmailNotSentError) result.attempts = e.attempts;
+      result.tries = (e as { tries?: number }).tries;
     }
     if (!result.sent.length) return fail("no email was sent");
     result.status = "ok";
@@ -395,7 +391,8 @@ async function analysisRunning(sessionDate: string) {
 
 /**
  * Email the admins that the brief has not gone out: once when a retry fails (from 5:30 p.m.), and once more when
- * the evening's last retry fails. Best effort, through the same providers as the brief.
+ * the evening's last retry fails. Best effort through OpenMail, so it reaches them when the brief failed for
+ * another reason (closes missing, one recipient over the cold-recipient cap) but not while OpenMail is down.
  */
 async function alertAdmins(sessionDate: string, now: Date, result: DailyBriefSendResult, progress: JobReporter): Promise<DailyBriefSendResult["alert"]> {
   try {
@@ -403,7 +400,7 @@ async function alertAdmins(sessionDate: string, now: Date, result: DailyBriefSen
     const told = await db
       .select({ kind: sql<string>`${jobRuns.summary}->'alert'->>'kind'` })
       .from(jobRuns)
-      .where(and(eq(jobRuns.job, SEND_JOB), sql`${jobRuns.summary}->>'sessionDate' = ${sessionDate}`, sql`${jobRuns.summary}->'alert'->>'provider' is not null`));
+      .where(and(eq(jobRuns.job, SEND_JOB), sql`${jobRuns.summary}->>'sessionDate' = ${sessionDate}`, sql`${jobRuns.summary}->'alert'->>'sent' = 'true'`));
     const kinds = new Set(told.map((t) => t.kind));
     if (kinds.has(kind) || (kind === "late" && kinds.has("final"))) return undefined;
     const admins = await db.select({ email: profiles.email }).from(profiles).where(eq(profiles.role, "admin")).orderBy(asc(profiles.email));
@@ -413,10 +410,10 @@ async function alertAdmins(sessionDate: string, now: Date, result: DailyBriefSen
     const error = Object.values(result.failed)[0] ?? result.reason ?? "unknown";
     const { subject, body } = briefAlertEmail({ sessionDate, final: kind === "final", error, appUrl: process.env.APP_URL });
     try {
-      const delivery = await deliverEmail({ to: to[0], cc: to.slice(1), subject, text: body, fromName: HOOT_NAME });
-      return { kind, to, provider: delivery.provider };
+      await deliverEmail({ to: to[0], cc: to.slice(1), subject, text: body });
+      return { kind, to, sent: true };
     } catch (e) {
-      return { kind, to, error: e instanceof Error ? e.message : String(e) };
+      return { kind, to, sent: false, error: e instanceof Error ? e.message : String(e) };
     }
   } catch {
     return undefined;

@@ -3,16 +3,7 @@ import { randomUUID } from "node:crypto";
 import { eq, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { notifications } from "@/db/schema";
-import {
-  DeliveryError,
-  isRetryableStatus,
-  parseRetryAfter,
-  sendWithFailover,
-  withRetries,
-  type ProviderAttempt,
-  type ProviderName,
-  type ProviderSend,
-} from "@/lib/email/delivery";
+import { DeliveryError, isRetryableStatus, parseRetryAfter, withRetries } from "@/lib/email/delivery";
 import { getSetting, setSetting } from "@/lib/settings";
 
 export type NotificationKind = "movement_alert" | "reminder" | "overdue" | "earnings";
@@ -35,22 +26,12 @@ export async function queueNotification(n: {
   return rows.length > 0;
 }
 
-/** OpenMail sends from Hoot's own inbox (hoot@omail.sh) with an API key, so there is no mailbox login to expire. */
-function openmailConfigured() {
-  return Boolean(process.env.OPENMAIL_API_KEY && process.env.OPENMAIL_INBOX);
-}
-
-/** The fund has no domain verified in Resend, so outgoing mail goes through a Gmail account when one is set. */
-function gmailConfigured() {
-  return Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
-}
-
-function resendConfigured() {
-  return Boolean(process.env.RESEND_API_KEY);
-}
-
+/**
+ * The fund sends all of its email through OpenMail, from Hoot's own inbox (hoot@omail.sh), with an API key, so
+ * there is no mailbox login to expire. There is deliberately no second provider.
+ */
 export function emailConfigured() {
-  return openmailConfigured() || gmailConfigured() || resendConfigured();
+  return Boolean(process.env.OPENMAIL_API_KEY && process.env.OPENMAIL_INBOX);
 }
 
 type OutgoingEmail = {
@@ -59,12 +40,10 @@ type OutgoingEmail = {
   /** Omit when replying on `threadId`; OpenMail then uses the thread's subject with "Re:". */
   subject?: string;
   text: string;
+  /** On the free plan OpenMail only accepts one of our own OpenMail inboxes here; anything else is dropped. */
   replyTo?: string;
-  headers?: Record<string, string>;
-  /** OpenMail only: send as a reply in this thread (without quoting the previous message). */
+  /** Send as a reply in this OpenMail thread (without quoting the previous message). */
   threadId?: string;
-  /** Gmail only: the sender's display name. OpenMail shows the inbox's own name, Resend EMAIL_FROM's. */
-  fromName?: string;
   /**
    * OpenMail sends at most one message per key within 24 hours, so repeating a send whose first request may
    * have gone through (it timed out) cannot email anyone twice. A new key per call unless given.
@@ -72,7 +51,7 @@ type OutgoingEmail = {
   idempotencyKey?: string;
 };
 
-export type EmailDelivery = { provider: ProviderName; id: string; attempts: ProviderAttempt[] };
+export type EmailDelivery = { id: string; tries: number };
 
 /** Per request. OpenMail's proxy gives up on its own app after about 15 seconds. */
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -80,38 +59,28 @@ const REQUEST_TIMEOUT_MS = 15_000;
 const OPENMAIL_RETRY_DELAYS_MS = [2_000, 8_000];
 
 /**
- * Send one plain-text email and return the provider's id. `replyTo` is what makes the weekly process-update
- * ask answerable by reply; nothing else in the app sets it. See deliverEmail for how providers are chosen.
+ * Send one plain-text email and return OpenMail's message id. `replyTo` is what makes the weekly process-update
+ * ask answerable by reply; nothing else in the app sets it.
  */
 export async function sendEmail(msg: OutgoingEmail): Promise<string> {
   return (await deliverEmail(msg)).id;
 }
 
 /**
- * Send one plain-text email through the first provider that takes it: OpenMail (Hoot's own inbox, when
- * OPENMAIL_API_KEY and OPENMAIL_INBOX are set), then Gmail SMTP (GMAIL_USER, GMAIL_APP_PASSWORD), then Resend,
- * so one provider's outage or quota does not stop the app's email. OpenMail's transient failures (no response,
- * 5xx, a short rate limit) are retried first with the same idempotency key. A reply inside an OpenMail thread
- * can only go through OpenMail. Throws EmailNotSentError, which lists every provider's error.
+ * Send one plain-text email from Hoot's OpenMail inbox. Transient failures (no response, a 5xx, a short rate
+ * limit) are tried again with the same idempotency key, so a retry cannot send the email twice. Throws an
+ * "OpenMail: …" error carrying `tries` when it could not send.
  */
 export async function deliverEmail(msg: OutgoingEmail): Promise<EmailDelivery> {
+  if (!emailConfigured()) throw new Error("email is not configured (OPENMAIL_API_KEY, OPENMAIL_INBOX)");
   const key = msg.idempotencyKey ?? randomUUID();
-  // Replies to an email a fallback provider sent still reach Hoot's inbox.
-  const fallback = { ...msg, replyTo: msg.replyTo ?? hootAddress() };
-  const providers: ProviderSend<string>[] = [];
-  if (openmailConfigured()) providers.push({ name: "OpenMail", send: () => withRetries(() => sendWithOpenMail(msg, key), { delaysMs: OPENMAIL_RETRY_DELAYS_MS, maxWaitMs: 20_000 }) });
-  if (!msg.threadId) {
-    if (gmailConfigured()) providers.push({ name: "Gmail", send: async () => ({ value: await sendWithGmail(fallback), tries: 1 }) });
-    if (resendConfigured()) providers.push({ name: "Resend", send: async () => ({ value: await sendWithResend(fallback), tries: 1 }) });
+  try {
+    const { value, tries } = await withRetries(() => sendWithOpenMail(msg, key), { delaysMs: OPENMAIL_RETRY_DELAYS_MS, maxWaitMs: 20_000 });
+    return { id: value, tries };
+  } catch (e) {
+    const tries = (e as { tries?: number }).tries ?? 1;
+    throw Object.assign(new Error(`OpenMail: ${e instanceof Error ? e.message : String(e)}`), { tries });
   }
-  const { provider, value, attempts } = await sendWithFailover(providers);
-  return { provider, id: value, attempts };
-}
-
-/** Hoot's OpenMail address, when OPENMAIL_INBOX holds the address rather than the inbox id. */
-function hootAddress() {
-  const inbox = process.env.OPENMAIL_INBOX;
-  return openmailConfigured() && inbox?.includes("@") ? inbox : undefined;
 }
 
 /** A request to OpenMail's API. No response at all (timeout, network) is a retryable DeliveryError. */
@@ -188,101 +157,23 @@ async function sendWithOpenMail(msg: OutgoingEmail, idempotencyKey: string): Pro
   }
   if (!res.ok) throw await openmailError(res, "");
   const data = (await res.json().catch(() => ({}))) as { messageId?: string; status?: string };
-  // A replay of the same key returns the first outcome, so a failed send stays failed: fall through to the next provider.
+  // A replay of the same key returns the first outcome, so a failed send stays failed.
   if (data.status === "failed") throw new DeliveryError("the send failed", { retryable: false });
   return data.messageId ?? "";
 }
 
-async function gmailTransport() {
-  const nodemailer = await import("nodemailer");
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 20_000,
-  });
-}
-
-async function sendWithGmail(msg: OutgoingEmail): Promise<string> {
-  const transport = await gmailTransport();
-  // Gmail always sends from the signed-in address, so only the display name is ours to choose.
-  const info = await transport.sendMail({
-    from: { name: msg.fromName || process.env.GMAIL_FROM_NAME || "The Owl's Nest", address: process.env.GMAIL_USER! },
-    to: msg.to,
-    ...(msg.cc?.length ? { cc: msg.cc } : {}),
-    subject: msg.subject ?? "",
-    text: msg.text,
-    ...(msg.replyTo ? { replyTo: msg.replyTo } : {}),
-    ...(msg.headers ? { headers: msg.headers } : {}),
-  });
-  return info.messageId ?? "";
-}
-
-function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${what} timed out after ${ms / 1000}s`)), ms);
-  });
-  return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
-}
-
-async function sendWithResend(msg: OutgoingEmail): Promise<string> {
-  const { Resend } = await import("resend");
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const from = process.env.EMAIL_FROM || "The Owl's Nest <onboarding@resend.dev>";
-  const { data, error } = await withTimeout(
-    resend.emails.send({
-      from,
-      to: msg.to,
-      ...(msg.cc?.length ? { cc: msg.cc } : {}),
-      subject: msg.subject ?? "",
-      text: msg.text,
-      ...(msg.replyTo ? { replyTo: msg.replyTo } : {}),
-      ...(msg.headers ? { headers: msg.headers } : {}),
-    }),
-    REQUEST_TIMEOUT_MS,
-    "the send",
-  );
-  if (error) throw new Error(error.message);
-  return data?.id ?? "";
-}
-
-export type ProviderHealth = { provider: ProviderName; configured: boolean; ok: boolean; detail: string };
-
-/** Whether each provider could send right now: sign-in and sending identity, checked without sending anything. */
-export async function checkEmailProviders(): Promise<ProviderHealth[]> {
-  const check = async (provider: ProviderName, configured: boolean, run: () => Promise<string>): Promise<ProviderHealth> => {
-    if (!configured) return { provider, configured, ok: false, detail: "not configured" };
-    try {
-      return { provider, configured, ok: true, detail: await run() };
-    } catch (e) {
-      return { provider, configured, ok: false, detail: e instanceof Error ? e.message : String(e) };
-    }
-  };
-  return Promise.all([
-    check("OpenMail", openmailConfigured(), async () => {
-      const id = await resolveOpenMailInbox();
-      const res = await openmail(`/v1/inboxes/${id}`);
-      if (!res.ok) throw await openmailError(res, "inbox check failed: ");
-      const inbox = (await res.json()) as { address?: string };
-      return `sends as ${inbox.address ?? id}`;
-    }),
-    check("Gmail", gmailConfigured(), async () => {
-      await withTimeout((await gmailTransport()).verify(), REQUEST_TIMEOUT_MS * 2, "the sign-in");
-      return `signed in as ${process.env.GMAIL_USER}`;
-    }),
-    check("Resend", resendConfigured(), async () => {
-      const res = await fetch("https://api.resend.com/domains", { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` }, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
-      if (!res.ok) throw new Error(`domain check failed: ${res.status} ${await res.text()}`);
-      const { data } = (await res.json()) as { data?: { name: string; status: string }[] };
-      const domain = /@([^>\s]+)/.exec(process.env.EMAIL_FROM || "onboarding@resend.dev")?.[1]?.toLowerCase() ?? "";
-      if (!(data ?? []).some((d) => d.status === "verified" && d.name.toLowerCase() === domain)) {
-        throw new Error(`${domain} is not a verified domain, so Resend can only email the account's owner`);
-      }
-      return `sends from ${domain}`;
-    }),
-  ]);
+/** Whether OpenMail can send right now: the key works and Hoot's inbox answers. Sends nothing. */
+export async function checkEmail(): Promise<{ provider: "OpenMail"; ok: boolean; detail: string }> {
+  if (!emailConfigured()) return { provider: "OpenMail", ok: false, detail: "not configured" };
+  try {
+    const id = await resolveOpenMailInbox();
+    const res = await openmail(`/v1/inboxes/${id}`);
+    if (!res.ok) throw await openmailError(res, "inbox check failed: ");
+    const inbox = (await res.json()) as { address?: string };
+    return { provider: "OpenMail", ok: true, detail: `sends as ${inbox.address ?? id}` };
+  } catch (e) {
+    return { provider: "OpenMail", ok: false, detail: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 async function sendOne(to: string, subject: string, text: string) {
