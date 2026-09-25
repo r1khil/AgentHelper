@@ -16,7 +16,12 @@ import { BENCHMARKS, type Metrics } from "@/lib/backtesting/engine";
 import { loadSnapshot, resolveScenarioSnapshot, runBacktest } from "@/lib/backtesting/load";
 import { MAX_SCENARIO_COMPANIES } from "@/lib/backtesting/scenario";
 import { weightsFromOverrides } from "@/lib/backtesting/overrides";
+import { applyTrade, type Funding } from "@/lib/backtesting/trade";
 import { NY } from "@/lib/providers/calendar";
+import { loadRisk } from "@/lib/risk/load";
+import { DEFAULT_LOOKBACK, LOOKBACKS, type LookbackKey } from "@/lib/risk/model";
+import { scenarioRisk } from "@/lib/risk/scenario";
+import { summarizeRisk } from "@/lib/risk/summary";
 import { sourceId, type Source } from "@/lib/providers/types";
 import type { ToolResult } from "./tools";
 
@@ -37,8 +42,8 @@ function metricsOut(m: Metrics) {
 }
 
 /**
- * The Fund's own performance tools: attribution (the same calculation as the Attribution pages) and backtests
- * (the same engine as the Backtesting page). They need the signed-in member, so they only exist in chat turns, and
+ * The Fund's own performance tools: attribution (the same calculation as the Attribution pages), backtests
+ * (the same engine as the Backtesting page) and risk (the Risk pages). They need the signed-in member, so they only exist in chat turns, and
  * they apply the pages' access rules: fund attribution for execs and admins, a team's for its lead too.
  */
 export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string }) {
@@ -122,8 +127,13 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
           .record(z.string(), z.number().min(0).max(100))
           .optional()
           .describe("Scenario weights in percent by ticker, including CASH. Named tickers get exactly that weight; unspecified holdings keep their current weights. Supply offsetting edits so the full portfolio totals 100.00%. Omit to replay saved weights only."),
+        trades: z
+          .array(z.object({ ticker: z.string(), changePp: z.number().min(-100).max(100).describe("Percentage points: negative trims, positive adds"), fundFrom: z.string().describe("'cash', 'pro_rata' (the other holdings in proportion to their weights) or a holding's ticker") }))
+          .max(10)
+          .optional()
+          .describe("Relative trades applied after `weights`, each offset automatically, e.g. [{ ticker: 'AVGO', changePp: -2, fundFrom: 'cash' }]. Easier than absolute weights for 'trim X by 2%' questions."),
       }),
-      execute: async ({ from, to, benchmark, addedTickers, weights: overrides }): Promise<ToolResult<unknown>> => {
+      execute: async ({ from, to, benchmark, addedTickers, weights: overrides, trades }): Promise<ToolResult<unknown>> => {
         try {
           const yesterday = DateTime.now().setZone(NY).minus({ days: 1 }).toISODate()!;
           const end = to && to < yesterday ? to : yesterday;
@@ -131,8 +141,15 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
           const start = from ?? DateTime.fromISO(end, { zone: NY }).minus({ months: 3 }).toISODate()!;
           const saved = await loadSnapshot(viewer);
           const snapshot = addedTickers?.length ? await resolveScenarioSnapshot(saved, addedTickers) : saved;
-          const weights = weightsFromOverrides(snapshot.positions, overrides ?? {});
-          const r = await runBacktest(snapshot, weights, benchmark, start, end);
+          let weights = weightsFromOverrides(snapshot.positions, overrides ?? {});
+          for (const t of trades ?? []) {
+            const funding: Funding = t.fundFrom === "cash" ? { kind: "cash" } : t.fundFrom === "pro_rata" ? { kind: "pro_rata" } : { kind: "ticker", ticker: t.fundFrom };
+            weights = applyTrade(snapshot.positions, weights, { ticker: t.ticker, changePp: t.changePp, funding });
+          }
+          const [r, risk] = await Promise.all([
+            runBacktest(snapshot, weights, benchmark, start, end),
+            snapshot.positions.some((p) => Math.abs(weights[p.id] - p.weight) > 1e-9) ? scenarioRisk(viewer, snapshot, weights, "1y").catch(() => null) : Promise.resolve(null),
+          ]);
           const changed = snapshot.positions
             .filter((p) => Math.abs(weights[p.id] - p.weight) > 1e-6)
             .map((p) => ({ ticker: p.ticker, savedPct: pct(p.weight), scenarioPct: pct(weights[p.id]) }));
@@ -163,11 +180,64 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
               ...(changed.length ? { modifiedReplay: metricsOut(r.modified) } : {}),
               benchmarkMetrics: metricsOut(r.benchmarkMetrics),
               contributions,
+              ...(risk
+                ? {
+                    riskImpact: {
+                      method: "Today's risk of the current vs modified weights with the Risk page's model (1-year window of daily returns), independent of the backtest period.",
+                      current: { volatilityPct: pct(risk.before.vol), beta: +risk.before.beta.toFixed(2), trackingErrorPct: pct(risk.before.trackingError), var95Pct: pct(risk.before.var), effectivePositions: +risk.before.effectiveN.toFixed(1) },
+                      modified: { volatilityPct: pct(risk.after.vol), beta: +risk.after.beta.toFixed(2), trackingErrorPct: pct(risk.after.trackingError), var95Pct: pct(risk.after.var), effectivePositions: +risk.after.effectiveN.toFixed(1) },
+                      holdings: risk.holdings.map((h) => ({ ticker: h.ticker, weightPct: `${pct(h.weightBefore)} → ${pct(h.weightAfter)}`, shareOfRiskPct: `${pct(h.shareBefore)} → ${pct(h.shareAfter)}` })),
+                    },
+                  }
+                : {}),
               method: "Hypothetical replay, not realized performance: fixed weights rebalanced daily, past trades and cash flows not reconstructed; contributions are each holding's share of the total return, in percentage points.",
               sourceId: source.id,
             },
             sources: [source],
           };
+        } catch (e) {
+          return { data: null, sources: [], error: e instanceof Error ? e.message : String(e) };
+        }
+      },
+    }),
+
+    get_portfolio_risk: tool({
+      description:
+        "Risk of the Fund's current portfolio, exactly as the Risk page computes it from the trade ledger: annualized volatility, beta to the S&P 500, tracking error vs the sector benchmark, 1-day 95% value at risk and expected shortfall (in % and dollars), a beta stress test, concentration (effective number of positions, top-5 weight), each sector's weight vs the benchmark and share of risk, the holdings that contribute most risk, highly correlated pairs, and realized statistics from the Fund's own returns. Use it for questions about how risky the portfolio is, what drives its risk, concentration, diversification, beta, or how much it could lose. Scope 'fund' is the whole Fund (execs and admins); 'team' is one team's holdings as their own portfolio.",
+      inputSchema: z.object({
+        scope: z.enum(["fund", "team"]).default(isFundWide(viewer) ? "fund" : "team"),
+        team: z.string().optional().describe("Team slug or name for scope 'team'; defaults to this chat's team"),
+        lookback: z.enum(Object.keys(LOOKBACKS) as [LookbackKey, ...LookbackKey[]]).default(DEFAULT_LOOKBACK).describe("Window of daily returns: 6m, 1y or 2y"),
+        holdingsLimit: z.number().int().min(3).max(30).default(10).describe("How many of the largest risk sources to list"),
+      }),
+      execute: async ({ scope, team, lookback, holdingsLimit }): Promise<ToolResult<unknown>> => {
+        try {
+          const teamRows = await db.select({ id: teams.id, slug: teams.slug, name: teams.name }).from(teams);
+          let sleeve: (typeof teamRows)[number] | undefined;
+          if (scope === "fund") {
+            if (!isFundWide(viewer)) throw new Error("Whole-fund risk is visible to execs and admins only. Ask about your team's holdings instead (scope 'team').");
+          } else {
+            const q = team?.trim().toLowerCase();
+            sleeve = q ? teamRows.find((t) => t.slug === q || t.name.toLowerCase() === q) : teamRows.find((t) => t.id === ctx.teamId);
+            if (!sleeve) throw new Error(`No team matches "${team}". Teams: ${teamRows.map((t) => t.slug).join(", ")}.`);
+            if (!canManageTeam(viewer, sleeve.id)) throw new Error("Team risk is visible to the team's lead analyst, execs and admins.");
+          }
+          const loaded = await loadRisk(lookback, sleeve?.id ?? null);
+          if (loaded.state === "no-ledger") return { data: { note: "No trades are recorded in the ledger yet, so there is no portfolio to measure." }, sources: [] };
+          if (loaded.state === "no-prices") return { data: { note: "Closing prices for the ledger have not loaded yet; risk appears after the next price run." }, sources: [] };
+          const summary = summarizeRisk(loaded.report, { teamNames: new Map(teamRows.map((t) => [t.id, t.name])), holdingsLimit });
+          const path = `${sleeve ? `/t/${sleeve.slug}/risk` : "/risk"}?lookback=${lookback}`;
+          const source: Source = {
+            id: sourceId("risk", `${path}:${loaded.report.asOf}`),
+            title: `${sleeve ? `${sleeve.name} risk` : "Fund risk"} · ${LOOKBACKS[lookback].label} window · positions at ${loaded.report.asOf} close`,
+            url: appUrl(path),
+            publisher: "Owl Fund risk (trade ledger, Yahoo closes)",
+            publishedAt: loaded.report.asOf,
+            retrievedAt: new Date().toISOString(),
+            sourceType: "Fund risk",
+            excerpt: `Volatility ${summary.annualizedVolatilityPct}% (S&P 500 ${summary.sp500VolatilityPct}%), beta ${summary.beta}, tracking error ${summary.trackingErrorPct ?? "n/a"}%, 1-day 95% VaR ${summary.var95OneDay.pct}% ($${summary.var95OneDay.usd.toLocaleString("en-US")}).`,
+          };
+          return { data: { ...summary, sourceId: source.id }, sources: [source] };
         } catch (e) {
           return { data: null, sources: [], error: e instanceof Error ? e.message : String(e) };
         }
