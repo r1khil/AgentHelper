@@ -36,7 +36,7 @@ const arrow = (a: string, b: string) => (a === b ? a : `${a} → ${b}`);
 /** Current vs modified weights' risk, computed with the Risk page's model on today's portfolio. */
 export function RiskImpact({ data, busy, error, stale }: { data: ScenarioRisk | null; busy: boolean; error: string; stale: boolean }) {
   return (
-    <Card className="mb-6 gap-3 p-4">
+    <Card data-tour="bt-risk-impact" className="mb-6 gap-3 p-4">
       <SectionTitle aside={data ? `${data.window.days} daily returns to the ${data.window.to} close` : undefined}>
         <Explained label="Risk impact · current vs modified weights">
           Today&apos;s risk of the current and modified weights, using the Risk page&apos;s model: a 1-year window of daily total returns, sample covariance, beta against SPY, tracking error against the sector benchmark, and 1-day 95% historical VaR. It is independent of the backtest period above and is an estimate from past returns, not a forecast.

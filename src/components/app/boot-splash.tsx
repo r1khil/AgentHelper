@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { markBootDone } from "./boot-signal";
 
 /** Long enough for a couple of waves, so a quick load doesn't just flash Hoot. Counted from navigation start. */
 const MIN_MS = 1300;
@@ -45,7 +46,12 @@ export function BootSplash() {
               });
             }
             timers.push(window.setTimeout(() => setPhase("fading"), FILL_MS + HOLD_MS));
-            timers.push(window.setTimeout(() => setPhase("gone"), FILL_MS + HOLD_MS + FADE_MS));
+            timers.push(
+              window.setTimeout(() => {
+                setPhase("gone");
+                markBootDone();
+              }, FILL_MS + HOLD_MS + FADE_MS),
+            );
           },
           Math.max(0, MIN_MS - performance.now()),
         ),

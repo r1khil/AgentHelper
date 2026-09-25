@@ -7,6 +7,9 @@ import { profiles } from "@/db/schema";
 import { requireRole, requireUser } from "@/lib/auth";
 import { pruneDismissed } from "@/lib/hoot/policy";
 import type { ActionResult } from "@/lib/actions/holdings";
+import { cleanTourRecord, tourAudience } from "@/lib/tour/offer";
+import type { TourRecord } from "@/lib/tour/types";
+import { WHATS_NEW_TOUR, WHATS_NEW_TOUR_ID } from "@/lib/tour/whats-new";
 
 /** Exec/admin only: reveal how the agent, attribution and jobs are computed. */
 export async function setTransparencyMode(on: boolean): Promise<ActionResult> {
@@ -21,6 +24,19 @@ export async function setHootEnabled(on: boolean): Promise<ActionResult> {
   const user = await requireUser();
   await db.update(profiles).set({ hoot: { ...user.hoot, enabled: on } }).where(eq(profiles.id, user.id));
   revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Remember how far through Hoot's what's-new tour the member got (or that they said later, or finished it). */
+export async function saveTourProgress(tourId: string, record: TourRecord): Promise<ActionResult> {
+  const user = await requireUser();
+  if (tourId !== WHATS_NEW_TOUR_ID || !tourAudience(user.role)) return { ok: false, error: "Unknown tour." };
+  const clean = cleanTourRecord(WHATS_NEW_TOUR, record);
+  if (!clean) return { ok: false, error: "Unknown tour state." };
+  await db
+    .update(profiles)
+    .set({ hoot: { ...user.hoot, tours: { ...user.hoot?.tours, [tourId]: clean } } })
+    .where(eq(profiles.id, user.id));
   return { ok: true };
 }
 

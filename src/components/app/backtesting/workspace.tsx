@@ -574,7 +574,7 @@ export function BacktestingWorkspace({
               >
                 Reset weights
               </Button>
-              <Button type="submit" disabled={!valid || busy}>
+              <Button type="submit" data-tour="bt-run" disabled={!valid || busy}>
                 {busy ? "Replaying…" : "Run backtest"}
               </Button>
             </div>

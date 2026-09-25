@@ -23,6 +23,7 @@ import {
   ScanEye,
   ScrollText,
   Settings,
+  Sparkles,
   Mic,
   Sun,
   SunMoon,
@@ -39,6 +40,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { setHootEnabled, setTransparencyMode } from "@/lib/actions/preferences";
+import { replayTour } from "./tour/tour-store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -83,7 +85,7 @@ function useTeamSection() {
 export function Sidebar(props: Props) {
   return (
     <>
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
+      <aside data-tour="sidebar" className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
         <SidebarBody {...props} />
       </aside>
       <MobileBar {...props} />
@@ -224,12 +226,13 @@ function ScopeSwitcher({ teams, current, fundWide }: { teams: Team[]; current: T
   );
   const cardClass = "flex w-full items-center gap-2.5 rounded-lg border bg-background px-2 py-1.5 text-left shadow-xs";
 
-  if (!fundWide || teams.length < 2) return <div className={cardClass}>{card}</div>;
+  if (!fundWide || teams.length < 2) return <div data-tour="scope" className={cardClass}>{card}</div>;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
           <button
+            data-tour="scope"
             className={cn(cardClass, "transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted")}
           />
         }
@@ -273,11 +276,12 @@ function initials(name: string) {
 
 /** Who is signed in, with the per-person preferences and sign out tucked behind it. */
 function AccountMenu({ user, fundWide, signOut }: { user: SidebarUser; fundWide: boolean; signOut: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <button className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-sidebar-accent" />
+          <button data-tour="account" className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-sidebar-accent" />
         }
       >
         <Avatar name={user.fullName} />
@@ -300,6 +304,20 @@ function AccountMenu({ user, fundWide, signOut }: { user: SidebarUser; fundWide:
         <HootToggle on={user.hootEnabled} />
         {fundWide && <TransparencyToggle on={user.transparencyMode} />}
         <ThemeToggle />
+        {/* Hoot's tour of the Sep 25 pages is for execs and admins, who can see all of them. */}
+        {fundWide && (
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              replayTour();
+            }}
+            className={cn(prefRow, "w-full text-left text-sm hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none")}
+          >
+            <Sparkles className="size-4 shrink-0 text-muted-foreground" />
+            Replay what&apos;s new
+          </button>
+        )}
         <div className="-mx-1.5 my-1.5 h-px bg-border" />
         <button
           type="button"
@@ -419,6 +437,8 @@ function NavItem({ href, label, icon: Icon, active }: { href: string; label: str
   return (
     <Link
       href={href}
+      // A stable handle for Hoot's tour, since hrefs change with the scope.
+      data-tour={`nav-${label.toLowerCase().replace(/[^a-z]+/g, "-")}`}
       aria-current={active ? "page" : undefined}
       className={cn(
         "relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",

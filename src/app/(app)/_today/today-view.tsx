@@ -109,7 +109,7 @@ export async function TodayView({ user, myTeams }: { user: Pick<CurrentUser, "fu
         </Suspense>
       )}
 
-      <section className="space-y-3">
+      <section data-tour="today-teams" className="space-y-3">
         <SectionHead title="Teams" aside="Open a team to see its holdings" />
         <Suspense fallback={<TeamList teams={myTeams} rows={activeHoldings} upcoming={upcoming} openId={ownTeam?.id ?? null} />}>
           <LiveTeamList teams={myTeams} rows={activeHoldings} upcoming={upcoming} market={market} book={book} openId={fundWide ? null : (ownTeam?.id ?? null)} />
@@ -225,7 +225,7 @@ async function Yesterday({ book: pending, today }: { book: Promise<Book>; today:
   const [lead, ...rest] = book.brief?.paragraphs ?? [];
 
   return (
-    <section className="space-y-4">
+    <section data-tour="today-result" className="space-y-4">
       <SectionHead title={sessionHeading(today, book.sessionDate)} aside={longDate(book.sessionDate)} />
       <div className="grid grid-cols-3 gap-4 border-y py-4">
         {book.stats.map((s) => (
@@ -438,7 +438,7 @@ function ComingUp({ upcoming, today, weekly, earningsHref }: { upcoming: Upcomin
   items.sort((a, b) => a.date.localeCompare(b.date));
 
   return (
-    <section className="space-y-3">
+    <section data-tour="today-next" className="space-y-3">
       <SectionHead
         title="Coming up"
         aside={
