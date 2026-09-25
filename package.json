@@ -25,6 +25,7 @@
     "smoke:weekly": "tsx --conditions=react-server scripts/smoke-weekly.ts",
     "smoke:daily-brief": "tsx --conditions=react-server scripts/smoke-daily-brief.ts",
     "smoke:email-reply": "tsx --conditions=react-server scripts/smoke-email-reply.ts",
+    "smoke:fred": "tsx --conditions=react-server --tsconfig ./tsconfig.json scripts/smoke-fred.ts",
     "test:sell-side:browser": "node tests/sell-side/run.mjs"
   },
   "dependencies": {
