@@ -13,6 +13,7 @@ import { loadMcpTools } from "./mcp";
 import { makePortfolioTools } from "./portfolio-tools";
 import { makeFredTools } from "./fred-tools";
 import { fredConfigured } from "@/lib/providers/fred";
+import { makeWikipediaTools } from "./wikipedia-tools";
 import type { PageContext } from "./page-context";
 import type { CurrentUser } from "@/lib/auth";
 
@@ -85,6 +86,7 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
     ...makeTools({ teamId: ctx.teamId, holdingId: ctx.holdingId, userId: ctx.user.id, sources: ctx.sources }),
     ...(ctx.viewer ? makePortfolioTools({ viewer: ctx.viewer, teamId: ctx.teamId }) : {}),
     ...(fredConfigured() ? makeFredTools() : {}),
+    ...makeWikipediaTools(),
   };
   // Admin-registered MCP servers add tools under their prefix; a native name always wins.
   const mcp = await loadMcpTools();
