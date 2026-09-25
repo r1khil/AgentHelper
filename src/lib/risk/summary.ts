@@ -1,11 +1,21 @@
+import { activeRiskBreakdown } from "./active";
+import { buildExposure } from "./exposure";
 import { LOOKBACKS, type RiskReport } from "./model";
 
 const pct = (x: number | null | undefined, d = 2) => (x === null || x === undefined || !Number.isFinite(x) ? null : +(x * 100).toFixed(d));
 const num = (x: number | null | undefined, d = 2) => (x === null || x === undefined || !Number.isFinite(x) ? null : +x.toFixed(d));
 
-/** The Risk page's numbers in a compact form for Hoot: headline figures, sectors, and the largest risk sources. */
+/**
+ * The Risk and Exposure pages' numbers in a compact form for Hoot: headline figures, sector exposure, the largest
+ * risk sources, and where the active risk (tracking error) comes from.
+ */
 export function summarizeRisk(r: RiskReport, opts: { teamNames: Map<string, string>; holdingsLimit: number }) {
   const p = r.portfolio;
+  const x = buildExposure(r);
+  const a = activeRiskBreakdown(r);
+  const shown = a ? a.holdings.slice(0, opts.holdingsLimit) : [];
+  const byMarginal = a ? [...a.holdings].sort((m, n) => n.marginalTe - m.marginalTe) : [];
+  const marginalOut = (h: (typeof byMarginal)[number]) => ({ ticker: h.ticker, marginalTePpPer1Pp: num(h.marginalTe, 3) });
   return {
     scope: r.scope,
     asOf: r.asOf,
@@ -21,6 +31,11 @@ export function summarizeRisk(r: RiskReport, opts: { teamNames: Map<string, stri
     effectivePositions: num(p.effectiveN, 1),
     holdingsCount: r.holdings.length,
     top5WeightPct: pct(p.top5),
+    top10WeightPct: pct(p.top10),
+    largestActiveSectorBet: x.largestBet
+      ? { sector: x.largestBet.label, etf: x.largestBet.etf, activePct: pct(x.largestBet.active), weightPct: pct(x.largestBet.weight), benchmarkPct: pct(x.largestBet.benchWeight), note: "By sector only: the benchmark is sector ETFs, so stock-level active bets are not measured." }
+      : null,
+    sectorOverweightsTotalPct: pct(x.overweight),
     sectors: r.sectors.map((s) => ({ sector: s.label, weightPct: pct(s.weight), benchmarkPct: pct(s.benchWeight), activePct: pct(s.active), shareOfRiskPct: pct(s.riskShare, 1), shareOfActiveRiskPct: pct(s.activeRiskShare, 1) })),
     largestRiskSources: r.holdings.slice(0, opts.holdingsLimit).map((h) => ({
       ticker: h.ticker,
@@ -32,6 +47,22 @@ export function summarizeRisk(r: RiskReport, opts: { teamNames: Map<string, stri
       correlationToFund: num(h.corrToPortfolio),
       modeledWith: h.source === "own" ? "own returns" : h.source === "proxy" ? `sector ETF ${h.proxy}` : "not modeled",
     })),
+    activeRisk: a
+      ? {
+          method:
+            "Share of tracking-error variance (Euler: aᵢ(Σa)ᵢ ÷ aᵀΣa) with the holdings long and the benchmark's sector ETFs short; the holdings plus the benchmark side add to 100%, and a negative share means the position reduces tracking error. Marginal tracking error is ∂TE/∂wᵢ = (Σa)ᵢ ÷ TE: the change in tracking error, in percentage points, from moving 1 percentage point of weight into the holding from cash.",
+          trackingErrorPct: pct(a.trackingError),
+          holdings: shown.map((h) => ({ ticker: h.ticker, weightPct: pct(h.weight), shareOfActiveRiskPct: pct(h.share, 1), trackingErrorPointsPct: pct(h.teContribution), marginalTePpPer1Pp: num(h.marginalTe, 3) })),
+          otherHoldingsShareOfActiveRiskPct: a.holdings.length > shown.length ? pct(a.holdings.slice(shown.length).reduce((s, h) => s + h.share, 0), 1) : null,
+          benchmarkSide: {
+            shareOfActiveRiskPct: pct(a.benchmark.share, 1),
+            legs: a.benchmark.legs.map((l) => ({ etf: l.etf, sector: l.label, benchmarkWeightPct: pct(-l.weight), fundActivePct: pct(l.sectorActive), shareOfActiveRiskPct: pct(l.activeRiskShare, 1) })),
+          },
+          largestMarginal: byMarginal.slice(0, 3).map(marginalOut),
+          mostReducingMarginal: byMarginal.slice(-3).reverse().map(marginalOut),
+          readings: a.sentences,
+        }
+      : null,
     diversifiers: r.holdings.filter((h) => h.riskShare < 0).map((h) => ({ ticker: h.ticker, weightPct: pct(h.weight), shareOfRiskPct: pct(h.riskShare, 1) })),
     highlyCorrelatedPairs: r.correlation.tickers.flatMap((a, i) => r.correlation.tickers.slice(i + 1).map((b, j) => ({ a, b, c: r.correlation.matrix[i][i + 1 + j] }))).filter((x) => x.c >= 0.8).map((x) => `${x.a}/${x.b} ${x.c.toFixed(2)}`),
     realized: r.realized

@@ -51,9 +51,12 @@ const risk = z.object({
   asOf: iso,
 });
 
+/** The Exposure page: the same risk report as Risk, read as sector weights against the benchmark. */
+const exposure = risk.extend({ kind: z.literal("exposure") });
+
 const page = z.object({ kind: z.literal("page"), path, title });
 
-export const pageContextSchema = z.discriminatedUnion("kind", [attribution, backtesting, risk, page]);
+export const pageContextSchema = z.discriminatedUnion("kind", [attribution, backtesting, risk, exposure, page]);
 export type PageContext = z.infer<typeof pageContextSchema>;
 
 export function parsePageContext(value: unknown): PageContext | null {
@@ -76,6 +79,7 @@ export function pageContextFromMessages(messages: { role: string; metadata?: unk
 export function pageContextLabel(ctx: PageContext): string {
   if (ctx.kind === "attribution") return `${ctx.title} · ${ctx.period === "itd" ? "All" : PERIOD_LABELS[ctx.period]}`;
   if (ctx.kind === "risk") return `${ctx.title} · ${ctx.lookback} window`;
+  if (ctx.kind === "exposure") return `${ctx.title} · ${ctx.asOf} close`;
   if (ctx.kind === "backtesting") return `Backtesting · ${ctx.from} to ${ctx.to}${ctx.changed.length ? ` · ${ctx.changed.length} weight${ctx.changed.length === 1 ? "" : "s"} changed` : ""}`;
   return ctx.title;
 }
@@ -105,7 +109,15 @@ export function pageContextBlock(ctx: PageContext): string {
     return `${head}
 - The page shows ${ctx.scope === "fund" ? "the whole Fund's" : `the ${ctx.team ?? "team"} team's`} risk: positions at the ${ctx.asOf} close, measured over ${ctx.lookback} of daily returns.
 - For questions about it (how risky the portfolio is, what drives the risk, concentration, beta, how much it could lose), call get_portfolio_risk with { ${args} } first: it returns the page's numbers. Explain them in plain language, lead with what matters most (usually volatility and beta against the S&P 500, then where the risk is concentrated), and end every line that uses one of its figures with its [src:ID].
+- For where the tracking error comes from, use its activeRisk block: each holding's share of active risk against its weight, the benchmark side (the sector ETFs the Fund holds less of than the index; being underweight is a bet too), and marginal tracking error (how many percentage points tracking error moves for 1 pp more of a holding, funded from cash).
 - These are statistical estimates from past returns, not forecasts: say so when quoting VaR or the stress test, and never present a risk figure as a recommendation to trade.`;
+  }
+  if (ctx.kind === "exposure") {
+    const args = [`scope: ${q(ctx.scope)}`, ...(ctx.team ? [`team: ${q(ctx.team)}`] : []), `lookback: ${q(ctx.lookback)}`, `page: "exposure"`].join(", ");
+    return `${head}
+- The page shows ${ctx.scope === "fund" ? "the whole Fund's" : `the ${ctx.team ?? "team"} team's`} exposure at the ${ctx.asOf} close: each sector's weight against the ${ctx.scope === "fund" ? "S&P 500's" : "team's own sector benchmark"}, sorted by active weight (over- minus underweight), the largest active sector bet, top-10 weight, effective number of positions and cash.
+- For questions about it (what the biggest bets are, how concentrated the book is, how far it is from the index), call get_portfolio_risk with { ${args} } first: it returns the page's numbers (sectors, largestActiveSectorBet, top10WeightPct, effectivePositions, cashPct, and activeRisk for how much each bet adds to tracking error). Lead with the largest active bets, then concentration, and end every line that uses one of its figures with its [src:ID].
+- Active bets here are by sector, because the benchmark is sector ETFs; say so if asked about single stocks. Describe positioning; never present it as a recommendation to trade.`;
   }
   return head;
 }

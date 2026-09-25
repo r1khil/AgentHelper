@@ -203,14 +203,15 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
 
     get_portfolio_risk: tool({
       description:
-        "Risk of the Fund's current portfolio, exactly as the Risk page computes it from the trade ledger: annualized volatility, beta to the S&P 500, tracking error vs the sector benchmark, 1-day 95% value at risk and expected shortfall (in % and dollars), a beta stress test, concentration (effective number of positions, top-5 weight), each sector's weight vs the benchmark and share of risk, the holdings that contribute most risk, highly correlated pairs, and realized statistics from the Fund's own returns. Use it for questions about how risky the portfolio is, what drives its risk, concentration, diversification, beta, or how much it could lose. Scope 'fund' is the whole Fund (execs and admins); 'team' is one team's holdings as their own portfolio.",
+        "Risk of the Fund's current portfolio, exactly as the Risk page computes it from the trade ledger: annualized volatility, beta to the S&P 500, tracking error vs the sector benchmark, 1-day 95% value at risk and expected shortfall (in % and dollars), a beta stress test, concentration (effective number of positions, top-5 and top-10 weight), each sector's weight vs the benchmark (active weight) and share of risk, the largest active sector bet, the holdings that contribute most risk, where the active risk comes from (each holding's and the benchmark side's share of tracking error, and marginal tracking error: how much tracking error moves for 1 pp more of a holding), highly correlated pairs, and realized statistics from the Fund's own returns. The Exposure page reads the same numbers. Use it for questions about how risky the portfolio is, what drives its risk or tracking error, active bets and exposure, concentration, diversification, beta, or how much it could lose. Scope 'fund' is the whole Fund (execs and admins); 'team' is one team's holdings as their own portfolio.",
       inputSchema: z.object({
         scope: z.enum(["fund", "team"]).default(isFundWide(viewer) ? "fund" : "team"),
         team: z.string().optional().describe("Team slug or name for scope 'team'; defaults to this chat's team"),
         lookback: z.enum(Object.keys(LOOKBACKS) as [LookbackKey, ...LookbackKey[]]).default(DEFAULT_LOOKBACK).describe("Window of daily returns: 6m, 1y or 2y"),
         holdingsLimit: z.number().int().min(3).max(30).default(10).describe("How many of the largest risk sources to list"),
+        page: z.enum(["risk", "exposure"]).default("risk").describe("Which page to cite: 'exposure' when the member asked from the Exposure page; the numbers are the same"),
       }),
-      execute: async ({ scope, team, lookback, holdingsLimit }): Promise<ToolResult<unknown>> => {
+      execute: async ({ scope, team, lookback, holdingsLimit, page }): Promise<ToolResult<unknown>> => {
         try {
           const teamRows = await db.select({ id: teams.id, slug: teams.slug, name: teams.name }).from(teams);
           let sleeve: (typeof teamRows)[number] | undefined;
@@ -226,16 +227,17 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
           if (loaded.state === "no-ledger") return { data: { note: "No trades are recorded in the ledger yet, so there is no portfolio to measure." }, sources: [] };
           if (loaded.state === "no-prices") return { data: { note: "Closing prices for the ledger have not loaded yet; risk appears after the next price run." }, sources: [] };
           const summary = summarizeRisk(loaded.report, { teamNames: new Map(teamRows.map((t) => [t.id, t.name])), holdingsLimit });
-          const path = `${sleeve ? `/t/${sleeve.slug}/risk` : "/risk"}?lookback=${lookback}`;
+          const path = `${sleeve ? `/t/${sleeve.slug}/${page}` : `/${page}`}?lookback=${lookback}`;
+          const pageName = page === "exposure" ? "exposure" : "risk";
           const source: Source = {
             id: sourceId("risk", `${path}:${loaded.report.asOf}`),
-            title: `${sleeve ? `${sleeve.name} risk` : "Fund risk"} · ${LOOKBACKS[lookback].label} window · positions at ${loaded.report.asOf} close`,
+            title: `${sleeve ? `${sleeve.name} ${pageName}` : `Fund ${pageName}`} · ${LOOKBACKS[lookback].label} window · positions at ${loaded.report.asOf} close`,
             url: appUrl(path),
             publisher: "Owl Fund risk (trade ledger, Yahoo closes)",
             publishedAt: loaded.report.asOf,
             retrievedAt: new Date().toISOString(),
             sourceType: "Fund risk",
-            excerpt: `Volatility ${summary.annualizedVolatilityPct}% (S&P 500 ${summary.sp500VolatilityPct}%), beta ${summary.beta}, tracking error ${summary.trackingErrorPct ?? "n/a"}%, 1-day 95% VaR ${summary.var95OneDay.pct}% ($${summary.var95OneDay.usd.toLocaleString("en-US")}).`,
+            excerpt: `Volatility ${summary.annualizedVolatilityPct}% (S&P 500 ${summary.sp500VolatilityPct}%), beta ${summary.beta}, tracking error ${summary.trackingErrorPct ?? "n/a"}%, 1-day 95% VaR ${summary.var95OneDay.pct}% ($${summary.var95OneDay.usd.toLocaleString("en-US")}).${summary.largestActiveSectorBet ? ` Largest active sector bet ${summary.largestActiveSectorBet.sector} ${summary.largestActiveSectorBet.activePct}%.` : ""}${summary.activeRisk?.readings[0] ? ` ${summary.activeRisk.readings[0]}` : ""}`,
           };
           return { data: { ...summary, sourceId: source.id }, sources: [source] };
         } catch (e) {
