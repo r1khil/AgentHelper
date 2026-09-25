@@ -19,7 +19,6 @@ import { HootSprite, preloadHoot, usePrefersReducedMotion } from "./hoot-sprite"
 
 const REFRESH_MS = 5 * 60_000;
 const SESSION_KEY = "hoot:session";
-const GREETED_KEY = "hoot:greeted";
 /** Opening these means they're handled; deadlines stay until the work is done or the member dismisses them. */
 const DISMISS_ON_OPEN = new Set(["sell_side", "changelog", "weekly", "tip", "proposal"]);
 const HOP: Keyframe[] = [
@@ -109,7 +108,6 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   // Tagged with the page it was said on, so it disappears the moment the member navigates.
   const [said, setSaid] = useState<{ nudge: HootNudge; path: string } | null>(null);
   const [hovered, setHovered] = useState(false);
-  const [greetingWave, setGreetingWave] = useState(false);
   /** A brief expression for a moment (welcome back, something new needs you). */
   const [flash, setFlash] = useState<HootMood | null>(null);
   /** Pointer resting on him: eyes close happily. */
@@ -166,22 +164,6 @@ export function HootCompanion({ firstName }: { firstName: string }) {
       window.clearInterval(tick);
     };
   }, [load]);
-
-  // A wave hello on the first page of a visit.
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem(GREETED_KEY)) return;
-      sessionStorage.setItem(GREETED_KEY, "1");
-    } catch {
-      return;
-    }
-    const on = window.setTimeout(() => setGreetingWave(true), 600);
-    const off = window.setTimeout(() => setGreetingWave(false), 3200);
-    return () => {
-      window.clearTimeout(on);
-      window.clearTimeout(off);
-    };
-  }, []);
 
   const nudges = useMemo(() => (feed?.nudges ?? []).filter((n) => !dismissed.has(n.id)), [feed, dismissed]);
   const seenTips = useMemo(() => [...(feed?.seenTips ?? []), ...dismissed], [feed, dismissed]);
@@ -276,7 +258,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
       ? "thinking"
       : bubble
         ? bubble.mood
-        : (flash ?? (greetingWave ? "wave" : petting ? "happy" : open || hovered ? awake : resting));
+        : (flash ?? (petting ? "happy" : open || hovered ? awake : resting));
 
   const showFlash = useCallback((m: HootMood, ms: number) => {
     window.clearTimeout(flashTimer.current);

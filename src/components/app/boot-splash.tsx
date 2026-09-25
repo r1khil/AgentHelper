@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
-/** Long enough for one full wave, so a quick load doesn't just flash Hoot. Counted from navigation start. */
-const MIN_MS = 900;
+/** Long enough for a couple of waves, so a quick load doesn't just flash Hoot. Counted from navigation start. */
+const MIN_MS = 1300;
 /** Never hold the page back past this, even if an image or a stream stalls. */
 const MAX_MS = 10_000;
-const FILL_MS = 250;
-const FADE_MS = 450;
+const FILL_MS = 400;
+/** A beat on the full bar before the fade, so the finish reads as finished. */
+const HOLD_MS = 250;
+const FADE_MS = 550;
 
 /**
  * Full-page loading screen on a fresh load or refresh: Hoot waving over a progress bar, fading out once the
@@ -42,8 +44,8 @@ export function BootSplash() {
                 fill: "forwards",
               });
             }
-            timers.push(window.setTimeout(() => setPhase("fading"), FILL_MS));
-            timers.push(window.setTimeout(() => setPhase("gone"), FILL_MS + FADE_MS));
+            timers.push(window.setTimeout(() => setPhase("fading"), FILL_MS + HOLD_MS));
+            timers.push(window.setTimeout(() => setPhase("gone"), FILL_MS + HOLD_MS + FADE_MS));
           },
           Math.max(0, MIN_MS - performance.now()),
         ),
