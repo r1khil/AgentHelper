@@ -94,7 +94,7 @@ export function ExposureView({
 
   return (
     <>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div data-tour="exposure-toolbar" className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <LookbackSelector basePath={basePath} active={r.lookback} extra={query} />
           {controls}

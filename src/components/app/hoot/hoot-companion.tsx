@@ -16,6 +16,7 @@ import { pageContextFor } from "./page-context";
 import { pageContextLabel } from "@/lib/agent/page-context";
 import { HootPanel } from "./hoot-panel";
 import { HootSprite, preloadHoot, usePrefersReducedMotion } from "./hoot-sprite";
+import { useTourActive } from "@/components/app/tour/tour-store";
 
 const REFRESH_MS = 5 * 60_000;
 const SESSION_KEY = "hoot:session";
@@ -132,7 +133,9 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   const pageAt = useRef(0);
   /** At most one bubble per page view, even if the session allowance has room. */
   const pageSpoke = useRef(false);
-  const hidden = companionHiddenOn(pathname);
+  // During a tour the tour flies its own Hoot, taking off from this spot and landing back on it.
+  const touring = useTourActive();
+  const hidden = companionHiddenOn(pathname) || touring;
 
   const load = useCallback(async () => {
     try {
@@ -449,6 +452,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
           render={
             <button
               type="button"
+              data-hoot-companion
               aria-label={label}
               onClick={() => play(HOP, 520)}
               onMouseEnter={() => {

@@ -69,7 +69,7 @@ export function SaveScenario({ onSave, disabled, audience }: { onSave: (name: st
   }
 
   return (
-    <Card className="mb-6 gap-3 p-4">
+    <Card data-tour="bt-save" className="mb-6 gap-3 p-4">
       <div className="text-sm font-medium">
         Save and share <span className="font-normal text-muted-foreground">· keeps these weights, dates and benchmark under a link {audience} can open</span>
       </div>

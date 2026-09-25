@@ -78,7 +78,7 @@ export function RiskView({
 
   return (
     <>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div data-tour="risk-toolbar" className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <LookbackSelector basePath={basePath} active={r.lookback} />
         <div className="text-xs text-muted-foreground">
           Positions at the {fmtDate(r.asOf)} close · returns {r.window.from ? `${fmtDate(r.window.from)} – ${fmtDate(r.window.to)}` : "—"} ({r.window.days} trading days)
@@ -116,7 +116,7 @@ export function RiskView({
           working={transparency ? <VarWorking r={r} /> : undefined}
         />
       </section>
-      <Card className="mb-2 grid grid-cols-2 gap-0 divide-border p-0 sm:grid-cols-3 lg:grid-cols-5 lg:divide-x">
+      <Card data-tour="risk-strip" className="mb-2 grid grid-cols-2 gap-0 divide-border p-0 sm:grid-cols-3 lg:grid-cols-5 lg:divide-x">
         <MiniStat label="Expected shortfall" explain={RISK_EXPLAIN.es} value={rusd(p.var.esDollars)} caption={`${rpct(p.var.es, 2)} · avg of worst 5% of days`} />
         <MiniStat label="If the S&P 500 fell 10%" explain={RISK_EXPLAIN.stress} value={rusd(p.stress.dollars)} caption={`${rsigned(p.stress.move)} · beta-implied`} />
         <MiniStat label="Effective positions" explain={RISK_EXPLAIN.effectiveN} value={rnum(p.effectiveN, 1)} caption={`of ${r.holdings.length} holdings`} />
@@ -131,26 +131,26 @@ export function RiskView({
       )}
       <div className="mb-6" />
 
-      <SectionTitle aside={<>Today&apos;s weights · <Link href={basePath.replace(/\/risk$/, "/exposure")} className="hover:text-foreground hover:underline">by active weight on Exposure →</Link></>}>
-        <Explained label="Sector exposure and where risk comes from">{RISK_EXPLAIN.riskShare}</Explained>
-      </SectionTitle>
-      <div className="mb-6">
+      <div data-tour="risk-sectors" className="mb-6">
+        <SectionTitle aside={<>Today&apos;s weights · <Link href={basePath.replace(/\/risk$/, "/exposure")} className="hover:text-foreground hover:underline">by active weight on Exposure →</Link></>}>
+          <Explained label="Sector exposure and where risk comes from">{RISK_EXPLAIN.riskShare}</Explained>
+        </SectionTitle>
         <SectorExposure sectors={r.sectors} benchmarkLabel={benchmarkLabel} />
       </div>
 
-      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold">Holdings by share of risk</h2>
-        <RangeControlGroup label="Holdings view">
-          <Link href={`${basePath}?lookback=${r.lookback}`} aria-current={showAll ? undefined : "true"} className={rangeControlClass(!showAll)}>Top {TOP_HOLDINGS}</Link>
-          <Link href={`${basePath}?lookback=${r.lookback}&all=1`} aria-current={showAll ? "true" : undefined} className={rangeControlClass(showAll)}>All {r.holdings.length}</Link>
-        </RangeControlGroup>
-      </div>
-      {r.holdings.length >= 3 && (
-        <p className="mb-2 text-sm text-muted-foreground">
-          The three largest risk sources ({r.holdings.slice(0, 3).map((h) => h.ticker).join(", ")}) are {rpct(topWeight)} of value and {rpct(topShare)} of risk.
-        </p>
-      )}
-      <div className="mb-6">
+      <div data-tour="risk-holdings" className="mb-6">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-semibold">Holdings by share of risk</h2>
+          <RangeControlGroup label="Holdings view">
+            <Link href={`${basePath}?lookback=${r.lookback}`} aria-current={showAll ? undefined : "true"} className={rangeControlClass(!showAll)}>Top {TOP_HOLDINGS}</Link>
+            <Link href={`${basePath}?lookback=${r.lookback}&all=1`} aria-current={showAll ? "true" : undefined} className={rangeControlClass(showAll)}>All {r.holdings.length}</Link>
+          </RangeControlGroup>
+        </div>
+        {r.holdings.length >= 3 && (
+          <p className="mb-2 text-sm text-muted-foreground">
+            The three largest risk sources ({r.holdings.slice(0, 3).map((h) => h.ticker).join(", ")}) are {rpct(topWeight)} of value and {rpct(topShare)} of risk.
+          </p>
+        )}
         <HoldingsRiskTable rows={rows} teams={teams} totals={{ weight: p.invested, vol: p.vol, riskRows: r.holdings.length }} showActive={p.trackingError !== null} />
       </div>
 
@@ -195,7 +195,7 @@ export function RiskView({
 
       {stress}
 
-      <details className="rounded-xl bg-muted/40 ring-1 ring-foreground/10">
+      <details data-tour="risk-method" className="rounded-xl bg-muted/40 ring-1 ring-foreground/10">
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-muted-foreground">How this is calculated, and the data behind it</summary>
         <div className="grid gap-3 px-4 pb-4 text-xs leading-relaxed text-muted-foreground">
           <p>

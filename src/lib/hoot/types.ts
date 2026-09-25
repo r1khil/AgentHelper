@@ -1,5 +1,7 @@
 /** Hoot, the Owl Fund mascot. Shared by the server nudge loader and the client companion. */
 
+import type { TourRecord } from "@/lib/tour/types";
+
 export type HootMood = "idle" | "thinking" | "alert" | "wave" | "concerned" | "happy" | "sleepy";
 
 export type NudgeKind = "movement" | "earnings" | "sell_side" | "proposal" | "weekly" | "changelog" | "tip";
@@ -22,6 +24,8 @@ export type HootState = {
   enabled?: boolean;
   /** Nudge id → ISO time it was dismissed or opened. */
   dismissed?: Record<string, string>;
+  /** Guided tours (tour id → progress). Kept apart from `dismissed`, which is pruned after 60 days. */
+  tours?: Record<string, TourRecord>;
 };
 
 export type HootFeed = { nudges: HootNudge[]; seenTips: string[]; marketOpen: boolean };

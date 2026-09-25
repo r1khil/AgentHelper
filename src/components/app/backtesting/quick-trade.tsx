@@ -29,7 +29,7 @@ export function QuickTrade({ positions, onApply, disabled }: { positions: Positi
   }
 
   return (
-    <div className="mt-3 rounded-md border border-dashed p-3">
+    <div data-tour="bt-quick-trade" className="mt-3 rounded-md border border-dashed p-3">
       <div className="mb-2 text-sm font-medium">
         Quick trade <span className="font-normal text-muted-foreground">· change one holding by percentage points and offset it automatically</span>
       </div>

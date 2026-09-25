@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUp } from "lucide-react";
 import { toast } from "sonner";
 import { startHootChat } from "@/lib/actions/chats";
@@ -15,6 +15,19 @@ export function AskHoot({ teamSlug, configured }: { teamSlug: string | null; con
   const [text, setText] = useState("");
   const [asking, setAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+
+  // Hoot's tour offers example questions; picking one puts it here to edit or send.
+  useEffect(() => {
+    const fill = (e: Event) => {
+      const q = (e as CustomEvent<string>).detail;
+      if (typeof q !== "string") return;
+      setText(q);
+      box.current?.focus({ preventScroll: true });
+    };
+    window.addEventListener("hoot:fill-ask", fill);
+    return () => window.removeEventListener("hoot:fill-ask", fill);
+  }, []);
 
   const submit = async () => {
     const q = text.trim();
@@ -38,6 +51,7 @@ export function AskHoot({ teamSlug, configured }: { teamSlug: string | null; con
 
   return (
     <form
+      data-tour="ask-hoot"
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
@@ -48,6 +62,7 @@ export function AskHoot({ teamSlug, configured }: { teamSlug: string | null; con
       </label>
       <div className="relative">
         <Textarea
+          ref={box}
           id="ask-hoot"
           value={text}
           rows={2}

@@ -235,6 +235,19 @@ const TOOL_LABELS: Record<string, string> = {
   read_document: "Document",
   get_attribution: "Attribution",
   run_backtest: "Backtest",
+  get_portfolio_risk: "Portfolio risk",
+  get_macro_series: "Economic data (FRED)",
+  get_company_background: "Company background",
+  get_market_odds: "Prediction markets",
+  run_python: "Python calculation",
+  compare_peers: "Peer comparison",
+  get_insider_transactions: "Insider trades",
+  get_institutional_holders: "Institutional holders",
+  get_analyst_estimates: "Analyst estimates",
+  find_call_transcripts: "Call transcripts",
+  read_call_transcript: "Read call transcript",
+  remember: "Research log",
+  recall: "Research log",
 };
 
 const TOOL_PROGRESS: Record<string, string> = {
@@ -258,6 +271,19 @@ const TOOL_PROGRESS: Record<string, string> = {
   read_document: "Reading a document",
   get_attribution: "Reading the Fund's attribution",
   run_backtest: "Running a backtest",
+  get_portfolio_risk: "Reading the portfolio's risk",
+  get_macro_series: "Pulling economic data from FRED",
+  get_company_background: "Looking up company background",
+  get_market_odds: "Checking prediction-market odds",
+  run_python: "Running a Python calculation",
+  compare_peers: "Comparing peers",
+  get_insider_transactions: "Checking insider trades",
+  get_institutional_holders: "Checking institutional holders",
+  get_analyst_estimates: "Pulling analyst estimates",
+  find_call_transcripts: "Finding call transcripts",
+  read_call_transcript: "Reading a call transcript",
+  remember: "Noting it in the research log",
+  recall: "Checking the research log",
 };
 
 /**
