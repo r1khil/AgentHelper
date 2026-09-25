@@ -1,5 +1,7 @@
 /** Plain-language definitions shown in tooltips on the Risk pages. Each names its formula and data source. */
 export const RISK_EXPLAIN = {
+  lookback:
+    "How much recent history to judge today's holdings by: the last 126, 252 or 504 trading days of daily closes from Yahoo Finance. 6 months reacts fastest to the current market but is noisier; 2 years is steadier but slower to notice a change. 1 year is the usual default. Figures from the Fund's own history since inception don't change.",
   exAnte:
     "Forward-looking (holdings-based) risk: today's positions and weights, applied to each holding's daily total returns over the lookback window. It answers “how much does the portfolio we own now tend to move?”, not how the Fund itself has done.",
   vol: "Annualized volatility: the standard deviation of the portfolio's daily return, times √252. Computed as √(wᵀΣw) × √252, where w is today's weights and Σ is the sample covariance matrix of daily total returns. A 15% volatility means a typical year lands within about ±15% of its average.",

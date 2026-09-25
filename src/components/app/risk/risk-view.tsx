@@ -20,13 +20,16 @@ const TOP_HOLDINGS = 10;
 
 export function LookbackSelector({ basePath, active, extra = "" }: { basePath: string; active: LookbackKey; extra?: string }) {
   return (
-    <RangeControlGroup label="Lookback window">
-      {(Object.keys(LOOKBACKS) as LookbackKey[]).map((k) => (
-        <Link key={k} href={`${basePath}?lookback=${k}${extra}`} aria-current={k === active ? "true" : undefined} className={rangeControlClass(k === active)}>
-          {LOOKBACKS[k].label}
-        </Link>
-      ))}
-    </RangeControlGroup>
+    <div className="flex items-center gap-2">
+      <RangeControlGroup label="Lookback window">
+        {(Object.keys(LOOKBACKS) as LookbackKey[]).map((k) => (
+          <Link key={k} href={`${basePath}?lookback=${k}${extra}`} aria-current={k === active ? "true" : undefined} className={rangeControlClass(k === active)}>
+            {LOOKBACKS[k].label}
+          </Link>
+        ))}
+      </RangeControlGroup>
+      <InfoTip label="the lookback window">{RISK_EXPLAIN.lookback}</InfoTip>
+    </div>
   );
 }
 
