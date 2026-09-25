@@ -1,5 +1,7 @@
 "use client";
 
+import { useHootCommand } from "@/components/app/hoot/use-hoot-command";
+
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
@@ -103,6 +105,7 @@ function memberIsBusy() {
 export function HootCompanion({ firstName }: { firstName: string }) {
   const pathname = usePathname();
   const router = useRouter();
+  const runCommand = useHootCommand();
   const [feed, setFeed] = useState<HootFeed | null>(null);
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(() => new Set());
   const [open, setOpen] = useState(false);
@@ -337,6 +340,11 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   }, [mood, play]);
 
   const ask = async (text: string) => {
+    if (runCommand(text)) {
+      setAskError(null);
+      setOpen(false);
+      return;
+    }
     setAsking(true);
     setAskError(null);
     try {

@@ -1,5 +1,7 @@
 "use client";
 
+import { useHootCommand } from "@/components/app/hoot/use-hoot-command";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
@@ -29,6 +31,7 @@ export function useResearchChat({
   initialRunStatus: RunStatus;
   transparency?: boolean;
 }) {
+  const runCommand = useHootCommand();
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -98,12 +101,13 @@ export function useResearchChat({
     (text: string, page?: PageContext | null) => {
       const t = text.trim();
       if (!t || busy) return false;
+      if (runCommand(t)) return true;
       setRunError(null);
       setTrace([]);
       void sendMessage(page ? { text: t, metadata: { page } } : { text: t });
       return true;
     },
-    [busy, sendMessage],
+    [busy, sendMessage, runCommand],
   );
 
   const stopWatching = useCallback(() => {
