@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseLedgerCsv } from "./csv";
-import { markRepeats, parseTicket, recordable, ticketFileHints, ticketsToCsv } from "./ticket";
+import { beforeOpening, markRepeats, parseTicket, recordable, ticketFileHints, ticketsToCsv } from "./ticket";
 
 // mammoth's raw text for the real Fall 2026 SYK ticket; the account number sits in the page header and never reaches the text.
 const SYK =
@@ -72,5 +72,17 @@ describe("markRepeats and ticketsToCsv", () => {
       ["2026-09-18", "buy", "SYK", 83, 280.13, "Trade ticket · 9:30 AM · Fall 2026 · Healthcare"],
       ["2026-09-22", "sell", "XLP", 2246, 82.65, "Trade ticket · 12:30 PM"],
     ]);
+  });
+});
+
+describe("beforeOpening", () => {
+  it("skips tickets dated before the opening holdings, which already count them", () => {
+    expect(beforeOpening("2026-09-15", "2026-09-17")).toBe("Dated 2026-09-15, before the ledger's opening holdings on 2026-09-17, which already include it.");
+  });
+
+  it("keeps tickets on or after the opening date, or when there are no opening holdings", () => {
+    expect(beforeOpening("2026-09-17", "2026-09-17")).toBeNull();
+    expect(beforeOpening("2026-09-18", "2026-09-17")).toBeNull();
+    expect(beforeOpening("2026-09-15", null)).toBeNull();
   });
 });

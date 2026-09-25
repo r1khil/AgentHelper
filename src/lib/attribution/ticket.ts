@@ -146,6 +146,15 @@ export function markRepeats(reads: TicketRead[]): TicketRead[] {
   });
 }
 
+/**
+ * The ledger starts from opening holdings: every position as of that date, earlier trades included. A ticket dated
+ * before them is already counted there, and recording it would count those shares twice.
+ */
+export function beforeOpening(ticketDate: string, openingDate: string | null): string | null {
+  if (!openingDate || ticketDate >= openingDate) return null;
+  return `Dated ${ticketDate}, before the ledger's opening holdings on ${openingDate}, which already include it.`;
+}
+
 /** Tickets to record: read, and not skipped. */
 export function recordable(reads: TicketRead[]): TradeTicket[] {
   return reads.flatMap((r) => (r.ticket && !r.skip ? [r.ticket] : []));

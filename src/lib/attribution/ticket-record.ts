@@ -1,8 +1,8 @@
 import "server-only";
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, eq, isNull, max, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { dailyCloses, trades } from "@/db/schema";
-import { parseTicket, recordable, ticketsToCsv, UNREADABLE_DOCX, type TicketRead, type TradeTicket } from "./ticket";
+import { beforeOpening, parseTicket, recordable, ticketsToCsv, UNREADABLE_DOCX, type TicketRead, type TradeTicket } from "./ticket";
 import { importLedger, type ImportResult } from "./import";
 
 /** Trade tickets from the Ledger page's upload and from emails to Hoot share these checks and the import. */
@@ -44,12 +44,13 @@ export async function checkPrices(reads: TicketRead[]): Promise<TicketRead[]> {
 }
 
 /**
- * Skips tickets the ledger already has: the identical trade, or the same date, ticker, side and shares typed in by hand
- * at a different (usually the fill) price, which would otherwise be recorded twice.
+ * Skips tickets the ledger already has: the identical trade, the same date, ticker, side and shares typed in by hand
+ * at a different (usually the fill) price, or a trade from before the opening holdings, which already count it.
  */
 export async function checkLedger(reads: TicketRead[]): Promise<TicketRead[]> {
   const tickets = recordable(reads);
   if (!tickets.length) return reads;
+  const [{ opening }] = await db.select({ opening: max(trades.tradeDate) }).from(trades).where(and(eq(trades.kind, "opening"), isNull(trades.voidedAt)));
   const rows = await db
     .select({ date: trades.tradeDate, ticker: trades.ticker, side: trades.side, shares: trades.shares, price: trades.price })
     .from(trades)
@@ -57,6 +58,8 @@ export async function checkLedger(reads: TicketRead[]): Promise<TicketRead[]> {
   return reads.map((r) => {
     const t = r.ticket;
     if (!t || r.skip) return r;
+    const early = beforeOpening(t.date, opening);
+    if (early) return { ...r, skip: early };
     const same = rows.filter((x) => x.side === t.side && Math.abs(Number(x.shares) - t.shares) < 1e-6);
     if (same.some((x) => Math.abs(Number(x.price) - t.price) < 1e-6)) return { ...r, skip: "Already in the ledger." };
     const near = same[0];
