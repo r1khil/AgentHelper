@@ -23,6 +23,7 @@
     "smoke:mcp": "tsx --conditions=react-server scripts/smoke-mcp.ts",
     "smoke:prep": "tsx --conditions=react-server scripts/smoke-prep.ts",
     "smoke:wikipedia": "tsx --conditions=react-server --tsconfig ./tsconfig.json scripts/smoke-wikipedia.ts",
+    "smoke:firecrawl": "tsx --conditions=react-server --tsconfig ./tsconfig.json scripts/smoke-firecrawl.ts",
     "smoke:weekly": "tsx --conditions=react-server scripts/smoke-weekly.ts",
     "smoke:daily-brief": "tsx --conditions=react-server scripts/smoke-daily-brief.ts",
     "smoke:email-reply": "tsx --conditions=react-server scripts/smoke-email-reply.ts",

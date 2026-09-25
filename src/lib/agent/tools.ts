@@ -9,6 +9,7 @@ import { holdingNotes, holdings, movements, profiles } from "@/db/schema";
 import { getDailyBars, getEarningsDate, getEstimates, getHolders, getQuote, getQuotes, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { getInsiderTransactions, TRANSACTION_CODES } from "@/lib/providers/edgar-form4";
 import { fetchWebPage, safeWebUrl } from "@/lib/agent/web";
+import { readWithFirecrawlFallback } from "@/lib/providers/firecrawl";
 import { conceptFacts, extractItem, filingUrlForFact, getCompanyFacts, getFilingText, listFilingDocuments, listFilings, listItemHeadings, tickerToCik, type Fact } from "@/lib/providers/edgar";
 import { resolveKeyFinancials, searchConcepts, type KeyFinancials } from "@/lib/agent/financials";
 import { finnhubConfigured, getCompanyNews, getEarningsCalendar } from "@/lib/providers/finnhub";
@@ -648,20 +649,25 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
           const appHost = process.env.APP_URL ? new URL(process.env.APP_URL).hostname : null;
           const check = safeWebUrl(url, appHost);
           if (!check.ok) throw new Error(check.reason);
-          let page: { url: string; title: string | null; text: string; fetchedAt: string; truncated?: boolean };
-          if (tavilyConfigured()) {
-            page = await extractPage(check.url.href);
-          } else {
-            // No Tavily key: the app's own bounded fetch (public http(s) only, private networks refused).
-            const p = await fetchWebPage(check.url);
-            page = { url: p.finalUrl, title: p.title, text: p.text, fetchedAt: now(), truncated: p.truncated };
-          }
+          const target = check.url;
+          // Tavily when configured, else the app's own bounded fetch (public http(s) only, private networks refused).
+          // Firecrawl, when configured, retries bot-blocked, JavaScript-only and PDF pages after the guard above.
+          const page = await readWithFirecrawlFallback(
+            target,
+            tavilyConfigured()
+              ? () => extractPage(target.href)
+              : async () => {
+                  const p = await fetchWebPage(target);
+                  return { url: p.finalUrl, title: p.title, text: p.text, fetchedAt: now(), truncated: p.truncated };
+                },
+            tavilyConfigured() ? "tavily" : "direct",
+          );
           const w = windowText(page.text, offset, maxChars);
           const host = new URL(page.url).hostname.replace(/^www\./, "");
           const { tier, syndicatedFrom } = pageTier({ url: page.url, title: page.title, text: page.text });
           const paywalled = looksPaywalled(page.url, page.text);
           const s: Source = { ...src("web", page.title ?? host, page.url, host), id: sourceId("web", `${page.url}:${w.offset}`), sourceType: "Web page", excerpt: w.text.trim().slice(0, 360), location: { offset: w.offset, text: w.text.trim().slice(0, 180) }, retrievedAt: page.fetchedAt };
-          return { data: { url: page.url, title: page.title, reliability: tier, reliabilityNote: syndicatedFrom ? `Syndicated from ${syndicatedFrom}. ${TIER_LABEL[tier]}` : TIER_LABEL[tier], retrievedAt: page.fetchedAt, ...(paywalled ? { likelyPaywalled: true, paywallNote: "Only a subscriber teaser was readable. Cite only what this text says; for the rest, read the next established result or look for the fact in a primary source." } : {}), ...w, truncatedDownload: page.truncated, sourceId: s.id }, sources: [s] };
+          return { data: { url: page.url, title: page.title, reliability: tier, reliabilityNote: syndicatedFrom ? `Syndicated from ${syndicatedFrom}. ${TIER_LABEL[tier]}` : TIER_LABEL[tier], retrievedAt: page.fetchedAt, ...(paywalled ? { likelyPaywalled: true, paywallNote: "Only a subscriber teaser was readable. Cite only what this text says; for the rest, read the next established result or look for the fact in a primary source." } : {}), ...w, truncatedDownload: page.truncated, ...(page.fetchedVia === "firecrawl" ? { fetchedVia: "firecrawl" } : {}), ...(page.fallbackNote ? { fallbackNote: page.fallbackNote } : {}), sourceId: s.id }, sources: [s] };
         } catch (e) {
           return fail(e, null);
         }
