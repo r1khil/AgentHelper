@@ -112,7 +112,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
 
     run_backtest: tool({
       description:
-        "Replay the current holdings over past prices with saved weights and an optional modified scenario. The scenario may add recognized company tickers and change or drop weights with explicit offsets. Fixed weights rebalance daily using Yahoo adjusted closes. Returns performance metrics and holding contributions. This sandbox never changes the real portfolio. Execs and admins backtest the Fund; everyone else their team.",
+        "Hypothetical replay of the current holdings over past prices with today's weights held fixed (the current replay) and an optional modified scenario. It does not reconstruct past trades, weight changes or cash flows, so it is not realized performance; use get_attribution for how the Fund or a team actually did. The scenario may add recognized company tickers and change or drop weights with explicit offsets. Fixed weights rebalance daily using Yahoo adjusted closes. Returns performance metrics and holding contributions. This sandbox never changes the real portfolio. Execs and admins backtest the Fund; everyone else their team.",
       inputSchema: z.object({
         from: iso.optional().describe("First session; defaults to three months before `to`"),
         to: iso.optional().describe("Last session; defaults to the last completed session"),
@@ -139,7 +139,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
           const contributions = [...r.contributions]
             .sort((a, b) => (changed.length ? Math.abs(b.delta) - Math.abs(a.delta) : Math.abs(b.original) - Math.abs(a.original)))
             .slice(0, 12)
-            .map((c) => ({ ticker: c.ticker, savedContributionPct: pct(c.original), scenarioContributionPct: pct(c.modified), changePct: pct(c.delta) }));
+            .map((c) => ({ ticker: c.ticker, currentReplayContributionPct: pct(c.original), modifiedReplayContributionPct: pct(c.modified), changePct: pct(c.delta) }));
           const source: Source = {
             id: sourceId("backtest", `${snapshot.version}:${benchmark}:${r.from}:${r.to}:${JSON.stringify(addedTickers ?? [])}:${JSON.stringify(overrides ?? {})}`),
             title: `Backtest · ${snapshot.scope} · ${r.from} to ${r.to} vs ${benchmark}${changed.length ? ` · ${changed.length} weight${changed.length === 1 ? "" : "s"} changed` : ""}`,
@@ -148,7 +148,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
             publishedAt: r.to,
             retrievedAt: new Date().toISOString(),
             sourceType: "Backtest",
-            excerpt: `Saved weights ${pct(r.original.totalReturn)}%${changed.length ? `, scenario ${pct(r.modified.totalReturn)}%` : ""}, ${benchmark} ${pct(r.benchmarkMetrics.totalReturn)}% total return, ${r.from} to ${r.to}.`,
+            excerpt: `Hypothetical replay, not realized performance: current replay ${pct(r.original.totalReturn)}%${changed.length ? `, modified replay ${pct(r.modified.totalReturn)}%` : ""}, ${benchmark} ${pct(r.benchmarkMetrics.totalReturn)}% total return, ${r.from} to ${r.to}.`,
           };
           return {
             data: {
@@ -159,11 +159,11 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
               sessions: r.days.length,
               benchmark: BENCHMARKS[benchmark],
               changedWeights: changed,
-              saved: metricsOut(r.original),
-              ...(changed.length ? { scenario: metricsOut(r.modified) } : {}),
+              currentReplay: metricsOut(r.original),
+              ...(changed.length ? { modifiedReplay: metricsOut(r.modified) } : {}),
               benchmarkMetrics: metricsOut(r.benchmarkMetrics),
               contributions,
-              method: "Fixed weights rebalanced daily; contributions are each holding's share of the total return, in percentage points.",
+              method: "Hypothetical replay, not realized performance: fixed weights rebalanced daily, past trades and cash flows not reconstructed; contributions are each holding's share of the total return, in percentage points.",
               sourceId: source.id,
             },
             sources: [source],
