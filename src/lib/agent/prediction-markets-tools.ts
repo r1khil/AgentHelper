@@ -16,7 +16,9 @@ function excerpt(m: PredictionMarket) {
     : m.likeliest
       ? `Likeliest: ${m.likeliest.label} ${m.likeliest.probabilityPct}%`
       : m.outcomes.map((o) => `${o.label} ${o.probabilityPct}%`).slice(0, 3).join("; ");
-  return `${head}. Volume ${m.volume.toLocaleString("en-US")} ${m.volumeUnit}${m.closes ? `, closes ${m.closes.slice(0, 10)}` : ""}.`;
+  // Every outcome's odds, not just the headline, so citation repair can match the ones an answer quotes.
+  const rest = m.impliedMedian || m.likeliest ? m.outcomes.map((o) => `${o.label} ${o.probabilityPct}%`).slice(0, 5).join("; ") : "";
+  return `${head}${rest ? `; ${rest}` : ""}. Volume ${m.volume.toLocaleString("en-US")} ${m.volumeUnit}${m.closes ? `, closes ${m.closes.slice(0, 10)}` : ""}.`;
 }
 
 function marketSource(m: PredictionMarket, retrievedAt: string): Source {

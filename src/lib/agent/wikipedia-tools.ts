@@ -12,6 +12,7 @@ function factLine(c: CompanyBackground) {
   return [
     c.description,
     c.founded && `founded ${c.founded}`,
+    c.founders.length && `founders ${c.founders.join(", ")}`,
     c.headquarters.length && `headquarters ${c.headquarters.join(", ")}`,
     c.ceo && `CEO ${c.ceo.name}${c.ceo.since ? ` since ${c.ceo.since}` : ""}${c.ceo.current ? "" : " (no current CEO recorded)"}`,
     c.industries.length && `industry ${c.industries.join(", ")}`,

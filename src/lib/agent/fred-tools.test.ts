@@ -83,7 +83,7 @@ describe("get_macro_series", () => {
     expect(s.id).toMatch(/^fred-/);
     expect(s.id).toBe(d.sourceId);
     expect(s.publishedAt).toBe("2026-09-25");
-    expect(s.excerpt).toContain("observation dated 2026-09-25");
+    expect(s.excerpt).toMatch(/^T10Y2Y 0.57 on 2026-09-25; prev 0.55 2026-09-23/);
   });
 
   it("maps transform and frequency to FRED's units and aggregation", async () => {

@@ -105,10 +105,12 @@ export function makeFredTools(): ToolSet {
           if (alias) {
             id = alias.id;
             aliasNote = alias.note;
-          } else if (seriesId?.trim()) {
+          } else if (seriesId?.trim() && /^[A-Za-z0-9_]{1,25}$/.test(seriesId.trim())) {
             id = seriesId.trim().toUpperCase();
           } else {
-            const hits = await searchSeries(query!, { limit: CANDIDATES });
+            // Words passed as seriesId ("housing starts") are a search, not an id FRED would reject.
+            query = query?.trim() || seriesId!.trim();
+            const hits = await searchSeries(query, { limit: CANDIDATES });
             if (!hits.length) return { data: { query, candidates: [], note: "FRED has no series matching that search. Try fewer or more common words (e.g. 'mortgage rate', 'industrial production')." }, sources: [] };
             if (hits.length > 1) {
               return {
@@ -167,7 +169,8 @@ export function makeFredTools(): ToolSet {
             publishedAt: info.lastUpdated.slice(0, 10),
             retrievedAt,
             sourceType: "Economic data",
-            excerpt: `${info.title}: ${round(stats.latest.value)} (${unitsLabel}) for the observation dated ${stats.latest.date}, ${info.frequency.toLowerCase()}, ${info.seasonalAdjustmentShort}; series last updated ${info.lastUpdated}.`.slice(0, 360),
+            // The figures lead: citation repair reads only the first 160 characters of an excerpt.
+            excerpt: `${info.id} ${round(stats.latest.value)} on ${stats.latest.date}${stats.previous ? `; prev ${round(stats.previous.value)} ${stats.previous.date}` : ""}; ${round(stats.first.value)} on ${stats.first.date}; chg ${stats.changeOverWindow}; high ${round(stats.high.value)} ${stats.high.date}; low ${round(stats.low.value)} ${stats.low.date}. ${info.title} (${unitsLabel}), ${info.frequency.toLowerCase()}, ${info.seasonalAdjustmentShort}; last updated ${info.lastUpdated}.`.slice(0, 360),
           };
           const point = (o: { date: string; value: number }) => ({ date: o.date, value: round(o.value) });
           return {
