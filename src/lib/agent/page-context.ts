@@ -98,7 +98,7 @@ export function pageContextBlock(ctx: PageContext): string {
     const addedTickers = ctx.addedTickers.length ? `, addedTickers: [${ctx.addedTickers.map(q).join(", ")}]` : "";
     return `${head}
 - Their scenario: ${ctx.from} to ${ctx.to} against ${ctx.benchmark}${ctx.changed.length ? `, with ${ctx.changed.map((c) => `${c.ticker} ${c.savedPct}% → ${c.scenarioPct}%`).join(", ")}` : ", saved weights unchanged"}.${ctx.ran ? "" : " They have not run it with these inputs yet."}
-- For questions about it, call run_backtest with { from: ${q(ctx.from)}, to: ${q(ctx.to)}, benchmark: ${q(ctx.benchmark)}${addedTickers}${weights ? `, weights: ${weights}` : ""} } first, then explain what changed and why in plain language (which holdings' contributions moved), ending every line that uses one of its figures with its [src:ID]. A backtest uses a current holding snapshot with any scenario additions: say so, and never present it as a recommendation.`;
+- For questions about it, call run_backtest with { from: ${q(ctx.from)}, to: ${q(ctx.to)}, benchmark: ${q(ctx.benchmark)}${addedTickers}${weights ? `, weights: ${weights}` : ""} } first, then explain what changed and why in plain language (which holdings' contributions moved), ending every line that uses one of its figures with its [src:ID]. A backtest is a hypothetical replay of a current holding snapshot with any scenario additions, not realized performance: say so, never present it as a recommendation, and answer questions about how the portfolio actually did with get_attribution instead.`;
   }
   if (ctx.kind === "risk") {
     const args = [`scope: ${q(ctx.scope)}`, ...(ctx.team ? [`team: ${q(ctx.team)}`] : []), `lookback: ${q(ctx.lookback)}`].join(", ");

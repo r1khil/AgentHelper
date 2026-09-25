@@ -117,7 +117,7 @@ export function suggestionsFor(pathname: string, ticker: string | null): string[
   if (/^\/backtesting$/.test(pathname)) {
     return [
       "What did my scenario change, and which holdings drove the difference?",
-      "How did the saved weights do against SPY over the last year?",
+      "What would today's weights have returned against SPY over the last year?",
       "What would doubling our largest position have done over the last six months?",
     ];
   }

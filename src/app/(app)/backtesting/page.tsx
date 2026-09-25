@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { DateTime } from "luxon";
-import { isFundWide, requireOnboardedUser } from "@/lib/auth";
+import { canManageTeam, isFundWide, requireOnboardedUser } from "@/lib/auth";
 import { loadSnapshot } from "@/lib/backtesting/load";
 import { getScenario, listScenarios, scenarioOntoSnapshot } from "@/lib/backtesting/saved";
 import { fundingLabel, parseTradeParam } from "@/lib/backtesting/trade";
@@ -66,7 +66,12 @@ export default async function BacktestingPage({ searchParams }: PageProps<"/back
         banner: `Started from the Risk page: ${trade.changePp < 0 ? "trim" : "add to"} ${trade.ticker} by ${Math.abs(trade.changePp)} pp, ${trade.changePp < 0 ? "proceeds to" : "funded from"} ${fundingLabel(trade.funding)}. Change it below, then run to compare performance and risk.`,
       };
   }
-
+  // Realized returns live on Attribution, which only execs/admins (fund) and team leads (team) may open.
+  const realizedHref = isFundWide(user)
+    ? "/attribution"
+    : user.team && canManageTeam(user, user.team.id)
+      ? `/t/${user.team.slug}/attribution`
+      : undefined;
   return (
     <BacktestingWorkspace
       key={scenario?.id ?? one(query.trade) ?? "saved"}
@@ -76,6 +81,7 @@ export default async function BacktestingPage({ searchParams }: PageProps<"/back
       initial={initial}
       saveAudience={isFundWide(user) ? "the Fund's execs and admins" : `everyone on ${user.team?.name ?? "your team"}`}
       aside={<SavedScenarios items={saved} activeId={scenario?.id} viewerId={user.id} fundWide={isFundWide(user)} />}
+      realizedHref={realizedHref}
     />
   );
 }

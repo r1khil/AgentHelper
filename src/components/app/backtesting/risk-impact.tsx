@@ -33,13 +33,13 @@ function Change({ before, after, unit, higherIsSafer }: { before: number | null;
 
 const arrow = (a: string, b: string) => (a === b ? a : `${a} → ${b}`);
 
-/** Before/after risk of the modified weights, computed with the Risk page's model on today's portfolio. */
+/** Current vs modified weights' risk, computed with the Risk page's model on today's portfolio. */
 export function RiskImpact({ data, busy, error, stale }: { data: ScenarioRisk | null; busy: boolean; error: string; stale: boolean }) {
   return (
     <Card className="mb-6 gap-3 p-4">
       <SectionTitle aside={data ? `${data.window.days} daily returns to the ${data.window.to} close` : undefined}>
-        <Explained label="Risk impact · saved vs modified weights">
-          Today&apos;s risk of the saved and modified weights, using the Risk page&apos;s model: a 1-year window of daily total returns, sample covariance, beta against SPY, tracking error against the sector benchmark, and 1-day 95% historical VaR. It is independent of the backtest period above and is an estimate from past returns, not a forecast.
+        <Explained label="Risk impact · current vs modified weights">
+          Today&apos;s risk of the current and modified weights, using the Risk page&apos;s model: a 1-year window of daily total returns, sample covariance, beta against SPY, tracking error against the sector benchmark, and 1-day 95% historical VaR. It is independent of the backtest period above and is an estimate from past returns, not a forecast.
         </Explained>
       </SectionTitle>
       {error ? (
@@ -51,7 +51,7 @@ export function RiskImpact({ data, busy, error, stale }: { data: ScenarioRisk | 
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-muted-foreground">
-                <tr><th className="px-3 py-2 text-left font-medium">Measure</th><th className={cell}>Saved</th><th className={cell}>Modified</th><th className={cell}>Change</th></tr>
+                <tr><th className="px-3 py-2 text-left font-medium">Measure</th><th className={cell}>Current</th><th className={cell}>Modified</th><th className={cell}>Change</th></tr>
               </thead>
               <tbody>
                 {ROWS.map((r) => (
