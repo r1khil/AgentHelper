@@ -1,6 +1,7 @@
 "use client";
 
 import { useHootCommand } from "@/components/app/hoot/use-hoot-command";
+import { hootShortcut, isMac } from "@/lib/hoot/shortcuts";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -90,11 +91,14 @@ function writeSession(s: BubbleSession) {
   }
 }
 
+function memberIsTyping() {
+  const el = document.activeElement as HTMLElement | null;
+  return !!el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
+}
+
 /** Someone is typing or in a dialog: never interrupt. */
 function memberIsBusy() {
-  const el = document.activeElement as HTMLElement | null;
-  const typing = !!el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
-  return typing || !!document.querySelector('[role="dialog"], [role="alertdialog"]');
+  return memberIsTyping() || !!document.querySelector('[role="dialog"], [role="alertdialog"]');
 }
 
 /**
@@ -233,19 +237,20 @@ export function HootCompanion({ firstName }: { firstName: string }) {
     return () => window.clearTimeout(id);
   }, [bubble, hovered, setBubble]);
 
-  // ⌘J / Ctrl+J toggles the panel from anywhere.
+  // Option/Alt+S and Mac Command+S open Hoot. Keep Command/Ctrl+J as the existing toggle.
   useEffect(() => {
-    if (hidden) return;
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "j") {
-        e.preventDefault();
-        setBubble(null);
-        setOpen((o) => !o);
-      }
+      const action = hootShortcut(e, isMac());
+      if (!action || touring) return;
+      // Option+S types a character (ß on Mac) in text fields; leave it to the field.
+      if (action === "open" && e.altKey && memberIsTyping()) return;
+      e.preventDefault();
+      setBubble(null);
+      setOpen((o) => action === "open" || !o);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [hidden, setBubble]);
+  }, [touring, setBubble]);
 
   /** Squash-and-stretch without remounting anything (remounting under the cursor would eat clicks). */
   const play = useCallback((frames: Keyframe[], duration: number) => {
@@ -384,7 +389,8 @@ export function HootCompanion({ firstName }: { firstName: string }) {
     });
   };
 
-  if (hidden) return null;
+  // The shortcut can bring him up on pages where he normally stays hidden.
+  if (touring || (hidden && !open)) return null;
 
   const urgent = nudges.filter((n) => n.priority <= 2).length;
   // Pages that describe themselves (attribution, backtesting) are attached to the question; say so in the panel.

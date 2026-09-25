@@ -6,6 +6,7 @@ import { Activity, ArrowLeftRight, ArrowUp, CalendarDays, CalendarRange, Eye, Ey
 import type { HootNudge, NudgeKind } from "@/lib/hoot/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { isMac } from "@/lib/hoot/shortcuts";
 import { cn } from "@/lib/utils";
 
 const KIND_ICON: Record<NudgeKind, React.ComponentType<{ className?: string }>> = {
@@ -18,7 +19,7 @@ const KIND_ICON: Record<NudgeKind, React.ComponentType<{ className?: string }>> 
   tip: Sparkles,
 };
 
-export const shortcutLabel = () => (typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘J" : "Ctrl J");
+export const shortcutLabel = () => (isMac() ? "⌥S / ⌘S" : "Alt S");
 
 /** What opens when you click Hoot: ask him a research question, see what needs you, or send him away. */
 export function HootPanel({

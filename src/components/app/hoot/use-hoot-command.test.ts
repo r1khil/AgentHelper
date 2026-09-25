@@ -29,6 +29,18 @@ describe("Hoot command execution", () => {
     expect(useHootCommand()("take me to holdings")).toBe(true);
     expect(mocks.push).toHaveBeenCalledWith("/t/technology");
   });
+  it("switches to the available sector using the existing scope href", () => {
+    vi.stubGlobal("document", { querySelectorAll: (selector: string) => selector === "[data-hoot-scope]"
+      ? [{ dataset: { hootScope: "Financials", hootHref: "/t/financials/earnings" } }] : [] });
+    expect(useHootCommand()("switch me to financials sector")).toBe(true);
+    expect(mocks.push).toHaveBeenCalledWith("/t/financials/earnings");
+  });
+  it("does not invent a route for an unavailable sector", () => {
+    vi.stubGlobal("document", { querySelectorAll: () => [] });
+    expect(useHootCommand()("bring me to technology sector")).toBe(true);
+    expect(mocks.error).toHaveBeenCalled();
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
   it("reports an unavailable page without starting research or navigating", () => {
     vi.stubGlobal("document", { querySelectorAll: () => [] });
     expect(useHootCommand()("open admin")).toBe(true);
