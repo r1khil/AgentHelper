@@ -22,7 +22,8 @@ import { loadRisk } from "@/lib/risk/load";
 import { DEFAULT_LOOKBACK, LOOKBACKS, type LookbackKey } from "@/lib/risk/model";
 import { scenarioRisk } from "@/lib/risk/scenario";
 import { loadStressTests } from "@/lib/risk/stress-load";
-import { summarizeRisk, summarizeStress } from "@/lib/risk/summary";
+import { loadLookthrough } from "@/lib/risk/lookthrough-load";
+import { summarizeLookthrough, summarizeRisk, summarizeStress } from "@/lib/risk/summary";
 import { sourceId, type Source } from "@/lib/providers/types";
 import type { ToolResult } from "./tools";
 
@@ -204,7 +205,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
 
     get_portfolio_risk: tool({
       description:
-        "Risk of the Fund's current portfolio, exactly as the Risk page computes it from the trade ledger: annualized volatility, beta to the S&P 500, tracking error vs the sector benchmark, 1-day 95% value at risk and expected shortfall (in % and dollars), a beta stress test, concentration (effective number of positions, top-5 and top-10 weight), each sector's weight vs the benchmark (active weight) and share of risk, the largest active sector bet, the holdings that contribute most risk, where the active risk comes from (each holding's and the benchmark side's share of tracking error, and marginal tracking error: how much tracking error moves for 1 pp more of a holding), highly correlated pairs, realized statistics from the Fund's own returns, and historical stress tests (today's positions held through the COVID crash, the 2022 rate shock, the SVB run and the 2024 carry unwind, vs the S&P 500 and sector benchmark, with dollar impact and worst contributors), and factor and macro sensitivities (betas with t-stats to market, size, value, momentum, rates, dollar and oil for the portfolio, the benchmark and active, from the Exposure page; |t| < 2 means no clear exposure). The Exposure page reads the same numbers. Use it for questions about how risky the portfolio is, what drives its risk or tracking error, active bets and exposure, concentration, diversification, beta, how much it could lose, how it would have done in a past crisis, or how sensitive it is to rates, the dollar, oil or style factors. Scope 'fund' is the whole Fund (execs and admins); 'team' is one team's holdings as their own portfolio.",
+        "Risk of the Fund's current portfolio, exactly as the Risk page computes it from the trade ledger: annualized volatility, beta to the S&P 500, tracking error vs the sector benchmark, 1-day 95% value at risk and expected shortfall (in % and dollars), a beta stress test, concentration (effective number of positions, top-5 and top-10 weight), each sector's weight vs the benchmark (active weight) and share of risk, the largest active sector bet, the holdings that contribute most risk, where the active risk comes from (each holding's and the benchmark side's share of tracking error, and marginal tracking error: how much tracking error moves for 1 pp more of a holding), highly correlated pairs, realized statistics from the Fund's own returns, and historical stress tests (today's positions held through the COVID crash, the 2022 rate shock, the SVB run and the 2024 carry unwind, vs the S&P 500 and sector benchmark, with dollar impact and worst contributors), factor and macro sensitivities (betas with t-stats to market, size, value, momentum, rates, dollar and oil for the portfolio, the benchmark and active, from the Exposure page; |t| < 2 means no clear exposure), and ETF look-through (each ETF replaced by its holdings: combined exposure per company such as 'NVDA 4.1% = 3.0% direct + 0.9% SOXX', names held both directly and via ETFs, coverage and as-of per ETF, sector weights through the ETFs, stock-level active weights vs SPY's holdings, the largest stock-level bet and Active Share). The Exposure page reads the same numbers. Use it for questions about how risky the portfolio is, what drives its risk or tracking error, active bets and exposure, concentration, diversification, beta, how much it could lose, how it would have done in a past crisis, or how sensitive it is to rates, the dollar, oil or style factors, or what the ETFs hold underneath. Scope 'fund' is the whole Fund (execs and admins); 'team' is one team's holdings as their own portfolio.",
       inputSchema: z.object({
         scope: z.enum(["fund", "team"]).default(isFundWide(viewer) ? "fund" : "team"),
         team: z.string().optional().describe("Team slug or name for scope 'team'; defaults to this chat's team"),
@@ -227,7 +228,12 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
           const loaded = await loadRisk(lookback, sleeve?.id ?? null);
           if (loaded.state === "no-ledger") return { data: { note: "No trades are recorded in the ledger yet, so there is no portfolio to measure." }, sources: [] };
           if (loaded.state === "no-prices") return { data: { note: "Closing prices for the ledger have not loaded yet; risk appears after the next price run." }, sources: [] };
-          const summary = { ...summarizeRisk(loaded.report, { teamNames: new Map(teamRows.map((t) => [t.id, t.name])), holdingsLimit }), historicalStressTests: summarizeStress(await loadStressTests(loaded.report)) };
+          const [stress, lookthrough] = await Promise.all([loadStressTests(loaded.report), loadLookthrough(loaded.report)]);
+          const summary = {
+            ...summarizeRisk(loaded.report, { teamNames: new Map(teamRows.map((t) => [t.id, t.name])), holdingsLimit }),
+            historicalStressTests: summarizeStress(stress),
+            etfLookThrough: summarizeLookthrough(lookthrough, holdingsLimit),
+          };
           const path = `${sleeve ? `/t/${sleeve.slug}/${page}` : `/${page}`}?lookback=${lookback}`;
           const pageName = page === "exposure" ? "exposure" : "risk";
           const source: Source = {
@@ -238,7 +244,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
             publishedAt: loaded.report.asOf,
             retrievedAt: new Date().toISOString(),
             sourceType: "Fund risk",
-            excerpt: `Volatility ${summary.annualizedVolatilityPct}% (S&P 500 ${summary.sp500VolatilityPct}%), beta ${summary.beta}, tracking error ${summary.trackingErrorPct ?? "n/a"}%, 1-day 95% VaR ${summary.var95OneDay.pct}% ($${summary.var95OneDay.usd.toLocaleString("en-US")}).${summary.largestActiveSectorBet ? ` Largest active sector bet ${summary.largestActiveSectorBet.sector} ${summary.largestActiveSectorBet.activePct}%.` : ""}${summary.activeRisk?.readings[0] ? ` ${summary.activeRisk.readings[0]}` : ""}`,
+            excerpt: `Volatility ${summary.annualizedVolatilityPct}% (S&P 500 ${summary.sp500VolatilityPct}%), beta ${summary.beta}, tracking error ${summary.trackingErrorPct ?? "n/a"}%, 1-day 95% VaR ${summary.var95OneDay.pct}% ($${summary.var95OneDay.usd.toLocaleString("en-US")}).${summary.largestActiveSectorBet ? ` Largest active sector bet ${summary.largestActiveSectorBet.sector} ${summary.largestActiveSectorBet.activePct}%.` : ""}${summary.activeRisk?.readings[0] ? ` ${summary.activeRisk.readings[0]}` : ""}${lookthrough.state === "ok" && lookthrough.report.active ? ` Active Share ${(lookthrough.report.active.activeShare * 100).toFixed(1)}% vs ${lookthrough.benchmarkLabel ?? "the benchmark"}'s holdings.` : ""}`,
           };
           return { data: { ...summary, sourceId: source.id }, sources: [source] };
         } catch (e) {

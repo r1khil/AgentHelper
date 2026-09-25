@@ -42,6 +42,25 @@ export const RISK_EXPLAIN = {
   largestActiveBet:
     "The sector whose weight differs most from the benchmark's, in percentage points (portfolio weight minus benchmark weight; an underweight counts too). It is measured by sector because the benchmark is the Select Sector SPDR ETFs: against it every single stock counts as fully active, so a stock-level answer needs the index's own holdings.",
   top10: "Share of the portfolio's value in its ten largest positions, from the ledger's latest positions at the last close.",
+
+  // ETF look-through.
+  lookthrough:
+    "Each ETF replaced by the stocks it holds: an ETF's weight × each constituent's weight in the ETF, added to any direct holding of the same company (share classes such as GOOG and GOOGL count as one). Holdings lists come from the issuers' daily files (State Street, iShares, First Trust, Roundhill), refreshed weekly; where an issuer can't be read, Yahoo's top 10 holdings stand in. Anything a list doesn't cover stays in “not looked through”, so the rows add back to 100%. An exposure view only: risk figures already see ETF and stock overlap through their returns.",
+  lookthroughCoverage:
+    "How much of each ETF its stored holdings list accounts for: the sum of the constituents' weights. Cash, T-bills held as collateral, futures and swaps on stocks that can't be named are not stocks, so a full list usually covers 99.5–100%. “Top 10 only” means the issuer's file couldn't be read and only Yahoo's largest holdings are known. A list is marked stale when it is more than two weeks older than the positions.",
+  combinedExposure:
+    "The company's total weight in the portfolio: what is held directly plus its share of every ETF held (ETF weight × the company's weight in that ETF).",
+  notLookedThrough:
+    "ETF weight that isn't matched to named stocks: the part of each ETF its list doesn't cover, and whole ETFs with no stored list. It is kept as its own row rather than spread over the names.",
+  overlap: "Held directly and through at least one ETF, so the position is bigger than the direct holding alone.",
+  throughEtfSectors:
+    "Sector weights with each ETF split into its holdings, each stock in its own GICS sector (from the Fund's classification, then the sector SPDR that holds it, then the issuer's label). An ETF's not-looked-through part stays in the ETF's own sector and is counted as assumed. Benchmark weights are unchanged. Risk shares are measured on the ETFs as held, so they appear only in the as-held view.",
+  stockActive:
+    "Each company's weight in the portfolio (through the ETFs) minus its weight in the benchmark's own holdings: SPY for the Fund, a team's sector SPDRs at the team's sector weights. Positive is an overweight; a company the portfolio doesn't own is an underweight of its full index weight. In percentage points of the portfolio, cash included.",
+  stockLargestBet:
+    "The company whose weight differs most from its weight in the benchmark's holdings (SPY for the Fund), through the ETFs. Often an underweight in a mega-cap the portfolio doesn't own. The sector-level bet, against the sector ETFs, is shown beneath it.",
+  activeShare:
+    "Active Share = ½ × Σ |portfolio weight − benchmark weight| over every company in either, with each side's stock weights scaled to add to 100% (cash and the not-looked-through part are left out). 0% is an index fund; 100% shares no names with the index. Above about 60% is usually called active management.",
   overUnder:
     "The sum of all overweights and the sum of all underweights, cash included. Both sides of the book add up to 100%, so the two always cancel; either one is the share of the portfolio positioned differently from the benchmark at sector level.",
 

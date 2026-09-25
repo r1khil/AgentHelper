@@ -3,6 +3,8 @@ import { activeRiskBreakdown } from "@/lib/risk/active";
 import { buildExposure } from "@/lib/risk/exposure";
 import { factorBetaRows, factorReturnRows } from "@/lib/risk/factor-csv";
 import { loadRisk } from "@/lib/risk/load";
+import { lookthroughCsvRows } from "@/lib/risk/lookthrough-csv";
+import { loadLookthrough } from "@/lib/risk/lookthrough-load";
 import { parseLookback, type RiskReport } from "@/lib/risk/model";
 import type { StressResult } from "@/lib/risk/stress";
 import { loadStressTests } from "@/lib/risk/stress-load";
@@ -111,6 +113,9 @@ const BUILDERS = {
   // The Exposure page's factor section: every regression's betas, standard errors and t-stats, and the data they were fitted on.
   factors: (r: RiskReport) => csv(factorBetaRows(r.factors)),
   "factor-returns": (r: RiskReport) => csv(factorReturnRows(r.factors)),
+  // The Exposure page's ETF look-through: every company (direct + via each ETF), each ETF's coverage, the
+  // not-looked-through bucket, sectors through the ETFs, and each company's benchmark weight for Active Share.
+  lookthrough: async (r: RiskReport) => csv(lookthroughCsvRows(r, await loadLookthrough(r))),
 } satisfies Record<string, (r: RiskReport) => string | Promise<string>>;
 type File = keyof typeof BUILDERS;
 const isFile = (f: string | null): f is File => !!f && Object.hasOwn(BUILDERS, f);

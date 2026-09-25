@@ -1,6 +1,8 @@
 import { activeRiskBreakdown } from "./active";
 import { buildExposure } from "./exposure";
 import { FACTOR_KEYS, FACTORS, factorReadings, isFactorReport, type FactorFit, type FactorKey } from "./factors";
+import { describeExposure } from "./lookthrough";
+import type { LookthroughState } from "./lookthrough-report";
 import { LOOKBACKS, type RiskReport } from "./model";
 import type { StressResult } from "./stress";
 
@@ -35,7 +37,7 @@ export function summarizeRisk(r: RiskReport, opts: { teamNames: Map<string, stri
     top5WeightPct: pct(p.top5),
     top10WeightPct: pct(p.top10),
     largestActiveSectorBet: x.largestBet
-      ? { sector: x.largestBet.label, etf: x.largestBet.etf, activePct: pct(x.largestBet.active), weightPct: pct(x.largestBet.weight), benchmarkPct: pct(x.largestBet.benchWeight), note: "By sector only: the benchmark is sector ETFs, so stock-level active bets are not measured." }
+      ? { sector: x.largestBet.label, etf: x.largestBet.etf, activePct: pct(x.largestBet.active), weightPct: pct(x.largestBet.weight), benchmarkPct: pct(x.largestBet.benchWeight), note: "By sector, against the sector ETFs. The stock-level bet (through the ETFs, against the benchmark's own holdings) is in etfLookThrough." }
       : null,
     sectorOverweightsTotalPct: pct(x.overweight),
     sectors: r.sectors.map((s) => ({ sector: s.label, weightPct: pct(s.weight), benchmarkPct: pct(s.benchWeight), activePct: pct(s.active), shareOfRiskPct: pct(s.riskShare, 1), shareOfActiveRiskPct: pct(s.activeRiskShare, 1) })),
@@ -131,4 +133,36 @@ export function summarizeStress(results: StressResult[]) {
           stoodIn: r.holdings.filter((h) => h.proxied).map((h) => `${h.ticker} via ${h.series} (${h.proxyReason})`),
         },
   );
+}
+
+/**
+ * The Exposure page's ETF look-through in a compact form for Hoot: coverage per ETF, the largest combined
+ * exposures with their breakdown, names held both ways, stock-level active weights and Active Share.
+ */
+export function summarizeLookthrough(state: LookthroughState, limit = 10) {
+  if (state.state !== "ok") {
+    return { note: state.reason === "no-table" ? "ETF holdings are not set up yet, so ETFs are not looked through." : "No ETF holdings lists are stored yet; the nightly price job fetches them weekly.", heldEtfs: state.heldEtfs };
+  }
+  const lt = state.report;
+  const a = lt.active;
+  const activeOut = (r: NonNullable<typeof a>["rows"][number]) => ({ company: r.key, name: r.name, portfolioPct: pct(r.fund), benchmarkPct: pct(r.benchmark), activePct: pct(r.active) });
+  return {
+    method:
+      "Each ETF replaced by its holdings (ETF weight × constituent weight), added to direct holdings of the same company; share classes combined. Holdings lists are the issuers' daily files (State Street, iShares, First Trust, Roundhill), refreshed weekly, or Yahoo's top 10 where an issuer can't be read. Uncovered ETF weight stays in notLookedThroughPct. Active Share is ½Σ|w_p − w_b| on the stocks, each side scaled to 100%. An exposure view: risk figures already capture ETF/stock overlap through returns.",
+    etfs: lt.etfs.map((e) => ({ etf: e.etf, weightPct: pct(e.weight), coveragePct: pct(e.coverage, 1), holdingsAsOf: e.asOf, source: e.source, status: e.status, stale: state.stale.includes(e.etf) })),
+    largestExposures: lt.names.slice(0, limit).map((n) => ({ company: n.key, name: n.name, totalPct: pct(n.total), directPct: pct(n.direct), throughEtfs: n.viaEtfs.map((v) => ({ etf: v.via, pct: pct(v.weight, 3) })), breakdown: describeExposure(n), heldBothWays: n.overlap })),
+    heldBothWays: lt.names.filter((n) => n.overlap).map((n) => describeExposure(n)),
+    notLookedThroughPct: pct(lt.notLookedThrough.total),
+    sectorsThroughEtfs: lt.sectors.map((s) => ({ sector: s.label, asHeldPct: pct(s.asHeld), throughEtfsPct: pct(s.lookthrough), assumedPct: s.assumed > 5e-5 ? pct(s.assumed) : undefined })),
+    stockLevel: a
+      ? {
+          benchmark: `${state.benchmarkLabel ?? a.benchmark.etf} holdings as of ${a.benchmark.asOf}`,
+          activeSharePct: pct(a.activeShare, 1),
+          portfolioInBenchmarkNamesPct: pct(a.overlapWithBenchmark, 1),
+          largestActiveBet: a.largestBet ? activeOut(a.largestBet) : null,
+          largestOverweights: a.rows.filter((r) => r.active > 0).sort((x, y) => y.active - x.active).slice(0, 5).map(activeOut),
+          largestUnderweights: a.rows.filter((r) => r.active < 0).sort((x, y) => x.active - y.active).slice(0, 5).map(activeOut),
+        }
+      : { note: state.benchmarkMissing ?? "The benchmark's holdings are not stored yet." },
+  };
 }

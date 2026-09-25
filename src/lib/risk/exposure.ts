@@ -1,4 +1,5 @@
-import { ETF_BY_SECTOR } from "@/lib/attribution/sectors";
+import { ETF_BY_SECTOR, bucketLabel } from "@/lib/attribution/sectors";
+import type { LookthroughReport } from "./lookthrough";
 import { sum } from "./math";
 import type { RiskReport, SectorRisk } from "./model";
 
@@ -13,6 +14,8 @@ export type SectorBet = SectorRisk & { etf: string | null };
 
 export type Exposure = {
   scope: RiskReport["scope"];
+  /** Sector weights are through the ETFs (look-through) rather than each ETF counted whole in its own sector. */
+  throughEtfs: boolean;
   asOf: string;
   hasBenchmark: boolean;
   /** The non-cash sector with the largest absolute active weight. By sector only: the benchmark is sector ETFs. */
@@ -37,9 +40,26 @@ export type Exposure = {
 
 const etfOf = (s: SectorRisk) => (s.key === "cash" || s.key === "unclassified" ? null : ETF_BY_SECTOR[s.key]);
 
-export function buildExposure(r: RiskReport): Exposure {
-  const hasBenchmark = r.sectors.some((s) => s.active !== null);
-  const bets = r.sectors.map((s) => ({ ...s, etf: etfOf(s) }));
+/**
+ * Sector rows with each ETF replaced by its holdings. Benchmark weights are the same; risk shares are left out
+ * (null / 0) because the risk model measures the ETFs as held, and `tickers` lists the largest names in the sector.
+ */
+export function sectorsThroughEtfs(r: RiskReport, lt: LookthroughReport): SectorRisk[] {
+  const hasBenchmark = r.sectors.some((s) => s.benchWeight !== null);
+  const bench = new Map(r.sectors.map((s) => [s.key, s.benchWeight]));
+  // Benchmark sectors the portfolio has nothing in, even through ETFs, stay as rows (full underweights).
+  const rows = [...lt.sectors, ...r.sectors.filter((s) => !lt.sectors.some((x) => x.key === s.key)).map((s) => ({ key: s.key, lookthrough: 0 }))];
+  return rows.map((s) => {
+    const benchWeight = bench.get(s.key) ?? (hasBenchmark ? 0 : null);
+    const names = lt.names.filter((n) => (n.sector ?? "unclassified") === s.key).slice(0, 6).map((n) => n.key);
+    return { key: s.key, label: bucketLabel(s.key), weight: s.lookthrough, benchWeight, active: benchWeight === null ? null : s.lookthrough - benchWeight, riskShare: 0, activeRiskShare: null, tickers: s.key === "cash" ? [] : names };
+  });
+}
+
+export function buildExposure(r: RiskReport, opts: { through?: LookthroughReport | null } = {}): Exposure {
+  const rows = opts.through ? sectorsThroughEtfs(r, opts.through) : r.sectors;
+  const hasBenchmark = rows.some((s) => s.active !== null);
+  const bets = rows.map((s) => ({ ...s, etf: etfOf(s) }));
   const nonCash = bets.filter((s) => s.key !== "cash");
   const cash = bets.filter((s) => s.key === "cash");
   const sectors = [
@@ -53,6 +73,7 @@ export function buildExposure(r: RiskReport): Exposure {
   const actives = bets.map((s) => s.active).filter((a): a is number => a !== null);
   return {
     scope: r.scope,
+    throughEtfs: Boolean(opts.through),
     asOf: r.asOf,
     hasBenchmark,
     largestBet,

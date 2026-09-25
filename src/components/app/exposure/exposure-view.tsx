@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, Table
 import { fmtDate } from "@/lib/format";
 import { activeRiskBreakdown } from "@/lib/risk/active";
 import { buildExposure, type Exposure } from "@/lib/risk/exposure";
+import type { LookthroughState } from "@/lib/risk/lookthrough-report";
 import type { RiskReport } from "@/lib/risk/model";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ import { LookbackSelector } from "../risk/risk-view";
 import { SectorExposure } from "../risk/sector-exposure";
 import { StatCard } from "../risk/stat-card";
 import { Source, Step, Working } from "../risk/working";
+import { ActiveShareCard, StockBetCard } from "./lookthrough-cards";
 
 /**
  * A titled, anchor-linkable block on the Exposure page. Every section uses it, so later ones (factor sensitivities,
@@ -52,6 +54,9 @@ export function ExposureView({
   weightSetAsOf,
   controls,
   children,
+  lookthrough,
+  throughEtfs = false,
+  query = "",
 }: {
   report: RiskReport;
   transparency: boolean;
@@ -67,8 +72,16 @@ export function ExposureView({
   controls?: React.ReactNode;
   /** Extra sections, rendered after the built-in ones; wrap each in ExposureSection. */
   children?: React.ReactNode;
+  /** ETF look-through: with it the headline shows the stock-level bet and Active Share, and sectors can be shown through ETFs. */
+  lookthrough?: LookthroughState | null;
+  /** Show sector weights through the ETFs (needs `lookthrough`). */
+  throughEtfs?: boolean;
+  /** Extra query the lookback links carry, e.g. "&sectors=etf". */
+  query?: string;
 }) {
-  const x = buildExposure(r);
+  const lt = lookthrough?.state === "ok" ? lookthrough : null;
+  const x = buildExposure(r, { through: throughEtfs && lt ? lt.report : null });
+  const stockLevel = lt?.report.active ? lt : null;
   const active = activeRiskBreakdown(r);
   const fund = r.scope === "fund";
   const download = (file: string, label: string) => (
@@ -83,13 +96,19 @@ export function ExposureView({
     <>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <LookbackSelector basePath={basePath} active={r.lookback} />
+          <LookbackSelector basePath={basePath} active={r.lookback} extra={query} />
           {controls}
         </div>
         <div className="text-xs text-muted-foreground">Positions at the {fmtDate(r.asOf)} close · risk shares over {r.window.days} trading days</div>
       </div>
 
-      <section aria-label="Headline exposure" className="mb-6 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section aria-label="Headline exposure" className={cn("mb-6 grid items-start gap-4 sm:grid-cols-2", stockLevel ? "lg:grid-cols-3 2xl:grid-cols-6" : "lg:grid-cols-4")}>
+        {stockLevel ? (
+          <>
+            <StockBetCard lt={stockLevel.report} sectorBet={bet} benchmarkLabel={stockLevel.benchmarkLabel ?? "the benchmark"} transparency={transparency} className="sm:col-span-2" />
+            <ActiveShareCard lt={stockLevel.report} benchmarkLabel={stockLevel.benchmarkLabel ?? "the benchmark"} transparency={transparency} />
+          </>
+        ) : (
         <StatCard
           label="Largest active bet"
           explain={RISK_EXPLAIN.largestActiveBet}
@@ -107,6 +126,7 @@ export function ExposureView({
           }
           working={transparency && bet ? <BetWorking x={x} /> : undefined}
         />
+        )}
         <StatCard
           label={`Top ${x.top.holdings.length} weight`}
           explain={RISK_EXPLAIN.top10}
@@ -139,9 +159,27 @@ export function ExposureView({
         id="sectors"
         title="Sectors against the benchmark"
         explain={RISK_EXPLAIN.exposure}
-        aside={x.hasBenchmark ? `Largest overweight first · vs ${benchmarkLabel}` : "By weight · no benchmark saved"}
+        aside={`${x.throughEtfs ? "Through ETFs · " : ""}${x.hasBenchmark ? `Largest overweight first · vs ${benchmarkLabel}` : "By weight · no benchmark saved"}`}
       >
-        <SectorExposure sectors={x.sectors} benchmarkLabel={benchmarkLabel} activeFirst balance={{ overweight: x.overweight, underweight: x.underweight }} />
+        {x.throughEtfs && lt && (
+          <p className="mb-2 text-xs text-muted-foreground">
+            <Explained label="Each ETF split into its holdings">{RISK_EXPLAIN.throughEtfSectors}</Explained>. Risk shares are measured on the ETFs as held, so they&apos;re in the as-held view.
+            {lt.report.notLookedThrough.total > 5e-5 && <> {rpct(lt.report.notLookedThrough.total, 2)} not looked through stays in its ETF&apos;s sector.</>}
+          </p>
+        )}
+        <SectorExposure
+          sectors={x.sectors}
+          benchmarkLabel={benchmarkLabel}
+          activeFirst
+          balance={{ overweight: x.overweight, underweight: x.underweight }}
+          hideRisk={x.throughEtfs}
+          rowNote={x.throughEtfs && lt ? (key) => {
+            const s = lt.report.sectors.find((v) => v.key === key);
+            if (!s) return null;
+            const parts = [`as held ${rpct(s.asHeld)}`, ...(s.assumed > 5e-5 ? [`${rpct(s.assumed, 2)} assumed`] : [])];
+            return parts.join(" · ");
+          } : undefined}
+        />
       </ExposureSection>
 
       <ExposureSection id="positions" title="Largest positions" explain={RISK_EXPLAIN.top10} aside={`${x.top.holdings.length} of ${x.holdingsCount} holdings`}>
@@ -173,6 +211,7 @@ export function ExposureView({
             <span>Download:</span>
             {download("exposure", "Sectors and headline numbers")}
             {download("positions", "Positions")}
+            {lt && download("lookthrough", "ETF look-through")}
           </p>
           <p>
             To check in Excel: sum the positions file&apos;s <code>weight</code> column by <code>sector</code> for each sector&apos;s weight, and subtract the exposure file&apos;s

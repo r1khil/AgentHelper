@@ -829,3 +829,30 @@ export const backtestScenarios = pgTable(
 );
 export type BacktestScenario = typeof backtestScenarios.$inferSelect;
 
+
+/**
+ * Full holdings of the ETFs the Fund owns, plus SPY and the sector SPDRs, one list per ETF and as-of date.
+ * Weights are percent of the ETF's net assets; cash, collateral and derivatives aren't stored, so a list's
+ * weights add up to its coverage. Refreshed weekly by the price job (src/lib/lookthrough/store.ts).
+ */
+export const etfConstituents = pgTable(
+  "etf_constituents",
+  {
+    etf: text("etf").notNull(),
+    asOf: date("as_of").notNull(),
+    /** Yahoo-style: BRK-B, K.TO, 000660.KS. */
+    symbol: text("symbol").notNull(),
+    name: text("name").notNull(),
+    weight: numeric("weight", { precision: 10, scale: 6 }).notNull(),
+    sector: gicsSectorEnum("sector"),
+    /** ssga | ishares | first-trust | roundhill | yahoo-top10 */
+    source: text("source").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ name: "etf_constituents_pkey", columns: [t.etf, t.asOf, t.symbol] }),
+    index("etf_constituents_symbol").on(t.symbol),
+    check("etf_constituents_weight_positive", sql`${t.weight} > 0`),
+  ],
+);
+export type EtfConstituent = typeof etfConstituents.$inferSelect;

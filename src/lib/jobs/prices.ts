@@ -3,10 +3,11 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { jobRuns } from "@/db/schema";
 import { ledgerSymbols, loadLedger, priceHistoryFrom, syncHoldingsFromLedger } from "@/lib/attribution/store";
+import { refreshEtfConstituents, type EtfRefreshResult } from "@/lib/lookthrough/store";
 import { syncPrices, type SyncPricesResult } from "@/lib/prices";
 import { createJobReporter } from "./progress";
 
-export type PricesJobResult = SyncPricesResult & { status: "ok" | "skipped" | "failed"; reason?: string; holdingsSynced: number };
+export type PricesJobResult = SyncPricesResult & { status: "ok" | "skipped" | "failed"; reason?: string; holdingsSynced: number; lookthrough?: EtfRefreshResult };
 
 /**
  * Keeps closes, dividends and splits current for every ledger ticker and the benchmark ETFs,
@@ -38,8 +39,11 @@ export async function runPricesJob(opts: { symbols?: string[]; budgetMs?: number
     });
     progress.step("sync holdings from ledger");
     const holdingsSynced = await syncHoldingsFromLedger(db);
+    // ETF look-through lists, weekly. Never throws; skips itself until migration 0021 is applied.
+    progress.step("refresh ETF constituents");
+    const lookthrough = await refreshEtfConstituents(db, { budgetMs: 30_000 });
     const failed = Object.keys(synced.failed).length;
-    return finish({ ...base, ...synced, holdingsSynced, status: failed && !synced.updated.length ? "failed" : "ok", reason: failed ? `${failed} symbols failed` : undefined });
+    return finish({ ...base, ...synced, holdingsSynced, lookthrough, status: failed && !synced.updated.length ? "failed" : "ok", reason: failed ? `${failed} symbols failed` : undefined });
   } catch (e) {
     return finish({ ...base, status: "failed", reason: e instanceof Error ? e.message : String(e) });
   }
