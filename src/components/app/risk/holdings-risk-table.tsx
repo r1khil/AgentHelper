@@ -26,6 +26,7 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
             <TableHead className="text-right"><Explained align="right" label="Beta">{RISK_EXPLAIN.holdingBeta}</Explained></TableHead>
             <TableHead className="text-right"><Explained align="right" label="Corr. to Fund">{RISK_EXPLAIN.corr}</Explained></TableHead>
             {showActive && <TableHead className="text-right"><Explained align="right" label="Active risk">{RISK_EXPLAIN.activeRiskShare}</Explained></TableHead>}
+            <TableHead className="text-right"><Explained align="right" label="What if">Opens Backtesting with this holding trimmed by 2 percentage points into cash, so you can see how performance and risk would change. Adjust the trade there before running.</Explained></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -59,6 +60,11 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
                 <TableCell className="tnum text-right text-sm">{rnum(h.beta)}</TableCell>
                 <TableCell className="tnum text-right text-sm">{rnum(h.corrToPortfolio)}</TableCell>
                 {showActive && <TableCell className="tnum text-right text-sm">{rpct(h.activeRiskShare)}</TableCell>}
+                <TableCell className="text-right">
+                  <Link href={`/backtesting?trade=${encodeURIComponent(`${h.ticker}:-2:cash`)}`} className="text-xs whitespace-nowrap text-muted-foreground hover:text-foreground hover:underline">
+                    Trim 2 pp →
+                  </Link>
+                </TableCell>
               </TableRow>
             );
           })}
@@ -69,7 +75,7 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
               <TableCell className="font-medium">All holdings</TableCell>
               <TableCell className="tnum text-xs">{rpct(totals.weight)} of value · 100.0% of risk</TableCell>
               <TableCell className="tnum text-right text-sm font-medium">{rpct(totals.vol, 2)}</TableCell>
-              <TableCell colSpan={showActive ? 4 : 3} />
+              <TableCell colSpan={showActive ? 5 : 4} />
             </TableRow>
           </TableFooter>
         )}

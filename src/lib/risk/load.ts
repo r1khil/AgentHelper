@@ -11,10 +11,35 @@ import type { DateSeries } from "@/lib/attribution/types";
 import { assembleRiskInput } from "./inputs";
 import { buildRiskReport, LOOKBACKS, RISK_FREE, type LookbackKey, type RiskReport } from "./model";
 
-function put(series: DateSeries, ticker: string, date: string, value: number) {
+export function putValue(series: DateSeries, ticker: string, date: string, value: number) {
   let m = series.get(ticker);
   if (!m) series.set(ticker, (m = new Map()));
   m.set(date, value);
+}
+
+/** Calendar date far enough back for the lookback's trading days, with margin. */
+export function windowStart(asOf: string, lookback: LookbackKey) {
+  return DateTime.fromISO(asOf).minus({ days: Math.ceil((LOOKBACKS[lookback].days / 252) * 366) + 20 }).toISODate()!;
+}
+
+/** Stored closes and dividends for `symbols` since `from`. */
+export async function loadStoredPrices(symbols: string[], from: string): Promise<{ prices: DateSeries; dividends: DateSeries }> {
+  const list = [...new Set(symbols)];
+  const [closeRows, divRows] = await Promise.all([
+    db
+      .select({ ticker: dailyCloses.ticker, date: dailyCloses.sessionDate, close: dailyCloses.close })
+      .from(dailyCloses)
+      .where(and(inArray(dailyCloses.ticker, list), gte(dailyCloses.sessionDate, from))),
+    db
+      .select({ ticker: securityEvents.ticker, date: securityEvents.exDate, amount: securityEvents.amount })
+      .from(securityEvents)
+      .where(and(inArray(securityEvents.ticker, list), eq(securityEvents.kind, "dividend"), gte(securityEvents.exDate, from))),
+  ]);
+  const prices: DateSeries = new Map();
+  for (const r of closeRows) putValue(prices, r.ticker, r.date, Number(r.close));
+  const dividends: DateSeries = new Map();
+  for (const r of divRows) if (r.amount) putValue(dividends, r.ticker, r.date, Number(r.amount));
+  return { prices, dividends };
 }
 
 export type LoadedRisk =
@@ -33,24 +58,11 @@ export const loadRisk = cache(async (lookback: LookbackKey, teamId: string | nul
   if (!loaded.latest) return { state: "no-prices" };
 
   const held = latestPositions(loaded.series.portfolio).map((p) => p.ticker);
-  const symbols = [...new Set([...held, ...benchmarkSymbols(), RISK_FREE])];
-  const from = DateTime.fromISO(loaded.latest).minus({ days: Math.ceil((LOOKBACKS[lookback].days / 252) * 366) + 20 }).toISODate()!;
-  const earliest = loaded.inception < from ? loaded.inception : from;
-  const [closeRows, divRows, sectorMap] = await Promise.all([
-    db
-      .select({ ticker: dailyCloses.ticker, date: dailyCloses.sessionDate, close: dailyCloses.close })
-      .from(dailyCloses)
-      .where(and(inArray(dailyCloses.ticker, symbols), gte(dailyCloses.sessionDate, earliest))),
-    db
-      .select({ ticker: securityEvents.ticker, date: securityEvents.exDate, amount: securityEvents.amount })
-      .from(securityEvents)
-      .where(and(inArray(securityEvents.ticker, symbols), eq(securityEvents.kind, "dividend"), gte(securityEvents.exDate, earliest))),
+  const from = windowStart(loaded.latest, lookback);
+  const [{ prices, dividends }, sectorMap] = await Promise.all([
+    loadStoredPrices([...held, ...benchmarkSymbols(), RISK_FREE], loaded.inception < from ? loaded.inception : from),
     teamId ? loadTeamSectors() : Promise.resolve(null),
   ]);
-  const prices: DateSeries = new Map();
-  for (const r of closeRows) put(prices, r.ticker, r.date, Number(r.close));
-  const dividends: DateSeries = new Map();
-  for (const r of divRows) if (r.amount) put(dividends, r.ticker, r.date, Number(r.amount));
 
   const input = assembleRiskInput({
     series: loaded.series,

@@ -16,9 +16,11 @@ import { BENCHMARKS, type Metrics } from "@/lib/backtesting/engine";
 import { loadSnapshot, resolveScenarioSnapshot, runBacktest } from "@/lib/backtesting/load";
 import { MAX_SCENARIO_COMPANIES } from "@/lib/backtesting/scenario";
 import { weightsFromOverrides } from "@/lib/backtesting/overrides";
+import { applyTrade, type Funding } from "@/lib/backtesting/trade";
 import { NY } from "@/lib/providers/calendar";
 import { loadRisk } from "@/lib/risk/load";
 import { DEFAULT_LOOKBACK, LOOKBACKS, type LookbackKey } from "@/lib/risk/model";
+import { scenarioRisk } from "@/lib/risk/scenario";
 import { summarizeRisk } from "@/lib/risk/summary";
 import { sourceId, type Source } from "@/lib/providers/types";
 import type { ToolResult } from "./tools";
@@ -125,8 +127,13 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
           .record(z.string(), z.number().min(0).max(100))
           .optional()
           .describe("Scenario weights in percent by ticker, including CASH. Named tickers get exactly that weight; unspecified holdings keep their current weights. Supply offsetting edits so the full portfolio totals 100.00%. Omit to replay saved weights only."),
+        trades: z
+          .array(z.object({ ticker: z.string(), changePp: z.number().min(-100).max(100).describe("Percentage points: negative trims, positive adds"), fundFrom: z.string().describe("'cash', 'pro_rata' (the other holdings in proportion to their weights) or a holding's ticker") }))
+          .max(10)
+          .optional()
+          .describe("Relative trades applied after `weights`, each offset automatically, e.g. [{ ticker: 'AVGO', changePp: -2, fundFrom: 'cash' }]. Easier than absolute weights for 'trim X by 2%' questions."),
       }),
-      execute: async ({ from, to, benchmark, addedTickers, weights: overrides }): Promise<ToolResult<unknown>> => {
+      execute: async ({ from, to, benchmark, addedTickers, weights: overrides, trades }): Promise<ToolResult<unknown>> => {
         try {
           const yesterday = DateTime.now().setZone(NY).minus({ days: 1 }).toISODate()!;
           const end = to && to < yesterday ? to : yesterday;
@@ -134,8 +141,15 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
           const start = from ?? DateTime.fromISO(end, { zone: NY }).minus({ months: 3 }).toISODate()!;
           const saved = await loadSnapshot(viewer);
           const snapshot = addedTickers?.length ? await resolveScenarioSnapshot(saved, addedTickers) : saved;
-          const weights = weightsFromOverrides(snapshot.positions, overrides ?? {});
-          const r = await runBacktest(snapshot, weights, benchmark, start, end);
+          let weights = weightsFromOverrides(snapshot.positions, overrides ?? {});
+          for (const t of trades ?? []) {
+            const funding: Funding = t.fundFrom === "cash" ? { kind: "cash" } : t.fundFrom === "pro_rata" ? { kind: "pro_rata" } : { kind: "ticker", ticker: t.fundFrom };
+            weights = applyTrade(snapshot.positions, weights, { ticker: t.ticker, changePp: t.changePp, funding });
+          }
+          const [r, risk] = await Promise.all([
+            runBacktest(snapshot, weights, benchmark, start, end),
+            snapshot.positions.some((p) => Math.abs(weights[p.id] - p.weight) > 1e-9) ? scenarioRisk(viewer, snapshot, weights, "1y").catch(() => null) : Promise.resolve(null),
+          ]);
           const changed = snapshot.positions
             .filter((p) => Math.abs(weights[p.id] - p.weight) > 1e-6)
             .map((p) => ({ ticker: p.ticker, savedPct: pct(p.weight), scenarioPct: pct(weights[p.id]) }));
@@ -166,6 +180,16 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
               ...(changed.length ? { scenario: metricsOut(r.modified) } : {}),
               benchmarkMetrics: metricsOut(r.benchmarkMetrics),
               contributions,
+              ...(risk
+                ? {
+                    riskImpact: {
+                      method: "Today's risk of the saved vs scenario weights with the Risk page's model (1-year window of daily returns), independent of the backtest period.",
+                      saved: { volatilityPct: pct(risk.before.vol), beta: +risk.before.beta.toFixed(2), trackingErrorPct: pct(risk.before.trackingError), var95Pct: pct(risk.before.var), effectivePositions: +risk.before.effectiveN.toFixed(1) },
+                      scenario: { volatilityPct: pct(risk.after.vol), beta: +risk.after.beta.toFixed(2), trackingErrorPct: pct(risk.after.trackingError), var95Pct: pct(risk.after.var), effectivePositions: +risk.after.effectiveN.toFixed(1) },
+                      holdings: risk.holdings.map((h) => ({ ticker: h.ticker, weightPct: `${pct(h.weightBefore)} → ${pct(h.weightAfter)}`, shareOfRiskPct: `${pct(h.shareBefore)} → ${pct(h.shareAfter)}` })),
+                    },
+                  }
+                : {}),
               method: "Fixed weights rebalanced daily; contributions are each holding's share of the total return, in percentage points.",
               sourceId: source.id,
             },

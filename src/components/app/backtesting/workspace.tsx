@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useRef, useState, type FormEvent } from "react";
+import { memo, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,11 @@ import {
 } from "@/lib/backtesting/scenario";
 import { usePathname } from "next/navigation";
 import { usePageContext } from "@/components/app/hoot/page-context";
+import { applyTrade, fundingIds, fundingLabel, toPercentStrings, type Trade } from "@/lib/backtesting/trade";
+import type { ScenarioRisk } from "@/lib/risk/compare";
+import { QuickTrade } from "./quick-trade";
+import { RiskImpact } from "./risk-impact";
+import { SaveScenario } from "./saved-scenarios";
 
 const pct = (v: number | null) =>
   v === null ? "—" : `${(v * 100).toFixed(2)}%`;
@@ -38,6 +43,49 @@ const initialWeights = (snapshot: Snapshot) =>
     snapshot.positions.map((p) => [p.id, (p.weight * 100).toFixed(2)]),
   );
 
+/** A scenario to open with: a saved one (weights by ticker), or a trade from a Risk page link. */
+export type InitialScenario = {
+  weightsPct?: Record<string, number>;
+  added?: { ticker: string; name: string }[];
+  from?: string;
+  to?: string;
+  benchmark?: keyof typeof BENCHMARKS;
+  trade?: Trade;
+  /** Shown above the form: which scenario was opened, and anything that no longer matches. */
+  banner?: string;
+};
+
+/** Every position whose weight differs from the saved copy by more than rounding is marked edited. */
+function openScenario(snapshot: Snapshot, initial?: InitialScenario) {
+  const added = initial?.added ?? [];
+  const positions = withAddedCompanies(snapshot, added).positions;
+  const weights: Record<string, string> = Object.fromEntries(positions.map((p) => [p.id, (p.weight * 100).toFixed(2)]));
+  const edited = new Set<string>();
+  let problem = "";
+  if (initial?.weightsPct) {
+    for (const p of positions) {
+      const w = initial.weightsPct[p.ticker];
+      if (w === undefined || Math.abs(w / 100 - p.weight) < 5e-5) continue;
+      weights[p.id] = w.toFixed(2);
+      edited.add(p.id);
+    }
+  }
+  if (initial?.trade) {
+    try {
+      const next = applyTrade(positions, Object.fromEntries(positions.map((p) => [p.id, p.weight])), initial.trade);
+      const changed = positions.filter((p) => Math.abs(next[p.id] - p.weight) > 1e-9).map((p) => p.id);
+      const strings = toPercentStrings(next, fundingIds(positions, initial.trade));
+      for (const id of changed) {
+        weights[id] = strings[id];
+        edited.add(id);
+      }
+    } catch (e) {
+      problem = e instanceof Error ? e.message : "That trade could not be applied.";
+    }
+  }
+  return { added, weights, edited, problem };
+}
+
 type Completed = {
   id: number;
   result: BacktestResult;
@@ -52,22 +100,35 @@ export function BacktestingWorkspace({
   defaultTo,
   endpoint = "/api/backtesting",
   tickerEndpoint = "/api/backtesting/ticker",
+  riskEndpoint = "/api/backtesting/risk",
+  initial,
+  saveAudience,
+  aside,
 }: {
   snapshot: Snapshot;
   defaultFrom: string;
   defaultTo: string;
   endpoint?: string;
   tickerEndpoint?: string;
+  /** Null turns the risk comparison off (the synthetic preview has no stored prices). */
+  riskEndpoint?: string | null;
+  initial?: InitialScenario;
+  /** Who a saved scenario is shared with ("the Fund's execs and admins"); omitted, saving is off. */
+  saveAudience?: string;
+  /** Rendered under the header: the saved scenarios list. */
+  aside?: ReactNode;
 }) {
-  const [weights, setWeights] = useState(() => initialWeights(snapshot));
-  const [edited, setEdited] = useState<Set<string>>(() => new Set());
-  const [added, setAdded] = useState<{ ticker: string; name: string }[]>([]);
+  const [opened] = useState(() => openScenario(snapshot, initial));
+  const [weights, setWeights] = useState(opened.weights);
+  const [edited, setEdited] = useState<Set<string>>(opened.edited);
+  const [added, setAdded] = useState<{ ticker: string; name: string }[]>(opened.added);
   const [tickerInput, setTickerInput] = useState("");
   const [lookupBusy, setLookupBusy] = useState(false);
   const [lookupError, setLookupError] = useState("");
-  const [from, setFrom] = useState(defaultFrom),
-    [to, setTo] = useState(defaultTo);
-  const [benchmark, setBenchmark] = useState<keyof typeof BENCHMARKS>("SPY");
+  const [from, setFrom] = useState(initial?.from ?? defaultFrom),
+    [to, setTo] = useState(initial?.to && initial.to <= defaultTo ? initial.to : defaultTo);
+  const [benchmark, setBenchmark] = useState<keyof typeof BENCHMARKS>(initial?.benchmark ?? "SPY");
+  const [risk, setRisk] = useState<{ data: ScenarioRisk | null; busy: boolean; error: string; for: string }>({ data: null, busy: false, error: "", for: "" });
   const [completed, setCompleted] = useState<Completed | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -176,12 +237,59 @@ export function BacktestingWorkspace({
       return next;
     });
   }
+  function quickTrade(trade: Trade): string | null {
+    try {
+      const next = applyTrade(positions, scenarioWeights, trade);
+      const changed = positions.filter((p) => Math.abs(next[p.id] - scenarioWeights[p.id]) > 1e-9).map((p) => p.id);
+      // A team sleeve's saved weights are not whole hundredths, so write every weight to keep the total exact.
+      const sleeve = positions.some((p) => Math.abs(p.weight * 10_000 - Math.round(p.weight * 10_000)) > 1e-6);
+      const strings = toPercentStrings(next, fundingIds(positions, trade));
+      const ids = sleeve ? positions.map((p) => p.id) : changed;
+      setWeights((current) => ({ ...current, ...Object.fromEntries(ids.map((id) => [id, strings[id]])) }));
+      setEdited((current) => new Set([...current, ...ids]));
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : `Could not apply the trade with ${fundingLabel(trade.funding)}.`;
+    }
+  }
+  async function measureRisk(key: string) {
+    if (!riskEndpoint) return;
+    setRisk((r) => ({ ...r, busy: true, error: "" }));
+    try {
+      const response = await fetch(riskEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version: snapshot.version, weights: scenarioWeights, addedTickers: added.map((p) => p.ticker) }),
+        signal: AbortSignal.timeout(60000),
+      });
+      if (response.redirected || !response.headers.get("content-type")?.includes("application/json")) throw new Error("Your session expired. Sign in again, then reload this page.");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Risk could not be measured.");
+      setRisk({ data, busy: false, error: "", for: key });
+    } catch (e) {
+      setRisk({ data: null, busy: false, error: e instanceof Error ? e.message : "Risk could not be measured.", for: key });
+    }
+  }
+  async function save(name: string, note: string) {
+    try {
+      const response = await fetch("/api/backtesting/scenarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, ...(note ? { note } : {}), version: snapshot.version, weights: scenarioWeights, addedTickers: added.map((p) => p.ticker), from, to, benchmark }),
+      });
+      const data = await response.json().catch(() => ({}));
+      return response.ok ? { id: data.id as string } : { error: (data.error as string) ?? "Could not save the scenario." };
+    } catch {
+      return { error: "Could not save the scenario. Please retry." };
+    }
+  }
   async function run(event: FormEvent) {
     event.preventDefault();
     if (!valid || inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
     setError("");
+    void measureRisk(JSON.stringify(weights));
     try {
       const response = await fetch(endpoint, {
         method: "POST",
@@ -231,6 +339,13 @@ export function BacktestingWorkspace({
         title="Backtesting"
         description="Compare your current allocation with a modified copy, one trading day at a time."
       />
+      {aside}
+      {(initial?.banner || opened.problem) && (
+        <Card className="mb-5 gap-1 border-dashed p-4 text-sm">
+          {initial?.banner && <p>{initial.banner}</p>}
+          {opened.problem && <p className="text-destructive">{opened.problem}</p>}
+        </Card>
+      )}
       <Card className="mb-5 gap-3 p-4 text-sm">
         <div className="font-medium">{snapshot.scope}</div>
         <p className="text-muted-foreground">
@@ -329,6 +444,7 @@ export function BacktestingWorkspace({
               </p>
             </div>
             {lookupError && <p role="alert" className="mt-2 text-sm text-destructive">{lookupError}</p>}
+            <QuickTrade positions={positions} onApply={quickTrade} disabled={lookupBusy} />
             <div className="mt-3 max-h-80 overflow-auto rounded-md border">
               <table className="w-full text-sm">
                 <caption className="sr-only">
@@ -476,6 +592,10 @@ export function BacktestingWorkspace({
           {error}
         </Card>
       )}
+      {riskEndpoint && (risk.data || risk.busy || risk.error) && (
+        <RiskImpact data={risk.data} busy={risk.busy} error={risk.error} stale={risk.for !== JSON.stringify(weights)} />
+      )}
+      {saveAudience && <SaveScenario onSave={save} disabled={!valid} audience={saveAudience} />}
       {completed && (
         <Results key={completed.id} result={completed.result} />
       )}

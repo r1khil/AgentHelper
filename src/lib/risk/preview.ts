@@ -80,3 +80,23 @@ export function previewReport(lookback: LookbackKey) {
     },
   });
 }
+
+/** Synthetic return window for a few tickers (the first is high-beta tech, the rest defensive health care), for tests and the Backtesting preview. */
+export function previewWindow(tickers: string[], T: number) {
+  const dates: string[] = [];
+  for (let d = new Date(Date.UTC(2026, 7, 31)); dates.length < T; d.setUTCDate(d.getUTCDate() - 1)) {
+    if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) dates.unshift(d.toISOString().slice(0, 10));
+  }
+  const noise = rng(7);
+  const market = dates.map(() => 0.0004 + 0.009 * noise());
+  const returns = new Map<string, number[]>([[MARKET, market]]);
+  for (const s of GICS_SECTORS) returns.set(ETF_BY_SECTOR[s], market.map((m) => m * (s === "health_care" ? 0.6 : 1) + 0.004 * noise()));
+  const sectorOf = new Map<string, GicsSector | null>();
+  tickers.forEach((t, i) => {
+    const tech = i === 0;
+    sectorOf.set(t, tech ? "information_technology" : "health_care");
+    returns.set(t, market.map((m) => (tech ? 1.5 : 0.5) * m + 0.011 * noise()));
+  });
+  return { window: { dates, returns }, sectorOf };
+}
+

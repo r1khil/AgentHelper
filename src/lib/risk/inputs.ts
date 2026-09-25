@@ -29,6 +29,29 @@ function totalReturn(prices: DateSeries, dividends: DateSeries, ticker: string, 
   return (p1 + (dividends.get(ticker)?.get(date) ?? 0)) / p0 - 1;
 }
 
+/** The benchmark's sector weights at the last close (the last day's weights drifted by its returns), limited to `sectors` and rescaled. */
+export function currentBenchmarkWeights(series: AttributionSeries, sectors: readonly GicsSector[] | null): Partial<Record<GicsSector, number>> | null {
+  const b = series.benchmark.at(-1);
+  if (!b) return null;
+  const drifted = Object.fromEntries(GICS_SECTORS.map((s) => [s, (b.weights[s] * (1 + b.returns[s])) / (1 + b.ret)])) as Record<GicsSector, number>;
+  const keep = sectors ?? GICS_SECTORS;
+  const total = keep.reduce((s, k) => s + drifted[k], 0);
+  return total > 0 ? Object.fromEntries(keep.map((k) => [k, drifted[k] / total])) : null;
+}
+
+/** The last N + 1 market closes on or before `asOf` give N daily total returns for each holding, sector ETF and the market. */
+export function buildReturnWindow(prices: DateSeries, dividends: DateSeries, tickers: string[], asOf: string, lookback: LookbackKey) {
+  const closeDates = sortedDates(prices.get(MARKET)).filter((d) => d <= asOf).slice(-(LOOKBACKS[lookback].days + 1));
+  const dates = closeDates.slice(1);
+  const symbols = [...new Set([...tickers, ...GICS_SECTORS.map((s) => ETF_BY_SECTOR[s]), MARKET])];
+  return { dates, returns: new Map(symbols.map((sym) => [sym, dates.map((d, t) => totalReturn(prices, dividends, sym, closeDates[t], d))])) };
+}
+
+export function latestRiskFree(prices: DateSeries, asOf: string) {
+  const rf = asOfLookup(prices.get(RISK_FREE))(asOf);
+  return rf ? { annual: rf.value / 100, asOf: rf.date } : null;
+}
+
 /**
  * Turns the replayed ledger plus stored closes into the risk model's input: today's positions and
  * weights for the scope, the benchmark's current sector weights, a window of daily total returns on
@@ -55,26 +78,11 @@ export function assembleRiskInput(args: {
   });
   const cash = scope.kind === "fund" ? { value: last.cashEnd, weight: last.navEnd > 0 ? last.cashEnd / last.navEnd : 0 } : { value: 0, weight: 0 };
 
-  // The benchmark's weights at today's close: the last day's start-of-day weights drifted by that day's returns.
-  const b = series.benchmark.at(-1);
-  let benchmarkWeights: Partial<Record<GicsSector, number>> | null = null;
-  if (b) {
-    const drifted = Object.fromEntries(GICS_SECTORS.map((s) => [s, (b.weights[s] * (1 + b.returns[s])) / (1 + b.ret)])) as Record<GicsSector, number>;
-    const keep: readonly GicsSector[] = scope.kind === "fund" ? GICS_SECTORS : scope.sectors;
-    const total = keep.reduce((s, k) => s + drifted[k], 0);
-    if (total > 0) benchmarkWeights = Object.fromEntries(keep.map((k) => [k, drifted[k] / total]));
-  }
-
-  // Window: the last N + 1 market closes on or before the as-of date give N daily returns.
+  const benchmarkWeights = currentBenchmarkWeights(series, scope.kind === "fund" ? null : scope.sectors);
+  const window = buildReturnWindow(prices, dividends, holdings.map((h) => h.ticker), asOf, lookback);
   const marketDates = sortedDates(prices.get(MARKET)).filter((d) => d <= asOf);
-  const closeDates = marketDates.slice(-(LOOKBACKS[lookback].days + 1));
-  const dates = closeDates.slice(1);
-  const symbols = [...new Set([...holdings.map((h) => h.ticker), ...GICS_SECTORS.map((s) => ETF_BY_SECTOR[s]), MARKET])];
-  const returns = new Map(symbols.map((sym) => [sym, dates.map((d, t) => totalReturn(prices, dividends, sym, closeDates[t], d))]));
-
   const rfAt = asOfLookup(prices.get(RISK_FREE));
-  const rfLatest = rfAt(asOf);
-  const riskFree = rfLatest ? { annual: rfLatest.value / 100, asOf: rfLatest.date } : null;
+  const riskFree = latestRiskFree(prices, asOf);
 
   // Realized: the scope's own daily returns since inception, with the market and benchmark on the same days.
   const benchByDate = new Map(series.benchmark.map((x) => [x.date, x]));
@@ -116,7 +124,7 @@ export function assembleRiskInput(args: {
     cash,
     holdings,
     benchmarkWeights,
-    window: { dates, returns },
+    window,
     riskFree,
     realized: realized.dates.length ? realized : null,
   };
