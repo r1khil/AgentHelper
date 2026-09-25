@@ -37,7 +37,7 @@ const HOLDINGS: [string, GicsSector, number, number][] = [
   ["OSCR", "materials", 0.03, 1.2],
 ];
 
-export function previewReport(lookback: LookbackKey) {
+export function previewReport(lookback: LookbackKey, opts: { team?: boolean } = {}) {
   const T = LOOKBACKS[lookback].days;
   const dates: string[] = [];
   for (let d = new Date(Date.UTC(2026, 8, 24)); dates.length < T; d.setUTCDate(d.getUTCDate() - 1)) {
@@ -61,6 +61,25 @@ export function previewReport(lookback: LookbackKey) {
   const rd = dates.slice(-realizedDays);
   const fund = rd.map((_, i) => holdings.reduce((s, h) => s + h.weight * (returns.get(h.ticker)![T - realizedDays + i] || 0), 0));
   const weights: Partial<Record<GicsSector, number>> = { information_technology: 0.34, financials: 0.13, health_care: 0.09, consumer_discretionary: 0.1, communication_services: 0.1, industrials: 0.08, consumer_staples: 0.05, energy: 0.04, utilities: 0.025, real_estate: 0.02, materials: 0.025 };
+  if (opts.team) {
+    // A "technology and media" team: its holdings scaled to 100%, no cash, benchmarked on its own two sectors, as loadRisk does for a team.
+    const sectors: GicsSector[] = ["information_technology", "communication_services"];
+    const own = holdings.filter((h) => h.sector && sectors.includes(h.sector));
+    const total = own.reduce((s, h) => s + h.weight, 0);
+    const benchTotal = sectors.reduce((s, k) => s + (weights[k] ?? 0), 0);
+    return buildRiskReport({
+      scope: "team",
+      asOf: dates.at(-1)!,
+      lookback,
+      nav: total * nav,
+      cash: { value: 0, weight: 0 },
+      holdings: own.map((h) => ({ ...h, teamId: "preview-team", weight: h.weight / total })),
+      benchmarkWeights: Object.fromEntries(sectors.map((k) => [k, (weights[k] ?? 0) / benchTotal])),
+      window: { dates, returns },
+      riskFree: { annual: 0.0407, asOf: dates.at(-1)! },
+      realized: null,
+    });
+  }
   return buildRiskReport({
     scope: "fund",
     asOf: dates.at(-1)!,

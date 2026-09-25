@@ -28,6 +28,16 @@ describe("buildExposure", () => {
     expect(x.overweight! + x.underweight!).toBeCloseTo(0, 12);
   });
 
+  it("measures a team against its own sectors, with no cash", () => {
+    const t = buildExposure(previewReport("1y", { team: true }));
+    expect(t.scope).toBe("team");
+    expect(t.cash.weight).toBe(0);
+    expect(t.sectors.map((s) => s.key).sort()).toEqual(["communication_services", "information_technology"]);
+    expect(t.overweight! + t.underweight!).toBeCloseTo(0, 12);
+    expect(t.top.holdings).toHaveLength(t.holdingsCount);
+    expect(t.top.weight).toBeCloseTo(1, 12);
+  });
+
   it("falls back to weights when no benchmark is saved", () => {
     const noBench = buildExposure({ ...r, sectors: r.sectors.map((s) => ({ ...s, benchWeight: null, active: null })) });
     expect(noBench.largestBet).toBeNull();

@@ -22,6 +22,26 @@ export const RISK_EXPLAIN = {
   activeRiskShare:
     "Share of the tracking error (variance of active return) from this sector: its holdings plus the short position in its benchmark ETF. Adds up to 100%. Shows which active bets drive the difference from the index.",
 
+  // Exposure page.
+  exposure:
+    "Where the portfolio's money is today compared with its benchmark, from the same positions and benchmark weights as the Risk page. Weights don't depend on the lookback window; the share of active risk does.",
+  largestActiveBet:
+    "The sector whose weight differs most from the benchmark's, in percentage points (portfolio weight minus benchmark weight; an underweight counts too). It is measured by sector because the benchmark is the Select Sector SPDR ETFs: against it every single stock counts as fully active, so a stock-level answer needs the index's own holdings.",
+  top10: "Share of the portfolio's value in its ten largest positions, from the ledger's latest positions at the last close.",
+  overUnder:
+    "The sum of all overweights and the sum of all underweights, cash included. Both sides of the book add up to 100%, so the two always cancel; either one is the share of the portfolio positioned differently from the benchmark at sector level.",
+
+  // Where the active risk comes from.
+  activeRiskSection:
+    "Tracking error is measured with the holdings long and the benchmark's sector ETFs short, so every difference from the index is a bet, including sectors the portfolio holds less of. Each position's share is aᵢ × (Σa)ᵢ ÷ aᵀΣa (Euler decomposition of the tracking-error variance): the holdings plus the benchmark side add up to 100%, and a negative share means the position reduces tracking error.",
+  holdingActiveRiskShare:
+    "Share of the tracking error (variance of the difference from the benchmark) that comes from this holding: aᵢ × (Σa)ᵢ ÷ aᵀΣa, where a is the active weights. Negative means it offsets other bets, for example a stock that moves like a sector the portfolio is underweight.",
+  benchmarkSide:
+    "The benchmark's sector ETFs at their S&P 500 weights, held short in the tracking-error calculation. Their share is the part of active risk from how the portfolio differs from the index sector by sector, including sectors it holds little or none of. It is negative when the portfolio's own holdings in those sectors cancel it out.",
+  teContribution: "Points of annualized tracking error from this position: its share of active risk × tracking error. The column adds up to the tracking error.",
+  marginalTe:
+    "Marginal tracking error: ∂TE/∂wᵢ = (Σa)ᵢ ÷ TE, annualized. It is how many percentage points tracking error would change if 1 percentage point more of this holding were bought with cash (cash has no risk). Positive adds to tracking error, negative reduces it. It is a first-order estimate; the exact recomputation is in the working.",
+
   holdingVol: "The holding's own annualized volatility over the window: standard deviation of daily total returns × √252.",
   holdingBeta: "cov(holding, SPY) ÷ var(SPY) on daily total returns over the window.",
   corr: "Correlation of the holding's daily returns with the portfolio's. Near 1 means it moves with everything else and adds risk; near 0 or negative means it diversifies.",
