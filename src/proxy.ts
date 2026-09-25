@@ -16,8 +16,8 @@ export async function proxy(request: NextRequest) {
       ["/dev/backtesting", "/api/dev/backtesting", "/api/dev/backtesting/ticker", "/api/dev/backtesting/risk"].includes(request.nextUrl.pathname)) {
     return NextResponse.next({ request });
   }
-  // Synthetic risk preview, same rule; the real Risk pages and their CSV export stay authenticated.
-  if (process.env.NODE_ENV === "development" && process.env.RISK_PREVIEW === "1" && request.nextUrl.pathname === "/dev/risk") {
+  // Synthetic risk and exposure previews, same rule; the real Risk and Exposure pages and their CSV export stay authenticated.
+  if (process.env.NODE_ENV === "development" && process.env.RISK_PREVIEW === "1" && ["/dev/risk", "/dev/exposure"].includes(request.nextUrl.pathname)) {
     return NextResponse.next({ request });
   }
   let response = NextResponse.next({ request });

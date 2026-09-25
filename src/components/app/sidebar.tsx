@@ -7,6 +7,7 @@ import { useTheme } from "next-themes";
 import {
   ChartColumn,
   ChartNoAxesCombined,
+  ChartPie,
   Activity,
   CalendarDays,
   CalendarClock,
@@ -125,6 +126,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
           ? [
               { href: `${base}/attribution`, label: "Attribution", icon: ChartColumn },
               { href: `${base}/risk`, label: "Risk", icon: ShieldAlert },
+              { href: `${base}/exposure`, label: "Exposure", icon: ChartPie },
             ]
           : []),
       ]
@@ -148,6 +150,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
         <NavItem href="/backtesting" label="Backtesting" icon={History} active={isActive("/backtesting")} />
         {fundWide && <NavItem href="/attribution" label="Fund attribution" icon={ChartNoAxesCombined} active={isActive("/attribution")} />}
         {fundWide && <NavItem href="/risk" label="Fund risk" icon={ShieldAlert} active={isActive("/risk")} />}
+        {fundWide && <NavItem href="/exposure" label="Fund exposure" icon={ChartPie} active={isActive("/exposure")} />}
       </nav>
 
       <div className="mt-4 px-3">
