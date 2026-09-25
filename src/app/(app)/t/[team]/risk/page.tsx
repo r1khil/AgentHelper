@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader } from "@/components/app/page-header";
 import { DataNoticesButton } from "@/components/app/attribution/data-quality-notice";
 import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { riskNotices } from "@/components/app/risk/notices";
 import { RiskView } from "@/components/app/risk/risk-view";
+import { StressSection, StressSectionFallback } from "@/components/app/risk/stress-section";
 import { loadTeamSectors } from "@/lib/attribution/load";
 import { ETF_BY_SECTOR } from "@/lib/attribution/sectors";
 import { canManageTeam, isFundWide, transparencyEnabled } from "@/lib/auth";
@@ -65,6 +67,18 @@ export default async function TeamRiskPage({ params, searchParams }: PageProps<"
         scopeLabel={`${team.name} sleeve`}
         benchmarkLabel={sectors.length ? sectors.map((s) => ETF_BY_SECTOR[s]).join(" + ") : "team sectors"}
         showAll={one(query.all) === "1"}
+        stress={
+          <Suspense fallback={<StressSectionFallback />}>
+            <StressSection
+              report={report}
+              fundLabel={team.name}
+              scopeLabel={`${team.name} holdings`}
+              benchmarkLabel={sectors.length ? sectors.map((s) => ETF_BY_SECTOR[s]).join(" + ") : "team sectors"}
+              transparency={transparencyEnabled(user)}
+              exportQuery={`&team=${team.slug}`}
+            />
+          </Suspense>
+        }
       />
     </>
   );
