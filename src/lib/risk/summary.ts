@@ -59,7 +59,7 @@ export function summarizeRisk(r: RiskReport, opts: { teamNames: Map<string, stri
             legs: a.benchmark.legs.map((l) => ({ etf: l.etf, sector: l.label, benchmarkWeightPct: pct(-l.weight), fundActivePct: pct(l.sectorActive), shareOfActiveRiskPct: pct(l.activeRiskShare, 1) })),
           },
           largestMarginal: byMarginal.slice(0, 3).map(marginalOut),
-          mostReducingMarginal: byMarginal.slice(-3).reverse().map(marginalOut),
+          mostReducingMarginal: byMarginal.filter((h) => h.marginalTe < 0).slice(-3).reverse().map(marginalOut),
           readings: a.sentences,
         }
       : null,
