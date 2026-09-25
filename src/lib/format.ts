@@ -39,3 +39,13 @@ export function relativeTime(d: string | Date | null | undefined) {
   if (days < 30) return `${days}d ago`;
   return fmtDate(new Date(t));
 }
+
+/**
+ * Accounting style: negatives in parentheses, no plus sign on positives. The unit goes inside the
+ * parentheses, so -0.29 with "%" reads "(0.29%)". A value that rounds to zero is never negative.
+ */
+export function fmtAccounting(n: number | null | undefined, digits = 2, unit = "") {
+  if (n === null || n === undefined || !Number.isFinite(n)) return "—";
+  const body = `${Math.abs(n).toFixed(digits)}${unit}`;
+  return n < 0 && Number(body.replace(unit, "")) !== 0 ? `(${body})` : body;
+}
