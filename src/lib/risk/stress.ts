@@ -105,12 +105,13 @@ function onOrBefore(dates: string[], date: string, slack = STRESS_DATE_SLACK_DAY
  * Growth of $1 in `symbol` on each of `dates` (dates[0] is the purchase close), with dividends
  * reinvested: each step is (close + dividends since the last close) ÷ last close. A missing close
  * carries the last one (a zero return) and its dividends wait for the next close. Null when there
- * is no purchase close or no close near the last date.
+ * is no close on the start date or no close near the last date.
  */
 export function growthPath(prices: DateSeries, dividends: DateSeries, symbol: string, dates: string[]): number[] | null {
   const closes = prices.get(symbol);
   const closeDates = sortedKeys(closes);
-  const base = onOrBefore(closeDates, dates[0]);
+  // The purchase close must be on the start date itself: an older one would count the move since then as stress.
+  const base = closes?.has(dates[0]) ? dates[0] : null;
   if (!closes || !base || !onOrBefore(closeDates, dates.at(-1)!)) return null;
   const divs = [...(dividends.get(symbol) ?? new Map<string, number>())].filter(([, a]) => a > 0).sort(([a], [b]) => a.localeCompare(b));
   let last = closes.get(base)!;
@@ -158,7 +159,7 @@ export function runStressTest(input: StressInput, window: StressWindow): StressR
     const own = path(h.ticker);
     if (own) return { h, series: h.ticker, g: own, reason: null as string | null };
     const first = input.firstClose?.get(h.ticker) ?? sortedKeys(input.prices.get(h.ticker))[0];
-    const reason = first && first > start ? `first stored close ${first}` : `no stored close near ${start}`;
+    const reason = first && first > start ? `first stored close ${first}` : `no stored close on ${start}`;
     const etf = h.sector ? ETF_BY_SECTOR[h.sector] : null;
     const g = etf ? etfPath(etf) : null;
     return g ? { h, series: etf!, g, reason } : { h, series: MARKET, g: marketPath, reason: h.sector ? `${reason}; ${etf} missing too` : `${reason}; no sector set` };

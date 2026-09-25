@@ -27,4 +27,13 @@ describe("compareScenario", () => {
     expect(alpha.weightAfter).toBeCloseTo(0.5, 12);
     expect(r.sectors.map((s) => s.label)).toContain("Cash");
   });
+
+  it("combines one ticker held by two teams into a single row", () => {
+    const twice: Position[] = [...positions.slice(0, 2), { id: "a2", ticker: "ALPHA", name: "A", weight: 0.05 }, { ...positions[2], weight: 0.05 }];
+    const r = compareScenario({ ...base, positions: twice, weights: { a: 0.6, b: 0.3, a2: 0.1, cash: 0 } });
+    const alpha = r.holdings.filter((h) => h.ticker === "ALPHA");
+    expect(alpha).toHaveLength(1);
+    expect(alpha[0].weightBefore).toBeCloseTo(0.65, 12);
+    expect(alpha[0].weightAfter).toBeCloseTo(0.7, 12);
+  });
 });

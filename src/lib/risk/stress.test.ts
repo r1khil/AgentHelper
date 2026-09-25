@@ -64,9 +64,9 @@ describe("growthPath", () => {
     expect(growthPath(series({ A: [1, 1, null, null, null] }, ["2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05", "2024-01-08"]), new Map(), "A", ["2024-01-02", "2024-03-01"])).toBeNull();
   });
 
-  it("buys at the last close within a week before the start when the start has none", () => {
-    expect(growthPath(series({ A: [100, 110] }, ["2023-12-29", "2024-01-03"]), new Map(), "A", ["2024-01-02", "2024-01-03"])).toEqual([1, 1.1]);
-    expect(growthPath(series({ A: [100, 110] }, ["2023-12-01", "2024-01-03"]), new Map(), "A", ["2024-01-02", "2024-01-03"])).toBeNull();
+  it("needs a close on the start date itself, so moves before the window never count as stress", () => {
+    expect(growthPath(series({ A: [100, 110] }, ["2024-01-02", "2024-01-03"]), new Map(), "A", ["2024-01-02", "2024-01-03"])).toEqual([1, 1.1]);
+    expect(growthPath(series({ A: [100, 110] }, ["2023-12-29", "2024-01-03"]), new Map(), "A", ["2024-01-02", "2024-01-03"])).toBeNull();
   });
 });
 

@@ -44,6 +44,19 @@ describe("symbols", () => {
     expect(listedSymbol("ABC", "Some New Venue", "Peru")).toBe("ABC.PER");
   });
 
+  it("drops the trailing dot iShares writes on some London tickers", () => {
+    expect(listedSymbol("BP.", "London Stock Exchange", "United Kingdom")).toBe("BP.L");
+    expect(listedSymbol("RR.", "London Stock Exchange", "United Kingdom")).toBe("RR.L");
+    expect(listedSymbol("BRK.B", "New York Stock Exchange Inc.", "United States")).toBe("BRK-B");
+  });
+
+  it("maps Vienna and Warsaw, and leaves out an unknown exchange code instead of reading it as a US share class", () => {
+    expect(bloombergSymbol("OMV AV")).toBe("OMV.VI");
+    expect(bloombergSymbol("PKO PW")).toBe("PKO.WA");
+    expect(bloombergSymbol("ABC QQ")).toBeNull();
+    expect(bloombergSymbol("BRK B")).toBe("BRK-B");
+  });
+
   it("collapses share classes of one company", () => {
     expect(issuerKey("GOOGL")).toBe("GOOG");
     expect(issuerKey("GOOG")).toBe("GOOG");
@@ -86,6 +99,8 @@ describe("State Street (SSGA) xlsx", () => {
       ["NVIDIA CORP", "NVDA", "x", "x", 15.3, "-"],
       ["APPLE INC", "AAPL", "x", "x", 12.1, "-"],
       ["SSI US GOV MONEY MARKET CLASS", "-", "x", "-", 0.03, "-"],
+      ["STATE STREET INSTITUTIONAL US GOVERNMENT MONEY MARKET FUND", "GVMXX", "x", "-", 0.02, "-"],
+      ["DOLLAR GENERAL CORP", "DG", "x", "x", 0.5, "-"],
       ["EMINI S+P REESTATEDEC26", "XARZ6", "x", "-", -0.009, "-"],
       [],
       ["Past performance is not a reliable indicator.", "", "", "", "", ""],
@@ -95,9 +110,11 @@ describe("State Street (SSGA) xlsx", () => {
     expect(list.constituents.map((c) => [c.symbol, c.sector])).toEqual([
       ["NVDA", "information_technology"],
       ["AAPL", "information_technology"],
+      ["DG", "information_technology"],
     ]);
     expect(list.dropped).toEqual([
       { label: "SSI US GOV MONEY MARKET CLASS", weight: 0.03, reason: "cash" },
+      { label: "STATE STREET INSTITUTIONAL US GOVERNMENT MONEY MARKET FUND (GVMXX)", weight: 0.02, reason: "cash" },
       { label: "EMINI S+P REESTATEDEC26 (XARZ6)", weight: -0.009, reason: "derivative" },
     ]);
   });
@@ -171,6 +188,15 @@ describe("Yahoo fallback", () => {
     expect(list.source).toBe("yahoo-top10");
     expect(list.constituents.map((c) => c.symbol)).toEqual(["BRK-B", "ZION", "005930.KS"]);
     expect(coveragePct(list)).toBeCloseTo(7.5, 6);
+  });
+
+  it("keeps Yahoo's one-letter exchange suffixes as foreign listings", () => {
+    const list = fromYahooTop("RING", "2026-09-25", [
+      { symbol: "VOD.L", name: "Vodafone", weightPct: 3 },
+      { symbol: "ABC.V", name: "Venture Co", weightPct: 2 },
+      { symbol: "BF.B", name: "Brown-Forman", weightPct: 1 },
+    ]);
+    expect(list.constituents.map((c) => c.symbol)).toEqual(["VOD.L", "ABC.V", "BF-B"]);
   });
 });
 

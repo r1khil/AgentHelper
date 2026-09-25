@@ -3,7 +3,7 @@ export const EXPLAIN = {
   portfolio: "The Fund's total return over the period, including cash and reinvested dividends. Deposits and withdrawals are excluded.",
   index: "The S&P 500 index's price return over the period, from official closes. The same basis as the internal sheet and the major-movement rule.",
   benchmark: "The sector benchmark: saved S&P 500 sector weights applied to the 11 Select Sector SPDR ETFs, built so the active return can be split sector by sector. It tracks the index closely but not exactly, because the sector ETFs cap their largest holdings.",
-  active: "Portfolio return minus the S&P 500's return. Positive means the Fund beat the index.",
+  active: "Portfolio return minus the S&P 500's price return. Positive means the Fund beat the index. The Fund's return includes dividends and the index's doesn't, so over longer periods this flatters the Fund by about the index's dividend yield (roughly 1.3% a year); the sector benchmark comparison includes dividends on both sides.",
   allocation: "Measured against the sector benchmark. The result of sector bets. Positive when the Fund was overweight sectors that beat the index, or underweight sectors that lagged it. Holding cash shows up here.",
   selection: "Measured against the sector benchmark. The result of stock picking. Positive when the Fund's holdings in a sector beat that sector's ETF, measured at the index's sector weight.",
   interaction: "Measured against the sector benchmark. The combined effect of sizing and picking: positive when the Fund was overweight a sector where its picks also beat the sector. Usually small.",

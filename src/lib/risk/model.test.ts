@@ -80,6 +80,14 @@ describe("buildRiskReport", () => {
     expect(r.notices.some((n) => n.includes("BBB (20 days)"))).toBe(true);
   });
 
+  it("says when a sector ETF's missing closes were counted as flat days", () => {
+    const gappy = [...returns.get(ETF_BY_SECTOR.energy)!];
+    gappy[10] = NaN;
+    const r = buildRiskReport(input({ window: { dates, returns: new Map([...returns, [ETF_BY_SECTOR.energy, gappy]]) } }));
+    expect(r.notices.some((n) => n.includes(`${ETF_BY_SECTOR.energy} (1 of ${N} days)`))).toBe(true);
+    expect(buildRiskReport(input()).notices.some((n) => n.includes("count as a 0% return"))).toBe(false);
+  });
+
   it("computes VaR from today's weights replayed over the window", () => {
     const r = buildRiskReport(input());
     const sim = dates.map((_, t) => 0.54 * returns.get("AAA")![t] + 0.36 * returns.get("BBB")![t]).sort((a, b) => a - b);

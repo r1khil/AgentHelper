@@ -85,7 +85,7 @@ export function LookthroughSections({ state, scope, transparency, download }: { 
         id={STOCK_ACTIVE_ANCHOR}
         title="Stock-level active weights"
         explain={RISK_EXPLAIN.stockActive}
-        aside={lt.active ? `vs ${state.benchmarkLabel} holdings as of ${fmtDate(lt.active.benchmark.asOf)} · Active Share ${rpct(lt.active.activeShare)}` : undefined}
+        aside={lt.active ? `vs ${state.benchmarkLabel} holdings as of ${fmtDate(lt.active.benchmark.asOf)}${state.benchmarkStale ? " (stale)" : ""} · Active Share ${rpct(lt.active.activeShare)}` : undefined}
       >
         {lt.active ? (
           <StockActiveTables rows={lt.active.rows} benchmarkLabel={state.benchmarkLabel ?? "benchmark"} />

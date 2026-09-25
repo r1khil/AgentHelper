@@ -53,4 +53,24 @@ describe("assembleRiskInput", () => {
     expect(input.benchmarkWeights).toEqual({ information_technology: 1 });
     expect(input.realized!.portfolio[1]).toBeCloseTo(0.1, 12);
   });
+
+  it("keeps the market's moves on days a team held nothing in the drawdown line", () => {
+    // The tech team sells out on the 6th and buys back on the 8th, so the 7th is skipped.
+    const gap = buildPortfolioDays({
+      trades: [
+        { date: D[0], ticker: "AAA", side: "buy", shares: 100, price: 10, fees: 0 },
+        { date: D[0], ticker: "BBB", side: "buy", shares: 50, price: 20, fees: 0 },
+        { date: D[1], ticker: "AAA", side: "sell", shares: 100, price: 11, fees: 0 },
+        { date: D[3], ticker: "AAA", side: "buy", shares: 100, price: 10.5, fees: 0 },
+      ],
+      cashFlows: [{ date: D[0], kind: "deposit", amount: 2_500 }],
+      prices,
+      dividends,
+      days: D,
+    }).days;
+    const input = assembleRiskInput({ series: { ...series, portfolio: gap }, prices, dividends, lookback: "6m", scope: { kind: "team", teamId: "tech", sectors: ["information_technology"] } })!;
+    expect(input.realized!.dates).toEqual([D[0], D[1], D[3]]);
+    expect(input.realized!.market[2]).toBeCloseTo(103 / 100 - 1, 12);
+    expect(input.realized!.marketPath![2]).toBeCloseTo(103 / 102 - 1, 12);
+  });
 });

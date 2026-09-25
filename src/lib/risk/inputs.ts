@@ -88,7 +88,8 @@ export function assembleRiskInput(args: {
   // Realized: the scope's own daily returns since inception, with the market and benchmark on the same days.
   const benchByDate = new Map(series.benchmark.map((x) => [x.date, x]));
   const marketIndex = new Map(marketDates.map((d, i) => [d, i]));
-  const realized: RealizedInput = { dates: [], portfolio: [], benchmark: [], market: [], riskFree: [] };
+  const realized: RealizedInput = { dates: [], portfolio: [], benchmark: [], market: [], marketPath: [], riskFree: [] };
+  let lastKept: string | null = null;
   for (const day of series.portfolio) {
     let r: number;
     if (scope.kind === "fund") r = day.ret;
@@ -109,11 +110,21 @@ export function assembleRiskInput(args: {
     }
     const mi = marketIndex.get(day.date);
     const m = mi ? totalReturn(prices, dividends, MARKET, marketDates[mi - 1], day.date) : NaN;
+    // From the last kept day, so the drawdown line keeps the market's moves on days a team sleeve skipped.
+    let mp = m;
+    const li = lastKept ? marketIndex.get(lastKept) : undefined;
+    if (mi && li !== undefined && li < mi - 1) {
+      let g = 1;
+      for (let j = li + 1; j <= mi; j++) g *= 1 + totalReturn(prices, dividends, MARKET, marketDates[j - 1], marketDates[j]);
+      mp = g - 1;
+    }
+    lastKept = day.date;
     const rf = rfAt(day.date);
     realized.dates.push(day.date);
     realized.portfolio.push(r);
     realized.benchmark.push(bench);
     realized.market.push(Number.isFinite(m) ? m : null);
+    realized.marketPath!.push(Number.isFinite(mp) ? mp : null);
     realized.riskFree.push(rf ? rf.value / 100 / 252 : null);
   }
 

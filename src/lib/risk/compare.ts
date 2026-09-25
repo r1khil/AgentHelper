@@ -46,9 +46,17 @@ export function compareScenario(args: {
   const holdings = positions.filter((p) => p.kind !== "cash");
   const cash = positions.find((p) => p.kind === "cash");
   const report = (w: (id: string, fallback: number) => number) => {
-    const rows: RiskHolding[] = holdings
-      .map((p) => ({ ticker: p.ticker, name: p.name, teamId: null, sector: sectorOf.get(p.ticker) ?? null, value: w(p.id, p.weight), weight: w(p.id, p.weight) }))
-      .filter((h) => h.weight > 0);
+    // Two teams can hold the same ticker: it is one exposure, so their weights are combined into one row.
+    const byTicker = new Map<string, RiskHolding>();
+    for (const p of holdings) {
+      const weight = w(p.id, p.weight);
+      const row = byTicker.get(p.ticker);
+      if (row) {
+        row.weight += weight;
+        row.value += weight;
+      } else byTicker.set(p.ticker, { ticker: p.ticker, name: p.name, teamId: null, sector: sectorOf.get(p.ticker) ?? null, value: weight, weight });
+    }
+    const rows = [...byTicker.values()].filter((h) => h.weight > 0);
     const cashWeight = cash ? w(cash.id, cash.weight) : 0;
     return buildRiskReport({ scope, asOf, lookback, nav: 1, cash: { value: cashWeight, weight: cashWeight }, holdings: rows, benchmarkWeights, window, riskFree, realized: null });
   };

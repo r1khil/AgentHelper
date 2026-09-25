@@ -44,6 +44,8 @@ const BLOOMBERG_SUFFIX: Record<string, string> = {
   BZ: ".SA",
   MM: ".MX",
   ID: ".IR",
+  AV: ".VI",
+  PW: ".WA",
   BB: ".BR",
   PL: ".LS",
   SP: ".SI",
@@ -116,7 +118,9 @@ function withSuffix(code: string, suffix: string): string {
 export function bloombergSymbol(raw: string): string | null {
   const v = raw.trim().toUpperCase();
   const m = /^([A-Z0-9]{1,8}(?:[/.][A-Z])?)[ .]([A-Z][A-Z0-9])$/.exec(v);
-  if (m && m[2] in BLOOMBERG_SUFFIX) {
+  if (m) {
+    // An exchange code we don't know is left out (and listed as dropped) rather than read as a US share class.
+    if (!(m[2] in BLOOMBERG_SUFFIX)) return null;
     const suffix = BLOOMBERG_SUFFIX[m[2]];
     if (suffix === "") return usSymbol(m[1]);
     return withSuffix(m[1].replace(/[/.]/g, "-"), suffix);
@@ -130,7 +134,8 @@ export function bloombergSymbol(raw: string): string | null {
  * it stays distinct from any US ticker.
  */
 export function listedSymbol(ticker: string, exchange: string, location: string): string | null {
-  const t = ticker.trim().toUpperCase();
+  // iShares writes some London lines with a trailing dot (BP., RR.): drop it before mapping separators.
+  const t = ticker.trim().toUpperCase().replace(/[/. ]+$/, "");
   if (!t || t === "-") return null;
   const suffix = exchangeSuffix(exchange);
   if (suffix === "") return usSymbol(t);
