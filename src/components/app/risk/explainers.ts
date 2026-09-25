@@ -10,6 +10,20 @@ export const RISK_EXPLAIN = {
   es: "Expected shortfall (conditional VaR): the average loss on the days at or beyond the VaR cutoff. It says how bad the bad days are, not just where they start.",
   parametric: "Parametric VaR assumes normally distributed returns: 1.645 × the daily volatility. When historical VaR is higher, the window had fatter tails than a normal distribution.",
   stress: "A simple beta stress test: the S&P 500 falling 10% times the portfolio's beta. It ignores anything specific to individual holdings.",
+  stressTests:
+    "Historical stress tests: today's positions and weights (from the trade ledger, cash included) bought at the window's first close and held without rebalancing to its last close, using stored split-adjusted closes with dividends reinvested on their ex-dates. They replay what happened, so they show exposures a beta alone misses, such as sector bets. They are not forecasts.",
+  stressFund:
+    "Return of today's portfolio over the window, buy-and-hold: Σ wᵢ × (Gᵢ − 1), where wᵢ is today's weight and Gᵢ is the growth of $1 in the holding from the first close to the last, dividends reinvested. Cash earns 0%.",
+  stressMarket: "SPY's total return over the same closes, dividends reinvested: the investable S&P 500.",
+  stressBenchmark:
+    "The sector benchmark over the window: the S&P 500 sector weights the Risk page uses today (for a team, its own sectors rescaled to 100%), each invested in its Select Sector SPDR ETF and held without rebalancing.",
+  stressActive: "Portfolio return minus the sector benchmark's return over the window, in percentage points. Positive means today's bets would have held up better than the benchmark.",
+  stressDollars: "The window's return applied to today's value (NAV for the Fund, the team's holdings for a team): what the same move would cost or add now.",
+  stressWorst: "The three holdings with the most negative contribution: weight × the holding's return over the window. Contributions add up to the portfolio's return.",
+  stressProxy:
+    "Holdings with no stored close at the window's start (they had not listed yet) are stood in for by their sector ETF, or by SPY when they have no sector, for the whole window. Treating them as cash would understate the loss.",
+  stressRebalanced:
+    "The same starting weights rebalanced back every day, the way Backtesting replays a portfolio. Buy-and-hold lets winners grow and losers shrink, so over long windows the two can differ by a few points.",
   effectiveN:
     "Effective number of positions: 1 ÷ HHI, where the Herfindahl-Hirschman index (HHI) is the sum of squared position weights (rescaled to the invested portion). 29 equal positions give 29; a portfolio dominated by a few names scores far lower than its count.",
   top5: "Share of the Fund's value in its five largest positions.",

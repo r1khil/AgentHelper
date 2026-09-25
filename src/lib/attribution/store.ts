@@ -5,6 +5,7 @@ import { getSectorProfile, lookupCompany } from "@/lib/providers/yahoo";
 import type { Db } from "@/lib/prices";
 import type { AttributionSeries } from "./attribution";
 import { buildBenchmarkDays } from "./benchmark";
+import { STRESS_HISTORY_FROM } from "@/lib/risk/stress";
 import { adjustForSplits, buildPortfolioDays, latestPositions } from "./ledger";
 import { BENCHMARK_REFERENCE, INDEX_REFERENCE, benchmarkSymbols, defaultSector, type GicsSector } from "./sectors";
 import type { BenchmarkQuality, BenchmarkWeightSet, CashFlow, DateSeries, LedgerQuality, Split, Trade } from "./types";
@@ -56,11 +57,13 @@ export function historyFrom(inception: string) {
   return DateTime.fromISO(inception).minus({ days: HISTORY_MARGIN_DAYS }).toISODate()!;
 }
 
-/** Where the price job backfills from: inception, or far enough back for the Risk page's windows, whichever is earlier. */
+/**
+ * Where the price job backfills from: the earliest of inception, the Risk page's longest window and
+ * the first stress test's start. Only symbols without that history get a backfill; the rest top up a week.
+ */
 export function priceHistoryFrom(inception: string, today = DateTime.now().toISODate()!) {
   const risk = DateTime.fromISO(today).minus({ days: RISK_HISTORY_DAYS }).toISODate()!;
-  const ledger = historyFrom(inception);
-  return risk < ledger ? risk : ledger;
+  return [risk, historyFrom(inception), STRESS_HISTORY_FROM].sort()[0];
 }
 
 /** Everything the attribution engine needs, replayed from inception. Period-independent. */

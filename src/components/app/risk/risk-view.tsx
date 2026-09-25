@@ -45,6 +45,7 @@ export function RiskView({
   scopeLabel,
   benchmarkLabel,
   showAll,
+  stress,
 }: {
   report: RiskReport;
   inception: string;
@@ -57,6 +58,8 @@ export function RiskView({
   scopeLabel: string;
   benchmarkLabel: string;
   showAll: boolean;
+  /** The historical stress tests section, streamed in separately (it reads older stored closes). */
+  stress?: React.ReactNode;
 }) {
   const p = r.portfolio;
   const rows = showAll ? r.holdings : r.holdings.slice(0, TOP_HOLDINGS);
@@ -186,6 +189,8 @@ export function RiskView({
           )}
         </Card>
       </section>
+
+      {stress}
 
       <details className="rounded-xl bg-muted/40 ring-1 ring-foreground/10">
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-muted-foreground">How this is calculated, and the data behind it</summary>

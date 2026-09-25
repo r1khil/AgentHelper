@@ -1,6 +1,8 @@
 /** Deterministic, explicitly synthetic data for local browser QA of the Risk page; never used by the real route. */
 import { ETF_BY_SECTOR, GICS_SECTORS, type GicsSector } from "@/lib/attribution/sectors";
-import { buildRiskReport, LOOKBACKS, MARKET, type LookbackKey, type RiskHolding } from "./model";
+import type { DateSeries } from "@/lib/attribution/types";
+import { buildRiskReport, LOOKBACKS, MARKET, type LookbackKey, type RiskHolding, type RiskReport } from "./model";
+import { runStressTests, STRESS_WINDOWS, stressInputFromReport, type StressResult } from "./stress";
 
 export const previewEnabled = () => process.env.NODE_ENV === "development" && process.env.RISK_PREVIEW === "1";
 
@@ -119,3 +121,52 @@ export function previewWindow(tickers: string[], T: number) {
   return { window: { dates, returns }, sectorOf };
 }
 
+
+/**
+ * Synthetic closes through each stress window for the preview's holdings: a market move of about the
+ * real size, sector shocks (banks in the SVB window), one dividend, and OSCR listing in 2023 so the
+ * sector-ETF stand-in shows. Run through the real stress engine.
+ */
+export function previewStress(report: RiskReport): StressResult[] {
+  const moves: Record<string, { market: number; sectors: Partial<Record<GicsSector, number>> }> = {
+    covid: { market: -0.34, sectors: { energy: -0.2, real_estate: -0.1, financials: -0.08, health_care: 0.08, consumer_staples: 0.1 } },
+    "rates-2022": { market: -0.25, sectors: { information_technology: -0.12, communication_services: -0.15, energy: 0.5, utilities: 0.2, consumer_staples: 0.15 } },
+    svb: { market: -0.004, sectors: { financials: -0.1, information_technology: 0.06 } },
+    "carry-unwind": { market: -0.06, sectors: { information_technology: -0.04, utilities: 0.05 } },
+  };
+  const noise = rng(99);
+  const prices: DateSeries = new Map();
+  const dividends: DateSeries = new Map();
+  const put = (s: DateSeries, sym: string, d: string, v: number) => {
+    if (!s.has(sym)) s.set(sym, new Map());
+    s.get(sym)!.set(d, v);
+  };
+  const betas = new Map(HOLDINGS.map(([t, , , b]) => [t, b]));
+  for (const w of STRESS_WINDOWS) {
+    const dates: string[] = [];
+    for (let d = new Date(`${w.from}T00:00:00Z`); d.toISOString().slice(0, 10) <= w.to; d.setUTCDate(d.getUTCDate() + 1)) {
+      if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) dates.push(d.toISOString().slice(0, 10));
+    }
+    const n = dates.length - 1;
+    const m = moves[w.key];
+    const market = dates.map((_, t) => (t === 0 ? 0 : Math.log(1 + m.market) / n + 0.006 * noise()));
+    const sector = new Map(GICS_SECTORS.map((s) => [s, dates.map((_, t) => (t === 0 ? 0 : Math.log(1 + (m.sectors[s] ?? 0)) / n + 0.003 * noise()))]));
+    const level = new Map<string, number>();
+    const step = (sym: string, t: number, r: number) => {
+      const v = (level.get(sym) ?? 100) * Math.exp(r);
+      level.set(sym, v);
+      put(prices, sym, dates[t], +v.toFixed(4));
+    };
+    dates.forEach((_, t) => {
+      step(MARKET, t, market[t]);
+      for (const s of GICS_SECTORS) step(ETF_BY_SECTOR[s], t, market[t] * (s === "utilities" || s === "consumer_staples" ? 0.6 : 1) + sector.get(s)![t]);
+      for (const h of report.holdings) {
+        if (h.ticker === "OSCR" && w.from < "2023-01-01") continue;
+        const s = h.sector ?? "information_technology";
+        step(h.ticker, t, t === 0 ? 0 : (betas.get(h.ticker) ?? 1) * market[t] + sector.get(s)![t] + 0.008 * noise());
+      }
+    });
+    if (w.key === "rates-2022") put(dividends, "LIMA", dates[Math.floor(n / 2)], 1.2);
+  }
+  return runStressTests(stressInputFromReport(report, { prices, dividends, firstClose: new Map([["OSCR", "2023-01-03"]]) }));
+}

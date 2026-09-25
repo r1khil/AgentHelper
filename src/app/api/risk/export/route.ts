@@ -3,6 +3,8 @@ import { activeRiskBreakdown } from "@/lib/risk/active";
 import { buildExposure } from "@/lib/risk/exposure";
 import { loadRisk } from "@/lib/risk/load";
 import { parseLookback, type RiskReport } from "@/lib/risk/model";
+import type { StressResult } from "@/lib/risk/stress";
+import { loadStressTests } from "@/lib/risk/stress-load";
 import { getTeamBySlug } from "@/lib/teams";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +16,37 @@ const cell = (v: unknown) => {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 const csv = (rows: unknown[][]) => rows.map((r) => r.map(cell).join(",")).join("\n") + "\n";
+
+/** Stress tests: every term of each window's sums (holdings, cash, benchmark legs) and the results they add up to. */
+function buildStress(results: StressResult[]): string {
+  const rows: unknown[][] = [["window", "window_from", "window_to", "start_close", "end_close", "sessions", "row", "symbol", "name", "sector", "series_used", "stood_in_because", "weight", "return", "contribution", "dollars", "end_weight"]];
+  for (const r of results) {
+    if (r.status !== "ok") {
+      rows.push([r.label, r.from, r.to, "", "", "", "no data", "", r.reason]);
+      continue;
+    }
+    const head = [r.label, r.from, r.to, r.start, r.end, r.sessions];
+    for (const h of r.holdings) rows.push([...head, "holding", h.ticker, h.name, h.sector ?? "", h.series, h.proxyReason ?? "", h.weight, h.ret, h.contribution, h.dollars, h.endWeight]);
+    rows.push([...head, "cash", "CASH", "Cash", "", "", "", r.cashWeight, 0, 0, 0, r.cashWeight / (1 + r.fund)]);
+    rows.push([...head, "portfolio (buy-and-hold)", "", "Sum of contributions", "", "", "", "", r.fund, r.fund, r.dollars, ""]);
+    rows.push([...head, "portfolio rebalanced daily", "", "For comparison", "", "", "", "", r.rebalanced, "", "", ""]);
+    rows.push([...head, "sp500", "SPY", "S&P 500 total return", "", "SPY", "", "", r.market, "", "", ""]);
+    for (const l of r.benchmarkLegs) rows.push([...head, "benchmark leg", l.etf, l.sector, l.sector, l.series, "", l.weight, l.ret, l.contribution, "", ""]);
+    if (r.benchmark !== null) rows.push([...head, "sector benchmark", "", "Sum of legs", "", "", "", "", r.benchmark, r.benchmark, "", ""]);
+    if (r.active !== null) rows.push([...head, "active", "", "Portfolio minus sector benchmark", "", "", "", "", r.active, "", "", ""]);
+  }
+  return csv(rows);
+}
+
+/** Stress tests' daily paths: cumulative returns and each series' growth of $1 from the starting close. */
+function buildStressPaths(results: StressResult[]): string {
+  const ok = results.filter((r) => r.status === "ok");
+  const symbols = [...new Set(ok.flatMap((r) => Object.keys(r.growth)))].sort();
+  return csv([
+    ["window", "date", "portfolio_cumulative", "sp500_cumulative", "benchmark_cumulative", ...symbols.map((s) => `growth_${s}`)],
+    ...ok.flatMap((r) => r.path.map((p, t) => [r.label, p.date, p.fund, p.market, p.benchmark, ...symbols.map((s) => r.growth[s]?.[t])])),
+  ]);
+}
 
 /**
  * One CSV per `file` name. Every builder reads the same risk report the pages render, so each downloaded number
@@ -71,7 +104,10 @@ const BUILDERS = {
       ["total", "", "Cash", "", x.cash.weight, "", "", "", "", ""],
     ]);
   },
-} satisfies Record<string, (r: RiskReport) => string>;
+  // The Risk page's historical stress tests (the same positions; the lookback doesn't affect them).
+  stress: async (r: RiskReport) => buildStress(await loadStressTests(r)),
+  "stress-paths": async (r: RiskReport) => buildStressPaths(await loadStressTests(r)),
+} satisfies Record<string, (r: RiskReport) => string | Promise<string>>;
 type File = keyof typeof BUILDERS;
 const isFile = (f: string | null): f is File => !!f && Object.hasOwn(BUILDERS, f);
 
@@ -97,7 +133,7 @@ export async function GET(req: Request) {
   const loaded = await loadRisk(lookback, teamId);
   if (loaded.state !== "ok") return new Response("No risk data yet", { status: 404 });
   const name = `owl-fund-risk-${slug ?? "fund"}-${lookback}-${file}-${loaded.report.asOf}.csv`;
-  return new Response(BUILDERS[file](loaded.report), {
+  return new Response(await BUILDERS[file](loaded.report), {
     headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="${name}"`, "cache-control": "private, no-store" },
   });
 }

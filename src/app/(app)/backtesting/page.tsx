@@ -10,6 +10,8 @@ import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { fmtDate } from "@/lib/format";
 import { NY } from "@/lib/providers/calendar";
+import { validDate } from "@/lib/backtesting/engine";
+import { STRESS_WINDOWS } from "@/lib/risk/stress";
 export const metadata: Metadata = { title: "Backtesting" };
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -38,7 +40,8 @@ export default async function BacktestingPage({ searchParams }: PageProps<"/back
   }
   const end = DateTime.now().setZone(NY).minus({ days: 1 });
 
-  // ?scenario=<id> reopens a saved what-if; ?trade=TICKER:-2:cash (from the Risk page) starts one.
+  // ?scenario=<id> reopens a saved what-if; ?trade=TICKER:-2:cash (from the Risk page) starts one;
+  // ?from=&to= (a Risk page stress test, named by ?stress=) fills in the dates.
   const scenarioId = one(query.scenario);
   const [saved, scenario] = await Promise.all([listScenarios(user), scenarioId ? getScenario(user, scenarioId) : Promise.resolve(null)]);
   let initial: InitialScenario | undefined;
@@ -65,6 +68,23 @@ export default async function BacktestingPage({ searchParams }: PageProps<"/back
         trade,
         banner: `Started from the Risk page: ${trade.changePp < 0 ? "trim" : "add to"} ${trade.ticker} by ${Math.abs(trade.changePp)} pp, ${trade.changePp < 0 ? "proceeds to" : "funded from"} ${fundingLabel(trade.funding)}. Change it below, then run to compare performance and risk.`,
       };
+    const [from, to] = [one(query.from), one(query.to)];
+    if (from && to && validDate(from) && validDate(to) && from <= to) {
+      const stress = STRESS_WINDOWS.find((w) => w.key === one(query.stress));
+      initial = {
+        ...initial,
+        from,
+        to,
+        banner: [
+          initial?.banner,
+          stress
+            ? `Dates from the Risk page's ${stress.label} stress test. This replay uses the saved weights rebalanced daily, and holdings not yet listed count as cash, so it will differ from the stress test's buy-and-hold on today's ledger positions.`
+            : undefined,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      };
+    }
   }
   // Realized returns live on Attribution, which only execs/admins (fund) and team leads (team) may open.
   const realizedHref = isFundWide(user)
@@ -74,7 +94,7 @@ export default async function BacktestingPage({ searchParams }: PageProps<"/back
       : undefined;
   return (
     <BacktestingWorkspace
-      key={scenario?.id ?? one(query.trade) ?? "saved"}
+      key={scenario?.id ?? `${one(query.trade) ?? "saved"}:${one(query.from) ?? ""}:${one(query.to) ?? ""}`}
       snapshot={snapshot}
       defaultFrom={end.minus({ months: 3 }).toISODate()!}
       defaultTo={end.toISODate()!}

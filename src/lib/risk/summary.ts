@@ -1,6 +1,7 @@
 import { activeRiskBreakdown } from "./active";
 import { buildExposure } from "./exposure";
 import { LOOKBACKS, type RiskReport } from "./model";
+import type { StressResult } from "./stress";
 
 const pct = (x: number | null | undefined, d = 2) => (x === null || x === undefined || !Number.isFinite(x) ? null : +(x * 100).toFixed(d));
 const num = (x: number | null | undefined, d = 2) => (x === null || x === undefined || !Number.isFinite(x) ? null : +x.toFixed(d));
@@ -81,4 +82,28 @@ export function summarizeRisk(r: RiskReport, opts: { teamNames: Map<string, stri
       : null,
     notices: r.notices,
   };
+}
+
+/** The Risk page's historical stress tests in a compact form for Hoot. */
+export function summarizeStress(results: StressResult[]) {
+  return results.map((r) =>
+    r.status !== "ok"
+      ? { window: r.label, from: r.from, to: r.to, note: r.reason }
+      : {
+          window: r.label,
+          from: r.start,
+          to: r.end,
+          about: r.note,
+          method: "Today's positions bought at the starting close and held without rebalancing (buy-and-hold) to the ending close; total returns with dividends reinvested, from stored closes. Holdings not yet trading use their sector ETF.",
+          fundReturnPct: pct(r.fund),
+          sp500ReturnPct: pct(r.market),
+          sectorBenchmarkReturnPct: pct(r.benchmark),
+          activeReturnPct: pct(r.active),
+          impactOnTodaysValueUsd: Math.round(r.dollars),
+          dailyRebalancedReturnPct: pct(r.rebalanced),
+          worstContributors: r.worst.map((h) => ({ ticker: h.ticker, contributionPct: pct(h.contribution), returnPct: pct(h.ret), usd: Math.round(h.dollars), ...(h.proxied ? { modeledWith: h.series } : {}) })),
+          bestContributors: [...r.holdings].reverse().slice(0, 3).map((h) => ({ ticker: h.ticker, contributionPct: pct(h.contribution), returnPct: pct(h.ret) })),
+          stoodIn: r.holdings.filter((h) => h.proxied).map((h) => `${h.ticker} via ${h.series} (${h.proxyReason})`),
+        },
+  );
 }

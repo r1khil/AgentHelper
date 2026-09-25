@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader } from "@/components/app/page-header";
@@ -7,6 +8,7 @@ import { DataNoticesButton } from "@/components/app/attribution/data-quality-not
 import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { riskNotices } from "@/components/app/risk/notices";
 import { RiskView } from "@/components/app/risk/risk-view";
+import { StressSection, StressSectionFallback } from "@/components/app/risk/stress-section";
 import { listAccessibleTeams, requireRole, transparencyEnabled } from "@/lib/auth";
 import { loadRisk } from "@/lib/risk/load";
 import { LOOKBACKS, parseLookback } from "@/lib/risk/model";
@@ -56,6 +58,11 @@ export default async function RiskPage({ searchParams }: PageProps<"/risk">) {
         scopeLabel="NAV"
         benchmarkLabel="S&P 500 sectors"
         showAll={one(query.all) === "1"}
+        stress={
+          <Suspense fallback={<StressSectionFallback />}>
+            <StressSection report={report} fundLabel="Fund" scopeLabel="NAV" benchmarkLabel="S&P 500 sectors" transparency={transparencyEnabled(user)} exportQuery="" />
+          </Suspense>
+        }
       />
     </>
   );
