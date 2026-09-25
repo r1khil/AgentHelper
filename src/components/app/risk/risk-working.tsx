@@ -102,7 +102,10 @@ export function ConcentrationWorking({ r }: { r: RiskReport }) {
 
 /** Which rows fed the numbers: each symbol's own returns in the window, and anything filled or proxied. */
 export function CoverageTable({ r }: { r: RiskReport }) {
-  const rows = [...r.coverage].sort((a, b) => a.observations - b.observations);
+  // Coverage lists the holdings, then the sector ETFs and SPY, so a held ETF (XLK) appears twice: key by which side it's on.
+  const rows = r.coverage
+    .map((c, i) => ({ ...c, key: `${i < r.holdings.length ? "holding" : "etf"}:${c.ticker}` }))
+    .sort((a, b) => a.observations - b.observations);
   return (
     <div className="max-h-72 overflow-y-auto rounded-md border">
       <Table>
@@ -116,7 +119,7 @@ export function CoverageTable({ r }: { r: RiskReport }) {
         </TableHeader>
         <TableBody>
           {rows.map((c) => (
-            <TableRow key={c.ticker}>
+            <TableRow key={c.key}>
               <TableCell className="font-medium">{c.ticker}</TableCell>
               <TableCell className="tnum text-right">{c.observations} / {r.window.days}</TableCell>
               <TableCell className="tnum text-right">{c.filled}</TableCell>
