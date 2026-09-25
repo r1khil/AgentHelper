@@ -1,0 +1,25 @@
+iShares MSCI Global Gold Miners ETF
+Fund Holdings as of,"Sep 23, 2026"
+Inception Date,"Jan 31, 2012"
+Shares Outstanding,"30,250,000.00"
+Stock,"-"
+Bond,"-"
+Cash,"-"
+Other,"-"
+
+Ticker,Name,Sector,Asset Class,Market Value,Weight (%),Notional Value,Quantity,Price,Location,Exchange,Currency,FX Rate,Market Currency,Accrual Date
+"NEM","NEWMONT","Materials","Equity","415,051,275.45","16.70","415,051,275.45","3,359,379.00","123.55","United States","NYSE","USD","1.00","USD","-"
+"AEM","AGNICO EAGLE MINES","Materials","Equity","305,491,201.09","12.29","305,491,201.09","1,562,995.00","195.45","Canada","Toronto Stock Exchange","USD","1.41","CAD","-"
+"ANG","ANGLOGOLD ASHANTI PLC","Materials","Equity","107,222,339.66","4.31","107,222,339.66","1,085,893.00","98.74","South Africa","Johannesburg Stock Exchange","USD","16.38","ZAR","-"
+"K","KINROSS GOLD","Materials","Equity","106,150,692.46","4.27","106,150,692.46","3,845,405.00","27.60","Canada","Toronto Stock Exchange","USD","1.41","CAD","-"
+"CDE","COEUR MINING","Materials","Equity","83,678,165.76","3.37","83,678,165.76","4,331,168.00","19.32","United States","NYSE","USD","1.00","USD","-"
+"EDV","ENDEAVOUR MINING","Materials","Equity","52,368,354.87","2.11","52,368,354.87","859,042.00","60.96","United Kingdom","London Stock Exchange","USD","0.75","GBP","-"
+"GMD","GENESIS MINERALS","Materials","Equity","34,855,152.62","1.40","34,855,152.62","6,457,047.00","5.40","Australia","Asx - All Markets","USD","1.42","AUD","-"
+"2099","CHINA GOLD INTERNATIONAL RESOURCES","Materials","Equity","31,423,493.71","1.26","31,423,493.71","1,082,000.00","29.04","China","Hong Kong Exchanges And Clearing Ltd","USD","7.84","HKD","-"
+"TRALT.E","KOZA ALTIN ISLETMELERI A","Materials","Equity","10,067,284.80","0.41","10,067,284.80","9,803,809.00","1.03","Turkey","Istanbul Stock Exchange","USD","48.84","TRY","-"
+"CAD","CAD CASH","Cash and/or Derivatives","Cash","2,699,285.29","0.11","2,699,285.29","3,804,778.00","70.94","Canada","-","USD","1.41","CAD","-"
+"XTSLA","BLK CSH FND TREASURY SL AGENCY","Cash and/or Derivatives","Money Market","2,038,599.67","0.08","2,038,599.67","2,038,600.00","1.00","United States","-","USD","1.00","USD","-"
+"USD","USD CASH","Cash and/or Derivatives","Cash","1,153,979.94","0.05","1,153,979.94","1,153,980.00","100.00","United States","-","USD","1.00","USD","-"
+"PLZL","POLYUS","Materials","Equity","7.39","0.00","7.39","625,470.00","0.00","Russian Federation","Standard-Classica-Forts","USD","84.60","RUB","Jan 01, 1970"
+"PTZ6","S&P/TSE 60 INDEX DEC 26","Cash and/or Derivatives","Futures","0.00","0.00","8,339,512.61","28.00","1,489.20","-","The Montreal Exchange / Bourse De Montreal","USD","1.41","CAD","-"
+
