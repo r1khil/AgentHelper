@@ -11,6 +11,7 @@ import { withModelFallback } from "./fallback";
 import { compactForStep } from "./turn";
 import { loadMcpTools } from "./mcp";
 import { makePortfolioTools } from "./portfolio-tools";
+import { makePredictionMarketTools } from "./prediction-markets-tools";
 import type { PageContext } from "./page-context";
 import type { CurrentUser } from "@/lib/auth";
 
@@ -82,6 +83,7 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
   const native = {
     ...makeTools({ teamId: ctx.teamId, holdingId: ctx.holdingId, userId: ctx.user.id, sources: ctx.sources }),
     ...(ctx.viewer ? makePortfolioTools({ viewer: ctx.viewer, teamId: ctx.teamId }) : {}),
+    ...makePredictionMarketTools(),
   };
   // Admin-registered MCP servers add tools under their prefix; a native name always wins.
   const mcp = await loadMcpTools();
