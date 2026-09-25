@@ -40,9 +40,20 @@ const backtesting = z.object({
   ran: z.boolean(),
 });
 
+const risk = z.object({
+  kind: z.literal("risk"),
+  path,
+  title,
+  scope: z.enum(["fund", "team"]),
+  team: z.string().max(60).optional(),
+  lookback: z.enum(["6m", "1y", "2y"]),
+  /** Close the positions were valued at. */
+  asOf: iso,
+});
+
 const page = z.object({ kind: z.literal("page"), path, title });
 
-export const pageContextSchema = z.discriminatedUnion("kind", [attribution, backtesting, page]);
+export const pageContextSchema = z.discriminatedUnion("kind", [attribution, backtesting, risk, page]);
 export type PageContext = z.infer<typeof pageContextSchema>;
 
 export function parsePageContext(value: unknown): PageContext | null {
@@ -64,6 +75,7 @@ export function pageContextFromMessages(messages: { role: string; metadata?: unk
 /** A few words for the chip on the question and in Hoot's panel. */
 export function pageContextLabel(ctx: PageContext): string {
   if (ctx.kind === "attribution") return `${ctx.title} · ${ctx.period === "itd" ? "All" : PERIOD_LABELS[ctx.period]}`;
+  if (ctx.kind === "risk") return `${ctx.title} · ${ctx.lookback} window`;
   if (ctx.kind === "backtesting") return `Backtesting · ${ctx.from} to ${ctx.to}${ctx.changed.length ? ` · ${ctx.changed.length} weight${ctx.changed.length === 1 ? "" : "s"} changed` : ""}`;
   return ctx.title;
 }
@@ -87,6 +99,13 @@ export function pageContextBlock(ctx: PageContext): string {
     return `${head}
 - Their scenario: ${ctx.from} to ${ctx.to} against ${ctx.benchmark}${ctx.changed.length ? `, with ${ctx.changed.map((c) => `${c.ticker} ${c.savedPct}% → ${c.scenarioPct}%`).join(", ")}` : ", saved weights unchanged"}.${ctx.ran ? "" : " They have not run it with these inputs yet."}
 - For questions about it, call run_backtest with { from: ${q(ctx.from)}, to: ${q(ctx.to)}, benchmark: ${q(ctx.benchmark)}${addedTickers}${weights ? `, weights: ${weights}` : ""} } first, then explain what changed and why in plain language (which holdings' contributions moved), ending every line that uses one of its figures with its [src:ID]. A backtest is a hypothetical replay of a current holding snapshot with any scenario additions, not realized performance: say so, never present it as a recommendation, and answer questions about how the portfolio actually did with get_attribution instead.`;
+  }
+  if (ctx.kind === "risk") {
+    const args = [`scope: ${q(ctx.scope)}`, ...(ctx.team ? [`team: ${q(ctx.team)}`] : []), `lookback: ${q(ctx.lookback)}`].join(", ");
+    return `${head}
+- The page shows ${ctx.scope === "fund" ? "the whole Fund's" : `the ${ctx.team ?? "team"} team's`} risk: positions at the ${ctx.asOf} close, measured over ${ctx.lookback} of daily returns.
+- For questions about it (how risky the portfolio is, what drives the risk, concentration, beta, how much it could lose), call get_portfolio_risk with { ${args} } first: it returns the page's numbers. Explain them in plain language, lead with what matters most (usually volatility and beta against the S&P 500, then where the risk is concentrated), and end every line that uses one of its figures with its [src:ID].
+- These are statistical estimates from past returns, not forecasts: say so when quoting VaR or the stress test, and never present a risk figure as a recommendation to trade.`;
   }
   return head;
 }

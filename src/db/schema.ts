@@ -803,3 +803,29 @@ export const weeklyRequests = pgTable(
   (t) => [uniqueIndex("weekly_requests_week_recipient").on(t.weekEnding, t.recipientEmail)],
 );
 export type WeeklyRequest = typeof weeklyRequests.$inferSelect;
+
+/** A what-if rebalance saved from the Backtesting page, shared by link. Team null is the whole Fund. */
+export const backtestScenarios = pgTable(
+  "backtest_scenarios",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    note: text("note"),
+    teamId: uuid("team_id").references(() => teams.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
+    /** Hash of the saved holdings the scenario started from. */
+    baseVersion: text("base_version").notNull(),
+    /** Scenario weights in percent by ticker, including CASH. */
+    weights: jsonb("weights").$type<Record<string, number>>().notNull(),
+    /** The saved weights at the time, in percent by ticker. */
+    baseWeights: jsonb("base_weights").$type<Record<string, number>>().notNull(),
+    added: jsonb("added").$type<{ ticker: string; name: string }[]>().notNull().default([]),
+    fromDate: date("from_date").notNull(),
+    toDate: date("to_date").notNull(),
+    benchmark: text("benchmark").notNull(),
+    ...timestamps,
+  },
+  (t) => [index("backtest_scenarios_scope").on(t.teamId, t.createdAt)],
+);
+export type BacktestScenario = typeof backtestScenarios.$inferSelect;
+

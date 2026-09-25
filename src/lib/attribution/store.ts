@@ -11,6 +11,10 @@ import type { BenchmarkQuality, BenchmarkWeightSet, CashFlow, DateSeries, Ledger
 
 /** Days of closes kept before inception so first-day returns have a prior close. */
 export const HISTORY_MARGIN_DAYS = 10;
+/** Calendar days of closes the Risk page needs for its longest (2-year) window, with margin. */
+export const RISK_HISTORY_DAYS = 760;
+/** 13-week Treasury bill yield, the Risk page's risk-free rate. */
+export const RISK_FREE_SYMBOL = "^IRX";
 
 export type LoadedSeries = {
   series: AttributionSeries;
@@ -50,6 +54,13 @@ export async function loadLedger(db: Db): Promise<{ trades: Trade[]; cashFlows: 
 
 export function historyFrom(inception: string) {
   return DateTime.fromISO(inception).minus({ days: HISTORY_MARGIN_DAYS }).toISODate()!;
+}
+
+/** Where the price job backfills from: inception, or far enough back for the Risk page's windows, whichever is earlier. */
+export function priceHistoryFrom(inception: string, today = DateTime.now().toISODate()!) {
+  const risk = DateTime.fromISO(today).minus({ days: RISK_HISTORY_DAYS }).toISODate()!;
+  const ledger = historyFrom(inception);
+  return risk < ledger ? risk : ledger;
 }
 
 /** Everything the attribution engine needs, replayed from inception. Period-independent. */
@@ -126,10 +137,10 @@ export async function loadSeries(db: Db, overrides?: { trades?: Trade[]; cashFlo
   };
 }
 
-/** Symbols the price job maintains: everything ever traded plus the benchmark ETFs. */
+/** Symbols the price job maintains: everything ever traded, the benchmark ETFs and the risk-free rate. */
 export async function ledgerSymbols(db: Db): Promise<string[]> {
   const rows = await db.selectDistinct({ ticker: trades.ticker }).from(trades).where(isNull(trades.voidedAt));
-  return [...new Set([...rows.map((r) => r.ticker), ...benchmarkSymbols()])];
+  return [...new Set([...rows.map((r) => r.ticker), ...benchmarkSymbols(), RISK_FREE_SYMBOL])];
 }
 
 /** Create the securities row for a ticker on first use: name, default sector and owning team. */
