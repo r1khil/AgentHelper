@@ -64,11 +64,20 @@ describe("factorLine", () => {
     expect(line.text).toBe("CPI Thu 8:30 · rates- and dollar-sensitive · the book is net short duration (β −0.12)");
   });
 
-  it("says when an exposure isn't statistically clear", () => {
+  it("says when an exposure isn't statistically clear, and never describes it as a position", () => {
     const line = factorLine(cpi, releaseRule(cpi)!, book);
-    expect(line.text).toBe("CPI Thu 8:30 · rates- and dollar-sensitive · the book is net short duration (β −0.12); no clear dollar exposure (|t| < 2)");
-    const weakOnly = factorLine(cpi, releaseRule(cpi)!, { subject: "the FIG book", betas: { rates: { beta: 0.04, t: 1.1 }, dollar: { beta: -0.01, t: -0.2 } } });
-    expect(weakOnly.text).toBe("CPI Thu 8:30 · rates- and dollar-sensitive · the FIG book shows no clear rates or dollar exposure (|t| < 2)");
+    expect(line.text).toBe("CPI Thu 8:30 · rates- and dollar-sensitive · the book is net short duration (β −0.12); no clear dollar exposure (β +0.03, not significant)");
+    // The Fund's real 1-year betas on 2026-09-25: rates +0.055 (t 1.6), dollar +0.038 (t 1.1).
+    const today = factorLine(cpi, releaseRule(cpi)!, { subject: "the book", betas: { rates: { beta: 0.055, t: 1.6 }, dollar: { beta: 0.038, t: 1.1 } } });
+    expect(today.text).toBe("CPI Thu 8:30 · rates- and dollar-sensitive · the book has no clear rates or dollar exposure (β +0.06 and +0.04, not significant)");
+    expect(today.text).not.toMatch(/duration|long|short/);
+    const ratesOnly = factorLine(cpi, { ...releaseRule(cpi)!, factors: ["rates"] }, { subject: "the book", betas: { rates: { beta: 0.055, t: 1.6 } } });
+    expect(ratesOnly.text).toBe("CPI Thu 8:30 · rates-sensitive · the book has no clear rates exposure (β +0.06, not significant)");
+  });
+
+  it("calls a significant beta that rounds to zero negligible", () => {
+    const eia = tv("EIA Crude Oil Stocks Change", "Energy", 2, "2026-10-14T14:30:00.000Z", "2026-10-14");
+    expect(factorLine(eia, releaseRule(eia)!, { subject: "the book", betas: { oil: { beta: 0.004, t: 2.2 } } }).text).toBe("EIA crude Wed 10:30 · oil-sensitive · the book has no clear oil exposure (β 0.00, negligible)");
   });
 
   it("shows only the sensitivity without an exposure", () => {
@@ -77,7 +86,7 @@ describe("factorLine", () => {
 
   it("describes oil for the EIA report", () => {
     const eia = tv("EIA Crude Oil Stocks Change", "Energy", 2, "2026-10-14T14:30:00.000Z", "2026-10-14");
-    expect(factorLine(eia, releaseRule(eia)!, { subject: "the book", betas: { oil: { beta: 0.06, t: 2.4 } } }).text).toBe("EIA crude Wed 10:30 · oil-sensitive · the book is net long oil (β 0.06)");
+    expect(factorLine(eia, releaseRule(eia)!, { subject: "the book", betas: { oil: { beta: 0.06, t: 2.4 } } }).text).toBe("EIA crude Wed 10:30 · oil-sensitive · the book is net long oil (β +0.06)");
   });
 
   it("builds the exposure from a regression row", () => {

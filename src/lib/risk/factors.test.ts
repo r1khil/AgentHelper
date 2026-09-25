@@ -8,6 +8,7 @@ import {
   factorReturns,
   formatBeta,
   invert,
+  isClearExposure,
   isFactorReport,
   olsDesign,
   weightedBetas,
@@ -264,6 +265,10 @@ describe("describeFactorBeta", () => {
   it("phrases each factor descriptively", () => {
     expect(describeFactorBeta("market", 1.08)).toBe("Moves like being 108% of NAV long SPY (more market-sensitive than the S&P 500)");
     expect(describeFactorBeta("market", 0.85)).toBe("Moves like being 85% of NAV long SPY (less market-sensitive than the S&P 500)");
+    expect(describeFactorBeta("market", 0.988, { t: 31 })).toBe("Moves like being 99% of NAV long SPY (in line with the market)");
+    expect(describeFactorBeta("market", 1.04)).toBe("Moves like being 104% of NAV long SPY (in line with the market)");
+    expect(describeFactorBeta("market", 0.1)).toBe("Moves like being 10% of NAV long SPY (little market sensitivity)");
+    expect(describeFactorBeta("market", -0.2)).toBe("Moves like being 20% of NAV short SPY (net short the market)");
     expect(describeFactorBeta("size", 0.2)).toBe("Moves like being 20% of NAV long IWM against SPY (a small-cap tilt)");
     expect(describeFactorBeta("size", -0.2)).toBe("Moves like being 20% of NAV long SPY against IWM (a large-cap tilt)");
     expect(describeFactorBeta("value", -0.31)).toBe("Moves like being 31% of NAV long IVW against IVE (a growth tilt)");
@@ -272,9 +277,18 @@ describe("describeFactorBeta", () => {
     expect(describeFactorBeta("oil", 0.07, { basis: "the team's book" })).toBe("Moves like being 7% of the team's book long USO (net long oil)");
   });
 
-  it("flags weak estimates and near-zero betas", () => {
-    expect(describeFactorBeta("rates", -0.12, { t: -1.4 })).toBe("Moves like being 12% of NAV short TLT (net short duration); not statistically clear (|t| < 2)");
-    expect(describeFactorBeta("oil", 0.003)).toBe("Essentially no oil exposure");
+  it("says there is no clear exposure when the beta isn't significant, rather than describing a position", () => {
+    expect(describeFactorBeta("rates", 0.055, { t: 1.6 })).toBe("No clear rates exposure (β +0.06, t +1.6; not statistically significant)");
+    expect(describeFactorBeta("value", -0.12, { t: -1.4 })).toBe("No clear value/growth exposure (β −0.12, t −1.4; not statistically significant)");
+    expect(describeFactorBeta("rates", 0.055, { t: 1.6 })).not.toMatch(/long|short|duration/);
+    expect(describeFactorBeta("oil", 0.003)).toBe("Essentially no oil exposure (β 0.00)");
+    expect(describeFactorBeta("oil", 0.003, { t: 2.5 })).toBe("Essentially no oil exposure (β 0.00)");
+  });
+
+  it("treats only significant, non-zero betas as clear exposures", () => {
+    expect(isClearExposure("rates", { beta: -0.12, t: -3 })).toBe(true);
+    expect(isClearExposure("rates", { beta: 0.055, t: 1.6 })).toBe(false);
+    expect(isClearExposure("oil", { beta: 0.003, t: 4 })).toBe(false);
   });
 
   it("never recommends a trade", () => {
@@ -285,5 +299,7 @@ describe("describeFactorBeta", () => {
     expect(formatBeta(-0.12)).toBe("−0.12");
     expect(formatBeta(0.004)).toBe("0.00");
     expect(formatBeta(-0.001)).toBe("0.00");
+    expect(formatBeta(0.055, 2, { signed: true })).toBe("+0.06");
+    expect(formatBeta(0.001, 2, { signed: true })).toBe("0.00");
   });
 });

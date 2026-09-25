@@ -1,9 +1,9 @@
 import { DateTime } from "luxon";
 import type { Profile } from "@/db/schema";
 import { NY } from "@/lib/providers/calendar";
-import { factorMeaning, formatBeta, T_STAT_THRESHOLD, type FactorFit, type FactorKey } from "@/lib/risk/factors";
+import { factorMeaning, factorNoun, formatBeta, isClearExposure, T_STAT_THRESHOLD, type FactorFit, type FactorKey } from "@/lib/risk/factors";
 import { isFundWide } from "@/lib/roles";
-import { TRADINGVIEW_CATEGORIES } from "./tradingview-provider";
+import { TRADINGVIEW_CATEGORIES } from "./tradingview-categories";
 import type { EconomicEvent } from "./types";
 
 /**
@@ -86,19 +86,28 @@ export function releaseWhen(e: Pick<EconomicEvent, "timestamp" | "date" | "time"
   return e.tentative || !e.time || /all day/i.test(e.time) ? day : `${day} ${e.time}`;
 }
 
+/**
+ * What the book's betas say about the release's factors. Only significant, non-zero betas are described
+ * as a position; the rest read "no clear … exposure" with the beta, so the line never implies a bet the
+ * data can't distinguish from zero.
+ */
 function exposureClause(factors: FactorKey[], exposure: BookExposure) {
   const clear: string[] = [];
-  const unclear: string[] = [];
+  const weak: { noun: string; beta: string }[] = [];
+  const negligible: { noun: string; beta: string }[] = [];
   for (const f of factors) {
     const b = exposure.betas[f];
     if (!b || !Number.isFinite(b.beta)) continue;
-    const meaning = factorMeaning(f, b.beta);
-    if (meaning && Math.abs(b.t) >= T_STAT_THRESHOLD) clear.push(`${meaning} (β ${formatBeta(b.beta)})`);
-    else unclear.push(NOUN[f]);
+    const beta = formatBeta(b.beta, 2, { signed: true });
+    if (isClearExposure(f, b)) clear.push(`${factorMeaning(f, b.beta)} (β ${beta})`);
+    else if (Number.isFinite(b.t) && Math.abs(b.t) >= T_STAT_THRESHOLD) negligible.push({ noun: factorNoun(f), beta });
+    else weak.push({ noun: factorNoun(f), beta });
   }
-  const weak = unclear.length ? `no clear ${unclear.join(" or ")} exposure (|t| < ${T_STAT_THRESHOLD})` : null;
-  if (clear.length) return `${exposure.subject} is ${clear.join(" and ")}${weak ? `; ${weak}` : ""}`;
-  return weak ? `${exposure.subject} shows ${weak}` : null;
+  const group = (list: { noun: string; beta: string }[], why: string) =>
+    list.length ? `no clear ${list.map((x) => x.noun).join(" or ")} exposure (β ${list.map((x) => x.beta).join(" and ")}, ${why})` : null;
+  const unclear = [group(weak, "not significant"), group(negligible, "negligible")].filter(Boolean).join("; ");
+  if (clear.length) return `${exposure.subject} is ${clear.join(" and ")}${unclear ? `; ${unclear}` : ""}`;
+  return unclear ? `${exposure.subject} has ${unclear}` : null;
 }
 
 export type FactorLine = { ruleKey: string; eventId: string; date: string; label: string; factors: FactorKey[]; text: string };

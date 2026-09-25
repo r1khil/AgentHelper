@@ -249,33 +249,49 @@ const PLAIN: Record<FactorKey, { instrument: (long: boolean) => string; meaning:
   oil: { instrument: (l) => `${l ? "long" : "short"} USO`, meaning: (l) => (l ? "net long oil" : "net short oil"), none: "oil" },
 };
 
-/** The factor's short meaning, e.g. "net short duration", or null when the beta rounds to zero. */
-export function factorMeaning(key: FactorKey, beta: number): string | null {
-  if (!finite(beta) || Math.round(Math.abs(beta) * 100) === 0) return null;
-  return PLAIN[key].meaning(beta > 0);
+/** A market beta within this of 1 moves in line with the market. */
+export const MARKET_IN_LINE = 0.05;
+
+function marketMeaning(beta: number) {
+  if (beta < 0) return "net short the market";
+  if (Math.abs(beta - 1) < MARKET_IN_LINE) return "in line with the market";
+  if (beta > 1) return "more market-sensitive than the S&P 500";
+  return beta < 0.25 ? "little market sensitivity" : "less market-sensitive than the S&P 500";
 }
 
+/** The factor's noun in "no clear … exposure": "rates", "value/growth". */
+export const factorNoun = (key: FactorKey) => PLAIN[key].none;
+
+/** The factor's short meaning, e.g. "net short duration", or null when the beta rounds to zero. Says nothing about significance. */
+export function factorMeaning(key: FactorKey, beta: number): string | null {
+  if (!finite(beta) || Math.round(Math.abs(beta) * 100) === 0) return null;
+  return key === "market" ? marketMeaning(beta) : PLAIN[key].meaning(beta > 0);
+}
+
+/** Whether a beta is a clear exposure: statistically significant (|t| ≥ 2) and not rounding to zero. */
+export const isClearExposure = (key: FactorKey, c: { beta: number; t: number }) => factorMeaning(key, c.beta) !== null && Number.isFinite(c.t) && Math.abs(c.t) >= T_STAT_THRESHOLD;
+
 /**
- * Plain English for one beta, descriptive only: a rates beta of −0.12 reads "moves like being 12% of
- * NAV short TLT (net short duration)". `basis` names what the percentage is of.
+ * Plain English for one beta, descriptive only: a rates beta of −0.12 reads "Moves like being 12% of
+ * NAV short TLT (net short duration)". With a t-stat below 2 it says there is no clear exposure rather
+ * than describing a position that the data can't tell from zero. `basis` names what the percentage is of.
  */
 export function describeFactorBeta(key: FactorKey, beta: number, opts: { t?: number; basis?: string } = {}): string {
   const basis = opts.basis ?? "NAV";
+  const noun = PLAIN[key].none;
+  if (!finite(beta)) return `No ${noun} estimate`;
+  const b = formatBeta(beta, 2, { signed: true });
+  if (finite(opts.t) && Math.abs(opts.t) < T_STAT_THRESHOLD) return `No clear ${noun} exposure (β ${b}, t ${formatBeta(opts.t, 1, { signed: true })}; not statistically significant)`;
   const pct = Math.round(Math.abs(beta) * 100);
-  const weak = finite(opts.t) && Math.abs(opts.t) < T_STAT_THRESHOLD ? `; not statistically clear (|t| < ${T_STAT_THRESHOLD})` : "";
-  if (!finite(beta)) return `No ${PLAIN[key].none} estimate`;
-  if (pct === 0) return `Essentially no ${PLAIN[key].none} exposure${weak}`;
+  if (pct === 0) return `Essentially no ${noun} exposure (β ${b})`;
   const long = beta > 0;
-  if (key === "market") {
-    const vs = beta >= 1 ? "more market-sensitive than the S&P 500" : long ? "less market-sensitive than the S&P 500" : "net short the market";
-    return `Moves like being ${pct}% of ${basis} ${PLAIN.market.instrument(long)} (${vs})${weak}`;
-  }
-  return `Moves like being ${pct}% of ${basis} ${PLAIN[key].instrument(long)} (${PLAIN[key].meaning(long)})${weak}`;
+  return `Moves like being ${pct}% of ${basis} ${PLAIN[key].instrument(long)} (${factorMeaning(key, beta)})`;
 }
 
-/** "−0.12" with a true minus sign, the way the page prints betas. */
-export function formatBeta(beta: number, digits = 2) {
+/** "−0.12" with a true minus sign, the way the page prints betas; `signed` adds "+" to positive ones. */
+export function formatBeta(beta: number, digits = 2, opts: { signed?: boolean } = {}) {
   if (!finite(beta)) return "—";
   const s = Math.abs(beta).toFixed(digits);
-  return beta < 0 && Number(s) !== 0 ? `−${s}` : s;
+  if (Number(s) === 0) return s;
+  return beta < 0 ? `−${s}` : opts.signed ? `+${s}` : s;
 }
