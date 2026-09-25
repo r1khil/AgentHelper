@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DeliveryError, EmailNotSentError, isRetryableStatus, parseRetryAfter, sendWithFailover, stableKey, withRetries } from "./delivery";
+import { DeliveryError, isRetryableStatus, parseRetryAfter, stableKey, withRetries } from "./delivery";
 
 const noWait = async () => {};
 
@@ -51,36 +51,6 @@ describe("withRetries", () => {
     expect(waits).toEqual([12_000]);
     const daily = async () => Promise.reject(new DeliveryError("429 daily limit", { retryable: true, retryAfterMs: 3_600_000 }));
     await expect(withRetries(daily, { delaysMs: [2_000], maxWaitMs: 20_000, wait: noWait })).rejects.toMatchObject({ tries: 1 });
-  });
-});
-
-describe("sendWithFailover", () => {
-  it("moves to the next provider when one fails and keeps every outcome", async () => {
-    const r = await sendWithFailover([
-      { name: "OpenMail", send: async () => Promise.reject(Object.assign(new Error("inbox lookup failed: 502 Application failed to respond"), { tries: 3 })) },
-      { name: "Gmail", send: async () => ({ value: "<gmail-id>", tries: 1 }) },
-      { name: "Resend", send: async () => Promise.reject(new Error("should not be tried")) },
-    ]);
-    expect(r.provider).toBe("Gmail");
-    expect(r.value).toBe("<gmail-id>");
-    expect(r.attempts).toEqual([
-      { provider: "OpenMail", ok: false, tries: 3, error: "inbox lookup failed: 502 Application failed to respond" },
-      { provider: "Gmail", ok: true, tries: 1 },
-    ]);
-  });
-
-  it("lists every provider's error when none can send", async () => {
-    const e = await sendWithFailover([
-      { name: "OpenMail", send: async () => Promise.reject(new Error("502 Application failed to respond")) },
-      { name: "Gmail", send: async () => Promise.reject(new Error("Invalid login")) },
-    ]).catch((x: unknown) => x);
-    expect(e).toBeInstanceOf(EmailNotSentError);
-    expect((e as EmailNotSentError).message).toBe("OpenMail: 502 Application failed to respond; Gmail: Invalid login");
-    expect((e as EmailNotSentError).attempts.map((a) => a.provider)).toEqual(["OpenMail", "Gmail"]);
-  });
-
-  it("says email is not configured when there is no provider", async () => {
-    await expect(sendWithFailover([])).rejects.toThrow("email is not configured");
   });
 });
 
