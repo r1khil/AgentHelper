@@ -438,6 +438,7 @@ function NavItem({ href, label, icon: Icon, active }: { href: string; label: str
     <Link
       href={href}
       // A stable handle for Hoot's tour, since hrefs change with the scope.
+      data-hoot-destination={label}
       data-tour={`nav-${label.toLowerCase().replace(/[^a-z]+/g, "-")}`}
       aria-current={active ? "page" : undefined}
       className={cn(

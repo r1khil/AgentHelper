@@ -68,7 +68,7 @@ export function HootPanel({
       <div className="flex items-start gap-3 border-b px-4 pt-3.5 pb-3">
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold">{greeting}</div>
-          <div className="text-xs text-muted-foreground">Ask me a research question, or see what needs you.</div>
+          <div className="text-xs text-muted-foreground">Ask a research question, change the theme, or open a page.</div>
         </div>
         <button type="button" onClick={onClose} className="-mr-1 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Close">
           <X className="size-4" />
@@ -101,7 +101,7 @@ export function HootPanel({
                   submit();
                 }
               }}
-              placeholder="Ask about a holding, a filing, a move…"
+              placeholder="Try “turn on light mode” or “take me to holdings”…"
               className="min-h-16 resize-none pr-11 text-sm"
             />
             <Button type="submit" size="icon" className="absolute right-2 bottom-2 size-7" disabled={!text.trim() || asking} aria-label="Ask">
@@ -109,7 +109,7 @@ export function HootPanel({
             </Button>
           </div>
           <div className="mt-1.5 text-[11px] text-muted-foreground">
-            {asking ? "Opening a chat…" : `Opens a new ${scopeHint ? `chat on ${scopeHint}` : "conversation"}${seeing ? ", with this page attached" : ""}.`}
+            {asking ? "Opening a chat…" : `Research questions open a new ${scopeHint ? `chat on ${scopeHint}` : "conversation"}${seeing ? ", with this page attached" : ""}.`}
           </div>
           {seeing && !asking && (
             <div className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">

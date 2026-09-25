@@ -1,5 +1,7 @@
 "use client";
 
+import { useHootCommand } from "@/components/app/hoot/use-hoot-command";
+
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp } from "lucide-react";
@@ -12,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 /** A question that isn't about one holding: starts a general conversation, the same way the floating Hoot does. */
 export function AskHoot({ teamSlug, configured }: { teamSlug: string | null; configured: boolean }) {
   const router = useRouter();
+  const runCommand = useHootCommand();
   const [text, setText] = useState("");
   const [asking, setAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +35,11 @@ export function AskHoot({ teamSlug, configured }: { teamSlug: string | null; con
   const submit = async () => {
     const q = text.trim();
     if (!q || asking) return;
+    if (runCommand(q)) {
+      setText("");
+      setError(null);
+      return;
+    }
     setAsking(true);
     setError(null);
     try {
