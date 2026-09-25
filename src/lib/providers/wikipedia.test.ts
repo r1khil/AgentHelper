@@ -189,7 +189,8 @@ describe("company background", () => {
 
   it("returns candidates, exact matches first, when a name fits several companies or none by name", async () => {
     const { fetcher } = fakeFetch([
-      { match: (u) => u.hostname === "en.wikipedia.org", body: { query: { pages: [{ index: 1, pageprops: { wikibase_item: "Q94743" } }, { index: 2, pageprops: { wikibase_item: "Q85755105" } }] } } },
+      // The top hit matching the name is not enough: search order varies between requests, and so would the answer.
+      { match: (u) => u.hostname === "en.wikipedia.org", body: { query: { pages: [{ index: 2, pageprops: { wikibase_item: "Q94743" } }, { index: 1, pageprops: { wikibase_item: "Q85755105" } }] } } },
       { match: (u) => u.searchParams.get("list") === "search", body: { query: { search: [{ title: "Q188920" }] } } },
       {
         match: isEntities("labels|aliases|sitelinks"),

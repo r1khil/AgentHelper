@@ -207,8 +207,8 @@ async function candidates(fetcher: Fetcher, ids: string[], tickers?: Map<string,
 }
 
 /**
- * The one company a name means: the only hit whose label, article title or alias matches the name, or the top hit
- * when several match and it is one of them. Anything else is a guess, so the hits come back as candidates,
+ * The one company a name means: the only hit whose label, article title or alias matches the name. Search ranking
+ * varies between requests, so several matches ("Delta") or none is a guess and the hits come back as candidates,
  * exact matches first.
  */
 async function resolveName(fetcher: Fetcher, name: string): Promise<{ id: string | null; ids: string[] }> {
@@ -221,7 +221,7 @@ async function resolveName(fetcher: Fetcher, name: string): Promise<{ id: string
       .filter((s): s is string => !!s)
       .map(normalizeName);
   const exact = ids.filter((id) => names(id).includes(want));
-  if (exact.length === 1 || (exact.length > 1 && exact[0] === ids[0])) return { id: exact[0], ids };
+  if (exact.length === 1) return { id: exact[0], ids };
   return { id: null, ids: [...exact, ...ids.filter((id) => !exact.includes(id))] };
 }
 
