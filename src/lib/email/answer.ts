@@ -15,6 +15,7 @@ import { createJobReporter } from "@/lib/jobs/progress";
 import { resolveOpenMailInbox, sendEmail } from "@/lib/jobs/notify";
 import { cleanBrief, numberCitations, sourcesFooter } from "@/lib/jobs/daily-brief-format";
 import { finalReply, writeUpFromEvidence } from "@/lib/agent/write-up";
+import { readEmailTickets, recordEmailedTickets, type EmailTicketResult } from "./ticket-intake";
 import { answerBody, bareAddress, failureBody, firstName, isAutoReply, isFundAddress, newReplyText, receiptBody, replyRecipients, type InboundEvent } from "./inbound";
 
 const JOB = "email_reply";
@@ -39,17 +40,18 @@ export type EmailReplyResult = {
   steps?: number;
 };
 
-type Sender = { name: string; viewer: CurrentUser };
+/** `profileId` is null for an invitation that hasn't been accepted: it can ask questions but not record trades. */
+type Sender = { name: string; viewer: CurrentUser; profileId: string | null };
 
 /** A fund member: a profile, or an invitation that hasn't been accepted yet (Aadi, until he signs in). */
 async function findSender(address: string): Promise<Sender | null> {
   const [p] = await db.select({ profile: profiles, team: teams }).from(profiles).leftJoin(teams, eq(teams.id, profiles.teamId)).where(sql`lower(${profiles.email}) = ${address}`).limit(1);
-  if (p) return { name: firstName(p.profile.fullName, address), viewer: { ...p.profile, team: p.team } };
+  if (p) return { name: firstName(p.profile.fullName, address), viewer: { ...p.profile, team: p.team }, profileId: p.profile.id };
   const [inv] = await db.select().from(invitations).where(sql`lower(${invitations.email}) = ${address}`).limit(1);
   if (!inv) return null;
   // Only the fields the portfolio tools read (role, team) matter; the rest keep the type honest.
   const viewer = { id: inv.id, email: inv.email, fullName: inv.fullName ?? address, role: inv.role, teamId: inv.teamId, team: null } as unknown as CurrentUser;
-  return { name: firstName(inv.fullName, address), viewer };
+  return { name: firstName(inv.fullName, address), viewer, profileId: null };
 }
 
 async function threadHistory(threadId: string, exceptMessageId: string): Promise<string> {
@@ -98,7 +100,7 @@ const NUDGE = "Your research budget is used up. Write the answer now from the ev
  * Handle one inbound email to Hoot: confirm receipt in the thread, research, and reply with the answer.
  * Idempotent per OpenMail message (webhooks are delivered at least once).
  */
-export async function answerEmail(ev: InboundEvent, opts: { dryRun?: (text: string) => void } = {}): Promise<EmailReplyResult> {
+export async function answerEmail(ev: InboundEvent, opts: { dryRun?: (text: string) => void } = {}): Promise<EmailReplyResult | EmailTicketResult> {
   const msg = ev.message;
   const from = bareAddress(msg.from);
   const base: EmailReplyResult = { eventId: ev.event_id, messageId: msg.id, threadId: ev.thread_id, from, status: "ignored" };
@@ -112,6 +114,20 @@ export async function answerEmail(ev: InboundEvent, opts: { dryRun?: (text: stri
   if (isAutoReply(msg.subject, msg.body_text)) return { ...base, reason: "automatic reply" };
   const sender = await findSender(from);
   if (!sender) return { ...base, reason: "sender is not a member" };
+
+  // A trade ticket, attached, forwarded or pasted, goes to the ledger instead of being answered as a question.
+  const tickets = await readEmailTickets(msg);
+  if (tickets.length) {
+    const { to, cc } = replyRecipients(msg, hoot);
+    return recordEmailedTickets({
+      ev,
+      reads: tickets,
+      sender: { name: sender.name, address: from, profileId: sender.profileId, role: sender.viewer.role },
+      reply: async (text) => (opts.dryRun ? opts.dryRun(text) : void (await sendEmail({ to, cc, threadId: ev.thread_id, text }))),
+      dryRun: !!opts.dryRun,
+    });
+  }
+
   const question = newReplyText(msg.body_text ?? "");
   if (!question) return { ...base, reason: "empty message" };
 

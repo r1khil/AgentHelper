@@ -13,7 +13,8 @@ type Ready = Extract<TicketPreview, { ok: true }>;
 // Server Actions take bodies up to 1MB.
 const MAX_TOTAL_BYTES = 900_000;
 
-export function TicketDialog() {
+/** `emailTo` is Hoot's address; execs can also email or forward tickets there and Hoot records them. */
+export function TicketDialog({ emailTo }: { emailTo?: string }) {
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [preview, setPreview] = useState<Ready | null>(null);
@@ -65,6 +66,13 @@ export function TicketDialog() {
           <DialogDescription>
             Upload the Word trade tickets for trades that have been executed. Each ticket becomes one buy or sell at the ticket&apos;s date,
             price and share count. Check the prices against the fills before recording; fees are not on tickets.
+            {emailTo && (
+              <>
+                {" "}
+                You can also email or forward tickets to Hoot at <span className="font-medium text-foreground">{emailTo}</span>. Hoot records
+                them and replies with what was added.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
