@@ -1,6 +1,7 @@
 "use client";
 
 import { useHootCommand } from "@/components/app/hoot/use-hoot-command";
+import { hootShortcut } from "@/lib/hoot/shortcuts";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -109,6 +110,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   const [feed, setFeed] = useState<HootFeed | null>(null);
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(() => new Set());
   const [open, setOpen] = useState(false);
+  const [shortcutOpen, setShortcutOpen] = useState(false);
   // Tagged with the page it was said on, so it disappears the moment the member navigates.
   const [said, setSaid] = useState<{ nudge: HootNudge; path: string } | null>(null);
   const [hovered, setHovered] = useState(false);
@@ -233,19 +235,24 @@ export function HootCompanion({ firstName }: { firstName: string }) {
     return () => window.clearTimeout(id);
   }, [bubble, hovered, setBubble]);
 
-  // ⌘J / Ctrl+J toggles the panel from anywhere.
+  // Option/Alt+S and Mac Command+S open Hoot. Keep Command/Ctrl+J as the existing toggle.
   useEffect(() => {
-    if (hidden) return;
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "j") {
-        e.preventDefault();
-        setBubble(null);
-        setOpen((o) => !o);
+      const action = hootShortcut(e, /Mac|iPhone|iPad/.test(navigator.platform));
+      if (!action || touring) return;
+      e.preventDefault();
+      setBubble(null);
+      if (action === "open") {
+        setShortcutOpen(true);
+        setOpen(true);
+      } else {
+        setShortcutOpen(!open);
+        setOpen(!open);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [hidden, setBubble]);
+  }, [open, touring, setBubble]);
 
   /** Squash-and-stretch without remounting anything (remounting under the cursor would eat clicks). */
   const play = useCallback((frames: Keyframe[], duration: number) => {
@@ -343,6 +350,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
     if (runCommand(text)) {
       setAskError(null);
       setOpen(false);
+      setShortcutOpen(false);
       return;
     }
     setAsking(true);
@@ -360,6 +368,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
         toast("Your chat is open. Paste your question to send it.");
       }
       setOpen(false);
+      setShortcutOpen(false);
       router.push(res.href);
     } catch {
       setAskError("Couldn't open a chat just now. Try again in a moment.");
@@ -370,6 +379,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
 
   const hide = () => {
     setOpen(false);
+    setShortcutOpen(false);
     startTransition(async () => {
       await setHootEnabled(false);
       router.refresh();
@@ -384,7 +394,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
     });
   };
 
-  if (hidden) return null;
+  if (hidden && !shortcutOpen) return null;
 
   const urgent = nudges.filter((n) => n.priority <= 2).length;
   // Pages that describe themselves (attribution, backtesting) are attached to the question; say so in the panel.
@@ -450,6 +460,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
         open={open}
         onOpenChange={(next) => {
           setOpen(next);
+          if (!next) setShortcutOpen(false);
           if (next) {
             setBubble(null);
             if (Date.now() - loadedAt.current > 60_000) void load();
@@ -548,15 +559,17 @@ export function HootCompanion({ firstName }: { firstName: string }) {
             onOpenNudge={(n) => {
               if (DISMISS_ON_OPEN.has(n.kind)) persistDismiss(n.id);
               setOpen(false);
+              setShortcutOpen(false);
             }}
             onDismiss={(n) => persistDismiss(n.id)}
             onHide={hide}
             side={side}
             onMove={() => {
               setOpen(false);
+              setShortcutOpen(false);
               moveTo(side === "right" ? "left" : "right");
             }}
-            onClose={() => setOpen(false)}
+            onClose={() => { setOpen(false); setShortcutOpen(false); }}
           />
         </PopoverContent>
       </Popover>

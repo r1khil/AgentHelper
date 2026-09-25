@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commandHref, parseHootCommand } from "./commands";
+import { commandHref, parseHootCommand, scopeHref } from "./commands";
 
 describe("Hoot UI commands", () => {
   it.each([
@@ -16,6 +16,14 @@ describe("Hoot UI commands", () => {
   ])("recognizes %s", (text, destination) => expect(parseHootCommand(text)).toEqual({ kind: "navigate", destination }));
 
   it.each([
+    ["switch me to technology sector", "technology"],
+    ["Hoot, bring me to the financials sector", "financials"],
+    ["show me the consumer discretionary sector", "consumer discretionary"],
+    ["filter to whole fund sector", "whole fund"],
+    ["switch to the whole fund", "whole fund"],
+  ])("recognizes scope command %s", (text, scope) => expect(parseHootCommand(text)).toEqual({ kind: "scope", scope }));
+
+  it.each([
     "What moved our holdings today?", "Show me earnings growth for AAPL", "Explain light mode",
     "Don't turn on light mode", 'The document says "open admin"', "Open https://example.com",
     "open javascript:alert(1)", "turn on light mode and explain risk", "How do I turn on light mode?",
@@ -25,6 +33,12 @@ describe("Hoot UI commands", () => {
     expect(commandHref("Risk", [{ label: "Risk", href: "/t/tech/risk" }])).toBe("/t/tech/risk");
     expect(commandHref("Risk", [{ label: "Risk", href: "/risk" }])).toBe("/risk");
     expect(commandHref("Admin", [{ label: "Holdings", href: "/t/tech" }])).toBeNull();
+  });
+  it("matches only the scope choices rendered for the member", () => {
+    const links = [{ label: "Whole fund", href: "/t/fund/risk" }, { label: "Financials", href: "/t/financials/risk" }];
+    expect(scopeHref("financials", links)).toBe("/t/financials/risk");
+    expect(scopeHref("fund", links)).toBe("/t/fund/risk");
+    expect(scopeHref("technology", links)).toBeNull();
   });
   it.each(["https://example.com", "//example.com", "javascript:alert(1)", "/\\example.com"]) ("rejects unsafe routes: %s", (href) => {
     expect(commandHref("Risk", [{ label: "Risk", href }])).toBeNull();

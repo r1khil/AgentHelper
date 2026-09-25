@@ -1,5 +1,5 @@
 /** Only whole, explicit UI requests are commands. Research prose is left untouched. */
-export type HootCommand = { kind: "theme"; theme: "light" | "dark" | "system" | "toggle" } | { kind: "navigate"; destination: string };
+export type HootCommand = { kind: "theme"; theme: "light" | "dark" | "system" | "toggle" } | { kind: "navigate"; destination: string } | { kind: "scope"; scope: string };
 
 const destinations: Record<string, string> = {
   home: "Today", dashboard: "Today", today: "Today", portfolio: "Holdings", holdings: "Holdings",
@@ -21,6 +21,9 @@ export function parseHootCommand(text: string): HootCommand | null {
   const disable = q.match(/^(?:turn off|disable) (light|dark) (?:mode|theme)$/) ?? q.match(/^turn (light|dark) (?:mode|theme) off$/);
   if (disable) return { kind: "theme", theme: disable[1] === "light" ? "dark" : "light" };
   if (/^(?:toggle|switch) (?:the )?(?:(?:light|dark) mode|theme)$/.test(q)) return { kind: "theme", theme: "toggle" };
+  const scope = q.match(/^(?:switch|change|toggle)(?: me)? to (?:the )?(.+?)(?: sector| team)?$/)
+    ?? q.match(/^(?:take me to|bring me to|go to|navigate to|open|show me|filter to) (?:the )?(.+?) (?:sector|team)$/);
+  if (scope) return { kind: "scope", scope: scope[1] };
   const navigation = q.match(/^(?:take me to|bring me to|go to|navigate to|open|show me) (?:the )?(.+?)(?: page| section| area)?$/);
   const destination = navigation && destinations[navigation[1]];
   return destination ? { kind: "navigate", destination } : null;
@@ -31,4 +34,11 @@ export type HootLink = { label: string; href: string };
 export function commandHref(destination: string, links: HootLink[]): string | null {
   const href = links.find((link) => link.label === destination)?.href;
   return href && /^\/(?!\/)/.test(href) && !/[\\\s]/.test(href) ? href : null;
+}
+
+/** Match only a rendered, accessible scope option. No generated team slugs or arbitrary URLs. */
+export function scopeHref(scope: string, links: HootLink[]): string | null {
+  const requested = scope.toLowerCase().trim();
+  const link = links.find(({ label }) => label.toLowerCase() === requested || (requested === "fund" && label === "Whole fund"));
+  return link ? commandHref(link.label, links) : null;
 }

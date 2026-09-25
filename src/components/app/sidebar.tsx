@@ -228,35 +228,42 @@ function ScopeSwitcher({ teams, current, fundWide }: { teams: Team[]; current: T
 
   if (!fundWide || teams.length < 2) return <div data-tour="scope" className={cardClass}>{card}</div>;
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <button
-            data-tour="scope"
-            className={cn(cardClass, "transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted")}
-          />
-        }
-      >
-        {card}
-        <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-72" align="start">
-        <DropdownMenuGroup>
-          <ScopeItem href={`/t/${FUND_SCOPE_SLUG}${section}`} selected={current === "fund"}>
-            Whole fund
-          </ScopeItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Filter to a sector</DropdownMenuLabel>
-          {teams.map((t) => (
-            <ScopeItem key={t.id} href={`/t/${t.slug}${section}`} selected={current !== "fund" && current?.id === t.id}>
-              {t.name}
+    <>
+      {/* The same scoped destinations are available to Hoot while the dropdown is closed. */}
+      <div hidden aria-hidden="true">
+        <span data-hoot-scope="Whole fund" data-hoot-href={`/t/${FUND_SCOPE_SLUG}${section}`} />
+        {teams.map((t) => <span key={t.id} data-hoot-scope={t.name} data-hoot-href={`/t/${t.slug}${section}`} />)}
+      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <button
+              data-tour="scope"
+              className={cn(cardClass, "transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted")}
+            />
+          }
+        >
+          {card}
+          <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-72" align="start">
+          <DropdownMenuGroup>
+            <ScopeItem href={`/t/${FUND_SCOPE_SLUG}${section}`} selected={current === "fund"}>
+              Whole fund
             </ScopeItem>
-          ))}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Filter to a sector</DropdownMenuLabel>
+            {teams.map((t) => (
+              <ScopeItem key={t.id} href={`/t/${t.slug}${section}`} selected={current !== "fund" && current?.id === t.id}>
+                {t.name}
+              </ScopeItem>
+            ))}
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 }
 

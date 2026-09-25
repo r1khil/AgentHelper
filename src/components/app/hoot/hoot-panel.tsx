@@ -18,7 +18,7 @@ const KIND_ICON: Record<NudgeKind, React.ComponentType<{ className?: string }>> 
   tip: Sparkles,
 };
 
-export const shortcutLabel = () => (typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘J" : "Ctrl J");
+export const shortcutLabel = () => (typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌥S / ⌘S" : "Alt S");
 
 /** What opens when you click Hoot: ask him a research question, see what needs you, or send him away. */
 export function HootPanel({
