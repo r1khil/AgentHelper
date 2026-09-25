@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { mcpServers, type McpServer } from "@/db/schema";
 import { sourceId, type Source } from "@/lib/providers/types";
 import type { ToolResult } from "./tools";
+import { budgetExhaustedMessage, claimMcpCall } from "./mcp-budget";
 
 /** A connected client is reused for this long before it is closed and reopened. */
 const CLIENT_TTL_MS = 10 * 60_000;
@@ -45,8 +46,29 @@ export function flattenMcpResult(raw: unknown): { data: unknown; excerpt: string
 }
 
 /**
+ * Some servers report a failure as an ordinary result rather than `isError`: Alpha Vantage answers a
+ * rate-limited or premium-only call with `{ error: { message, detail } }`, and its REST layer with a
+ * lone `Information`, `Note` or `Error Message` string. Those must not become citable sources.
+ */
+export function inbandError(data: unknown): string | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const entries = Object.entries(data);
+  if (entries.length !== 1) return null;
+  const [k, v] = entries[0];
+  if (k === "error" && v) {
+    if (typeof v === "string") return v;
+    const e = v as { message?: unknown; detail?: unknown };
+    if (typeof e.message !== "string") return JSON.stringify(v).slice(0, 360);
+    return typeof e.detail === "string" ? `${e.message} ${e.detail}` : e.message;
+  }
+  if ((k === "Information" || k === "Note" || k === "Error Message") && typeof v === "string") return v;
+  return null;
+}
+
+/**
  * Wrap one MCP tool so it behaves like a native tool: the result becomes a ToolResult with a source
- * the answer can cite, and failures land in `error` instead of throwing.
+ * the answer can cite, and failures land in `error` instead of throwing. Each call first takes one
+ * unit of the server's daily budget when an admin has set one (mcp-budget.ts).
  */
 export function wrapMcpTool(server: Pick<McpServer, "name" | "url">, toolName: string, t: ToolSet[string]): ToolSet[string] {
   const exec = t.execute as ((input: unknown, opts: unknown) => Promise<unknown>) | undefined;
@@ -57,9 +79,13 @@ export function wrapMcpTool(server: Pick<McpServer, "name" | "url">, toolName: s
     execute: async (input: unknown, opts: unknown): Promise<ToolResult<unknown>> => {
       const retrievedAt = new Date().toISOString();
       try {
+        const budget = await claimMcpCall(server.name);
+        if (!budget.ok) return { data: null, sources: [], error: budgetExhaustedMessage(server.name, budget.cap) };
         const raw = await Promise.race([exec(input, opts), new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`${server.name}.${toolName} timed out after ${CALL_TIMEOUT_MS / 1000}s`)), CALL_TIMEOUT_MS))]);
         const { data, excerpt } = flattenMcpResult(raw);
         if ((raw as { isError?: boolean } | undefined)?.isError) return { data: null, sources: [], error: excerpt || `${server.name}.${toolName} returned an error` };
+        const inband = inbandError(data);
+        if (inband) return { data: null, sources: [], error: `${server.name}.${toolName}: ${inband}` };
         const s: Source = {
           id: sourceId("mcp", `${server.name}:${toolName}:${JSON.stringify(input)}:${retrievedAt}`),
           title: `${server.name} · ${toolName}`,

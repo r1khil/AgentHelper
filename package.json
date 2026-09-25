@@ -22,9 +22,14 @@
     "smoke:tools": "tsx --conditions=react-server scripts/smoke-tools.ts",
     "smoke:mcp": "tsx --conditions=react-server scripts/smoke-mcp.ts",
     "smoke:prep": "tsx --conditions=react-server scripts/smoke-prep.ts",
+    "smoke:wikipedia": "tsx --conditions=react-server --tsconfig ./tsconfig.json scripts/smoke-wikipedia.ts",
+    "smoke:firecrawl": "tsx --conditions=react-server --tsconfig ./tsconfig.json scripts/smoke-firecrawl.ts",
+    "smoke:sandbox": "tsx --conditions=react-server --tsconfig ./tsconfig.json scripts/smoke-sandbox.ts",
     "smoke:weekly": "tsx --conditions=react-server scripts/smoke-weekly.ts",
     "smoke:daily-brief": "tsx --conditions=react-server scripts/smoke-daily-brief.ts",
     "smoke:email-reply": "tsx --conditions=react-server scripts/smoke-email-reply.ts",
+    "smoke:fred": "tsx --conditions=react-server --tsconfig ./tsconfig.json scripts/smoke-fred.ts",
+    "smoke:prediction-markets": "tsx --conditions=react-server scripts/smoke-prediction-markets.ts",
     "test:sell-side:browser": "node tests/sell-side/run.mjs"
   },
   "dependencies": {
@@ -37,6 +42,7 @@
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
     "@tavily/core": "^0.7.13",
+    "@vercel/sandbox": "^3.5.0",
     "ai": "^7.0.105",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

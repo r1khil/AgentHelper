@@ -24,6 +24,14 @@ export function safeWebUrl(raw: string, appHost?: string | null): { ok: true; ur
   return { ok: true, url };
 }
 
+/** A failed page fetch, with the HTTP status or content type that caused it, so callers can decide whether another reader could do better. */
+export class WebFetchError extends Error {
+  constructor(message: string, readonly status?: number, readonly contentType?: string) {
+    super(message);
+    this.name = "WebFetchError";
+  }
+}
+
 export type WebPage = { url: string; finalUrl: string; title: string | null; text: string; truncated: boolean; contentType: string };
 
 /** Fetch a public page as readable text: bounded time, bounded bytes, text content types only. */
@@ -32,9 +40,9 @@ export async function fetchWebPage(url: URL): Promise<WebPage> {
   const timer = setTimeout(() => controller.abort(), WEB_TIMEOUT_MS);
   try {
     const res = await fetch(url, { signal: controller.signal, redirect: "follow", headers: { "User-Agent": "Mozilla/5.0 (compatible; OwlsNestResearchAgent/1.0)", Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.1" } });
-    if (!res.ok) throw new Error(`The page returned HTTP ${res.status}`);
+    if (!res.ok) throw new WebFetchError(`The page returned HTTP ${res.status}`, res.status);
     const contentType = res.headers.get("content-type") ?? "";
-    if (!/text\/html|application\/xhtml|text\/plain/i.test(contentType)) throw new Error(`Not a readable page (content type ${contentType || "unknown"})`);
+    if (!/text\/html|application\/xhtml|text\/plain/i.test(contentType)) throw new WebFetchError(`Not a readable page (content type ${contentType || "unknown"})`, res.status, contentType);
     const final = new URL(res.url || url.href);
     const check = safeWebUrl(final.href);
     if (!check.ok) throw new Error(`Redirected to a refused address: ${check.reason}`);

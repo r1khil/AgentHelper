@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { z } from "zod";
 import { NY } from "@/lib/providers/calendar";
+import { impliedMedian, ladder, likeliestOutcome } from "@/lib/providers/prediction-markets";
 import type { CalendarRange, EconomicEvent } from "./types";
 
 // Kalshi's public market-data API (documented, no key). Its U.S. macro markets are ladders of "above X"
@@ -53,42 +54,10 @@ const bodySchema = z.object({
     z.object({ event_ticker: z.string(), markets: z.array(marketSchema).default([]) }),
   ),
 });
+// The ladder math is shared with Hoot's get_market_odds tool.
+export { impliedMedian, ladder, likeliestOutcome };
+
 export type KalshiEvent = { series: Series; ticker: string; closes: number; markets: z.infer<typeof marketSchema>[] };
-
-/** A rung whose bid and ask are further apart than this says little about the odds; skip it. */
-const MAX_SPREAD = 0.2;
-
-/** Each informative rung's chance the release comes in above its strike, made non-increasing. */
-export function ladder(markets: KalshiEvent["markets"]) {
-  const rungs = markets
-    .filter((m) => (m.strike_type === "greater" || m.strike_type === "greater_or_equal") && m.floor_strike != null)
-    .filter((m) => m.yes_bid_dollars != null && m.yes_ask_dollars != null && m.yes_ask_dollars > 0)
-    .filter((m) => m.yes_ask_dollars! - m.yes_bid_dollars! <= MAX_SPREAD)
-    .map((m) => ({ strike: m.floor_strike!, p: (m.yes_bid_dollars! + m.yes_ask_dollars!) / 2 }))
-    .sort((a, b) => a.strike - b.strike);
-  for (let i = 1; i < rungs.length; i++) rungs[i].p = Math.min(rungs[i].p, rungs[i - 1].p);
-  return rungs;
-}
-
-/** Where the market puts even odds, interpolated between the rungs either side of 50%. */
-export function impliedMedian(rungs: ReturnType<typeof ladder>) {
-  for (let i = 0; i + 1 < rungs.length; i++) {
-    const [a, b] = [rungs[i], rungs[i + 1]];
-    if (a.p >= 0.5 && b.p < 0.5)
-      return a.strike + ((a.p - 0.5) / (a.p - b.p)) * (b.strike - a.strike);
-  }
-  return null;
-}
-
-/** For stepped outcomes: the likeliest level and its chance. "Above 4.00%" makes 4.25% a level. */
-export function likeliestOutcome(rungs: ReturnType<typeof ladder>, step: number) {
-  if (!rungs.length) return null;
-  const outcomes = [{ level: rungs[0].strike, p: 1 - rungs[0].p }];
-  rungs.forEach((r, i) =>
-    outcomes.push({ level: rungs[i + 1]?.strike ?? r.strike + step, p: r.p - (rungs[i + 1]?.p ?? 0) }),
-  );
-  return outcomes.reduce((best, o) => (o.p > best.p ? o : best));
-}
 
 export async function loadKalshi(range: CalendarRange, fetcher: typeof fetch = fetch, now = Date.now()) {
   // Markets close at the release, so a week that is over has nothing left to price.

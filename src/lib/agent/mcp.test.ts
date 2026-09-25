@@ -10,8 +10,10 @@ vi.mock("@/db/client", () => ({
 }));
 const createMCPClient = vi.fn();
 vi.mock("@ai-sdk/mcp", () => ({ createMCPClient: (...a: unknown[]) => createMCPClient(...a) }));
+const claimMcpCall = vi.fn<(server: string) => Promise<{ ok: true } | { ok: false; cap: number }>>(async () => ({ ok: true }));
+vi.mock("./mcp-budget", async (orig) => ({ ...(await orig<typeof import("./mcp-budget")>()), claimMcpCall: (s: string) => claimMcpCall(s) }));
 
-import { authHeaders, flattenMcpResult, loadMcpTools, prefixedName, wrapMcpTool } from "./mcp";
+import { authHeaders, flattenMcpResult, inbandError, loadMcpTools, prefixedName, wrapMcpTool } from "./mcp";
 
 const server = { id: "s1", name: "EDGAR MCP", url: "https://mcp.example.com/mcp", authEnv: null, enabled: true, toolPrefix: "edgar", allowedTools: null, lastOkAt: null, lastError: null, toolNames: null, createdBy: null, createdAt: new Date(), updatedAt: new Date() };
 
@@ -50,6 +52,35 @@ describe("wrapMcpTool", () => {
     expect(((await bad.execute!({}, {} as never)) as { error?: string }).error).toBe("nope");
     const thrown = wrapMcpTool(server, "x", { execute: async () => { throw new Error("boom"); } } as never);
     expect(((await thrown.execute!({}, {} as never)) as { error?: string }).error).toBe("boom");
+  });
+  it("treats an error reported as an ordinary result as an error, not a source", async () => {
+    const limited = { error: { type: "rate_limit", message: "The demo API key is for demo purposes only.", detail: "Alpha Vantage rate limit reached." } };
+    const t = wrapMcpTool(server, "GLOBAL_QUOTE", { execute: async () => ({ content: [{ type: "text", text: JSON.stringify(limited) }], structuredContent: limited }) } as never);
+    const r = (await t.execute!({ symbol: "IBM" }, {} as never)) as { error?: string; sources: unknown[] };
+    expect(r.error).toBe("EDGAR MCP.GLOBAL_QUOTE: The demo API key is for demo purposes only. Alpha Vantage rate limit reached.");
+    expect(r.sources).toEqual([]);
+  });
+  it("returns the budget message without calling the server once the day's cap is used", async () => {
+    const exec = vi.fn(async () => ({ content: [] }));
+    claimMcpCall.mockResolvedValueOnce({ ok: false, cap: 20 });
+    const t = wrapMcpTool({ ...server, name: "Alpha Vantage" }, "NEWS_SENTIMENT", { execute: exec } as never);
+    const r = (await t.execute!({}, {} as never)) as { data: unknown; error?: string };
+    expect(r).toEqual({ data: null, sources: [], error: "Daily budget for Alpha Vantage is used up (20 calls); try again tomorrow or use a native tool" });
+    expect(exec).not.toHaveBeenCalled();
+    expect(claimMcpCall).toHaveBeenLastCalledWith("Alpha Vantage");
+  });
+});
+
+describe("inbandError", () => {
+  it("recognises lone error payloads and leaves real data alone", () => {
+    expect(inbandError({ error: "bad symbol" })).toBe("bad symbol");
+    expect(inbandError({ Information: "Thank you for using Alpha Vantage! Our standard API rate limit is 25 requests per day." })).toMatch(/25 requests per day/);
+    expect(inbandError({ "Error Message": "Invalid API call." })).toBe("Invalid API call.");
+    expect(inbandError({ error: null })).toBeNull();
+    expect(inbandError({ error: "x", data: [1] })).toBeNull();
+    expect(inbandError({ "Global Quote": { "05. price": "227.06" } })).toBeNull();
+    expect(inbandError(["error"])).toBeNull();
+    expect(inbandError("error")).toBeNull();
   });
 });
 
