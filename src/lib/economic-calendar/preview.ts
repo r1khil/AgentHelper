@@ -15,15 +15,15 @@ export function previewCalendar(range: CalendarRange): CalendarFeed {
     [
       "Retail Sales MoM",
       "Import Prices MoM",
-      "NAHB Housing Market Index",
+      "Core Inflation Rate MoM",
       "Business Inventories",
     ],
     [
       "MBA Mortgage Applications",
       "Housing Starts",
-      "Building Permits",
       "Fed Interest Rate Decision",
-      "FOMC Press Conference",
+      "Building Permits",
+      "EIA Crude Oil Stocks Change",
     ],
     [
       "Initial Jobless Claims",
@@ -36,7 +36,7 @@ export function previewCalendar(range: CalendarRange): CalendarFeed {
     [
       "Durable Goods Orders MoM",
       "S&P Global Manufacturing PMI Flash",
-      "S&P Global Services PMI Flash",
+      "Non Farm Payrolls",
       "Michigan Consumer Sentiment Final",
       "New Home Sales",
     ],

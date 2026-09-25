@@ -71,6 +71,17 @@ export function factorLineAudience(user: Pick<Profile, "role" | "teamId">): Fact
 /** The exposure a line quotes: whose book, and its betas with t-stats. */
 export type BookExposure = { subject: string; betas: Partial<Record<FactorKey, { beta: number; t: number }>> };
 
+/** What the economic calendar may say about the viewer's book next to each release. Serializable, for the client calendar. */
+export type CalendarFactorContext = {
+  audience: FactorLineAudience["kind"];
+  /** The betas the lines quote; null for everyone else, or when they can't be estimated yet. */
+  exposure: BookExposure | null;
+  /** The Exposure page's factor section for this audience, or null when the viewer can't open it. */
+  href: string | null;
+  /** "1 year of daily returns to 2026-09-24", for the caption. */
+  basis: string | null;
+};
+
 /** A regression row (the Fund's, or a team's) as the exposure a line quotes. */
 export function bookExposure(subject: string, fit: Pick<FactorFit, "betas">): BookExposure {
   return { subject, betas: Object.fromEntries(Object.entries(fit.betas).map(([k, c]) => [k, { beta: c.beta, t: c.t }])) };
@@ -110,14 +121,24 @@ function exposureClause(factors: FactorKey[], exposure: BookExposure) {
   return unclear ? `${exposure.subject} has ${unclear}` : null;
 }
 
-export type FactorLine = { ruleKey: string; eventId: string; date: string; label: string; factors: FactorKey[]; text: string };
+export type FactorLine = {
+  ruleKey: string;
+  eventId: string;
+  date: string;
+  label: string;
+  factors: FactorKey[];
+  /** "CPI Thu 8:30 · rates- and dollar-sensitive" */
+  head: string;
+  /** "the book is net short duration (β −0.12)", or null without an exposure. */
+  clause: string | null;
+  text: string;
+};
 
 /** "CPI Thu 8:30 · rates- and dollar-sensitive · the book is net short duration (β −0.12)". Without an exposure, the first two parts only. */
 export function factorLine(e: EconomicEvent, rule: ReleaseRule, exposure: BookExposure | null): FactorLine {
-  const parts = [`${rule.label} ${releaseWhen(e)}`, sensitivityLabel(rule.factors)];
+  const head = `${rule.label} ${releaseWhen(e)} · ${sensitivityLabel(rule.factors)}`;
   const clause = exposure ? exposureClause(rule.factors, exposure) : null;
-  if (clause) parts.push(clause);
-  return { ruleKey: rule.key, eventId: e.id, date: e.date, label: rule.label, factors: rule.factors, text: parts.join(" · ") };
+  return { ruleKey: rule.key, eventId: e.id, date: e.date, label: rule.label, factors: rule.factors, head, clause, text: clause ? `${head} · ${clause}` : head };
 }
 
 const eligible = (e: EconomicEvent, rule: ReleaseRule) => e.importance === null || e.importance >= rule.minImportance;
