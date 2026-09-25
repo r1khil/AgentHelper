@@ -20,6 +20,7 @@ import {
   Mic,
   Table2,
   Briefcase,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FUND_SCOPE_SLUG, ROLE_LABELS } from "@/lib/constants";
@@ -116,7 +117,10 @@ function SidebarBody({ user, teams, signOut }: Props) {
         { href: `${base}/models`, label: "Models", icon: Table2 },
         // Position sizes and P&L: leads of this team and fund-wide roles only. The fund view has Fund attribution above.
         ...(team && (fundWide || (user.role === "lead_analyst" && user.teamId === team.id))
-          ? [{ href: `${base}/attribution`, label: "Attribution", icon: ChartColumn }]
+          ? [
+              { href: `${base}/attribution`, label: "Attribution", icon: ChartColumn },
+              { href: `${base}/risk`, label: "Risk", icon: ShieldAlert },
+            ]
           : []),
       ]
     : [];
@@ -138,6 +142,7 @@ function SidebarBody({ user, teams, signOut }: Props) {
         <NavItem href="/" label="Today" icon={Home} active={pathname === "/"} />
         <NavItem href="/backtesting" label="Backtesting" icon={History} active={isActive("/backtesting")} />
         {fundWide && <NavItem href="/attribution" label="Fund attribution" icon={ChartNoAxesCombined} active={isActive("/attribution")} />}
+        {fundWide && <NavItem href="/risk" label="Fund risk" icon={ShieldAlert} active={isActive("/risk")} />}
       </nav>
 
       <div className="mt-4 px-3">

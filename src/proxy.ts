@@ -16,6 +16,10 @@ export async function proxy(request: NextRequest) {
       ["/dev/backtesting", "/api/dev/backtesting", "/api/dev/backtesting/ticker"].includes(request.nextUrl.pathname)) {
     return NextResponse.next({ request });
   }
+  // Synthetic risk preview, same rule; the real Risk pages and their CSV export stay authenticated.
+  if (process.env.NODE_ENV === "development" && process.env.RISK_PREVIEW === "1" && request.nextUrl.pathname === "/dev/risk") {
+    return NextResponse.next({ request });
+  }
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

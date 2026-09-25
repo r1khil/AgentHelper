@@ -2,7 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { jobRuns } from "@/db/schema";
-import { historyFrom, ledgerSymbols, loadLedger, syncHoldingsFromLedger } from "@/lib/attribution/store";
+import { ledgerSymbols, loadLedger, priceHistoryFrom, syncHoldingsFromLedger } from "@/lib/attribution/store";
 import { syncPrices, type SyncPricesResult } from "@/lib/prices";
 import { createJobReporter } from "./progress";
 
@@ -28,10 +28,11 @@ export async function runPricesJob(opts: { symbols?: string[]; budgetMs?: number
     const { inception } = await loadLedger(db);
     if (!inception) return finish({ ...base, status: "skipped", reason: "no ledger yet" });
     const symbols = opts.symbols ?? (await ledgerSymbols(db));
-    progress.step("sync prices", { symbols: symbols.length, from: historyFrom(inception) });
+    const from = priceHistoryFrom(inception);
+    progress.step("sync prices", { symbols: symbols.length, from });
     const synced = await syncPrices(db, {
       symbols,
-      from: historyFrom(inception),
+      from,
       budgetMs: opts.budgetMs,
       onProgress: (e) => progress.item("symbol", e.i, e.n, { symbol: e.symbol, ...(e.error ? { error: e.error } : { bars: e.bars }) }),
     });
