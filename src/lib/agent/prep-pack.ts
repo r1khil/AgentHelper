@@ -1,6 +1,8 @@
 import type { Source } from "@/lib/providers/types";
 import { PREP_SECTION_KEYS, type PrepPack, type PrepSection, type PrepSectionKey } from "./prep-types";
 
+export { extractJsonObject, repairJson } from "./json-repair";
+
 export const PREP_TITLES: Record<PrepSectionKey, string> = {
   last_quarter: "Last reported quarter",
   prior_guidance: "Guidance and outlook on record",
@@ -78,57 +80,6 @@ export function validatePrepPack(raw: unknown, known: Map<string, Source>, meta:
   const cited = new Set(sections.flatMap((s) => s.bullets.flatMap((b) => b.sourceIds)));
   const sources = [...known.values()].filter((s) => cited.has(s.id));
   return { pack: { reportDate: meta.reportDate, sections, sources, builtAt: meta.builtAt ?? new Date().toISOString(), model: meta.model }, dropped };
-}
-
-/**
- * Repair the JSON a model tends to produce: code fences, trailing commas, and an object cut off by
- * the output limit (unterminated string, unclosed arrays and objects). Returns the repaired text.
- */
-export function repairJson(raw: string): string {
-  let t = raw.replace(/```(?:json)?/gi, "").trim();
-  // Walk the text tracking string state so bracket balancing ignores braces inside strings.
-  const stack: string[] = [];
-  let inStr = false;
-  let esc = false;
-  let out = "";
-  for (const ch of t) {
-    out += ch;
-    if (inStr) {
-      if (esc) esc = false;
-      else if (ch === "\\") esc = true;
-      else if (ch === '"') inStr = false;
-      continue;
-    }
-    if (ch === '"') inStr = true;
-    else if (ch === "{" || ch === "[") stack.push(ch === "{" ? "}" : "]");
-    else if (ch === "}" || ch === "]") stack.pop();
-  }
-  if (inStr) out += '"';
-  // A dangling `"text":` or `,` before the cut leaves invalid JSON; trim back to the last complete value.
-  out = out.replace(/,\s*("[^"]*"\s*:\s*)?$/, "").replace(/("[^"]*"\s*:\s*)$/, "");
-  while (stack.length) out += stack.pop();
-  t = out.replace(/,(\s*[}\]])/g, "$1");
-  return t;
-}
-
-/** Lenient JSON extraction: the object starting at the first `{`, repaired when the model cut it short. */
-export function extractJsonObject(text: string): unknown {
-  const start = text.indexOf("{");
-  if (start < 0) return null;
-  const end = text.lastIndexOf("}");
-  const candidates = end > start ? [text.slice(start, end + 1), text.slice(start)] : [text.slice(start)];
-  for (const c of candidates) {
-    try {
-      return JSON.parse(c);
-    } catch {
-      try {
-        return JSON.parse(repairJson(c));
-      } catch {
-        /* try the next candidate */
-      }
-    }
-  }
-  return null;
 }
 
 export type PrepCandidate = { id: string; reportDate: string; status: string; prepPackAt: Date | null; prepPackError: string | null };

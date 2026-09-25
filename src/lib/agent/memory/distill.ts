@@ -4,6 +4,7 @@ import type { Source } from "@/lib/providers/types";
 import { collectSources } from "@/lib/agent/citations";
 import { splitAssistantParts } from "@/lib/agent/turn";
 import { agentModelWithFallback } from "@/lib/agent/definition";
+import { repairJson } from "@/lib/agent/json-repair";
 import { MARKET_FACT_TTL_DAYS, rememberMemory } from "./store";
 import type { AgentMetadata } from "@/lib/trace/events";
 
@@ -14,26 +15,56 @@ export type Distilled = {
   nextQuestions: string[];
 };
 
-const INSTRUCTIONS = `You distill one answered research question into durable notes for a student investment fund's research agent. Respond with JSON only, shape:
+const INSTRUCTIONS = `You distill one answered research question into durable notes for a student investment fund's research agent. Respond with one JSON object only (no code fences, no text around it), shape:
 {"summary": "", "facts": [{"text": "", "sourceIds": [], "durable": false}], "lessons": [""], "nextQuestions": [""]}
 Rules:
-- summary: one or two sentences: what was asked and what the evidence showed. Plain, past tense, no advice.
-- facts: up to six company or market facts the answer established, each with the source ids (from the SOURCES list only) that support it. Numbers keep their unit and period. durable is true for structural facts that rarely change (fiscal year end, XBRL concept names, segment names, reporting conventions, where guidance is disclosed) and false for period figures, prices, guidance, and news.
-- lessons: up to three notes that would help the agent use its tools better next time (e.g. "AXP: revenue is RevenuesNetOfInterestExpense in XBRL", "the 8-K EX-99.1 has the segment table", "no Drive earnings update existed for Q2 2026"). Skip when there is nothing new.
-- nextQuestions: up to three evidence-gathering questions a student analyst might ask next about this company. Questions only; no recommendations.
+- summary: one or two sentences, at most 50 words: what was asked and what the evidence showed. Plain, past tense, no advice.
+- facts: up to six company or market facts the answer established, each under 35 words, with the source ids (from the SOURCES list only) that support it. Numbers keep their unit and period. durable is true for structural facts that rarely change (fiscal year end, XBRL concept names, segment names, reporting conventions, where guidance is disclosed) and false for period figures, prices, guidance, and news.
+- lessons: up to three one-line notes that would help the agent use its tools better next time (e.g. "AXP: revenue is RevenuesNetOfInterestExpense in XBRL", "the 8-K EX-99.1 has the segment table", "no Drive earnings update existed for Q2 2026"). Skip when there is nothing new.
+- nextQuestions: up to three one-line evidence-gathering questions a student analyst might ask next about this company. Questions only; no recommendations.
 - Never record the student's interpretation, opinion, thesis or conclusion, anything the assistant declined to do, or anything without a source id in the list. Empty arrays are fine.`;
 
-/** Parse the distiller's JSON leniently; null when unusable. */
-export function parseDistilled(raw: string): Distilled | null {
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-  if (start < 0 || end <= start) return null;
-  let j: Record<string, unknown>;
+/**
+ * The distiller's JSON object, from inside code fences or prose. Output cut off by the token limit is
+ * repaired, and the value being written at the cut (the last key's final item, or the whole last
+ * string) is dropped so a half-written fact never reaches memory.
+ */
+function readDistillation(raw: string): Record<string, unknown> | null {
+  const text = raw.replace(/```(?:json)?/gi, "");
+  const start = text.indexOf("{");
+  if (start < 0) return null;
+  const end = text.lastIndexOf("}");
+  const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+  if (end > start) {
+    const whole = text.slice(start, end + 1);
+    for (const c of [whole, whole.replace(/,(\s*[}\]])/g, "$1")]) {
+      try {
+        const j: unknown = JSON.parse(c);
+        if (isObject(j)) return j;
+      } catch {
+        /* truncated or malformed; try the repair below */
+      }
+    }
+  }
+  let j: unknown;
   try {
-    j = JSON.parse(raw.slice(start, end + 1)) as Record<string, unknown>;
+    j = JSON.parse(repairJson(text.slice(start)));
   } catch {
     return null;
   }
+  if (!isObject(j)) return null;
+  const last = Object.keys(j).at(-1);
+  if (last !== undefined) {
+    if (Array.isArray(j[last])) j[last] = (j[last] as unknown[]).slice(0, -1);
+    else delete j[last];
+  }
+  return j;
+}
+
+/** Parse the distiller's JSON leniently; null when unusable. */
+export function parseDistilled(raw: string): Distilled | null {
+  const j = readDistillation(raw);
+  if (!j) return null;
   const str = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
   const strs = (v: unknown, n: number, max: number) => (Array.isArray(v) ? v.map((x) => str(x, max)).filter(Boolean).slice(0, n) : []);
   const facts = Array.isArray(j.facts)
@@ -41,7 +72,8 @@ export function parseDistilled(raw: string): Distilled | null {
         .map((f) => {
           if (!f || typeof f !== "object") return null;
           const o = f as Record<string, unknown>;
-          const text = str(o.text, 400);
+          // The answer's inline [src:id] markers sometimes get copied in; the ids live in sourceIds.
+          const text = str(typeof o.text === "string" ? o.text.replace(/\s*\[src:[^\]]*\]/g, "") : "", 400);
           if (!text) return null;
           return { text, sourceIds: strs(o.sourceIds, 6, 80), durable: o.durable === true };
         })
@@ -84,12 +116,22 @@ export async function distillTurn(p: { chat: { id: string; teamId: string; holdi
   const answerText = answer.map((x) => x.text).join("\n\n").slice(0, 12_000);
   const list = [...sources.values()].map((s) => `- ${s.id}: ${s.title}${s.publishedAt ? ` (${s.publishedAt.slice(0, 10)})` : ""}`).join("\n");
   const { model, modelId } = await agentModelWithFallback();
-  const { text } = await generateText({ model, instructions: INSTRUCTIONS, prompt: `QUESTION:\n${p.question.slice(0, 2000)}\n\nANSWER:\n${answerText}\n\nSOURCES:\n${list}`, maxOutputTokens: 1200, maxRetries: 1 });
+  // Reasoning models (Ling) spend output tokens thinking before the JSON; keep that low and leave room for both.
+  const { text, finishReason, usage } = await generateText({
+    model,
+    instructions: INSTRUCTIONS,
+    prompt: `QUESTION:\n${p.question.slice(0, 2000)}\n\nANSWER:\n${answerText}\n\nSOURCES:\n${list}`,
+    providerOptions: { openrouter: { reasoning: { effort: "low" } } },
+    maxOutputTokens: 4000,
+    maxRetries: 1,
+  });
   const d = parseDistilled(text);
+  const tokens = `${usage.outputTokens ?? "?"} output tokens, ${usage.outputTokenDetails?.reasoningTokens ?? "?"} reasoning`;
   if (!d) {
-    console.error("[memory] distillation was not parseable:", text.replace(/\s+/g, " ").slice(0, 400));
+    console.error(`[memory] distillation was not parseable (finish ${finishReason}, ${tokens}):`, text.replace(/\s+/g, " ").slice(0, 400));
     return null;
   }
+  if (finishReason === "length") console.warn(`[memory] distillation hit the output limit (${tokens}); kept the complete part`);
 
   const scope = p.chat.holdingId ? "holding" : "team";
   const base = { scope, teamId: p.chat.teamId, holdingId: p.chat.holdingId, sourceChatId: p.chat.id, model: modelId } as const;

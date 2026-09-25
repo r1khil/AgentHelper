@@ -25,6 +25,48 @@ describe("parseDistilled", () => {
     expect(parseDistilled("no json here")).toBeNull();
     expect(parseDistilled('{"summary":"","facts":[]}')).toBeNull();
   });
+  it("reads JSON inside a code fence, trailing commas and all", () => {
+    const d = parseDistilled('```json\n{"summary":"Asked about Q2.","facts":[{"text":"Revenue $19.6B in Q2 2026","sourceIds":["xbrl-1"],"durable":false},],"lessons":[],"nextQuestions":["What did margins do?",],}\n```');
+    expect(d).toEqual({ summary: "Asked about Q2.", facts: [{ text: "Revenue $19.6B in Q2 2026", sourceIds: ["xbrl-1"], durable: false }], lessons: [], nextQuestions: ["What did margins do?"] });
+  });
+  it("keeps the complete facts of output cut off by the token limit and drops the one being written", () => {
+    // Ling on 2026-09-25: reasoning ate half of maxOutputTokens and the fenced JSON stopped mid-fact.
+    const cut = `\`\`\`json
+{
+  "summary": "For the 7-day period ending 2026-09-24 close, the Fund returned +0.16% versus the S&P 500 at +0.87%.",
+  "facts": [
+    {
+      "text": "Fund returned +0.16% vs S&P 500 price return of +0.87% over 5 trading days (2026-09-17 to 2026-09-24).",
+      "sourceIds": ["attr-u9a52u"],
+      "durable": false
+    },
+    {
+      "text": "Decomposition: allocation -9 bps, selection -73 bps, interaction -10 bps. [src:attr-u9a52u]",
+      "sourceIds": ["attr-u9a52u"],
+      "durable": false
+    },
+    {
+      "text": "Bottom contributors: NEE -21 bps (-6.96%), CI -14 bps (-3.80%).",
+      "sourceIds": ["attr-u9a52u"],
+      "durable":`;
+    const d = parseDistilled(cut)!;
+    expect(d.summary).toBe("For the 7-day period ending 2026-09-24 close, the Fund returned +0.16% versus the S&P 500 at +0.87%.");
+    expect(d.facts.map((f) => f.text)).toEqual(["Fund returned +0.16% vs S&P 500 price return of +0.87% over 5 trading days (2026-09-17 to 2026-09-24).", "Decomposition: allocation -9 bps, selection -73 bps, interaction -10 bps."]);
+    expect(d.facts[1].sourceIds).toEqual(["attr-u9a52u"]);
+    expect(d.lessons).toEqual([]);
+  });
+  it("never keeps a half-written fact text", () => {
+    const d = parseDistilled('```json\n{"summary":"Asked about Q2.","facts":[{"text":"Revenue $19.6B in Q2 2026","sourceIds":["x"],"durable":false},{"text":"Top contributors: META +53 bps (+14')!;
+    expect(d.facts.map((f) => f.text)).toEqual(["Revenue $19.6B in Q2 2026"]);
+  });
+  it("drops only the last lesson or question when the cut lands there", () => {
+    const d = parseDistilled('{"summary":"s","facts":[{"text":"f","sourceIds":["x"],"durable":true}],"lessons":["one","two is cut sh')!;
+    expect(d).toEqual({ summary: "s", facts: [{ text: "f", sourceIds: ["x"], durable: true }], lessons: ["one"], nextQuestions: [] });
+  });
+  it("returns null when the cut lands inside the summary", () => {
+    expect(parseDistilled('```json\n{\n  "summary": "For the 7-day period ending 2026-09-24 close, the Fund ret')).toBeNull();
+    expect(parseDistilled("```json\n{")).toBeNull();
+  });
   it("caps list lengths", () => {
     const d = parseDistilled(JSON.stringify({ summary: "s", facts: Array.from({ length: 10 }, (_, i) => ({ text: `f${i}`, sourceIds: [] })), lessons: ["a", "b", "c", "d"], nextQuestions: ["1", "2", "3", "4"] }));
     expect(d!.facts).toHaveLength(6);
