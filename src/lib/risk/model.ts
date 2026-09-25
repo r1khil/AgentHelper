@@ -98,6 +98,13 @@ export type HoldingRisk = RiskHolding & {
   riskShare: number;
   /** Share of tracking-error variance; adds up to 100% with the benchmark ETFs' shares. */
   activeRiskShare: number | null;
+  /** Points of annualized tracking error from this holding (activeRiskShare × tracking error); adds up to tracking error with the benchmark legs. */
+  teContribution: number | null;
+  /**
+   * Marginal tracking error, annualized: ∂TE/∂wᵢ = (Σa)ᵢ ÷ TE. Tracking error added per unit of weight moved into this
+   * holding from cash, so × 0.01 is the change for 1 percentage point.
+   */
+  marginalTe: number | null;
 };
 
 export type SectorRisk = {
@@ -163,7 +170,7 @@ export type RiskReport = {
     invested: number;
   };
   /** Benchmark ETF legs of the tracking-error calculation (negative active weights). */
-  benchmarkLegs: { sector: GicsSector; etf: string; weight: number; activeRiskShare: number }[];
+  benchmarkLegs: { sector: GicsSector; etf: string; weight: number; activeRiskShare: number; teContribution: number; marginalTe: number }[];
   correlation: { tickers: string[]; matrix: number[][] };
   realized: RealizedRisk | null;
   coverage: Coverage[];
@@ -272,6 +279,11 @@ export function buildRiskReport(input: RiskInput): RiskReport {
     notices.push("No S&P 500 sector weights are saved, so tracking error and active weights cannot be calculated.");
   }
 
+  // Marginal tracking error per unit of weight, annualized: (Σa)ᵢ ÷ TE_daily × √252.
+  const sqrtYear = Math.sqrt(TRADING_DAYS);
+  const marginalTe = (i: number) => (te && te.sigma > 0 ? (te.marginal[i] / te.sigma) * sqrtYear : te ? 0 : null);
+  const teContribution = (i: number) => (te ? te.contribution[i] * sqrtYear : null);
+
   const holdings: HoldingRisk[] = input.holdings.map((h, i) => {
     const c = coverage[i];
     const sd = Math.sqrt(cov[i][i]);
@@ -286,6 +298,8 @@ export function buildRiskReport(input: RiskInput): RiskReport {
       contribution: annualizeVol(dec.contribution[i]),
       riskShare: dec.share[i],
       activeRiskShare: te ? te.share[i] : null,
+      teContribution: teContribution(i),
+      marginalTe: marginalTe(i),
     };
   });
   holdings.sort((a, b) => b.riskShare - a.riskShare);
@@ -321,7 +335,7 @@ export function buildRiskReport(input: RiskInput): RiskReport {
       if (!(bench[s] ?? 0)) continue;
       const b = bucket(s);
       b.activeRiskShare = (b.activeRiskShare ?? 0) + te.share[etfIdx(s)];
-      benchmarkLegs.push({ sector: s, etf: ETF_BY_SECTOR[s], weight: -(bench[s] ?? 0), activeRiskShare: te.share[etfIdx(s)] });
+      benchmarkLegs.push({ sector: s, etf: ETF_BY_SECTOR[s], weight: -(bench[s] ?? 0), activeRiskShare: te.share[etfIdx(s)], teContribution: teContribution(etfIdx(s))!, marginalTe: marginalTe(etfIdx(s))! });
     }
   }
   if (input.cash.weight > 0) bucket("cash").weight += input.cash.weight;

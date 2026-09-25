@@ -6,6 +6,7 @@ import { RangeControlGroup, rangeControlClass } from "@/components/charts/primit
 import { fmtDate } from "@/lib/format";
 import { LOOKBACKS, MIN_OBSERVATIONS, MIN_REALIZED_DAYS, type LookbackKey, type RiskReport } from "@/lib/risk/model";
 import { Explained, InfoTip } from "../attribution/info-tip";
+import { ActiveRiskSection } from "./active-risk";
 import { CorrelationHeatmap } from "./correlation-heatmap";
 import { DrawdownChart } from "./drawdown-chart";
 import { RISK_EXPLAIN } from "./explainers";
@@ -124,7 +125,7 @@ export function RiskView({
       )}
       <div className="mb-6" />
 
-      <SectionTitle aside="Today's weights">
+      <SectionTitle aside={<>Today&apos;s weights · <Link href={basePath.replace(/\/risk$/, "/exposure")} className="hover:text-foreground hover:underline">by active weight on Exposure →</Link></>}>
         <Explained label="Sector exposure and where risk comes from">{RISK_EXPLAIN.riskShare}</Explained>
       </SectionTitle>
       <div className="mb-6">
@@ -146,6 +147,8 @@ export function RiskView({
       <div className="mb-6">
         <HoldingsRiskTable rows={rows} teams={teams} totals={{ weight: p.invested, vol: p.vol, riskRows: r.holdings.length }} showActive={p.trackingError !== null} />
       </div>
+
+      <ActiveRiskSection report={r} teams={teams} benchmarkLabel={benchmarkLabel} transparency={transparency} basePath={basePath} showAll={showAll} download={download("active-risk", "Active risk")} />
 
       <section aria-label="Correlation and realized risk" className="mb-6 grid gap-4 lg:grid-cols-12">
         <Card className="gap-3 p-4 lg:col-span-7">
@@ -201,6 +204,7 @@ export function RiskView({
             {download("returns", "Daily returns")}
             {download("covariance", "Covariance matrix")}
             {download("positions", "Positions and results")}
+            {download("active-risk", "Active risk")}
           </p>
           <p>
             To check volatility in Excel: put the weights (positions file, <code>weight</code> column) in a column, the covariance matrix beside it, and compute
