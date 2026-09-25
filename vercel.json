@@ -2,6 +2,7 @@
   "crons": [
     { "path": "/api/cron/close", "schedule": "0 23 * * 1-5" },
     { "path": "/api/cron/prices", "schedule": "30 23 * * 1-5" },
+    { "path": "/api/cron/daily-brief/retry", "schedule": "0 2 * * 2-6" },
     { "path": "/api/cron/morning", "schedule": "0 14 * * 1-5" },
     { "path": "/api/cron/weekly", "schedule": "0 13 * * 0" }
   ]

@@ -26,3 +26,31 @@ export function slotSkipResponse(req: Request): Response | null {
   const reason = slotSkipReason(new URL(req.url).searchParams.get("at"));
   return reason ? Response.json({ status: "skipped", reason }) : null;
 }
+
+const minutesNY = (now: Date) => {
+  const ny = DateTime.fromJSDate(now).setZone(NY);
+  return ny.hour * 60 + ny.minute;
+};
+const clock = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+
+/** Retries of the 5:15 p.m. brief email act from 5:25 p.m. New York time until midnight, when the session date moves on. */
+export const BRIEF_RETRY_FROM_MIN = 17 * 60 + 25;
+/** A scheduled send holds the email for closes that have not loaded until 6:30 p.m.; after that it goes out with a note. */
+export const BRIEF_WAIT_FOR_CLOSES_UNTIL_MIN = 18 * 60 + 30;
+/** Once the 5:30 p.m. retry has failed too, the brief counts as late and the admins hear about it. */
+export const BRIEF_LATE_FROM_MIN = 17 * 60 + 30;
+/** The evening's last retry. */
+export const BRIEF_LAST_TRY_MIN = 23 * 60 + 45;
+
+/**
+ * Supabase pg_cron calls the brief's retry every 15 minutes across both UTC offsets New York can have (and a
+ * Vercel cron once as a backstop); this lets through only the calls inside the evening window. Null = act.
+ */
+export function briefRetrySkipReason(now: Date = new Date()): string | null {
+  const m = minutesNY(now);
+  return m >= BRIEF_RETRY_FROM_MIN ? null : `retries run from ${clock(BRIEF_RETRY_FROM_MIN)} New York time (it is ${clock(m)} in New York)`;
+}
+
+export const mayWaitForCloses = (now: Date = new Date()) => minutesNY(now) < BRIEF_WAIT_FOR_CLOSES_UNTIL_MIN;
+export const briefIsLate = (now: Date = new Date()) => minutesNY(now) >= BRIEF_LATE_FROM_MIN;
+export const isLastBriefTry = (now: Date = new Date()) => minutesNY(now) >= BRIEF_LAST_TRY_MIN;

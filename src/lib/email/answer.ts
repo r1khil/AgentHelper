@@ -193,6 +193,5 @@ export async function answerEmail(ev: InboundEvent, opts: { dryRun?: (text: stri
 
 /** The inbox's id, for checking that a webhook is about Hoot's inbox. */
 export async function hootInboxId(): Promise<string | null> {
-  const key = process.env.OPENMAIL_API_KEY;
-  return key && process.env.OPENMAIL_INBOX ? resolveOpenMailInbox(key).catch(() => null) : null;
+  return process.env.OPENMAIL_API_KEY && process.env.OPENMAIL_INBOX ? resolveOpenMailInbox().catch(() => null) : null;
 }
