@@ -2,6 +2,7 @@ import type { AttributionSeries } from "@/lib/attribution/attribution";
 import { latestPositions } from "@/lib/attribution/ledger";
 import { ETF_BY_SECTOR, GICS_SECTORS, type GicsSector } from "@/lib/attribution/sectors";
 import type { DateSeries } from "@/lib/attribution/types";
+import { FACTOR_ETFS } from "./factor-symbols";
 import { LOOKBACKS, MARKET, RISK_FREE, type LookbackKey, type RealizedInput, type RiskInput } from "./model";
 
 export type RiskScope = { kind: "fund" } | { kind: "team"; teamId: string; sectors: GicsSector[] };
@@ -39,11 +40,11 @@ export function currentBenchmarkWeights(series: AttributionSeries, sectors: read
   return total > 0 ? Object.fromEntries(keep.map((k) => [k, drifted[k] / total])) : null;
 }
 
-/** The last N + 1 market closes on or before `asOf` give N daily total returns for each holding, sector ETF and the market. */
+/** The last N + 1 market closes on or before `asOf` give N daily total returns for each holding, sector ETF, the market and the factor ETFs. */
 export function buildReturnWindow(prices: DateSeries, dividends: DateSeries, tickers: string[], asOf: string, lookback: LookbackKey) {
   const closeDates = sortedDates(prices.get(MARKET)).filter((d) => d <= asOf).slice(-(LOOKBACKS[lookback].days + 1));
   const dates = closeDates.slice(1);
-  const symbols = [...new Set([...tickers, ...GICS_SECTORS.map((s) => ETF_BY_SECTOR[s]), MARKET])];
+  const symbols = [...new Set([...tickers, ...GICS_SECTORS.map((s) => ETF_BY_SECTOR[s]), MARKET, ...FACTOR_ETFS])];
   return { dates, returns: new Map(symbols.map((sym) => [sym, dates.map((d, t) => totalReturn(prices, dividends, sym, closeDates[t], d))])) };
 }
 
