@@ -119,8 +119,14 @@ export function buildPortfolioDays(input: {
       let close = prices.get(ticker)?.get(date);
       let priced: DayPosition["priced"] = "close";
       if (close === undefined) {
-        if (prevClose !== undefined) { close = prevClose; priced = "carried"; quality.stale.push({ ticker, date }); }
-        else { close = lastPrice ?? 0; priced = "trade"; if (!quality.unpriced.includes(ticker)) quality.unpriced.push(ticker); }
+        // A trade that day is a fresher price than the last close, which can be from before the position was even reopened.
+        if (lastPrice !== undefined) {
+          close = lastPrice;
+          priced = "trade";
+          if (prevClose !== undefined) quality.stale.push({ ticker, date });
+          else if (!quality.unpriced.includes(ticker)) quality.unpriced.push(ticker);
+        } else if (prevClose !== undefined) { close = prevClose; priced = "carried"; quality.stale.push({ ticker, date }); }
+        else { close = 0; priced = "trade"; if (!quality.unpriced.includes(ticker)) quality.unpriced.push(ticker); }
       }
       const startValue = sharesStart * (prevClose ?? close);
 

@@ -30,7 +30,7 @@ export function qualityNotices(loaded: LoadedSeries, period: ResolvedPeriod, opt
 
   const inPeriod = <T extends { date: string }>(xs: T[]) => xs.filter((x) => x.date > period.start && x.date <= period.end);
   const stale = [...new Set(inPeriod(loaded.quality.ledger.stale).map((s) => s.ticker))];
-  if (stale.length) out.push({ text: `Missing closes were carried forward for ${stale.join(", ")}.` });
+  if (stale.length) out.push({ text: `Missing closes for ${stale.join(", ")} were filled with that day's trade price or the prior close.` });
   if (loaded.quality.ledger.unpriced.length) out.push({ text: `No price history yet for ${loaded.quality.ledger.unpriced.join(", ")}; valued at trade price until the next price run.` });
   const staleEtf = [...new Set(inPeriod(loaded.quality.benchmark.staleEtf).map((s) => s.ticker))];
   if (staleEtf.length) out.push({ text: `Benchmark closes are missing for ${staleEtf.join(", ")}.` });

@@ -173,6 +173,20 @@ describe("buildPortfolioDays", () => {
     expect(quality.stale).toEqual([{ ticker: "AAA", date: D[1] }]);
   });
 
+  it("values a trade day with no close at the trade price, not an older close", () => {
+    // Sold at 50, bought back at 100 on a day with no close: the old 50 close must not value the new shares.
+    const gappy = series({ AAA: { [D[0]]: 50, [D[1]]: 50, [D[3]]: 100 } });
+    const { days, quality } = buildPortfolioDays({
+      trades: [buy(D[0], "AAA", 10, 50), sell(D[1], "AAA", 10, 50), buy(D[2], "AAA", 10, 100)],
+      cashFlows: [deposit(D[0], 1000)], prices: gappy, dividends: new Map(), days: D,
+    });
+    expect(days[2].positions[0].priced).toBe("trade");
+    expect(days[2].ret).toBe(0);
+    expect(days[3].ret).toBe(0);
+    expect(quality.stale).toEqual([{ ticker: "AAA", date: D[2] }]);
+    expect(quality.unpriced).toEqual([]);
+  });
+
   it("flags an oversell", () => {
     const { quality } = buildPortfolioDays({
       trades: [buy(D[0], "AAA", 10, 100), sell(D[1], "AAA", 11, 110)], cashFlows: [deposit(D[0], 1000)], prices, dividends: new Map(), days: D,

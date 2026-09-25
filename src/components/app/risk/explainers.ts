@@ -102,7 +102,7 @@ export const RISK_EXPLAIN = {
   realized:
     "Backward-looking (ex-post) risk measured from the Fund's own daily NAV returns in the ledger, net of deposits and withdrawals. It reflects what the Fund actually held each day, so it differs from the forward-looking numbers when positions have changed.",
   sharpe: "Annualized Sharpe ratio: mean daily return above the 13-week Treasury bill (^IRX) × 252, divided by the standard deviation of those excess returns × √252.",
-  drawdown: "Decline from the highest value reached so far. The Fund's line uses its daily NAV returns; the S&P 500's uses SPY total return over the same days.",
+  drawdown: "Decline from the highest value reached within the lookback window. The Fund's line uses its daily NAV returns; the S&P 500's uses SPY total return over the same days.",
   coverage:
     "How many days in the window each symbol has its own return for. A holding with fewer than 60 is modeled with its sector ETF (a proxy); a holding with a few missing days has those days filled with its sector ETF's return that day.",
 } as const;

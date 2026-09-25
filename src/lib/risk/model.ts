@@ -209,8 +209,9 @@ function realizedRisk(input: RealizedInput, from: string, lookbackDays: number):
   const excess = withRf.map((x) => x.r - x.rf!);
   const sd = stdev(excess);
 
-  const dd = drawdowns(all.map((x) => x.r));
-  const mdd = drawdowns(all.map((x) => (finite(x.m) ? x.m : 0)));
+  // Over the lookback window like every other realized figure, so the card and chart match the window picked.
+  const dd = drawdowns(r);
+  const mdd = drawdowns(win.map((x) => (finite(x.m) ? x.m : 0)));
   return {
     from: win[0]?.d ?? from,
     to: win.at(-1)?.d ?? from,
@@ -223,11 +224,11 @@ function realizedRisk(input: RealizedInput, from: string, lookbackDays: number):
     sharpe: enough && withRf.length >= MIN_REALIZED_DAYS && sd > 0 ? (mean(excess) * TRADING_DAYS) / (sd * Math.sqrt(TRADING_DAYS)) : null,
     riskFreeDaily: withRf.length ? mean(withRf.map((x) => x.rf!)) : null,
     drawdown: {
-      dates: all.map((x) => x.d),
+      dates: win.map((x) => x.d),
       portfolio: dd.series,
       market: mdd.series,
       max: dd.max,
-      maxDate: dd.maxAt >= 0 ? all[dd.maxAt].d : null,
+      maxDate: dd.maxAt >= 0 ? win[dd.maxAt].d : null,
       current: dd.current,
       marketMax: mdd.max,
     },
@@ -341,7 +342,8 @@ export function buildRiskReport(input: RiskInput): RiskReport {
       benchmarkLegs.push({ sector: s, etf: ETF_BY_SECTOR[s], weight: -(bench[s] ?? 0), activeRiskShare: te.share[etfIdx(s)], teContribution: teContribution(etfIdx(s))!, marginalTe: marginalTe(etfIdx(s))! });
     }
   }
-  if (input.cash.weight > 0) bucket("cash").weight += input.cash.weight;
+  // Negative cash (overdrawn) is kept too, or holdings would add to more than 100% with nothing offsetting them.
+  if (input.cash.weight !== 0) bucket("cash").weight += input.cash.weight;
   const sectors = [...buckets.values()]
     .map((b) => ({ ...b, active: b.benchWeight === null ? null : b.weight - b.benchWeight }))
     .sort((a, b) => (a.key === "cash" ? 1 : b.key === "cash" ? -1 : b.weight + (b.benchWeight ?? 0) - (a.weight + (a.benchWeight ?? 0))));

@@ -97,6 +97,33 @@ describe("buildRiskReport", () => {
     expect(full.realized!.beta).toBeCloseTo(1, 10);
     expect(full.realized!.trackingError).toBeCloseTo(0, 10);
   });
+  it("measures drawdown over the lookback window, not since inception", () => {
+    // 80 realized days before the window opens, with a 30% fall on one of them.
+    const early = Array.from({ length: 80 }, (_, i) => new Date(Date.UTC(2025, 9, 13 + i)).toISOString().slice(0, 10));
+    const all = [...early, ...dates];
+    const port = [...early.map((_, i) => (i === 5 ? -0.3 : 0)), ...market];
+    const r = buildRiskReport(input({ realized: { dates: all, portfolio: port, benchmark: port, market: port, riskFree: Array(all.length).fill(0.0001) } }));
+    expect(r.realized!.drawdown.dates[0]).toBe(dates[0]);
+    expect(r.realized!.drawdown.dates).toHaveLength(r.realized!.days);
+    expect(r.realized!.drawdown.max).toBeGreaterThan(-0.3);
+    expect(r.realized!.drawdown.marketMax).toBeGreaterThan(-0.3);
+  });
+
+  it("keeps negative cash so sector weights still add to 100%", () => {
+    const r = buildRiskReport(
+      input({
+        cash: { value: -100_000, weight: -0.1 },
+        holdings: [
+          { ticker: "AAA", name: "A", teamId: "t1", sector: "information_technology", value: 660_000, weight: 0.66 },
+          { ticker: "BBB", name: "B", teamId: "t2", sector: "financials", value: 440_000, weight: 0.44 },
+        ],
+      }),
+    );
+    expect(r.sectors.find((s) => s.key === "cash")!.weight).toBeCloseTo(-0.1, 12);
+    expect(r.sectors.reduce((s, x) => s + x.weight, 0)).toBeCloseTo(1, 10);
+    expect(r.sectors.reduce((s, x) => s + (x.active ?? 0), 0)).toBeCloseTo(0, 10);
+  });
+
   it("splits tracking error into contributions that add up, and its marginal matches a recomputation", () => {
     const r = buildRiskReport(input());
     const te = r.portfolio.trackingError!;
