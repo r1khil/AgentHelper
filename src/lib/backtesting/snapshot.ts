@@ -11,7 +11,7 @@ export function snapshotPositions(
   }[],
   // A team's rows carry fund-level weights, so its sleeve is normalized to 100% with no cash.
   { sleeve = false }: { sleeve?: boolean } = {},
-): { positions: Position[]; savedWeightTotal: number } {
+): { positions: Position[]; savedWeightTotal: number; sleeve: boolean } {
   if (!rows.length)
     throw new Error(
       "No active holdings. Add holdings and record their position sizes first.",
@@ -35,6 +35,7 @@ export function snapshotPositions(
   const base = sleeve ? total : 100;
   return {
     savedWeightTotal: total,
+    sleeve,
     positions: [
       ...rows.map((r) => ({
         id: r.id,

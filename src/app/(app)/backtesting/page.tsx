@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { DateTime } from "luxon";
-import { requireOnboardedUser } from "@/lib/auth";
+import { canManageTeam, isFundWide, requireOnboardedUser } from "@/lib/auth";
 import { loadSnapshot } from "@/lib/backtesting/load";
 import { BacktestingWorkspace } from "@/components/app/backtesting/workspace";
 import { PageHeader } from "@/components/app/page-header";
@@ -28,11 +28,18 @@ export default async function BacktestingPage() {
     );
   }
   const end = DateTime.now().setZone(NY).minus({ days: 1 });
+  // Realized returns live on Attribution, which only execs/admins (fund) and team leads (team) may open.
+  const realizedHref = isFundWide(user)
+    ? "/attribution"
+    : user.team && canManageTeam(user, user.team.id)
+      ? `/t/${user.team.slug}/attribution`
+      : undefined;
   return (
     <BacktestingWorkspace
       snapshot={snapshot}
       defaultFrom={end.minus({ months: 3 }).toISODate()!}
       defaultTo={end.toISODate()!}
+      realizedHref={realizedHref}
     />
   );
 }

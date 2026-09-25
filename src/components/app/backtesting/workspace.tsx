@@ -19,16 +19,21 @@ import {
   normalizeScenarioTicker,
   withAddedCompanies,
 } from "@/lib/backtesting/scenario";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePageContext } from "@/components/app/hoot/page-context";
 
 const pct = (v: number | null) =>
   v === null ? "—" : `${(v * 100).toFixed(2)}%`;
+// Round half away from zero to the displayed 0.01, so ties are symmetric and -0 never shows as "+0.00".
+const shown = (v: number) => (Math.sign(v) * Math.round(Math.abs(v) * 10000)) / 10000 || 0;
 const pp = (v: number | null) => {
   if (v === null) return "—";
-  const rounded = Math.round(v * 10000) / 100;
-  return `${rounded >= 0 ? "+" : ""}${rounded.toFixed(2)} pp`;
+  const rounded = shown(v) * 100;
+  return `${rounded > 0 ? "+" : ""}${rounded.toFixed(2)} pp`;
 };
+/** One name per series, used by every card, chart, select and table. */
+const SERIES = { original: "Current replay", modified: "Modified replay" } as const;
 const tone = (v: number) =>
   v > 1e-12 ? "text-up" : v < -1e-12 ? "text-down" : "text-muted-foreground";
 const cell = "px-3 py-2.5 text-right tnum whitespace-nowrap";
@@ -52,12 +57,15 @@ export function BacktestingWorkspace({
   defaultTo,
   endpoint = "/api/backtesting",
   tickerEndpoint = "/api/backtesting/ticker",
+  realizedHref,
 }: {
   snapshot: Snapshot;
   defaultFrom: string;
   defaultTo: string;
   endpoint?: string;
   tickerEndpoint?: string;
+  /** Attribution page with this portfolio's realized return, when the viewer may open it. */
+  realizedHref?: string;
 }) {
   const [weights, setWeights] = useState(() => initialWeights(snapshot));
   const [edited, setEdited] = useState<Set<string>>(() => new Set());
@@ -229,14 +237,16 @@ export function BacktestingWorkspace({
     <>
       <PageHeader
         title="Backtesting"
-        description="Compare your current allocation with a modified copy, one trading day at a time."
+        description="Replay today's portfolio weights over past prices and compare them with a modified copy."
       />
       <Card className="mb-5 gap-3 p-4 text-sm">
         <div className="font-medium">{snapshot.scope}</div>
         <p className="text-muted-foreground">
-          Invested holdings total {snapshot.savedWeightTotal.toFixed(2)}%; uninvested cash is {((snapshot.positions.find((p) => p.kind === "cash")?.weight ?? 0) * 100).toFixed(2)}%.
-          Cash earns 0% by default, and no weights are redistributed. The original is a snapshot of current holdings, not
-          historical holdings. Added or dropped companies affect only the modified copy and never update your saved portfolio.
+          {snapshot.sleeve
+            ? `This team’s holdings total ${snapshot.savedWeightTotal.toFixed(2)}% of the Fund; the replay rescales them to 100% of this portfolio, with no cash.`
+            : `Invested holdings total ${snapshot.savedWeightTotal.toFixed(2)}%; uninvested cash is ${((snapshot.positions.find((p) => p.kind === "cash")?.weight ?? 0) * 100).toFixed(2)}%. Cash earns 0% by default.`}{" "}
+          No weights are redistributed. Added or dropped companies affect only the modified copy and never update your
+          saved portfolio. Results are a hypothetical replay of these weights, not realized performance.
         </p>
         <p className="text-xs text-muted-foreground">
           Fixed weights are rebalanced daily · USD total returns · Dividends
@@ -332,12 +342,12 @@ export function BacktestingWorkspace({
             <div className="mt-3 max-h-80 overflow-auto rounded-md border">
               <table className="w-full text-sm">
                 <caption className="sr-only">
-                  Original and modified portfolio weights
+                  Current and modified portfolio weights
                 </caption>
                 <thead className="sticky top-0 bg-muted">
                   <tr>
                     <th className={head}>Holding</th>
-                    <th className={cell}>Original</th>
+                    <th className={cell}>Current</th>
                     <th className={cell}>Modified (%)</th>
                     <th className={cell}>Change</th>
                     <th className={cell}>Action</th>
@@ -477,13 +487,35 @@ export function BacktestingWorkspace({
         </Card>
       )}
       {completed && (
-        <Results key={completed.id} result={completed.result} />
+        <Results key={completed.id} result={completed.result} realizedHref={realizedHref} />
       )}
     </>
   );
 }
 
-const Results = memo(function Results({ result }: { result: BacktestResult }) {
+/** Full-period figures derived once from the displayed (rounded) returns, so every difference reconciles on screen. */
+type Period = ReturnType<typeof periodFigures>;
+function periodFigures(result: BacktestResult) {
+  const current = shown(result.original.totalReturn),
+    modified = shown(result.modified.totalReturn),
+    benchmark = shown(result.benchmarkMetrics.totalReturn);
+  return {
+    current,
+    modified,
+    benchmark,
+    currentActive: current - benchmark,
+    modifiedActive: modified - benchmark,
+    delta: modified - current,
+  };
+}
+
+const Results = memo(function Results({
+  result,
+  realizedHref,
+}: {
+  result: BacktestResult;
+  realizedHref?: string;
+}) {
   const [date, setDate] = useState(result.days.at(-1)!.date);
   const [mode, setMode] = useState<
     "originalActive" | "modifiedActive" | "delta"
@@ -508,8 +540,46 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
   );
   const months = [...new Set(result.days.map((d) => d.date.slice(0, 7)))];
   const byDate = new Map(result.days.map((d) => [d.date, d]));
+  const period = periodFigures(result);
+  const modeLabel = {
+    modifiedActive: `${SERIES.modified} vs ${result.benchmark}`,
+    originalActive: `${SERIES.original} vs ${result.benchmark}`,
+    delta: `${SERIES.modified} − ${SERIES.original.toLowerCase()}`,
+  };
+  const summary = [
+    { label: SERIES.original, value: period.current, diff: false },
+    { label: SERIES.modified, value: period.modified, diff: false },
+    { label: `${result.benchmark} benchmark return`, value: period.benchmark, diff: false },
+    { label: modeLabel.originalActive, value: period.currentActive, diff: true },
+    { label: modeLabel.modifiedActive, value: period.modifiedActive, diff: true },
+    { label: "Weight-change delta", value: period.delta, diff: true },
+  ];
+  const lastSession = result.days.at(-1)!.date;
   return (
     <div className="space-y-6">
+      <Card className="p-4 text-sm">
+        <h2 className="font-medium">Hypothetical replay, not this portfolio’s realized return</h2>
+        <p className="text-muted-foreground">
+          Both replays hold their weights fixed, rebalanced daily, from the {result.baseline} close through{" "}
+          {lastSession}. Past trades, weight changes, and cash flows are not reconstructed. The benchmark uses adjusted
+          total returns for {result.benchmark}
+          {result.benchmark === "SPY"
+            ? "; an S&P 500 figure in another report may use the index’s price return and differ."
+            : "."}
+          {realizedHref && (
+            <>
+              {" "}
+              <Link
+                href={`${realizedHref}?${new URLSearchParams({ period: "custom", from: result.from, to: lastSession })}`}
+                className="text-foreground underline underline-offset-2"
+              >
+                See the realized return for these dates on Attribution
+              </Link>
+              .
+            </>
+          )}
+        </p>
+      </Card>
       {result.cashSubstitutions.length > 0 && (
         <Card className="p-4 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Early history treated as cash:</span>{" "}
@@ -518,22 +588,13 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
         </Card>
       )}
       <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          ["Original return", result.original.totalReturn],
-          ["Modified return", result.modified.totalReturn],
-          [
-            "Weight-change delta",
-            result.modified.totalReturn - result.original.totalReturn,
-          ],
-        ].map(([label, value]) => (
-          <Card key={String(label)} className="gap-1 p-4">
+        {summary.map(({ label, value, diff }) => (
+          <Card key={label} className="gap-1 p-4">
             <span className="text-xs text-muted-foreground">{label}</span>
             <strong
-              className={cn("text-2xl font-semibold tnum", tone(Number(value)))}
+              className={cn("text-2xl font-semibold tnum", tone(value))}
             >
-              {label === "Weight-change delta"
-                ? pp(Number(value))
-                : pct(Number(value))}
+              {diff ? pp(value) : pct(value)}
             </strong>
           </Card>
         ))}
@@ -546,9 +607,10 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
           ranges={false}
           label="Backtest cumulative returns"
           note="Compounded daily total returns, rebased to the same closing baseline."
+          nameMetrics
           series={[
-            { key: "original", label: "Original", color: "var(--foreground)" },
-            { key: "modified", label: "Modified", color: "var(--up)" },
+            { key: "original", label: SERIES.original, color: "var(--foreground)" },
+            { key: "modified", label: SERIES.modified, color: "var(--up)" },
             {
               key: "benchmark",
               label: result.benchmark,
@@ -559,7 +621,7 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
         />
       </Card>
       <Card className="p-4">
-        <SectionTitle>Daily active return</SectionTitle>
+        <SectionTitle>Daily differences · {modeLabel[mode]}</SectionTitle>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm">
           <label className="flex items-center gap-2">
             Color by
@@ -569,14 +631,18 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
               onChange={(e) => setMode(e.target.value as typeof mode)}
               className="rounded border bg-background p-2"
             >
-              <option value="modifiedActive">Modified vs benchmark</option>
-              <option value="originalActive">Original vs benchmark</option>
-              <option value="delta">Modified − original</option>
+              {(Object.keys(modeLabel) as (keyof typeof modeLabel)[]).map((key) => (
+                <option key={key} value={key}>
+                  {modeLabel[key]}
+                </option>
+              ))}
             </select>
           </label>
           <span className="text-xs text-muted-foreground">
-            Red: negative · neutral: zero · green: positive · darker: larger (up
-            to 1 pp)
+            {mode === "delta"
+              ? `Green: ${SERIES.modified.toLowerCase()} ahead that day · red: ${SERIES.original.toLowerCase()} ahead`
+              : `Green: ahead of ${result.benchmark} that day · red: behind ${result.benchmark}`}{" "}
+            · neutral: equal · darker: larger (up to 1 pp). Daily colors do not show the full-period result.
           </span>
         </div>
         <div className="grid max-h-[36rem] gap-6 overflow-auto sm:grid-cols-2 xl:grid-cols-3">
@@ -618,7 +684,7 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
                         </span>
                       );
                     const value = row[mode];
-                    const label = `${day}: ${mode === "delta" ? "weight-change delta" : "active return"} ${pp(value)}`;
+                    const label = `${day}: ${modeLabel[mode]} ${pp(value)}`;
                     return (
                       <button
                         type="button"
@@ -660,8 +726,8 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
             <thead>
               <tr>
                 <th className={head}>Return</th>
-                <th className={cell}>Original</th>
-                <th className={cell}>Modified</th>
+                <th className={cell}>{SERIES.original}</th>
+                <th className={cell}>{SERIES.modified}</th>
                 <th className={cell}>Difference</th>
               </tr>
             </thead>
@@ -679,7 +745,7 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
                 <td className={cell}>{pp(0)}</td>
               </tr>
               <tr className="border-t">
-                <th className={head}>Active vs benchmark</th>
+                <th className={head}>Difference vs {result.benchmark}</th>
                 <td className={cell}>{pp(selected.originalActive)}</td>
                 <td className={cell}>{pp(selected.modifiedActive)}</td>
                 <td className={cell}>{pp(selected.delta)}</td>
@@ -697,8 +763,8 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
               <tr>
                 <th className={head}>Holding</th>
                 <th className={cell}>Holding return</th>
-                <th className={cell}>Original</th>
-                <th className={cell}>Modified</th>
+                <th className={cell}>{SERIES.original}</th>
+                <th className={cell}>{SERIES.modified}</th>
                 <th className={cell}>Difference</th>
               </tr>
             </thead>
@@ -718,13 +784,13 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
       </Card>
       <Card className="p-4">
         <SectionTitle>Period summary</SectionTitle>
-        <Summary result={result} />
+        <Summary result={result} period={period} />
       </Card>
       <Card className="p-4">
         <SectionTitle>
           Contributors, detractors & weight-change impact
         </SectionTitle>
-        <Contributors result={result} />
+        <Contributors result={result} period={period} />
       </Card>
       <details className="rounded-lg border p-4 text-sm text-muted-foreground">
         <summary className="cursor-pointer font-medium text-foreground">
@@ -752,11 +818,12 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
             contributions sum each daily contribution multiplied by the
             portfolio’s value at the start of that day. They reconcile to each
             compounded portfolio return; their differences reconcile to the
-            weight-change delta. Active return is portfolio minus benchmark, in
-            percentage points; active returns are not compounded separately.
+            weight-change delta. The difference vs the benchmark is portfolio minus
+            benchmark return, in percentage points; daily differences are not
+            compounded separately. Period differences are taken from the returns as
+            displayed (rounded to 0.01%), so the figures on screen add up.
           </p>
           <p>
-            This is a hypothetical replay of current holdings plus uninvested cash.
             Cash earns 0%; a holding without earlier adjusted closes earns 0% until its
             first close establishes a return basis. Later missing prices still block a
             run. Trading costs, fees, taxes and historical changes in membership are
@@ -768,7 +835,7 @@ const Results = memo(function Results({ result }: { result: BacktestResult }) {
     </div>
   );
 });
-function Summary({ result }: { result: BacktestResult }) {
+function Summary({ result, period }: { result: BacktestResult; period: Period }) {
   const rows: [string, keyof Metrics, "return" | "ratio" | "count"][] = [
     ["Cumulative return", "totalReturn", "return"],
     ["Annualized volatility", "volatility", "return"],
@@ -785,21 +852,23 @@ function Summary({ result }: { result: BacktestResult }) {
         <thead>
           <tr>
             <th className={head}>Metric</th>
-            <th className={cell}>Original</th>
-            <th className={cell}>Modified</th>
+            <th className={cell}>{SERIES.original}</th>
+            <th className={cell}>{SERIES.modified}</th>
             <th className={cell}>Benchmark</th>
-            <th className={cell}>Delta (modified − original)</th>
+            <th className={cell}>Delta (modified − current)</th>
           </tr>
         </thead>
         <tbody>
           {rows.map(([label, key, kind]) => {
-            const a = result.original[key],
-              b = result.modified[key],
+            // Cumulative returns come from the rounded period figures, matching the cards above.
+            const total = key === "totalReturn";
+            const a = total ? period.current : result.original[key],
+              b = total ? period.modified : result.modified[key],
               d = a === null || b === null ? null : b - a;
             return (
               <tr key={key} className="border-t">
                 <th className={head}>{label}</th>
-                {[a, b, result.benchmarkMetrics[key]].map((v, i) => (
+                {[a, b, total ? period.benchmark : result.benchmarkMetrics[key]].map((v, i) => (
                   <td key={i} className={cell}>
                     {kind === "count" ? v : pct(v)}
                   </td>
@@ -811,30 +880,18 @@ function Summary({ result }: { result: BacktestResult }) {
             );
           })}
           <tr className="border-t">
-            <th className={head}>Active return</th>
-            <td className={cell}>
-              {pp(
-                result.original.totalReturn -
-                  result.benchmarkMetrics.totalReturn,
-              )}
-            </td>
-            <td className={cell}>
-              {pp(
-                result.modified.totalReturn -
-                  result.benchmarkMetrics.totalReturn,
-              )}
-            </td>
+            <th className={head}>Difference vs {result.benchmark}</th>
+            <td className={cell}>{pp(period.currentActive)}</td>
+            <td className={cell}>{pp(period.modifiedActive)}</td>
             <td className={cell}>{pp(0)}</td>
-            <td className={cell}>
-              {pp(result.modified.totalReturn - result.original.totalReturn)}
-            </td>
+            <td className={cell}>{pp(period.delta)}</td>
           </tr>
         </tbody>
       </table>
     </div>
   );
 }
-function Contributors({ result }: { result: BacktestResult }) {
+function Contributors({ result, period }: { result: BacktestResult; period: Period }) {
   const [sort, setSort] = useState<"original" | "modified" | "delta">(
     "modified",
   );
@@ -854,8 +911,8 @@ function Contributors({ result }: { result: BacktestResult }) {
           onChange={(e) => setSort(e.target.value as typeof sort)}
           className="rounded border bg-background p-2"
         >
-          <option value="modified">Modified</option>
-          <option value="original">Original</option>
+          <option value="modified">{SERIES.modified}</option>
+          <option value="original">{SERIES.original}</option>
           <option value="delta">Weight-change delta</option>
         </select>
       </label>
@@ -888,8 +945,8 @@ function Contributors({ result }: { result: BacktestResult }) {
           <thead>
             <tr>
               <th className={head}>Holding</th>
-              <th className={cell}>Original contribution</th>
-              <th className={cell}>Modified contribution</th>
+              <th className={cell}>{SERIES.original} contribution</th>
+              <th className={cell}>{SERIES.modified} contribution</th>
               <th className={cell}>Delta</th>
             </tr>
           </thead>
@@ -906,11 +963,9 @@ function Contributors({ result }: { result: BacktestResult }) {
           <tfoot>
             <tr className="border-t font-medium">
               <th className={head}>Total</th>
-              <td className={cell}>{pp(result.original.totalReturn)}</td>
-              <td className={cell}>{pp(result.modified.totalReturn)}</td>
-              <td className={cell}>
-                {pp(result.modified.totalReturn - result.original.totalReturn)}
-              </td>
+              <td className={cell}>{pp(period.current)}</td>
+              <td className={cell}>{pp(period.modified)}</td>
+              <td className={cell}>{pp(period.delta)}</td>
             </tr>
           </tfoot>
         </table>

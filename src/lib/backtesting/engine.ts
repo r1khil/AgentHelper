@@ -13,6 +13,8 @@ export type Snapshot = {
   scope: string;
   capturedAt: string;
   savedWeightTotal: number;
+  /** A team sleeve: saved fund-level weights rescaled to 100% of the team, with no cash. */
+  sleeve?: boolean;
 };
 export type DailyResult = {
   date: string;

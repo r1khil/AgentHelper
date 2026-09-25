@@ -66,6 +66,8 @@ type Props = {
   kind?: "price" | "return";
   ranges?: boolean;
   note: string;
+  /** Prefix the metric labels with the first series' name, for charts where several lines could be mistaken for it. */
+  nameMetrics?: boolean;
 };
 
 function price(value: number | null | undefined, unit?: string) {
@@ -100,6 +102,7 @@ function ChartSession({
   kind = "price",
   ranges = true,
   note,
+  nameMetrics = false,
 }: Props) {
   const options = useMemo(() => availableRanges(data), [data]);
   const [range, setRange] = useState<TimeRange>(
@@ -130,6 +133,8 @@ function ChartSession({
   const selected = points[bounds?.[1] ?? active ?? points.length - 1];
   const baselinePoint = points[bounds?.[0] ?? 0];
   const primary = series[0];
+  const metric = (text: string) =>
+    nameMetrics ? `${primary.label} · ${text.toLowerCase()}` : text;
   const value = selected.values[primary.key];
   const baseline = baselinePoint.values[primary.key];
   const { change, returnPct: selectedReturn } = intervalPerformance(
@@ -168,23 +173,23 @@ function ChartSession({
       </div>
       <div className="mb-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 tnum">
         <Metric
-          label={kind === "price" ? "Starting price" : "Starting index"}
+          label={metric(kind === "price" ? "Starting price" : "Starting index")}
           value={price(baseline, kind === "price" ? primary.unit : undefined)}
         />
         <Metric
-          label={
+          label={metric(
             active === null
               ? kind === "price"
                 ? "Latest close"
                 : "Latest index"
               : kind === "price"
                 ? "Selected close"
-                : "Selected index"
-          }
+                : "Selected index",
+          )}
           value={price(value, kind === "price" ? primary.unit : undefined)}
         />
         <Metric
-          label={kind === "price" ? "Price change" : "Index change"}
+          label={metric(kind === "price" ? "Price change" : "Index change")}
           value={
             change === null
               ? "Unavailable"
@@ -193,7 +198,7 @@ function ChartSession({
           change={change}
         />
         <Metric
-          label={bounds ? "Selected interval return" : "Period return"}
+          label={metric(bounds ? "Selected interval return" : "Period return")}
           value={
             selectedReturn === null ? "Unavailable" : percent(selectedReturn)
           }
