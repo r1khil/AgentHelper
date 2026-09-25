@@ -24,7 +24,7 @@ export function parseHootCommand(text: string): HootCommand | null {
   const scope = q.match(/^(?:switch|change|toggle)(?: me)? to (?:the )?(.+?)(?: sector| team)?$/)
     ?? q.match(/^(?:take me to|bring me to|go to|navigate to|open|show me|filter to) (?:the )?(.+?) (?:sector|team)$/);
   if (scope) return { kind: "scope", scope: scope[1] };
-  const navigation = q.match(/^(?:take me to|bring me to|go to|navigate to|open|show me) (?:the )?(.+?)(?: page| section| area)?$/);
+  const navigation = q.match(/^(?:take me to|bring me to|go to|navigate to|open) (?:the )?(.+?)(?: page| section| area)?$/);
   const destination = navigation && destinations[navigation[1]];
   return destination ? { kind: "navigate", destination } : null;
 }

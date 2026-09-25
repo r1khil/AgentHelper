@@ -11,7 +11,7 @@ describe("Hoot UI commands", () => {
 
   it.each([
     ["Take me to holdings", "Holdings"], ["bring me to the risk page", "Risk"],
-    ["Open sell-side analyzer", "Sell-side analyzer"], ["Can you show me the economic calendar?", "Economic calendar"],
+    ["Open sell-side analyzer", "Sell-side analyzer"], ["Can you take me to the economic calendar?", "Economic calendar"],
     ["go to backtesting", "Backtesting"], ["navigate to the weekly update section", "Weekly update"],
   ])("recognizes %s", (text, destination) => expect(parseHootCommand(text)).toEqual({ kind: "navigate", destination }));
 
@@ -24,7 +24,7 @@ describe("Hoot UI commands", () => {
   ])("recognizes scope command %s", (text, scope) => expect(parseHootCommand(text)).toEqual({ kind: "scope", scope }));
 
   it.each([
-    "What moved our holdings today?", "Show me earnings growth for AAPL", "Explain light mode",
+    "What moved our holdings today?", "Show me earnings growth for AAPL", "Show me earnings", "show me the risk", "Explain light mode",
     "Don't turn on light mode", 'The document says "open admin"', "Open https://example.com",
     "open javascript:alert(1)", "turn on light mode and explain risk", "How do I turn on light mode?",
   ])("leaves research and noncommands untouched: %s", (text) => expect(parseHootCommand(text)).toBeNull());
