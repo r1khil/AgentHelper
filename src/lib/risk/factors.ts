@@ -158,8 +158,8 @@ export type FactorReport = {
   benchmark: FactorFit | null;
   /** Regression of Fund − benchmark; its betas are the Fund's minus the benchmark's. */
   active: FactorFit | null;
-  /** The factor return columns on the sample days, in FACTORS order, for the CSV and transparency. */
-  inputs: { factors: Record<FactorKey, number[]> };
+  /** Every regression's inputs on the sample days, for the CSV: factor returns, the portfolio's and benchmark's returns, and each holding's (in `holdings` order). */
+  inputs: { factors: Record<FactorKey, number[]>; portfolio: number[]; benchmark: number[] | null; holdings: number[][] };
 };
 
 export type FactorUnavailable = { reason: string; missing: string[]; days: number };
@@ -216,10 +216,11 @@ export function buildFactorReport(args: {
   const fund = toFit(design.fit(fundY));
   let benchmark: FactorFit | null = null;
   let active: FactorFit | null = null;
+  let benchY: number[] | null = null;
   if (args.benchmark) {
-    const benchY = weighted(args.benchmark);
+    benchY = weighted(args.benchmark);
     benchmark = toFit(design.fit(benchY));
-    active = toFit(design.fit(fundY.map((y, i) => y - benchY[i])));
+    active = toFit(design.fit(fundY.map((y, i) => y - benchY![i])));
   }
   return {
     factors: FACTORS,
@@ -228,7 +229,12 @@ export function buildFactorReport(args: {
     fund,
     benchmark,
     active,
-    inputs: { factors: Object.fromEntries(FACTOR_KEYS.map((k) => [k, pick(f[k])])) as Record<FactorKey, number[]> },
+    inputs: {
+      factors: Object.fromEntries(FACTOR_KEYS.map((k) => [k, pick(f[k])])) as Record<FactorKey, number[]>,
+      portfolio: fundY,
+      benchmark: benchY,
+      holdings: args.holdings.map((h) => pick(h.column)),
+    },
   };
 }
 
@@ -294,4 +300,32 @@ export function formatBeta(beta: number, digits = 2, opts: { signed?: boolean } 
   const s = Math.abs(beta).toFixed(digits);
   if (Number(s) === 0) return s;
   return beta < 0 ? `−${s}` : opts.signed ? `+${s}` : s;
+}
+
+const labelOf = (key: FactorKey) => FACTORS.find((f) => f.key === key)!.label;
+
+/** An active beta in words: "a growth tilt relative to the benchmark", "less market-sensitive than the benchmark". */
+function activeMeaning(key: FactorKey, beta: number) {
+  if (key === "market") return beta > 0 ? "more market-sensitive than the benchmark" : "less market-sensitive than the benchmark";
+  return `${PLAIN[key].meaning(beta > 0)} relative to the benchmark`;
+}
+
+export type FactorReading = { key: FactorKey; label: string; beta: number; t: number; clear: boolean; text: string };
+
+/**
+ * The factor section's sentences: each of the portfolio's betas in plain English, the clear active tilts
+ * against the benchmark, and which factors show no clear exposure. Descriptive only.
+ */
+export function factorReadings(f: FactorReport, opts: { basis?: string } = {}) {
+  const fund: FactorReading[] = FACTOR_KEYS.map((k) => {
+    const c = f.fund.betas[k];
+    return { key: k, label: labelOf(k), beta: c.beta, t: c.t, clear: isClearExposure(k, c), text: describeFactorBeta(k, c.beta, { t: c.t, basis: opts.basis }) };
+  });
+  const active: FactorReading[] = f.active
+    ? FACTOR_KEYS.filter((k) => isClearExposure(k, f.active!.betas[k])).map((k) => {
+        const c = f.active!.betas[k];
+        return { key: k, label: labelOf(k), beta: c.beta, t: c.t, clear: true, text: `${labelOf(k)} ${formatBeta(c.beta, 2, { signed: true })} (t ${formatBeta(c.t, 1, { signed: true })}): ${activeMeaning(k, c.beta)}` };
+      })
+    : [];
+  return { fund, clear: fund.filter((r) => r.clear), unclear: fund.filter((r) => !r.clear), active };
 }

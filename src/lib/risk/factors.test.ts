@@ -5,6 +5,7 @@ import {
   FACTORS,
   buildFactorReport,
   describeFactorBeta,
+  factorReadings,
   factorReturns,
   formatBeta,
   invert,
@@ -16,7 +17,9 @@ import {
   type FactorReport,
 } from "./factors";
 import { buildRiskReport, MARKET, type RiskInput } from "./model";
+import { factorBetaRows, factorReturnRows } from "./factor-csv";
 import { previewReport } from "./preview";
+import { summarizeFactors } from "./summary";
 
 /** Sylvester Hadamard matrix of order 2^p: columns are ±1, mutually orthogonal, and all but the first sum to zero. */
 function hadamard(p: number): number[][] {
@@ -254,6 +257,49 @@ describe("preview data", () => {
     expect(FACTOR_KEYS.some((k) => !f.fund.betas[k].significant)).toBe(true);
     expect(f.holdings.some((h) => h.source === "proxy")).toBe(true);
     expect(f.active).not.toBeNull();
+  });
+});
+
+describe("factor downloads and readings", () => {
+  const r = previewReport("1y");
+  const f = r.factors as FactorReport;
+
+  it("writes every regression's coefficients, and the exact data they were fitted on", () => {
+    const betas = factorBetaRows(f);
+    expect(betas[0]).toContain("rates_t");
+    const portfolio = betas.find((row) => row[0] === "portfolio")!;
+    const header = betas[0] as string[];
+    expect(portfolio[header.indexOf("rates_beta")]).toBe(f.fund.betas.rates.beta);
+    expect(betas.filter((row) => row[0] === "holding")).toHaveLength(f.holdings.length);
+
+    const data = factorReturnRows(f);
+    expect(data).toHaveLength(f.sample.n + 1);
+    // Refit the portfolio column from the download alone: the same betas as the page.
+    const cols = data[0] as string[];
+    const x = data.slice(1).map((row) => FACTOR_KEYS.map((k) => row[cols.indexOf(`factor_${k}`)] as number));
+    const y = data.slice(1).map((row) => row[cols.indexOf("portfolio")] as number);
+    const refit = olsDesign(x)!.fit(y);
+    FACTOR_KEYS.forEach((k, j) => expect(refit.betas[j].beta).toBeCloseTo(f.fund.betas[k].beta, 12));
+    const active = data.slice(1).map((row) => row[cols.indexOf("active")] as number);
+    expect(olsDesign(x)!.fit(active).betas[4].beta).toBeCloseTo(f.active!.betas.rates.beta, 12);
+  });
+
+  it("explains why when there is nothing to download", () => {
+    expect(factorBetaRows({ reason: "No stored closes for TLT yet.", missing: ["TLT"], days: 0 })).toEqual([["note"], ["No stored closes for TLT yet."]]);
+  });
+
+  it("splits readings into clear exposures, unclear ones and clear active tilts", () => {
+    const read = factorReadings(f);
+    expect(read.clear.length + read.unclear.length).toBe(7);
+    for (const x of read.unclear) expect(x.text).toMatch(/^No clear|^Essentially no/);
+    for (const x of read.clear) expect(x.text).toMatch(/^Moves like being/);
+    for (const x of read.active) expect(x.text).toMatch(/benchmark/);
+  });
+
+  it("gives Hoot the betas with t-stats and the same readings", () => {
+    const s = summarizeFactors(r);
+    expect("portfolio" in s && s.portfolio?.rates.t).toBeCloseTo(f.fund.betas.rates.t, 1);
+    expect("readings" in s && s.readings).toEqual(factorReadings(f).fund.map((x) => x.text));
   });
 });
 

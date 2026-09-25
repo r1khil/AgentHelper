@@ -45,6 +45,21 @@ export const RISK_EXPLAIN = {
   overUnder:
     "The sum of all overweights and the sum of all underweights, cash included. Both sides of the book add up to 100%, so the two always cancel; either one is the share of the portfolio positioned differently from the benchmark at sector level.",
 
+  // Factor and macro sensitivities (Exposure page).
+  factors:
+    "How the portfolio has moved with seven market factors over the selected window. One multivariate regression (ordinary least squares with an intercept) of each holding's daily total return on the seven factor returns at once; the portfolio's beta is the weight-sum of its holdings' betas, which equals regressing the whole portfolio's return. Size, value and momentum are spreads between ETFs, because the raw ETFs move almost one-for-one with the S&P 500. Descriptive only: past co-movement, not a forecast or a recommendation.",
+  factorBeta:
+    "The factor beta: how much the portfolio's daily return has moved per unit of the factor's return, holding the other six factors fixed. A rates beta of −0.12 means the portfolio has moved like being 12% of its value short TLT. Check any row in Excel with LINEST(portfolio returns, factor returns, TRUE, TRUE) on the downloads.",
+  factorT:
+    "t-stat: the beta divided by its standard error. Below 2 in absolute value the beta can't be told apart from zero with the usual 95% confidence, so it is greyed out and never described as a position.",
+  factorR2: "R²: the share of the daily return's variance the seven factors explain together. The rest is specific to the holdings (stock picking and sector bets the factors don't capture).",
+  factorBenchmarkRow:
+    "The same regression on the sector benchmark: the S&P 500 sector weights the Risk page uses, each invested in its Select Sector SPDR ETF. It shows the exposures the index itself carries.",
+  factorActiveRow:
+    "Portfolio minus benchmark: the regression of the active return (portfolio return minus benchmark return), whose betas are exactly the difference of the two rows. These are the factor tilts the portfolio adds on top of the index.",
+  factorHoldings:
+    "Each holding's own regression over the same days. A holding with too little price history uses its sector ETF's returns, the same rule the rest of the Risk page follows. Greyed cells have |t| < 2.",
+
   // Where the active risk comes from.
   activeRiskSection:
     "Tracking error is measured with the holdings long and the benchmark's sector ETFs short, so every difference from the index is a bet, including sectors the portfolio holds less of. Each position's share is aᵢ × (Σa)ᵢ ÷ aᵀΣa (Euler decomposition of the tracking-error variance): the holdings plus the benchmark side add up to 100%, and a negative share means the position reduces tracking error.",
