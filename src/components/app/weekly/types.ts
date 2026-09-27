@@ -1,0 +1,52 @@
+import type { SourceEntry, WeeklyAgenda, WeeklyFigures, WeeklyPerformers, WeeklySources } from "@/lib/weekly/types";
+
+/** The Sunday email as it would go out now, and what happened to it. */
+export type EmailView = {
+  to: string | null;
+  cc: string[];
+  /** Test accounts on the list, which are never emailed. */
+  skipped: string[];
+  subject: string;
+  text: string;
+  record: SourceEntry | null;
+  /** First names by lowercased address, for "to Aadi, Saad in CC". */
+  names: Record<string, string>;
+};
+
+/** One row of the packs list. */
+export type PackListItem = {
+  weekEnding: string;
+  status: "draft" | "sent";
+  builtAt: string | null;
+  sentAt: string | null;
+  /** When the Sunday email went out for this week, if it did. */
+  emailedAt: string | null;
+};
+
+/** Headline figures for the week the pack reports on. Returns are fractions (0.0192 = 1.92%). */
+export type WeekStats = {
+  fund: number | null;
+  spx: number | null;
+  movementsOpened: number | null;
+  window: { start: string; end: string };
+};
+
+export type WeeklyPackProps = {
+  weekEnding: string;
+  agendaRange: { from: string; to: string };
+  status: "draft" | "sent";
+  figures: WeeklyFigures;
+  performers: WeeklyPerformers | null;
+  agenda: WeeklyAgenda;
+  lastWeekAgenda: WeeklyAgenda;
+  sources: WeeklySources;
+  email: EmailView | null;
+  builtAt: string | null;
+  editedAt: string | null;
+  sentAt: string | null;
+  stats: WeekStats;
+  /** Team name by upper-case ticker, for "Company · Team". */
+  teamByTicker: Record<string, string>;
+  /** "Consumer Discretionary bellwether" by upper-case ticker. */
+  bellwetherByTicker: Record<string, string>;
+};
