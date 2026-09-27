@@ -293,7 +293,7 @@ export const WHATS_NEW_TOUR: Tour = {
           until: '[data-tour="bt-risk-impact"]',
           title: "Give it a try",
           body: "Change a weight if you like, then run it. A new risk panel appears under the settings.",
-          prompt: "Press Run backtest.",
+          prompt: "Press Run replay (Run backtest on the classic layout).",
         },
         {
           id: "backtesting-impact",

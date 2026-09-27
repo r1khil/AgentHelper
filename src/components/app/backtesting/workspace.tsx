@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { memo, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,342 +10,58 @@ import {
   BENCHMARKS,
   type BacktestResult,
   type Metrics,
-  type Snapshot,
 } from "@/lib/backtesting/engine";
 import { cn } from "@/lib/utils";
-import {
-  addedPositionId,
-  MAX_SCENARIO_COMPANIES,
-  normalizeScenarioTicker,
-  withAddedCompanies,
-} from "@/lib/backtesting/scenario";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { usePageContext } from "@/components/app/hoot/page-context";
-import { applyTrade, fundingIds, fundingLabel, toPercentStrings, type Trade } from "@/lib/backtesting/trade";
-import type { ScenarioRisk } from "@/lib/risk/compare";
 import { QuickTrade } from "./quick-trade";
 import { RiskImpact } from "./risk-impact";
 import { SaveScenario } from "./saved-scenarios";
+import { useBacktesting, type BacktestingOptions } from "./use-backtesting";
 
-const pct = (v: number | null) =>
+export type { InitialScenario } from "./use-backtesting";
+
+export const pct = (v: number | null) =>
   v === null ? "—" : `${(v * 100).toFixed(2)}%`;
 // Round half away from zero to the displayed 0.01, so ties are symmetric and -0 never shows as "+0.00".
-const shown = (v: number) => (Math.sign(v) * Math.round(Math.abs(v) * 10000)) / 10000 || 0;
-const pp = (v: number | null) => {
+export const shown = (v: number) => (Math.sign(v) * Math.round(Math.abs(v) * 10000)) / 10000 || 0;
+export const pp = (v: number | null) => {
   if (v === null) return "—";
   const rounded = shown(v) * 100;
   return `${rounded > 0 ? "+" : ""}${rounded.toFixed(2)} pp`;
 };
 /** One name per series, used by every card, chart, select and table. */
 const SERIES = { original: "Current replay", modified: "Modified replay" } as const;
-const tone = (v: number) =>
+export const tone = (v: number) =>
   v > 1e-12 ? "text-up" : v < -1e-12 ? "text-down" : "text-muted-foreground";
 const cell = "px-3 py-2.5 text-right tnum whitespace-nowrap";
 const head = "px-3 py-2.5 text-left font-medium text-muted-foreground";
-const initialWeights = (snapshot: Snapshot) =>
-  Object.fromEntries(
-    snapshot.positions.map((p) => [p.id, (p.weight * 100).toFixed(2)]),
-  );
 
-/** A scenario to open with: a saved one (weights by ticker), or a trade from a Risk page link. */
-export type InitialScenario = {
-  weightsPct?: Record<string, number>;
-  added?: { ticker: string; name: string }[];
-  from?: string;
-  to?: string;
-  benchmark?: keyof typeof BENCHMARKS;
-  trade?: Trade;
-  /** Shown above the form: which scenario was opened, and anything that no longer matches. */
-  banner?: string;
-};
-
-/** Every position whose weight differs from the saved copy by more than rounding is marked edited. */
-function openScenario(snapshot: Snapshot, initial?: InitialScenario) {
-  const added = initial?.added ?? [];
-  const positions = withAddedCompanies(snapshot, added).positions;
-  const weights: Record<string, string> = Object.fromEntries(positions.map((p) => [p.id, (p.weight * 100).toFixed(2)]));
-  const edited = new Set<string>();
-  let problem = "";
-  if (initial?.weightsPct) {
-    for (const p of positions) {
-      const w = initial.weightsPct[p.ticker];
-      if (w === undefined || Math.abs(w / 100 - p.weight) < 5e-5) continue;
-      weights[p.id] = w.toFixed(2);
-      edited.add(p.id);
-    }
-  }
-  if (initial?.trade) {
-    try {
-      const next = applyTrade(positions, Object.fromEntries(positions.map((p) => [p.id, p.weight])), initial.trade);
-      const changed = positions.filter((p) => Math.abs(next[p.id] - p.weight) > 1e-9).map((p) => p.id);
-      const strings = toPercentStrings(next, fundingIds(positions, initial.trade));
-      for (const id of changed) {
-        weights[id] = strings[id];
-        edited.add(id);
-      }
-    } catch (e) {
-      problem = e instanceof Error ? e.message : "That trade could not be applied.";
-    }
-  }
-  return { added, weights, edited, problem };
-}
-
-type Completed = {
-  id: number;
-  result: BacktestResult;
-  weights: Record<string, string>;
-  from: string;
-  to: string;
-  benchmark: keyof typeof BENCHMARKS;
-};
+/** The classic layout: today's page, unchanged. The redesign lives in ./redesign and shares useBacktesting. */
 export function BacktestingWorkspace({
-  snapshot,
-  defaultFrom,
-  defaultTo,
-  endpoint = "/api/backtesting",
-  tickerEndpoint = "/api/backtesting/ticker",
-  riskEndpoint = "/api/backtesting/risk",
-  initial,
   saveAudience,
   aside,
   realizedHref,
-}: {
-  snapshot: Snapshot;
-  defaultFrom: string;
-  defaultTo: string;
-  endpoint?: string;
-  tickerEndpoint?: string;
-  /** Null turns the risk comparison off (the synthetic preview has no stored prices). */
-  riskEndpoint?: string | null;
-  initial?: InitialScenario;
+  headerActions,
+  ...options
+}: BacktestingOptions & {
   /** Who a saved scenario is shared with ("the Fund's execs and admins"); omitted, saving is off. */
   saveAudience?: string;
   /** Rendered under the header: the saved scenarios list. */
   aside?: ReactNode;
   /** Attribution page with this portfolio's realized return, when the viewer may open it. */
   realizedHref?: string;
+  /** Right of the page header: the "Try the new layout" switch. */
+  headerActions?: ReactNode;
 }) {
-  const [opened] = useState(() => openScenario(snapshot, initial));
-  const [weights, setWeights] = useState(opened.weights);
-  const [edited, setEdited] = useState<Set<string>>(opened.edited);
-  const [added, setAdded] = useState<{ ticker: string; name: string }[]>(opened.added);
-  const [tickerInput, setTickerInput] = useState("");
-  const [lookupBusy, setLookupBusy] = useState(false);
-  const [lookupError, setLookupError] = useState("");
-  const [from, setFrom] = useState(initial?.from ?? defaultFrom),
-    [to, setTo] = useState(initial?.to && initial.to <= defaultTo ? initial.to : defaultTo);
-  const [benchmark, setBenchmark] = useState<keyof typeof BENCHMARKS>(initial?.benchmark ?? "SPY");
-  const [risk, setRisk] = useState<{ data: ScenarioRisk | null; busy: boolean; error: string; for: string }>({ data: null, busy: false, error: "", for: "" });
-  const [completed, setCompleted] = useState<Completed | null>(null);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-  const inFlight = useRef(false),
-    runs = useRef(0),
-    lookupInFlight = useRef(false);
-  const positions = withAddedCompanies(snapshot, added).positions;
-  const values = positions.map((p) => weights[p.id] ?? "");
-  const scenarioWeights = Object.fromEntries(
-    positions.map((p) => [
-      p.id,
-      edited.has(p.id) ? Number(weights[p.id]) / 100 : p.weight,
-    ]),
-  );
-  const sum = Object.values(scenarioWeights).reduce((s, w) => s + w, 0) * 100;
-  const valid =
-    values.every(
-      (w) =>
-        w.trim() !== "" &&
-        Number.isFinite(Number(w)) &&
-        Number(w) >= 0 &&
-        Number(w) <= 100,
-    ) && Math.abs(sum - 100) < 1e-6;
-  const dirty =
-    completed &&
-    (completed.from !== from ||
-      completed.to !== to ||
-      completed.benchmark !== benchmark ||
-      JSON.stringify(completed.weights) !== JSON.stringify(weights));
-  // Hoot attaches the scenario on screen to a question asked from this page.
-  const pathname = usePathname();
-  const round2 = (n: number) => Math.round(n * 100) / 100;
-  usePageContext(
-    /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to)
-      ? {
-          kind: "backtesting",
-          path: pathname,
-          title: "Backtesting",
-          from,
-          to,
-          benchmark,
-          addedTickers: added.map((p) => p.ticker),
-          changed: positions
-            .filter((p) => {
-              const w = scenarioWeights[p.id];
-              return weights[p.id]?.trim() !== "" && Number.isFinite(w) && w >= 0 && w <= 1 && Math.abs(w - p.weight) > 1e-8;
-            })
-            .map((p) => ({ ticker: p.ticker, savedPct: round2(p.weight * 100), scenarioPct: round2(scenarioWeights[p.id] * 100) })),
-          ran: Boolean(completed && !dirty),
-        }
-      : null,
-  );
-  async function addCompany() {
-    if (lookupInFlight.current) return;
-    setLookupError("");
-    let ticker: string;
-    try {
-      ticker = normalizeScenarioTicker(tickerInput);
-      if (positions.some((p) => p.ticker.toUpperCase() === ticker))
-        throw new Error(`${ticker} is already in this portfolio or scenario.`);
-      if (added.length >= MAX_SCENARIO_COMPANIES)
-        throw new Error(`Add at most ${MAX_SCENARIO_COMPANIES} companies to one scenario.`);
-    } catch (e) {
-      setLookupError(e instanceof Error ? e.message : "Enter a valid ticker.");
-      return;
-    }
-    lookupInFlight.current = true;
-    setLookupBusy(true);
-    try {
-      const response = await fetch(tickerEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticker }),
-        signal: AbortSignal.timeout(15000),
-      });
-      if (response.redirected || !response.headers.get("content-type")?.includes("application/json"))
-        throw new Error("Your session expired. Sign in again, then reload this page.");
-      const company = await response.json();
-      if (!response.ok) throw new Error(company.error ?? `Could not recognize ${ticker}.`);
-      const canonical = normalizeScenarioTicker(company.ticker);
-      if (typeof company.name !== "string" || !company.name.trim())
-        throw new Error(`Could not recognize ${ticker}.`);
-      const next = [...added, { ticker: canonical, name: company.name }];
-      withAddedCompanies(snapshot, next);
-      setAdded(next);
-      setWeights((current) => ({ ...current, [addedPositionId(canonical)]: "0.00" }));
-      setTickerInput("");
-    } catch (e) {
-      setLookupError(e instanceof Error ? e.message : "Could not add this ticker.");
-    } finally {
-      lookupInFlight.current = false;
-      setLookupBusy(false);
-    }
-  }
-  function removeAdded(ticker: string) {
-    const id = addedPositionId(ticker);
-    setAdded((current) => current.filter((p) => p.ticker !== ticker));
-    setWeights((current) => {
-      const next = { ...current };
-      delete next[id];
-      return next;
-    });
-    setEdited((current) => {
-      const next = new Set(current);
-      next.delete(id);
-      return next;
-    });
-  }
-  function quickTrade(trade: Trade): string | null {
-    try {
-      const next = applyTrade(positions, scenarioWeights, trade);
-      const changed = positions.filter((p) => Math.abs(next[p.id] - scenarioWeights[p.id]) > 1e-9).map((p) => p.id);
-      // A team sleeve's saved weights are not whole hundredths, so write every weight to keep the total exact.
-      const sleeve = positions.some((p) => Math.abs(p.weight * 10_000 - Math.round(p.weight * 10_000)) > 1e-6);
-      const strings = toPercentStrings(next, fundingIds(positions, trade));
-      const ids = sleeve ? positions.map((p) => p.id) : changed;
-      setWeights((current) => ({ ...current, ...Object.fromEntries(ids.map((id) => [id, strings[id]])) }));
-      setEdited((current) => new Set([...current, ...ids]));
-      return null;
-    } catch (e) {
-      return e instanceof Error ? e.message : `Could not apply the trade with ${fundingLabel(trade.funding)}.`;
-    }
-  }
-  async function measureRisk(key: string) {
-    if (!riskEndpoint) return;
-    setRisk((r) => ({ ...r, busy: true, error: "" }));
-    try {
-      const response = await fetch(riskEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ version: snapshot.version, weights: scenarioWeights, addedTickers: added.map((p) => p.ticker) }),
-        signal: AbortSignal.timeout(60000),
-      });
-      if (response.redirected || !response.headers.get("content-type")?.includes("application/json")) throw new Error("Your session expired. Sign in again, then reload this page.");
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Risk could not be measured.");
-      setRisk({ data, busy: false, error: "", for: key });
-    } catch (e) {
-      setRisk({ data: null, busy: false, error: e instanceof Error ? e.message : "Risk could not be measured.", for: key });
-    }
-  }
-  async function save(name: string, note: string) {
-    try {
-      const response = await fetch("/api/backtesting/scenarios", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, ...(note ? { note } : {}), version: snapshot.version, weights: scenarioWeights, addedTickers: added.map((p) => p.ticker), from, to, benchmark }),
-      });
-      const data = await response.json().catch(() => ({}));
-      return response.ok ? { id: data.id as string } : { error: (data.error as string) ?? "Could not save the scenario." };
-    } catch {
-      return { error: "Could not save the scenario. Please retry." };
-    }
-  }
-  async function run(event: FormEvent) {
-    event.preventDefault();
-    if (!valid || inFlight.current) return;
-    inFlight.current = true;
-    setBusy(true);
-    setError("");
-    void measureRisk(JSON.stringify(weights));
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from,
-          to,
-          benchmark,
-          version: snapshot.version,
-          weights: scenarioWeights,
-          addedTickers: added.map((p) => p.ticker),
-        }),
-        signal: AbortSignal.timeout(120000),
-      });
-      if (
-        response.redirected ||
-        !response.headers.get("content-type")?.includes("application/json")
-      )
-        throw new Error(
-          "Your session expired. Sign in again, then reload this page.",
-        );
-      const result = await response.json();
-      if (!response.ok)
-        throw new Error(result.error ?? "Unable to replay this period.");
-      setCompleted({
-        id: ++runs.current,
-        result,
-        weights: { ...weights },
-        from,
-        to,
-        benchmark,
-      });
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Unable to run backtest. Please retry.",
-      );
-    } finally {
-      inFlight.current = false;
-      setBusy(false);
-    }
-  }
+  const { snapshot, defaultTo, initial } = options;
+  const bt = useBacktesting(options);
+  const { opened, positions, weights, scenarioWeights, sum, valid, dirty, from, to, benchmark, completed, busy, error, risk, lookupBusy } = bt;
   return (
     <>
       <PageHeader
         title="Backtesting"
         description="Replay today's portfolio weights over past prices and compare them with a modified copy."
+        actions={headerActions}
       />
       {aside}
       {(initial?.banner || opened.problem) && (
@@ -357,18 +73,13 @@ export function BacktestingWorkspace({
       <Card className="mb-5 gap-3 p-4 text-sm">
         <div className="font-medium">{snapshot.scope}</div>
         <p className="text-muted-foreground">
-          {snapshot.sleeve
-            ? `This team’s holdings total ${snapshot.savedWeightTotal.toFixed(2)}% of the Fund; the replay rescales them to 100% of this portfolio, with no cash.`
-            : `Invested holdings total ${snapshot.savedWeightTotal.toFixed(2)}%; uninvested cash is ${((snapshot.positions.find((p) => p.kind === "cash")?.weight ?? 0) * 100).toFixed(2)}%. Cash earns 0% by default.`}{" "}
-          No weights are redistributed. Added or dropped companies affect only the modified copy and never update your
-          saved portfolio. Results are a hypothetical replay of these weights, not realized performance.
+          <ScopeNote snapshot={snapshot} />
         </p>
         <p className="text-xs text-muted-foreground">
-          Fixed weights are rebalanced daily · USD total returns · Dividends
-          reinvested · No fees, taxes, or transaction costs
+          {METHOD_LINE}
         </p>
       </Card>
-      <form onSubmit={run}>
+      <form onSubmit={bt.run}>
         <Card className="mb-5 gap-4 p-4">
           <SectionTitle>Replay settings</SectionTitle>
           <div className="grid gap-4 sm:grid-cols-3">
@@ -380,7 +91,7 @@ export function BacktestingWorkspace({
                 value={from}
                 max={to}
                 required
-                onChange={(e) => setFrom(e.target.value)}
+                onChange={(e) => bt.setFrom(e.target.value)}
               />
             </label>
             <label className="space-y-2 text-sm">
@@ -392,7 +103,7 @@ export function BacktestingWorkspace({
                 min={from}
                 max={defaultTo}
                 required
-                onChange={(e) => setTo(e.target.value)}
+                onChange={(e) => bt.setTo(e.target.value)}
               />
             </label>
             <label className="space-y-2 text-sm">
@@ -401,7 +112,7 @@ export function BacktestingWorkspace({
                 aria-label="Benchmark"
                 value={benchmark}
                 onChange={(e) =>
-                  setBenchmark(e.target.value as keyof typeof BENCHMARKS)
+                  bt.setBenchmark(e.target.value as keyof typeof BENCHMARKS)
                 }
                 className="h-9 w-full rounded-md border bg-background px-3 text-sm"
               >
@@ -414,8 +125,7 @@ export function BacktestingWorkspace({
             </label>
           </div>
           <p className="text-xs text-muted-foreground">
-            Start date includes that session’s return from the previous trading
-            close. Up to five years; completed sessions only.
+            {DATES_HINT}
           </p>
           <details open className="group">
             <summary className="cursor-pointer text-sm font-medium">
@@ -431,30 +141,27 @@ export function BacktestingWorkspace({
                   className="w-44 uppercase"
                   aria-label="Ticker to add"
                   placeholder="Enter ticker"
-                  value={tickerInput}
+                  value={bt.tickerInput}
                   disabled={lookupBusy}
                   maxLength={10}
-                  onChange={(e) => {
-                    setTickerInput(e.target.value);
-                    setLookupError("");
-                  }}
+                  onChange={(e) => bt.changeTickerInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      void addCompany();
+                      void bt.addCompany();
                     }
                   }}
                 />
               </label>
-              <Button type="button" variant="outline" disabled={lookupBusy} onClick={() => void addCompany()}>
+              <Button type="button" variant="outline" disabled={lookupBusy} onClick={() => void bt.addCompany()}>
                 {lookupBusy ? "Looking up…" : "Add company"}
               </Button>
               <p className="text-xs text-muted-foreground">
-                New companies start at 0.00%. Offset changes yourself, including with cash.
+                {ADD_HINT}
               </p>
             </div>
-            {lookupError && <p role="alert" className="mt-2 text-sm text-destructive">{lookupError}</p>}
-            <QuickTrade positions={positions} onApply={quickTrade} disabled={lookupBusy} />
+            {bt.lookupError && <p role="alert" className="mt-2 text-sm text-destructive">{bt.lookupError}</p>}
+            <QuickTrade positions={positions} onApply={bt.quickTrade} disabled={lookupBusy} />
             <div className="mt-3 max-h-80 overflow-auto rounded-md border">
               <table className="w-full text-sm">
                 <caption className="sr-only">
@@ -488,17 +195,8 @@ export function BacktestingWorkspace({
                           max="100"
                           step="0.01"
                           value={weights[p.id]}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (!/^\d{0,3}(?:\.\d{0,2})?$/.test(value)) return;
-                            setWeights({ ...weights, [p.id]: value });
-                            setEdited(new Set(edited).add(p.id));
-                          }}
-                          onBlur={(e) => {
-                            const value = Number(e.target.value);
-                            if (e.target.value.trim() !== "" && Number.isFinite(value))
-                              setWeights((current) => ({ ...current, [p.id]: value.toFixed(2) }));
-                          }}
+                          onChange={(e) => bt.editWeight(p.id, e.target.value)}
+                          onBlur={(e) => bt.settleWeight(p.id, e.target.value)}
                           required
                         />
                       </td>
@@ -512,25 +210,15 @@ export function BacktestingWorkspace({
                       </td>
                       <td className={cell}>
                         {p.kind === "scenario" ? (
-                          <Button type="button" size="sm" variant="ghost" disabled={lookupBusy} onClick={() => removeAdded(p.ticker)}>
+                          <Button type="button" size="sm" variant="ghost" disabled={lookupBusy} onClick={() => bt.removeAdded(p.ticker)}>
                             Remove
                           </Button>
                         ) : p.kind !== "cash" && scenarioWeights[p.id] > 0 ? (
-                          <Button type="button" size="sm" variant="ghost" onClick={() => {
-                            setWeights((current) => ({ ...current, [p.id]: "0.00" }));
-                            setEdited((current) => new Set(current).add(p.id));
-                          }}>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => bt.dropPosition(p.id)}>
                             Drop
                           </Button>
                         ) : p.kind !== "cash" && p.weight > 0 ? (
-                          <Button type="button" size="sm" variant="ghost" onClick={() => {
-                            setWeights((current) => ({ ...current, [p.id]: (p.weight * 100).toFixed(2) }));
-                            setEdited((current) => {
-                              const next = new Set(current);
-                              next.delete(p.id);
-                              return next;
-                            });
-                          }}>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => bt.restorePosition(p)}>
                             Restore
                           </Button>
                         ) : null}
@@ -564,13 +252,7 @@ export function BacktestingWorkspace({
                 type="button"
                 variant="outline"
                 disabled={lookupBusy}
-                onClick={() => {
-                  setWeights(initialWeights(snapshot));
-                  setEdited(new Set());
-                  setAdded([]);
-                  setTickerInput("");
-                  setLookupError("");
-                }}
+                onClick={bt.resetWeights}
               >
                 Reset weights
               </Button>
@@ -586,13 +268,7 @@ export function BacktestingWorkspace({
         aria-live="polite"
         className="mb-4 text-sm text-muted-foreground"
       >
-        {busy
-          ? "Fetching adjusted history and calculating every trading day…"
-          : dirty
-            ? "Settings changed. Results below show the last completed run; run again to apply changes."
-            : completed
-              ? `${completed.result.days.length} trading days replayed · ${completed.result.baseline} closing baseline → ${completed.result.days.at(-1)!.date}`
-              : "Choose your dates and weights, then run the comparison."}
+        {runStatus({ busy, dirty, completed })}
       </div>
       {error && (
         <Card
@@ -602,10 +278,10 @@ export function BacktestingWorkspace({
           {error}
         </Card>
       )}
-      {riskEndpoint && (risk.data || risk.busy || risk.error) && (
-        <RiskImpact data={risk.data} busy={risk.busy} error={risk.error} stale={risk.for !== JSON.stringify(weights)} />
+      {bt.riskEnabled && (risk.data || risk.busy || risk.error) && (
+        <RiskImpact data={risk.data} busy={risk.busy} error={risk.error} stale={bt.riskStale} />
       )}
-      {saveAudience && <SaveScenario onSave={save} disabled={!valid} audience={saveAudience} />}
+      {saveAudience && <SaveScenario onSave={bt.save} disabled={!valid} audience={saveAudience} />}
       {completed && (
         <Results key={completed.id} result={completed.result} realizedHref={realizedHref} />
       )}
@@ -613,9 +289,38 @@ export function BacktestingWorkspace({
   );
 }
 
+/** How the portfolio on screen is made up; shown in both layouts. */
+export function ScopeNote({ snapshot }: { snapshot: BacktestingOptions["snapshot"] }) {
+  return (
+    <>
+      {snapshot.sleeve
+        ? `This team’s holdings total ${snapshot.savedWeightTotal.toFixed(2)}% of the Fund; the replay rescales them to 100% of this portfolio, with no cash.`
+        : `Invested holdings total ${snapshot.savedWeightTotal.toFixed(2)}%; uninvested cash is ${((snapshot.positions.find((p) => p.kind === "cash")?.weight ?? 0) * 100).toFixed(2)}%. Cash earns 0% by default.`}{" "}
+      No weights are redistributed. Added or dropped companies affect only the modified copy and never update your
+      saved portfolio. Results are a hypothetical replay of these weights, not realized performance.
+    </>
+  );
+}
+export const METHOD_LINE =
+  "Fixed weights are rebalanced daily · USD total returns · Dividends reinvested · No fees, taxes, or transaction costs";
+export const DATES_HINT =
+  "Start date includes that session’s return from the previous trading close. Up to five years; completed sessions only.";
+export const ADD_HINT = "New companies start at 0.00%. Offset changes yourself, including with cash.";
+
+/** The line under the form: running, stale, the last run's span, or what to do first. */
+export function runStatus({ busy, dirty, completed }: { busy: boolean; dirty: boolean; completed: { result: BacktestResult } | null }) {
+  return busy
+    ? "Fetching adjusted history and calculating every trading day…"
+    : dirty
+      ? "Settings changed. Results below show the last completed run; run again to apply changes."
+      : completed
+        ? `${completed.result.days.length} trading days replayed · ${completed.result.baseline} closing baseline → ${completed.result.days.at(-1)!.date}`
+        : "Choose your dates and weights, then run the comparison.";
+}
+
 /** Full-period figures derived once from the displayed (rounded) returns, so every difference reconciles on screen. */
-type Period = ReturnType<typeof periodFigures>;
-function periodFigures(result: BacktestResult) {
+export type Period = ReturnType<typeof periodFigures>;
+export function periodFigures(result: BacktestResult) {
   const current = shown(result.original.totalReturn),
     modified = shown(result.modified.totalReturn),
     benchmark = shown(result.benchmarkMetrics.totalReturn);
@@ -629,6 +334,70 @@ function periodFigures(result: BacktestResult) {
   };
 }
 
+/** Rebased cumulative-return index points for the chart: 100 at the baseline close. */
+export function replayPoints(result: BacktestResult) {
+  return [
+    {
+      date: result.baseline,
+      values: { original: 100, modified: 100, benchmark: 100 },
+    },
+    ...result.days.map((d) => ({
+      date: d.date,
+      values: {
+        original: (1 + d.originalCumulative) * 100,
+        modified: (1 + d.modifiedCumulative) * 100,
+        benchmark: (1 + d.benchmarkCumulative) * 100,
+      },
+    })),
+  ];
+}
+
+/** Why this is not the realized return, with a link to Attribution for the same dates. */
+export function ReplayNote({ result, realizedHref }: { result: BacktestResult; realizedHref?: string }) {
+  const lastSession = result.days.at(-1)!.date;
+  return (
+    <>
+      Both replays hold their weights fixed, rebalanced daily, from the {result.baseline} close through{" "}
+      {lastSession}. Past trades, weight changes, and cash flows are not reconstructed. The benchmark uses adjusted
+      total returns for {result.benchmark}
+      {result.benchmark === "SPY"
+        ? "; an S&P 500 figure in another report may use the index’s price return and differ."
+        : "."}
+      {realizedHref && (
+        <>
+          {" "}
+          <Link
+            href={`${realizedHref}?${new URLSearchParams({ period: "custom", from: result.from, to: lastSession })}`}
+            className="text-foreground underline underline-offset-2"
+          >
+            See the realized return for these dates on Attribution
+          </Link>
+          .
+        </>
+      )}
+    </>
+  );
+}
+
+/** Holdings whose early history counted as cash in this run. */
+export function CashNote({ result }: { result: BacktestResult }) {
+  return (
+    <>
+      <span className="font-medium text-foreground">Early history treated as cash:</span>{" "}
+      {result.cashSubstitutions.map((p) => `${p.ticker} through ${p.through}`).join("; ")}.
+      The fixed weights were kept; those allocations earned 0% during the listed periods.
+    </>
+  );
+}
+
+export type Frame = (props: { title: ReactNode; ariaLabel?: string; children: ReactNode }) => ReactNode;
+const ClassicFrame: Frame = ({ title, ariaLabel, children }) => (
+  <Card className="p-4" aria-label={ariaLabel}>
+    <SectionTitle>{title}</SectionTitle>
+    {children}
+  </Card>
+);
+
 const Results = memo(function Results({
   result,
   realizedHref,
@@ -636,75 +405,27 @@ const Results = memo(function Results({
   result: BacktestResult;
   realizedHref?: string;
 }) {
-  const [date, setDate] = useState(result.days.at(-1)!.date);
-  const [mode, setMode] = useState<
-    "originalActive" | "modifiedActive" | "delta"
-  >("modifiedActive");
-  const selected = result.days.find((d) => d.date === date)!;
-  const points = useMemo(
-    () => [
-      {
-        date: result.baseline,
-        values: { original: 100, modified: 100, benchmark: 100 },
-      },
-      ...result.days.map((d) => ({
-        date: d.date,
-        values: {
-          original: (1 + d.originalCumulative) * 100,
-          modified: (1 + d.modifiedCumulative) * 100,
-          benchmark: (1 + d.benchmarkCumulative) * 100,
-        },
-      })),
-    ],
-    [result],
-  );
-  const months = [...new Set(result.days.map((d) => d.date.slice(0, 7)))];
-  const byDate = new Map(result.days.map((d) => [d.date, d]));
+  const points = useMemo(() => replayPoints(result), [result]);
   const period = periodFigures(result);
-  const modeLabel = {
-    modifiedActive: `${SERIES.modified} vs ${result.benchmark}`,
-    originalActive: `${SERIES.original} vs ${result.benchmark}`,
-    delta: `${SERIES.modified} − ${SERIES.original.toLowerCase()}`,
-  };
   const summary = [
     { label: SERIES.original, value: period.current, diff: false },
     { label: SERIES.modified, value: period.modified, diff: false },
     { label: `${result.benchmark} benchmark return`, value: period.benchmark, diff: false },
-    { label: modeLabel.originalActive, value: period.currentActive, diff: true },
-    { label: modeLabel.modifiedActive, value: period.modifiedActive, diff: true },
+    { label: `${SERIES.original} vs ${result.benchmark}`, value: period.currentActive, diff: true },
+    { label: `${SERIES.modified} vs ${result.benchmark}`, value: period.modifiedActive, diff: true },
     { label: "Weight-change delta", value: period.delta, diff: true },
   ];
-  const lastSession = result.days.at(-1)!.date;
   return (
     <div className="space-y-6">
       <Card className="p-4 text-sm">
         <h2 className="font-medium">Hypothetical replay, not this portfolio’s realized return</h2>
         <p className="text-muted-foreground">
-          Both replays hold their weights fixed, rebalanced daily, from the {result.baseline} close through{" "}
-          {lastSession}. Past trades, weight changes, and cash flows are not reconstructed. The benchmark uses adjusted
-          total returns for {result.benchmark}
-          {result.benchmark === "SPY"
-            ? "; an S&P 500 figure in another report may use the index’s price return and differ."
-            : "."}
-          {realizedHref && (
-            <>
-              {" "}
-              <Link
-                href={`${realizedHref}?${new URLSearchParams({ period: "custom", from: result.from, to: lastSession })}`}
-                className="text-foreground underline underline-offset-2"
-              >
-                See the realized return for these dates on Attribution
-              </Link>
-              .
-            </>
-          )}
+          <ReplayNote result={result} realizedHref={realizedHref} />
         </p>
       </Card>
       {result.cashSubstitutions.length > 0 && (
         <Card className="p-4 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Early history treated as cash:</span>{" "}
-          {result.cashSubstitutions.map((p) => `${p.ticker} through ${p.through}`).join("; ")}.
-          The fixed weights were kept; those allocations earned 0% during the listed periods.
+          <CashNote result={result} />
         </Card>
       )}
       <div className="grid gap-3 sm:grid-cols-3">
@@ -740,168 +461,7 @@ const Results = memo(function Results({
           ]}
         />
       </Card>
-      <Card className="p-4">
-        <SectionTitle>Daily differences · {modeLabel[mode]}</SectionTitle>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-          <label className="flex items-center gap-2">
-            Color by
-            <select
-              aria-label="Heatmap measure"
-              value={mode}
-              onChange={(e) => setMode(e.target.value as typeof mode)}
-              className="rounded border bg-background p-2"
-            >
-              {(Object.keys(modeLabel) as (keyof typeof modeLabel)[]).map((key) => (
-                <option key={key} value={key}>
-                  {modeLabel[key]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <span className="text-xs text-muted-foreground">
-            {mode === "delta"
-              ? `Green: ${SERIES.modified.toLowerCase()} ahead that day · red: ${SERIES.original.toLowerCase()} ahead`
-              : `Green: ahead of ${result.benchmark} that day · red: behind ${result.benchmark}`}{" "}
-            · neutral: equal · darker: larger (up to 1 pp). Daily colors do not show the full-period result.
-          </span>
-        </div>
-        <div className="grid max-h-[36rem] gap-6 overflow-auto sm:grid-cols-2 xl:grid-cols-3">
-          {months.map((month) => {
-            const first = new Date(`${month}-01T00:00:00Z`);
-            const count = new Date(
-              Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0),
-            ).getUTCDate();
-            const offset = (first.getUTCDay() + 6) % 7;
-            return (
-              <div key={month}>
-                <h3 className="mb-2 text-sm font-medium">
-                  {first.toLocaleDateString("en-US", {
-                    month: "long",
-                    year: "numeric",
-                    timeZone: "UTC",
-                  })}
-                </h3>
-                <div className="grid grid-cols-7 gap-1 text-center text-xs">
-                  {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-                    <span key={i} className="pb-1 text-muted-foreground">
-                      {d}
-                    </span>
-                  ))}
-                  {Array.from({ length: offset }, (_, i) => (
-                    <span key={`pad${i}`} />
-                  ))}
-                  {Array.from({ length: count }, (_, i) => {
-                    const day = `${month}-${String(i + 1).padStart(2, "0")}`,
-                      row = byDate.get(day);
-                    if (!row)
-                      return (
-                        <span
-                          key={day}
-                          className="grid min-h-8 place-items-center rounded bg-muted/30 text-muted-foreground/60"
-                          title="Outside replay or no benchmark session"
-                        >
-                          {i + 1}
-                        </span>
-                      );
-                    const value = row[mode];
-                    const label = `${day}: ${modeLabel[mode]} ${pp(value)}`;
-                    return (
-                      <button
-                        type="button"
-                        key={day}
-                        title={label}
-                        aria-label={label}
-                        aria-pressed={day === date}
-                        onClick={() => setDate(day)}
-                        className={cn(
-                          "min-h-8 rounded border border-transparent text-xs text-foreground focus-visible:outline-2 focus-visible:outline-ring",
-                          day === date &&
-                            "ring-2 ring-foreground ring-offset-1 ring-offset-background",
-                        )}
-                        style={{
-                          backgroundColor:
-                            Math.abs(value) < 1e-12
-                              ? "var(--muted)"
-                              : `color-mix(in srgb, ${value > 0 ? "var(--up)" : "var(--down)"} ${20 + Math.min(Math.abs(value) / 0.01, 1) * 50}%, var(--background))`,
-                        }}
-                      >
-                        {i + 1}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <p className="mt-4 text-xs text-muted-foreground">
-          Select a trading day for contributions. Blank sessions are not
-          assigned a zero return.
-        </p>
-      </Card>
-      <Card className="p-4" aria-label="Selected day details">
-        <SectionTitle>Day detail · {date}</SectionTitle>
-        <div className="overflow-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr>
-                <th className={head}>Return</th>
-                <th className={cell}>{SERIES.original}</th>
-                <th className={cell}>{SERIES.modified}</th>
-                <th className={cell}>Difference</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-t">
-                <th className={head}>Portfolio</th>
-                <td className={cell}>{pct(selected.original)}</td>
-                <td className={cell}>{pct(selected.modified)}</td>
-                <td className={cell}>{pp(selected.delta)}</td>
-              </tr>
-              <tr className="border-t">
-                <th className={head}>Benchmark · {result.benchmark}</th>
-                <td className={cell}>{pct(selected.benchmark)}</td>
-                <td className={cell}>{pct(selected.benchmark)}</td>
-                <td className={cell}>{pp(0)}</td>
-              </tr>
-              <tr className="border-t">
-                <th className={head}>Difference vs {result.benchmark}</th>
-                <td className={cell}>{pp(selected.originalActive)}</td>
-                <td className={cell}>{pp(selected.modifiedActive)}</td>
-                <td className={cell}>{pp(selected.delta)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div className="overflow-auto">
-          <table className="w-full text-sm">
-            <caption className="py-3 text-left text-xs text-muted-foreground">
-              Holding contributions to daily portfolio return, in percentage
-              points.
-            </caption>
-            <thead>
-              <tr>
-                <th className={head}>Holding</th>
-                <th className={cell}>Holding return</th>
-                <th className={cell}>{SERIES.original}</th>
-                <th className={cell}>{SERIES.modified}</th>
-                <th className={cell}>Difference</th>
-              </tr>
-            </thead>
-            <tbody>
-              {selected.contributions.map((c) => (
-                <tr key={c.id} className="border-t">
-                  <th className={head}>{c.ticker}</th>
-                  <td className={cell}>{pct(c.return)}</td>
-                  <td className={cell}>{pp(c.original)}</td>
-                  <td className={cell}>{pp(c.modified)}</td>
-                  <td className={cn(cell, tone(c.delta))}>{pp(c.delta)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <DailyDifferences result={result} Frame={ClassicFrame} />
       <Card className="p-4">
         <SectionTitle>Period summary</SectionTitle>
         <Summary result={result} period={period} />
@@ -916,46 +476,243 @@ const Results = memo(function Results({
         <summary className="cursor-pointer font-medium text-foreground">
           Calculation notes
         </summary>
-        <div className="mt-3 space-y-2">
-          <p>
-            Returns use Yahoo Finance adjusted closing prices for both holdings
-            and the selected ETF benchmark, including dividend and split
-            adjustments. Returns are calculated as adjusted close / previous
-            adjusted close − 1. Each daily portfolio return is the weighted sum
-            of holding returns. Cumulative return is the product of (1 + daily
-            return) − 1.
-          </p>
-          <p>
-            Volatility is the sample standard deviation of daily returns × √252.
-            Drawdown includes the initial value of 1 and is shown as a negative
-            peak-to-trough return. Up/down capture is the ratio of geometric
-            mean daily portfolio and benchmark returns on
-            benchmark-positive/negative days; unavailable subsets show a dash.
-            Flat benchmark days enter neither capture ratio.
-          </p>
-          <p>
-            Daily contributions are weight × holding return. Period
-            contributions sum each daily contribution multiplied by the
-            portfolio’s value at the start of that day. They reconcile to each
-            compounded portfolio return; their differences reconcile to the
-            weight-change delta. The difference vs the benchmark is portfolio minus
-            benchmark return, in percentage points; daily differences are not
-            compounded separately. Period differences are taken from the returns as
-            displayed (rounded to 0.01%), so the figures on screen add up.
-          </p>
-          <p>
-            Cash earns 0%; a holding without earlier adjusted closes earns 0% until its
-            first close establishes a return basis. Later missing prices still block a
-            run. Trading costs, fees, taxes and historical changes in membership are
-            excluded; current selection introduces survivorship and hindsight bias.
-            The benchmark’s observed sessions define the replay calendar.
-          </p>
-        </div>
+        <CalculationNotes className="mt-3" />
       </details>
     </div>
   );
 });
-function Summary({ result, period }: { result: BacktestResult; period: Period }) {
+
+/** The daily heatmap and the selected day's detail, each drawn inside `Frame` (a card or a panel). */
+export function DailyDifferences({
+  result,
+  Frame,
+  names = SERIES,
+}: {
+  result: BacktestResult;
+  Frame: Frame;
+  /** Series names; the redesign calls them "Today's weights" and "Scenario". */
+  names?: { original: string; modified: string };
+}) {
+  const [date, setDate] = useState(result.days.at(-1)!.date);
+  const [mode, setMode] = useState<
+    "originalActive" | "modifiedActive" | "delta"
+  >("modifiedActive");
+  const selected = result.days.find((d) => d.date === date)!;
+  const months = [...new Set(result.days.map((d) => d.date.slice(0, 7)))];
+  const byDate = new Map(result.days.map((d) => [d.date, d]));
+  const modeLabel = {
+    modifiedActive: `${names.modified} vs ${result.benchmark}`,
+    originalActive: `${names.original} vs ${result.benchmark}`,
+    delta: `${names.modified} − ${names.original.toLowerCase()}`,
+  };
+  return (
+    <>
+      <Frame title={<>Daily differences · {modeLabel[mode]}</>}>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+            <label className="flex items-center gap-2">
+              Color by
+              <select
+                aria-label="Heatmap measure"
+                value={mode}
+                onChange={(e) => setMode(e.target.value as typeof mode)}
+                className="rounded border bg-background p-2"
+              >
+                {(Object.keys(modeLabel) as (keyof typeof modeLabel)[]).map((key) => (
+                  <option key={key} value={key}>
+                    {modeLabel[key]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="text-xs text-muted-foreground">
+              {mode === "delta"
+                ? `Green: ${names.modified.toLowerCase()} ahead that day · red: ${names.original.toLowerCase()} ahead`
+                : `Green: ahead of ${result.benchmark} that day · red: behind ${result.benchmark}`}{" "}
+              · neutral: equal · darker: larger (up to 1 pp). Daily colors do not show the full-period result.
+            </span>
+          </div>
+          <div className="grid max-h-[36rem] gap-6 overflow-auto sm:grid-cols-2 xl:grid-cols-3">
+            {months.map((month) => {
+              const first = new Date(`${month}-01T00:00:00Z`);
+              const count = new Date(
+                Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0),
+              ).getUTCDate();
+              const offset = (first.getUTCDay() + 6) % 7;
+              return (
+                <div key={month}>
+                  <h3 className="mb-2 text-sm font-medium">
+                    {first.toLocaleDateString("en-US", {
+                      month: "long",
+                      year: "numeric",
+                      timeZone: "UTC",
+                    })}
+                  </h3>
+                  <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                    {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+                      <span key={i} className="pb-1 text-muted-foreground">
+                        {d}
+                      </span>
+                    ))}
+                    {Array.from({ length: offset }, (_, i) => (
+                      <span key={`pad${i}`} />
+                    ))}
+                    {Array.from({ length: count }, (_, i) => {
+                      const day = `${month}-${String(i + 1).padStart(2, "0")}`,
+                        row = byDate.get(day);
+                      if (!row)
+                        return (
+                          <span
+                            key={day}
+                            className="grid min-h-8 place-items-center rounded bg-muted/30 text-muted-foreground/60"
+                            title="Outside replay or no benchmark session"
+                          >
+                            {i + 1}
+                          </span>
+                        );
+                      const value = row[mode];
+                      const label = `${day}: ${modeLabel[mode]} ${pp(value)}`;
+                      return (
+                        <button
+                          type="button"
+                          key={day}
+                          title={label}
+                          aria-label={label}
+                          aria-pressed={day === date}
+                          onClick={() => setDate(day)}
+                          className={cn(
+                            "min-h-8 rounded border border-transparent text-xs text-foreground focus-visible:outline-2 focus-visible:outline-ring",
+                            day === date &&
+                              "ring-2 ring-foreground ring-offset-1 ring-offset-background",
+                          )}
+                          style={{
+                            backgroundColor:
+                              Math.abs(value) < 1e-12
+                                ? "var(--muted)"
+                                : `color-mix(in srgb, ${value > 0 ? "var(--up)" : "var(--down)"} ${20 + Math.min(Math.abs(value) / 0.01, 1) * 50}%, var(--background))`,
+                          }}
+                        >
+                          {i + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Select a trading day for contributions. Blank sessions are not
+            assigned a zero return.
+          </p>
+      </Frame>
+      <Frame title={<>Day detail · {date}</>} ariaLabel="Selected day details">
+          <div className="overflow-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className={head}>Return</th>
+                  <th className={cell}>{names.original}</th>
+                  <th className={cell}>{names.modified}</th>
+                  <th className={cell}>Difference</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t">
+                  <th className={head}>Portfolio</th>
+                  <td className={cell}>{pct(selected.original)}</td>
+                  <td className={cell}>{pct(selected.modified)}</td>
+                  <td className={cell}>{pp(selected.delta)}</td>
+                </tr>
+                <tr className="border-t">
+                  <th className={head}>Benchmark · {result.benchmark}</th>
+                  <td className={cell}>{pct(selected.benchmark)}</td>
+                  <td className={cell}>{pct(selected.benchmark)}</td>
+                  <td className={cell}>{pp(0)}</td>
+                </tr>
+                <tr className="border-t">
+                  <th className={head}>Difference vs {result.benchmark}</th>
+                  <td className={cell}>{pp(selected.originalActive)}</td>
+                  <td className={cell}>{pp(selected.modifiedActive)}</td>
+                  <td className={cell}>{pp(selected.delta)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="overflow-auto">
+            <table className="w-full text-sm">
+              <caption className="py-3 text-left text-xs text-muted-foreground">
+                Holding contributions to daily portfolio return, in percentage
+                points.
+              </caption>
+              <thead>
+                <tr>
+                  <th className={head}>Holding</th>
+                  <th className={cell}>Holding return</th>
+                  <th className={cell}>{names.original}</th>
+                  <th className={cell}>{names.modified}</th>
+                  <th className={cell}>Difference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selected.contributions.map((c) => (
+                  <tr key={c.id} className="border-t">
+                    <th className={head}>{c.ticker}</th>
+                    <td className={cell}>{pct(c.return)}</td>
+                    <td className={cell}>{pp(c.original)}</td>
+                    <td className={cell}>{pp(c.modified)}</td>
+                    <td className={cn(cell, tone(c.delta))}>{pp(c.delta)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+      </Frame>
+    </>
+  );
+}
+
+/** How the replay is calculated. */
+export function CalculationNotes({ className }: { className?: string }) {
+  return (
+    <div className={cn("space-y-2", className)}>
+      <p>
+        Returns use Yahoo Finance adjusted closing prices for both holdings
+        and the selected ETF benchmark, including dividend and split
+        adjustments. Returns are calculated as adjusted close / previous
+        adjusted close − 1. Each daily portfolio return is the weighted sum
+        of holding returns. Cumulative return is the product of (1 + daily
+        return) − 1.
+      </p>
+      <p>
+        Volatility is the sample standard deviation of daily returns × √252.
+        Drawdown includes the initial value of 1 and is shown as a negative
+        peak-to-trough return. Up/down capture is the ratio of geometric
+        mean daily portfolio and benchmark returns on
+        benchmark-positive/negative days; unavailable subsets show a dash.
+        Flat benchmark days enter neither capture ratio.
+      </p>
+      <p>
+        Daily contributions are weight × holding return. Period
+        contributions sum each daily contribution multiplied by the
+        portfolio’s value at the start of that day. They reconcile to each
+        compounded portfolio return; their differences reconcile to the
+        weight-change delta. The difference vs the benchmark is portfolio minus
+        benchmark return, in percentage points; daily differences are not
+        compounded separately. Period differences are taken from the returns as
+        displayed (rounded to 0.01%), so the figures on screen add up.
+      </p>
+      <p>
+        Cash earns 0%; a holding without earlier adjusted closes earns 0% until its
+        first close establishes a return basis. Later missing prices still block a
+        run. Trading costs, fees, taxes and historical changes in membership are
+        excluded; current selection introduces survivorship and hindsight bias.
+        The benchmark’s observed sessions define the replay calendar.
+      </p>
+    </div>
+  );
+}
+
+export function Summary({ result, period, names = SERIES }: { result: BacktestResult; period: Period; names?: { original: string; modified: string } }) {
   const rows: [string, keyof Metrics, "return" | "ratio" | "count"][] = [
     ["Cumulative return", "totalReturn", "return"],
     ["Annualized volatility", "volatility", "return"],
@@ -972,10 +729,10 @@ function Summary({ result, period }: { result: BacktestResult; period: Period })
         <thead>
           <tr>
             <th className={head}>Metric</th>
-            <th className={cell}>{SERIES.original}</th>
-            <th className={cell}>{SERIES.modified}</th>
+            <th className={cell}>{names.original}</th>
+            <th className={cell}>{names.modified}</th>
             <th className={cell}>Benchmark</th>
-            <th className={cell}>Delta (modified − current)</th>
+            <th className={cell}>{names === SERIES ? "Delta (modified − current)" : `Delta (${names.modified.toLowerCase()} − ${names.original.toLowerCase()})`}</th>
           </tr>
         </thead>
         <tbody>
@@ -1011,7 +768,7 @@ function Summary({ result, period }: { result: BacktestResult; period: Period })
     </div>
   );
 }
-function Contributors({ result, period }: { result: BacktestResult; period: Period }) {
+export function Contributors({ result, period, names = SERIES }: { result: BacktestResult; period: Period; names?: { original: string; modified: string } }) {
   const [sort, setSort] = useState<"original" | "modified" | "delta">(
     "modified",
   );
@@ -1031,8 +788,8 @@ function Contributors({ result, period }: { result: BacktestResult; period: Peri
           onChange={(e) => setSort(e.target.value as typeof sort)}
           className="rounded border bg-background p-2"
         >
-          <option value="modified">{SERIES.modified}</option>
-          <option value="original">{SERIES.original}</option>
+          <option value="modified">{names.modified}</option>
+          <option value="original">{names.original}</option>
           <option value="delta">Weight-change delta</option>
         </select>
       </label>
@@ -1065,8 +822,8 @@ function Contributors({ result, period }: { result: BacktestResult; period: Peri
           <thead>
             <tr>
               <th className={head}>Holding</th>
-              <th className={cell}>{SERIES.original} contribution</th>
-              <th className={cell}>{SERIES.modified} contribution</th>
+              <th className={cell}>{names.original} contribution</th>
+              <th className={cell}>{names.modified} contribution</th>
               <th className={cell}>Delta</th>
             </tr>
           </thead>

@@ -12,16 +12,8 @@ import { fmtDate } from "@/lib/format";
 
 /** Saved what-ifs for this Fund or team, each a shareable link that reopens it on this page. */
 export function SavedScenarios({ items, activeId, viewerId, fundWide }: { items: SavedScenarioSummary[]; activeId?: string; viewerId: string; fundWide: boolean }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState<string | null>(null);
+  const { busy, remove } = useRemoveScenario();
   if (!items.length) return null;
-  async function remove(id: string) {
-    if (!window.confirm("Remove this saved scenario for everyone?")) return;
-    setBusy(id);
-    await fetch(`/api/backtesting/scenarios?id=${id}`, { method: "DELETE" }).catch(() => null);
-    setBusy(null);
-    router.refresh();
-  }
   return (
     <details className="mb-5 rounded-xl ring-1 ring-foreground/10" open={Boolean(activeId)}>
       <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
@@ -47,8 +39,33 @@ export function SavedScenarios({ items, activeId, viewerId, fundWide }: { items:
   );
 }
 
+/** Removing a saved scenario (for everyone in scope), after a confirm. `busy` is the id being removed. */
+export function useRemoveScenario() {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  async function remove(id: string) {
+    if (!window.confirm("Remove this saved scenario for everyone?")) return;
+    setBusy(id);
+    await fetch(`/api/backtesting/scenarios?id=${id}`, { method: "DELETE" }).catch(() => null);
+    setBusy(null);
+    router.refresh();
+  }
+  return { busy, remove };
+}
+
+type SaveProps = { onSave: (name: string, note: string) => Promise<{ id?: string; error?: string }>; disabled: boolean; audience: string };
+
 /** Name the scenario on screen and save it; the result is a link anyone in scope can open. */
-export function SaveScenario({ onSave, disabled, audience }: { onSave: (name: string, note: string) => Promise<{ id?: string; error?: string }>; disabled: boolean; audience: string }) {
+export function SaveScenario(props: SaveProps) {
+  return (
+    <Card data-tour="bt-save" className="mb-6 gap-3 p-4">
+      <SaveScenarioFields {...props} />
+    </Card>
+  );
+}
+
+/** The save form itself, for a card (classic) or a popover (redesign). */
+export function SaveScenarioFields({ onSave, disabled, audience }: SaveProps) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
@@ -69,7 +86,7 @@ export function SaveScenario({ onSave, disabled, audience }: { onSave: (name: st
   }
 
   return (
-    <Card data-tour="bt-save" className="mb-6 gap-3 p-4">
+    <>
       <div className="text-sm font-medium">
         Save and share <span className="font-normal text-muted-foreground">· keeps these weights, dates and benchmark under a link {audience} can open</span>
       </div>
@@ -96,6 +113,6 @@ export function SaveScenario({ onSave, disabled, audience }: { onSave: (name: st
         </div>
       )}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    </Card>
+    </>
   );
 }
