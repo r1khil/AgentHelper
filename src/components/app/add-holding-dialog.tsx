@@ -28,8 +28,8 @@ export function AddHoldingDialog({ teamId, members, defaultOwnerId }: { teamId: 
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="sm" />}>
-        <Plus />
+      <DialogTrigger render={<Button variant="outline" />}>
+        <Plus className="size-3.5" />
         Add holding
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
