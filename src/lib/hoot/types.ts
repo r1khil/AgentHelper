@@ -16,6 +16,8 @@ export type HootNudge = {
   detail?: string;
   href: string;
   mood: HootMood;
+  /** When it's due or since when it's been waiting (ISO time, or a New York date for earnings and weekly packs). */
+  at?: string;
 };
 
 /** Per-user companion state, stored on profiles.hoot. */

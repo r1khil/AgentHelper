@@ -167,11 +167,17 @@ export function listSentence(count: number, overdue: number) {
   return `${things}, ${overdue === count ? (count === 2 ? "both" : "all of them") : `${word(overdue)} of them`} overdue.`;
 }
 
-type NudgeLike = { id: string; kind: string; title: string; detail?: string };
+type NudgeLike = { id: string; kind: string; title: string; detail?: string; at?: string };
+
+/** "Fri 12:00" in New York, from an ISO time. */
+const dueStamp = (iso: string) => DateTime.fromISO(iso).setZone(NY).toFormat("ccc H:mm");
+/** "Sep 24" in New York, from an ISO time or date. */
+const sinceStamp = (iso: string) => (iso.length === 10 ? day(iso) : DateTime.fromISO(iso).setZone(NY)).toFormat("LLL d");
 
 /** The mono "when" beside a list item. Nudges carry no timestamps, so this reads what their id and copy say. */
 export function nudgeWhen(n: NudgeLike): string {
   if (n.kind === "movement") {
+    if (n.at) return `Due ${dueStamp(n.at)}`;
     if (isOverdue(n)) return "Overdue";
     const h = /due in (\d+)h/i.exec(n.title)?.[1];
     return h ? `Due in ${h}h` : "Due soon";
@@ -182,13 +188,16 @@ export function nudgeWhen(n: NudgeLike): string {
     if (wd) return `Reports ${wd.slice(0, 3)}`;
     return "Next few days";
   }
-  if (n.kind === "sell_side") return n.id.endsWith(":error") ? "Failed" : "Brief ready";
+  if (n.kind === "sell_side") return n.at ? `Since ${sinceStamp(n.at)}` : n.id.endsWith(":error") ? "Failed" : "Brief ready";
   if (n.kind === "proposal") return "Awaiting review";
   if (n.kind === "weekly") {
+    // The pack goes out at noon New York time on the Sunday after the week ends.
+    if (n.at && /^\d{4}-\d{2}-\d{2}$/.test(n.at)) return `Sends ${day(n.at).plus({ days: 2 }).toFormat("ccc")} 12:00`;
     const week = n.id.split(":")[1];
     return week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? `Week to ${monthDay(week)}` : "This week";
   }
   if (n.kind === "changelog") {
+    if (n.at) return `Since ${sinceStamp(n.at)}`;
     const pr = n.id.split(":")[1];
     return pr ? `PR #${pr}` : "New";
   }
