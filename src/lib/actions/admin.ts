@@ -14,7 +14,7 @@ import { AGENT_MODELS, AGENT_MODEL_SETTING, isAgentModelId } from "@/lib/agent/m
 import { EMBEDDING_MODEL_SETTING, RERANK_MODEL_SETTING, embeddingLabel, isEmbeddingModelId, isRerankModelId, rerankLabel } from "@/lib/agent/retrieval-models";
 import { ensureEmbeddingIndex } from "@/lib/documents/search";
 import { setSetting } from "@/lib/settings";
-import { WEEKLY_RECIPIENTS_SETTING } from "@/lib/weekly/ask";
+import { WEEKLY_RECIPIENTS_SETTING } from "@/lib/weekly/email";
 
 const roleSchema = z.enum(ROLES as [string, ...string[]]);
 const teamSchema = z.string().uuid().nullable();
@@ -137,7 +137,7 @@ export async function setRerankModel(fd: FormData) {
   back(`Reranking set to ${rerankLabel(id)}`, true);
 }
 
-/** Who the weekly process-update ask goes to. Blank means every profile with the exec role. */
+/** Who Hoot emails the weekly pack to: the first address in To, the rest in CC. Blank means Aadi, with Saad in CC. */
 export async function setWeeklyRecipients(fd: FormData) {
   const me = await requireAdmin();
   const raw = String(fd.get("recipients") ?? "").trim();
@@ -146,5 +146,5 @@ export async function setWeeklyRecipients(fd: FormData) {
   if (bad) back(`"${bad}" is not an email address`, false);
   await setSetting(WEEKLY_RECIPIENTS_SETTING, emails.join(", "), me.id);
   revalidatePath("/admin");
-  back(emails.length ? `Weekly update asks go to ${emails.join(", ")}` : "Weekly update asks go to every exec", true);
+  back(emails.length ? `The weekly email goes to ${emails.join(", ")}` : "The weekly email goes to Aadi, with Saad in CC", true);
 }

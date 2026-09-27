@@ -11,7 +11,7 @@ import { EMBEDDING_MODELS, RERANK_MODELS, embeddingDims, embeddingModelId, reran
 import { embeddingConfigured } from "@/lib/agent/embeddings";
 import { embeddingStats } from "@/lib/documents/index";
 import { getSetting } from "@/lib/settings";
-import { WEEKLY_RECIPIENTS_SETTING, inboundConfigured } from "@/lib/weekly/ask";
+import { WEEKLY_EMAIL_DEFAULT, WEEKLY_RECIPIENTS_SETTING } from "@/lib/weekly/email";
 import { FILINGS_LAST_SYNC_SETTING } from "@/lib/jobs/filings";
 import { tavilyConfigured } from "@/lib/web/tavily";
 import { disconnectDrive, ingestDriveNow, renewDriveWatchNow, setDriveRoot, syncDriveNow } from "@/lib/actions/drive";
@@ -62,7 +62,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const mcpBudget = await mcpBudgets(mcp.map((m) => m.name)).catch(() => ({}) as Awaited<ReturnType<typeof mcpBudgets>>);
   const currentModel = AGENT_MODELS.find((m) => m.id === currentModelId);
   const [embedId, rerankId, filingsLastSync, weeklyRecipients] = await Promise.all([embeddingModelId(), rerankModelId(), getSetting(FILINGS_LAST_SYNC_SETTING), getSetting(WEEKLY_RECIPIENTS_SETTING)]);
-  const weeklyLabel = `Cron Sunday 13:00 UTC · inbound email ${inboundConfigured() ? "on" : "not configured"}`;
+  const weeklyLabel = "Cron Sunday 13:00 UTC";
+  const weeklyTo = weeklyRecipients?.trim() || `${WEEKLY_EMAIL_DEFAULT.join(", ")} (default)`;
   const embedModel = EMBEDDING_MODELS.find((m) => m.id === embedId);
   const embedDims = (() => {
     try {
@@ -160,7 +161,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             </div>
             <p className="text-xs text-muted-foreground">Leave the date empty for today. {weeklyLabel}.</p>
             <form action={setWeeklyRecipients} className="grid gap-1.5">
-              <Label htmlFor="weekly-recipients">Ask these people (blank = every exec)</Label>
+              <Label htmlFor="weekly-recipients">Email the pack to (first in To, the rest in CC; blank = Aadi, CC Saad)</Label>
               <div className="flex items-center gap-2">
                 <Input id="weekly-recipients" name="recipients" defaultValue={weeklyRecipients ?? ""} placeholder="apatil@theowlfund.com, squddus@theowlfund.com" />
                 <Button type="submit" size="sm" variant="outline">Save</Button>
@@ -194,7 +195,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <li className="border-t pt-2">Sector bellwethers (ETF constituents, earnings dates, industries). Runs inside the morning sweep.</li>
             <li className="border-t pt-2">Earnings prep packs (agent-gathered evidence for reports in the next five trading days). Runs inside the morning sweep.</li>
             <li className="border-t pt-2">SEC filings index (10-K, 10-Q, 8-K and EX-99.1 for every holding). Runs inside the morning sweep{filingsLastSync ? `; last sync ${filingsLastSync}` : ""}.</li>
-            <li className="border-t pt-2">Weekly update (pack for last Friday, then the process-update asks). {weeklyLabel}. Asks go to {weeklyRecipients || "every exec"}.</li>
+            <li className="border-t pt-2">Weekly update (pack for last Friday, then Hoot emails it). {weeklyLabel}. Goes to {weeklyTo}; a test account (*.owlfund.local) alone pauses it.</li>
           </ul>
         </Card>
         )}

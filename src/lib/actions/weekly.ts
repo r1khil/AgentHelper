@@ -7,12 +7,12 @@ import { db } from "@/db/client";
 import { weeklyUpdates } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { todayNY } from "@/lib/providers/calendar";
-import { sendProcessUpdateAsks } from "@/lib/weekly/ask";
 import { buildWeeklyPack } from "@/lib/weekly/build";
+import { sendWeeklyEmail } from "@/lib/weekly/email";
 import { linesToItems } from "@/lib/weekly/format";
 import { parseFigureInput, withSheetFigures } from "@/lib/weekly/figures";
 import { readSheetWeeklyFigures } from "@/lib/weekly/sheet";
-import { ensurePack, getPack, normalizeAgenda, packFigures } from "@/lib/weekly/store";
+import { ensurePack, normalizeAgenda, packFigures } from "@/lib/weekly/store";
 import { isAgendaSection, AGENDA_LABELS, type WeeklyFigures } from "@/lib/weekly/types";
 import { isFriday, lastFriday } from "@/lib/weekly/weeks";
 
@@ -128,14 +128,16 @@ export async function reopenWeekly(fd: FormData) {
   back(week, "Reopened as a draft", true);
 }
 
-/** Ask again for the process updates — the button that stands in for a reminder. */
-export async function sendWeeklyAskNow(fd: FormData) {
-  await requireRole(...FUND_WIDE);
+/**
+ * Send the week's email now. "list" sends to the usual recipients (again, if it already went); "me" sends a copy to the
+ * person pressing the button only, which doesn't count as the week's email.
+ */
+export async function sendWeeklyEmailNow(fd: FormData) {
+  const me = await requireRole(...FUND_WIDE);
   const week = weekFrom(fd);
-  if (!(await getPack(week))) await ensurePack(week);
-  const only = String(fd.get("recipient") ?? "").trim() || undefined;
-  const r = await sendProcessUpdateAsks(week, { resend: true, only });
+  const toMe = String(fd.get("mode") ?? "") === "me";
+  const r = await sendWeeklyEmail(week, toMe ? { only: me.email } : { force: true });
   revalidateWeek(week);
-  const detail = r.reason ? ` (${r.reason})` : "";
-  back(week, `Asks: ${r.sent} sent, ${r.skipped} skipped, ${r.failed} failed${detail}`, r.failed === 0);
+  if (r.status === "sent") back(week, toMe ? `Sent a copy to ${r.to}` : `Emailed ${r.to}${r.cc?.length ? `, cc ${r.cc.join(", ")}` : ""}`, true);
+  back(week, `Email ${r.status === "failed" ? "failed" : "not sent"}: ${r.reason ?? "unknown reason"}`);
 }

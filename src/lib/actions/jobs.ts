@@ -98,8 +98,8 @@ export async function runWeeklyNow(fd: FormData) {
   revalidatePath("/admin");
   revalidatePath("/weekly");
   const build = r.build && "error" in r.build ? `build failed (${r.build.error})` : `built${r.build?.failed.length ? ` with ${r.build.failed.join(", ")} missing` : ""}`;
-  const asks = r.asks && "error" in r.asks ? `asks failed (${r.asks.error})` : `asks ${r.asks?.sent ?? 0} sent, ${r.asks?.skipped ?? 0} skipped, ${r.asks?.failed ?? 0} failed`;
-  redirect(`/admin?${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Weekly job for week ending ${r.weekEnding}: ${r.reason ?? `${build}; ${asks}`}`)}`);
+  const email = !r.email ? "no email" : "error" in r.email ? `email failed (${r.email.error})` : r.email.status === "sent" ? `emailed ${r.email.to}` : `email ${r.email.status}${r.email.reason ? ` (${r.email.reason})` : ""}`;
+  redirect(`/admin?${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Weekly job for week ending ${r.weekEnding}: ${r.reason ?? `${build}; ${email}`}`)}`);
 }
 
 /** Hoot's daily attribution brief, by hand: write it, then email it (to the pressing admin only, unless "everyone" is ticked). */
