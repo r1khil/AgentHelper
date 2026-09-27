@@ -1,6 +1,6 @@
 # Weekly update pack
 
-Every Monday the execs email the fund a one-page deck, *Update for the week ended \<Friday\>*. The app gathers every data point on that slide and Hoot emails it to Aadi every Sunday, with Saad in CC, in the deck's order and style so each section pastes straight in. **The agent prepares the evidence; the student owns the interpretation.** Nothing is emailed to the fund by the app: Aadi still assembles and sends the deck.
+Every Monday the execs email the fund a one-page deck, *Update for the week ended \<Friday\>*. The app gathers every data point on that slide and Hoot emails it to Aadi every Sunday at noon, with Saad in CC, in the deck's order and style so each section pastes straight in. **The agent prepares the evidence; the student owns the interpretation.** Nothing is emailed to the fund by the app: Aadi still assembles and sends the deck.
 
 ## What the app builds
 
@@ -18,7 +18,7 @@ Every line and section on the page has a copy button, and **Copy whole pack** pu
 
 ## The Sunday cycle
 
-One cron, `/api/cron/weekly` at `0 13 * * 0` (Sunday 09:00 New York), guarded by `CRON_SECRET` like the others. It:
+`/api/cron/weekly` runs at Sunday 12:00 New York from Supabase pg_cron (`drizzle/0023_weekly_noon.sql`: 16:00 and 17:00 UTC, with `?at=12:00` letting through only the call that lands at noon New York, in daylight and standard time alike). A Vercel cron at 19:00 UTC Sunday is the backstop. Both are guarded by `CRON_SECRET`. It:
 
 1. takes the Friday that just passed as the week ending, and creates the pack if it does not exist;
 2. snapshots the previous pack's agenda into *Last Week's Agenda* and carries its figures forward as placeholders;
@@ -28,7 +28,7 @@ One cron, `/api/cron/weekly` at `0 13 * * 0` (Sunday 09:00 New York), guarded by
 
 Each step is caught on its own: a provider that is down costs that one section, is recorded in the pack's `sources`, and shows on the page. The email still goes out and its **Checks** list names what to fill in by hand, along with anything the sheet and the app disagree on. **A pack an exec has edited keeps its agenda, and a pack marked sent is not rebuilt.**
 
-The email is sent once per week (recorded as `sources.email`); a retried cron reuses the same OpenMail idempotency key, so it cannot go out twice. On the pack page, **Send now / Send again** sends it to the list and **Send a copy to me** sends a test copy to whoever pressed it without counting as the week's email. The card also previews the exact text.
+The email is sent once per week (recorded as `sources.email`). Once it has gone out, later runs that week do nothing, so the backstop can't change the pack Aadi was sent. A retried cron also reuses the same OpenMail idempotency key, so the email cannot go out twice. On the pack page, **Send now / Send again** sends it to the list and **Send a copy to me** sends a test copy to whoever pressed it without counting as the week's email. The card also previews the exact text.
 
 Admins can run the whole thing by hand from **Admin → Jobs → Weekly update**, optionally with a date, which builds the pack for the Friday on or before it and sends its email if it hasn't gone. Execs can rebuild a pack from `/weekly`.
 
@@ -38,7 +38,7 @@ The execs keep the semester's schedule in an Excel file in the app's Drive folde
 
 ## Recipients and pausing
 
-By default the email goes to Aadi (`apatil@`) with Saad (`squddus@`) in CC. **Admin → Weekly update → Email the pack to** overrides it (the `weekly_recipients` app setting): the first address goes in To, the rest in CC. Test accounts (`*.owlfund.local`) are never emailed, so a list holding only a test account pauses the email while the pack still builds. That is how it was paused on 2026-09-27; clear the setting to go back to the default.
+By default the email goes to Aadi (`apatil@`) with Saad (`squddus@`) in CC. **Admin → Weekly update → Email the pack to** overrides it (the `weekly_recipients` app setting): the first address goes in To, the rest in CC. Test accounts (`*.owlfund.local`) are never emailed, so a list holding only a test account pauses the email while the pack still builds. That is how it was paused on 2026-09-27, until the noon schedule shipped the same day.
 
 Replies reach Hoot's inbox and are answered like any question to Hoot. The older Resend inbound route for process-update replies (`/api/email/inbound`, `weekly_requests`) no longer receives anything now that the calendar supplies them.
 
@@ -48,5 +48,4 @@ Replies reach Hoot's inbox and are answered like any question to Hoot. The older
 - Market News can run longer than the deck's usual six to eight releases in a heavy week (a jobs week has a dozen). Trim as you paste.
 - "% 1 Week" measures the deck's window only until Monday's open. A rebuild after that falls back to the closes, which give the same numbers.
 - Performers need Friday closes in `daily_closes` for the cross-check, which the prices job writes on weekday nights. Weeks before 2026-09-18 have no usable data.
-- Vercel Hobby timing is only accurate to the hour, so the email can land any time between 09:00 and 10:00 New York.
 - `npm run smoke:weekly -- <Friday>` builds a pack against the live database and prints the email without sending it.

@@ -62,7 +62,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const mcpBudget = await mcpBudgets(mcp.map((m) => m.name)).catch(() => ({}) as Awaited<ReturnType<typeof mcpBudgets>>);
   const currentModel = AGENT_MODELS.find((m) => m.id === currentModelId);
   const [embedId, rerankId, filingsLastSync, weeklyRecipients] = await Promise.all([embeddingModelId(), rerankModelId(), getSetting(FILINGS_LAST_SYNC_SETTING), getSetting(WEEKLY_RECIPIENTS_SETTING)]);
-  const weeklyLabel = "Cron Sunday 13:00 UTC";
+  const weeklyLabel = "Sunday 12:00 New York (Supabase pg_cron), Vercel backstop 19:00 UTC";
   const weeklyTo = weeklyRecipients?.trim() || `${WEEKLY_EMAIL_DEFAULT.join(", ")} (default)`;
   const embedModel = EMBEDDING_MODELS.find((m) => m.id === embedId);
   const embedDims = (() => {

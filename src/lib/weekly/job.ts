@@ -7,6 +7,7 @@ import { createJobReporter } from "@/lib/jobs/progress";
 import { todayNY } from "@/lib/providers/calendar";
 import { buildWeeklyPack, type BuildResult } from "./build";
 import { sendWeeklyEmail, type WeeklyEmailResult } from "./email";
+import { getPack } from "./store";
 import { lastFriday } from "./weeks";
 
 const LOCK = "weekly";
@@ -23,7 +24,8 @@ export type WeeklyJobResult = {
 
 /**
  * The Sunday run: build the pack for the Friday that just passed, then email it to the exec who builds the deck. The
- * email goes out even when a build step failed: its Checks list says which part to fill in by hand.
+ * email goes out even when a build step failed: its Checks list says which part to fill in by hand. Once the week's email
+ * has gone out the run does nothing (unless `resendEmail`), so the afternoon backstop can't change numbers Aadi already has.
  */
 export async function runWeeklyJob(opts: { today?: string; resendEmail?: boolean } = {}): Promise<WeeklyJobResult> {
   const today = opts.today || todayNY();
@@ -46,6 +48,13 @@ export async function runWeeklyJob(opts: { today?: string; resendEmail?: boolean
   }
 
   try {
+    const emailed = (await getPack(weekEnding))?.sources?.email;
+    if (emailed?.status === "ok" && !opts.resendEmail) {
+      result.status = "skipped";
+      result.reason = `the week's email already went out (${emailed.detail ?? emailed.at})`;
+      return finish();
+    }
+
     progress.step("build weekly pack", { weekEnding, today });
     try {
       result.build = await buildWeeklyPack(weekEnding, { reason: "weekly job", progress });
