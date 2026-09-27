@@ -30,15 +30,23 @@ export function fmtAumK(n: number | null | undefined): string {
 const ACRONYMS = new Set(["ETF", "ADR", "LLC", "LP", "PLC", "NV", "SA", "AG", "SE", "II", "III", "US", "USA", "REIT", "SPDR", "MSCI", "S&P"]);
 
 /**
- * SEC filers' names arrive in capitals ("TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD"); the deck writes them in title case.
- * A name that already has lower case letters is left alone.
+ * A company name as the deck writes it: the company's own name ("Amazon.com, Inc.", "The Cigna Group") with the long
+ * suffixes shortened the way the execs do ("Stryker Corp.", "American Express Co.", "Taiwan Semiconductor Manufacturing
+ * Co."). Names filed in capitals ("MICROSOFT CORP") are title-cased first.
  */
 export function deckName(name: string): string {
-  if (/[a-z]/.test(name)) return name;
-  return name
-    .split(/(\s+)/)
-    .map((w) => (ACRONYMS.has(w) || !/[A-Z]/.test(w) ? w : w.charAt(0) + w.slice(1).toLowerCase()))
-    .join("");
+  const cased = /[a-z]/.test(name)
+    ? name
+    : name
+        .split(/(\s+)/)
+        .map((w) => (ACRONYMS.has(w) || !/[A-Z]/.test(w) ? w : w.charAt(0) + w.slice(1).toLowerCase()))
+        .join("");
+  return cased
+    .replace(/\bCorporation\b/g, "Corp.")
+    .replace(/\bIncorporated\b/g, "Inc.")
+    .replace(/\bCompany\b/g, "Co.")
+    .replace(/,?\s+(?:Limited|Ltd\.?)$/i, "")
+    .trim();
 }
 
 export function performerLine(p: Performer): string {

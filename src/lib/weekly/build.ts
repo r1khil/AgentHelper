@@ -5,11 +5,16 @@ import { dailyCloses, holdings, securities, weeklyUpdates } from "@/db/schema";
 import { listBellwethers, listCalendarHoldingEvents } from "@/lib/earnings";
 import { getEconomicCalendar } from "@/lib/economic-calendar/service";
 import { noopReporter, type JobReporter } from "@/lib/jobs/progress";
+import { getEarningsCalendarRange } from "@/lib/providers/finnhub";
+import { getQuotes } from "@/lib/providers/yahoo";
 import { tickerKey } from "@/lib/pt-sheet/reconcile";
 import { carryForward, withSheetFigures } from "./figures";
 import { readSheetWeekly, sheetReadDetail, type SheetWeeklyRead } from "./sheet";
+import { readFundCalendar } from "./calendar-read";
+import { US_TICKER, pickEarnings, type Reporter } from "./earnings";
+import { calendarProcessUpdates } from "./fund-calendar";
 import { deckName } from "./format";
-import { pickMarketNews } from "./market-news";
+import { deckMarketNews } from "./market-news";
 import { buildCloseLookup, chooseMovers, weeklyReturns, type PerformerHolding } from "./performers";
 import { ensurePack, getPack, noteSource, normalizeAgenda, packFigures } from "./store";
 import type { AgendaItem, FigureValue, WeeklyAgenda, WeeklyFigures, WeeklyPerformers, WeeklySources } from "./types";
@@ -52,37 +57,74 @@ async function computeWeeklyPerformers(weekEnding: string, sheet: SheetWeeklyRea
         .where(and(inArray(dailyCloses.ticker, [...tickers]), gte(dailyCloses.sessionDate, window.start), lte(dailyCloses.sessionDate, window.end)))
     : [];
   const closes = weeklyReturns({ holdings: universe, closes: buildCloseLookup(closeRows), ...window });
-  return chooseMovers({ sheet: sheet?.moves.rows ?? null, sheetBlank: sheet?.moves.blank, sheetProblem: sheet ? sheet.moves.problem : "Google Drive is not configured here", readAt: sheet?.readAt, closes, names, window });
+  const movers = chooseMovers({ sheet: sheet?.moves.rows ?? null, sheetBlank: sheet?.moves.blank, sheetProblem: sheet ? sheet.moves.problem : "Google Drive is not configured here", readAt: sheet?.readAt, closes, names, window });
+  // The app stores most names as SEC filed them ("AMAZON COM INC"); Yahoo has the company's own ("Amazon.com, Inc.").
+  const quotes = await quotesFor([...movers.top, ...movers.worst].map((p) => p.ticker));
+  const withName = (list: WeeklyPerformers["top"]) => list.map((p) => ({ ...p, name: deckName(quotes[p.ticker]?.name ?? p.name) }));
+  return { ...movers, top: withName(movers.top), worst: withName(movers.worst) };
+}
+
+/** Yahoo quotes (name, market cap) for many tickers, 100 per request. Empty when Yahoo is down: callers fall back. */
+async function quotesFor(tickers: string[]): Promise<Awaited<ReturnType<typeof getQuotes>>> {
+  const unique = [...new Set(tickers)];
+  const out: Awaited<ReturnType<typeof getQuotes>> = {};
+  for (let i = 0; i < unique.length; i += 100) {
+    Object.assign(out, await getQuotes(unique.slice(i, i + 100)).catch(() => ({})));
+  }
+  return out;
 }
 
 /**
- * Holdings' reports plus tracked sector bellwethers in the coming week, grouped by weekday. For holdings the sheet's
- * Earnings Date wins; the app's earnings calendar fills in any holding the sheet has no date for.
+ * The coming week's reports: holdings and tracked sector bellwethers, plus the week's largest reporters from Finnhub (see
+ * `earnings.ts`). For holdings the sheet's Earnings Date wins; the app's earnings calendar fills in any holding the sheet has
+ * no date for. Without Finnhub or Yahoo the line keeps holdings and bellwethers only.
  */
-async function computeEarningsItems(weekEnding: string, sheet: SheetWeeklyRead["earnings"] | null): Promise<AgendaItem[]> {
+async function computeEarningsItems(weekEnding: string, sheet: SheetWeeklyRead["earnings"] | null): Promise<{ items: AgendaItem[]; big: number; note: string | null }> {
   const { from, to } = agendaWeek(weekEnding);
-  const [holdingEvents, bellwethers] = await Promise.all([listCalendarHoldingEvents(from, to), listBellwethers()]);
+  const [holdingEvents, bellwethers, calendar] = await Promise.all([
+    listCalendarHoldingEvents(from, to),
+    listBellwethers(),
+    getEarningsCalendarRange(from, to).catch((e: unknown) => e as Error),
+  ]);
   const sheetDated = new Set(sheet?.dated ?? []);
-  const byTicker = new Map<string, { date: string; ticker: string }>();
-  for (const e of sheet?.rows ?? []) byTicker.set(e.ticker, { date: e.date, ticker: e.ticker });
+  const always = new Map<string, string>();
+  for (const e of sheet?.rows ?? []) always.set(e.ticker, e.date);
   for (const row of holdingEvents) {
-    if (!row.e.reportDate || byTicker.has(row.h.ticker) || sheetDated.has(tickerKey(row.h.ticker))) continue;
-    byTicker.set(row.h.ticker, { date: row.e.reportDate, ticker: row.h.ticker });
+    if (!row.e.reportDate || always.has(row.h.ticker) || sheetDated.has(tickerKey(row.h.ticker))) continue;
+    always.set(row.h.ticker, row.e.reportDate);
   }
   for (const b of bellwethers) {
     if (!b.reportDate || b.reportDate < from || b.reportDate > to) continue;
-    if (!byTicker.has(b.ticker)) byTicker.set(b.ticker, { date: b.reportDate, ticker: b.ticker });
+    if (!always.has(b.ticker)) always.set(b.ticker, b.reportDate);
   }
-  return [...byTicker.values()]
-    .sort((a, b) => a.date.localeCompare(b.date) || a.ticker.localeCompare(b.ticker))
-    .map((e) => ({ day: weekdayLabel(e.date), text: e.ticker }));
+
+  const others = new Map<string, string>();
+  if (!(calendar instanceof Error)) {
+    for (const [symbol, events] of calendar) {
+      const date = events.find((e) => e.date >= from && e.date <= to)?.date;
+      if (date && US_TICKER.test(symbol) && !always.has(symbol)) others.set(symbol, date);
+    }
+  }
+  const quotes = await quotesFor([...always.keys(), ...others.keys()]);
+  const cap = (t: string) => quotes[t]?.marketCap ?? null;
+  const picked = pickEarnings([
+    ...[...always].map(([ticker, date]): Reporter => ({ ticker, date, cap: cap(ticker), always: true })),
+    ...[...others].map(([ticker, date]): Reporter => ({ ticker, date, cap: cap(ticker) })),
+  ]);
+  const note =
+    calendar instanceof Error
+      ? `the week's largest reporters are missing: Finnhub failed (${calendar.message})`
+      : others.size && !Object.keys(quotes).length
+        ? "the week's largest reporters are missing: Yahoo gave no market caps"
+        : null;
+  return { items: picked.map((e) => ({ day: weekdayLabel(e.date), text: e.ticker })), big: picked.filter((e) => !e.always).length, note };
 }
 
-/** The week's scheduled economic releases worth a line, most important first within each day. */
+/** The week's scheduled economic releases, named and chosen the way the execs write them (see `market-news.ts`). */
 async function computeMarketNewsItems(weekEnding: string): Promise<AgendaItem[]> {
   const range = agendaWeek(weekEnding);
   const feed = await getEconomicCalendar(range);
-  return pickMarketNews(feed.events, range).map((e) => ({ day: weekdayLabel(e.date), text: e.name }));
+  return deckMarketNews(feed.events, range).map((e) => ({ day: weekdayLabel(e.date), text: e.name }));
 }
 
 /** An exec's entry, or a figure already read from the sheet, beats last week's placeholder. */
@@ -169,9 +211,10 @@ export async function buildWeeklyPack(weekEnding: string, opts: { reason: string
 
   progress.step("collect earnings for the coming week");
   try {
-    const items = await computeEarningsItems(weekEnding, sheet && !sheet.earnings.problem ? sheet.earnings : null);
+    const { items, big, note } = await computeEarningsItems(weekEnding, sheet && !sheet.earnings.problem ? sheet.earnings : null);
     if (!edited) earningsItems = items;
-    sources = noteSource(sources, "earnings", edited ? { status: "held", detail: `${items.length} found; the pack has exec edits` } : { status: "ok", detail: `${items.length} reports` });
+    const detail = `${items.length} reports, ${big} of them the week's largest${note ? `; ${note}` : ""}`;
+    sources = noteSource(sources, "earnings", edited ? { status: "held", detail: `${detail}; the pack has exec edits` } : { status: note ? "failed" : "ok", detail, ...(note ? { error: note } : {}) });
   } catch (e) {
     failed.push("earnings");
     sources = noteSource(sources, "earnings", { status: "failed", error: message(e) });
@@ -189,8 +232,27 @@ export async function buildWeeklyPack(weekEnding: string, opts: { reason: string
     progress.warn("market news failed", { error: message(e) });
   }
 
-  // Process updates are only ever written by an exec or by a parsed reply.
-  update.agenda = { earnings: earningsItems, marketNews: marketNewsItems, processUpdates: agenda.processUpdates };
+  let processItems: AgendaItem[] = agenda.processUpdates;
+  progress.step("read the fund calendar for the coming week");
+  try {
+    const calendar = await readFundCalendar();
+    if (!calendar) sources = noteSource(sources, "processUpdates", { status: "held", detail: "Google Drive is not configured here" });
+    else if (!calendar.files.length) {
+      failed.push("processUpdates");
+      sources = noteSource(sources, "processUpdates", { status: "failed", error: 'no "<Semester> <Year> Calendar.xlsx" in the Drive folder' });
+    } else {
+      const items = calendarProcessUpdates(calendar.entries, agendaWeek(weekEnding));
+      if (!edited) processItems = items;
+      const detail = `${items.length} items from ${calendar.files.join(" and ")}`;
+      sources = noteSource(sources, "processUpdates", edited ? { status: "held", detail: `${detail}; the pack has exec edits` } : { status: "ok", detail });
+    }
+  } catch (e) {
+    failed.push("processUpdates");
+    sources = noteSource(sources, "processUpdates", { status: "failed", error: message(e) });
+    progress.warn("fund calendar failed", { error: message(e) });
+  }
+
+  update.agenda = { earnings: earningsItems, marketNews: marketNewsItems, processUpdates: processItems };
   update.sources = sources;
   await db.update(weeklyUpdates).set(update).where(eq(weeklyUpdates.weekEnding, weekEnding));
 

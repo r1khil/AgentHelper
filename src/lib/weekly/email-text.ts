@@ -14,7 +14,6 @@ export type WeeklyEmailInput = {
   agenda: WeeklyAgenda;
   lastWeekAgenda: WeeklyAgenda | null;
   sources: WeeklySources;
-  packUrl?: string | null;
   /** First name of the person in To, when the app knows it. */
   toName?: string | null;
 };
@@ -49,6 +48,7 @@ const STEP_LABELS: Record<string, string> = {
   performers: "the top and worst 3",
   earnings: "Earnings",
   marketNews: "Market News",
+  processUpdates: "the fund calendar",
 };
 
 /** What to look at before pasting: steps that failed, figures that aren't this week's, and the performers' own notes. */
@@ -113,7 +113,7 @@ export function weeklyEmailText(input: WeeklyEmailInput): string {
     ...(checks.length ? checks.map((c) => `- ${c}`) : ["Nothing to flag."]),
     "",
     sourcesLine(p),
-    ...(input.packUrl ? [`Edit any of this on the Weekly page: ${input.packUrl}`] : []),
+    "Please double check figures for accuracy.",
     "",
     "Feel free to reply with any questions.",
     "",
@@ -125,5 +125,5 @@ export function weeklyEmailText(input: WeeklyEmailInput): string {
 
 function sourcesLine(p: WeeklyPerformers | null): string {
   const movers = p?.source === "sheet" ? `the PT sheet's "% 1 Week"` : "the app's Monday and Friday closes";
-  return `Where this comes from: highlights from the PT sheet's 2025 Time-Weighted Returns tab; top and worst 3 from ${movers}; earnings from the sheet's Price Targets tab, the app's earnings calendar and sector bellwethers; market news from the economic calendar.`;
+  return `Where this comes from: highlights from the PT sheet's 2025 Time-Weighted Returns tab; top and worst 3 from ${movers}; earnings for holdings from the sheet's Price Targets tab, plus sector bellwethers and the week's largest reporters (worth $10B or more, from Finnhub and Yahoo); market news from the economic calendar; process updates from the fund's semester calendar in Drive.`;
 }

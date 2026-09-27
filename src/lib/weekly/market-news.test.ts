@@ -1,108 +1,66 @@
 import { describe, expect, it } from "vitest";
-import { pickMarketNews } from "./market-news";
+import { agendaLine } from "./format";
+import { deckMarketNews, deckReleaseName } from "./market-news";
+import { weekdayLabel } from "./weeks";
 
-const range = { from: "2026-09-21", to: "2026-09-25" };
-const ev = (date: string, importance: 1 | 2 | 3 | null, name: string) => ({ date, importance, name });
+const ev = (date: string, time: string, name: string) => ({ date, name, timestamp: `${date}T${time}:00Z` });
+const line = (events: ReturnType<typeof ev>[], from: string, to: string) =>
+  agendaLine("Market News", deckMarketNews(events, { from, to }).map((e) => ({ day: weekdayLabel(e.date), text: e.name })));
 
-describe("pickMarketNews", () => {
-  it("drops auctions, speeches, inventories and positioning whatever their importance", () => {
-    const picks = pickMarketNews(
-      [
-        ev("2026-09-22", 2, "2-Year Note Auction"),
-        ev("2026-09-22", 2, "Fed Governor Jefferson Speech"),
-        ev("2026-09-23", 3, "EIA Crude Oil Stocks Change"),
-        ev("2026-09-25", 2, "Baker Hughes US Oil Rig Count"),
-        ev("2026-09-25", 2, "CFTC S&P 500 Non-Commercial Net Positions"),
-        ev("2026-09-24", 3, "Initial Jobless Claims"),
-      ],
-      range,
+describe("deckMarketNews", () => {
+  // The decks name the same releases; their order within a day varies from week to week, so the app uses release time.
+  it("names the releases the 11-Sep deck listed for the week of 2026-09-14, in release-time order", () => {
+    // Feed names as the economic calendar returned them; times in UTC.
+    const week = [
+      ev("2026-09-15", "12:30", "NY Empire State Manufacturing Index"),
+      ev("2026-09-16", "12:30", "Retail Sales MoM"),
+      ev("2026-09-16", "12:30", "Retail Sales Control Group MoM"),
+      ev("2026-09-16", "12:30", "Import Prices MoM"),
+      ev("2026-09-16", "14:00", "NAHB Housing Market Index"),
+      ev("2026-09-16", "18:00", "Fed Interest Rate Decision"),
+      ev("2026-09-16", "18:00", "FOMC Economic Projections"),
+      ev("2026-09-16", "18:30", "Fed Press Conference"),
+      ev("2026-09-17", "12:30", "Housing Starts"),
+      ev("2026-09-17", "12:30", "Building Permits Prel"),
+      ev("2026-09-17", "12:30", "Initial Jobless Claims"),
+      ev("2026-09-17", "12:30", "Continuing Jobless Claims"),
+      ev("2026-09-17", "14:00", "Pending Home Sales MoM"),
+    ];
+    expect(line(week, "2026-09-14", "2026-09-18")).toBe(
+      "Market News: Import Prices, Retail Sales, Federal Reserve Predictions, U.S. Interest Rate Decision, FOMC Meeting (Wednesday), Housing Starts, Weekly Jobless Claims (Thursday)",
     );
-    expect(picks.map((p) => p.name)).toEqual(["Initial Jobless Claims"]);
   });
 
-  it("collapses companion series into the headline release on the same day", () => {
-    const picks = pickMarketNews(
-      [
-        ev("2026-09-24", 3, "New Home Sales"),
-        ev("2026-09-24", 2, "New Home Sales m/m"),
-        ev("2026-09-24", 2, "Continuing Jobless Claims"),
-        ev("2026-09-24", 3, "Initial Jobless Claims"),
-        ev("2026-09-25", 3, "Durable Goods Orders m/m"),
-        ev("2026-09-25", 2, "Core Durable Goods Orders m/m"),
-        ev("2026-09-25", 2, "Michigan Consumer Sentiment"),
-        ev("2026-09-25", 2, "Michigan Consumer Expectations"),
-        ev("2026-09-25", 2, "Michigan 5-Year Inflation Expectations"),
-      ],
-      range,
+  it("names the releases the 21-Sep deck listed for the week of 2026-09-21, in release-time order", () => {
+    const week = [
+      ev("2026-09-21", "12:30", "Chicago Fed National Activity Index"),
+      ev("2026-09-21", "15:00", "UN General Assembly"),
+      ev("2026-09-23", "13:45", "S&P Global Manufacturing PMI Flash"),
+      ev("2026-09-23", "13:45", "S&P Global Services PMI Flash"),
+      ev("2026-09-23", "13:45", "S&P Global Composite PMI Flash"),
+      ev("2026-09-24", "12:30", "Current Account"),
+      ev("2026-09-24", "12:30", "Initial Jobless Claims"),
+      ev("2026-09-24", "14:00", "New Home Sales"),
+      ev("2026-09-24", "14:00", "President Trump and President Xi Summit"),
+      ev("2026-09-25", "12:30", "Durable Goods Orders MoM"),
+      ev("2026-09-25", "14:00", "Michigan Consumer Sentiment Final"),
+      ev("2026-09-25", "14:00", "Michigan Current Conditions Final"),
+    ];
+    expect(line(week, "2026-09-21", "2026-09-25")).toBe(
+      "Market News: U.S. Manufacturing PMI, U.S. Services PMI (Wednesday), Weekly Jobless Claims, New Home Sales (Thursday), Durable Goods, Uni. of Mich. Consumer Survey (Friday)",
     );
-    expect(picks.map((p) => `${p.date} ${p.name}`)).toEqual([
-      "2026-09-24 Initial Jobless Claims",
-      "2026-09-24 New Home Sales",
-      "2026-09-25 Durable Goods Orders",
-      "2026-09-25 Michigan Consumer Sentiment",
-    ]);
   });
 
-  it("keeps a companion series when its headline is not released that day", () => {
-    const picks = pickMarketNews([ev("2026-09-23", 2, "Continuing Jobless Claims"), ev("2026-09-23", 2, "Core PCE Price Index m/m")], range);
-    expect(picks.map((p) => p.name)).toEqual(["Continuing Jobless Claims", "Core PCE Price Index"]);
+  it("names CPI once however many series the feed splits it into, and skips days outside the week", () => {
+    const week = [ev("2026-09-11", "12:30", "Inflation Rate MoM"), ev("2026-09-11", "12:30", "Inflation Rate YoY"), ev("2026-09-11", "12:30", "CPI"), ev("2026-09-12", "12:30", "PPI MoM")];
+    expect(deckMarketNews(week, { from: "2026-09-07", to: "2026-09-11" })).toEqual([{ date: "2026-09-11", name: "CPI" }]);
   });
 
-  it("lists an event running several days once, on its first day", () => {
-    const picks = pickMarketNews(
-      ["2026-09-21", "2026-09-22", "2026-09-23"].map((d) => ev(d, 2, "UN General Assembly")),
-      range,
-    );
-    expect(picks.map((p) => `${p.date} ${p.name}`)).toEqual(["2026-09-21 UN General Assembly"]);
-  });
-
-  it("drops mortgage surveys and weekly series in Trading Economics naming", () => {
-    const picks = pickMarketNews(
-      [
-        ev("2026-09-23", 2, "MBA 30-Year Mortgage Rate"),
-        ev("2026-09-22", 2, "ADP Employment Change Weekly"),
-        ev("2026-09-24", 2, "Initial Jobless Claims"),
-      ],
-      range,
-    );
-    expect(picks.map((p) => p.name)).toEqual(["Initial Jobless Claims"]);
-  });
-
-  it("collapses CPI, FOMC, flash PMI, GDP and ex-item variants into one line each", () => {
-    const picks = pickMarketNews(
-      [
-        ev("2026-09-21", 3, "Inflation Rate YoY"),
-        ev("2026-09-21", 3, "Inflation Rate MoM"),
-        ev("2026-09-21", 3, "Core Inflation Rate MoM"),
-        ev("2026-09-21", 2, "CPI"),
-        ev("2026-09-21", 2, "CPI s.a"),
-        ev("2026-09-22", 3, "Fed Interest Rate Decision"),
-        ev("2026-09-22", 2, "Fed Press Conference"),
-        ev("2026-09-22", 2, "FOMC Economic Projections"),
-        ev("2026-09-23", 2, "S&P Global Composite PMI Flash"),
-        ev("2026-09-23", 2, "S&P Global Manufacturing PMI Flash"),
-        ev("2026-09-23", 2, "S&P Global Services PMI Flash"),
-        ev("2026-09-24", 3, "GDP Growth Rate QoQ Final"),
-        ev("2026-09-24", 2, "GDP Price Index QoQ Final"),
-        ev("2026-09-25", 3, "Retail Sales MoM"),
-        ev("2026-09-25", 2, "Retail Sales Ex Autos MoM"),
-        ev("2026-09-25", 2, "Retail Sales Control Group MoM"),
-      ],
-      range,
-    );
-    expect(picks.map((p) => `${p.date} ${p.name}`)).toEqual([
-      "2026-09-21 Inflation Rate",
-      "2026-09-22 Fed Interest Rate Decision",
-      "2026-09-23 S&P Global Composite PMI",
-      "2026-09-24 GDP Growth Rate",
-      "2026-09-25 Retail Sales",
-    ]);
-  });
-
-  it("ignores low importance, out-of-range dates, and caps the list", () => {
-    const many = Array.from({ length: 15 }, (_, i) => ev("2026-09-22", 3 as const, `Release ${String(i).padStart(2, "0")}`));
-    const picks = pickMarketNews([...many, ev("2026-09-22", 1, "Minor"), ev("2026-09-28", 3, "Next week")], range, 5);
-    expect(picks).toHaveLength(5);
-    expect(picks.every((p) => p.date === "2026-09-22" && p.name.startsWith("Release"))).toBe(true);
+  it("maps the releases the decks name, including low-importance ones", () => {
+    expect(deckReleaseName("Consumer Credit Change")).toBe("Consumer Credit");
+    expect(deckReleaseName("Wholesale Inventories MoM")).toBe("Wholesale Trade");
+    expect(deckReleaseName("Monthly Budget Statement")).toBe("Treasury Balance");
+    expect(deckReleaseName("Fed Goolsbee Speech")).toBeNull();
+    expect(deckReleaseName("10-Year Note Auction")).toBeNull();
   });
 });

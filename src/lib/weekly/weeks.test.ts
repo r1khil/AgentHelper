@@ -87,7 +87,10 @@ describe("labels", () => {
   it("names weekdays and the pack", () => {
     expect(weekdayLabel("2026-09-21")).toBe("Monday");
     expect(weekdayLabel("nope")).toBe("");
-    expect(packTitle("2026-09-18")).toBe("Update for the week ended September 18, 2026");
+    expect(packTitle("2026-09-18")).toBe("Update for the week ended September 18th, 2026");
+    expect(packTitle("2026-10-02")).toBe("Update for the week ended October 2nd, 2026");
+    expect(packTitle("2026-09-11")).toBe("Update for the week ended September 11th, 2026");
+    expect(packTitle("2026-10-23")).toBe("Update for the week ended October 23rd, 2026");
   });
 
   it("writes a week range, collapsing a shared month", () => {
