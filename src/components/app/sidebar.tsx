@@ -369,7 +369,7 @@ export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user
         <HootToggle on={user.hootEnabled} />
         {fundWide && <TransparencyToggle on={user.transparencyMode} />}
         <ThemeToggle />
-        {/* Hoot's tour of the Sep 25 pages is for execs and admins, who can see all of them. */}
+        {/* Hoot's tour of the redesign is for execs and admins, who can see every section. */}
         {fundWide && (
           <button
             type="button"
@@ -380,7 +380,7 @@ export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user
             className={cn(prefRow, "w-full text-left text-sm hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none")}
           >
             <Sparkles className="size-4 shrink-0 text-muted-foreground" />
-            Replay what&apos;s new
+            Replay the tour
           </button>
         )}
         <div className="-mx-1.5 my-1.5 h-px bg-border" />

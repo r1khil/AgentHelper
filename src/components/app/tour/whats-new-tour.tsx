@@ -7,7 +7,8 @@ import { Moon, Sun } from "lucide-react";
 import type { HootMood } from "@/lib/hoot/types";
 import { saveTourProgress } from "@/lib/actions/preferences";
 import type { TourChapter, TourOffer, TourRecord, TourStep } from "@/lib/tour/types";
-import { WHATS_NEW_TOUR, WHATS_NEW_TOUR_ID } from "@/lib/tour/whats-new";
+import { WHATS_NEW_PITCH, WHATS_NEW_TOUR, WHATS_NEW_TOUR_ID } from "@/lib/tour/whats-new";
+import { companionHiddenOn } from "@/lib/hoot/policy";
 import { usePrefersReducedMotion } from "@/components/app/hoot/hoot-sprite";
 import { whenBootDone } from "@/components/app/boot-signal";
 import { FlyingHoot, type FlyingHootHandle, type HootSpot } from "./flying-hoot";
@@ -35,6 +36,10 @@ const PERCHED = 64;
 const CENTERED = 112;
 /** The app is desktop-only; below this the menu is a drawer and there's nothing to fly around. */
 const MIN_WIDTH = 900;
+/** The menu: the rail (or the classic sidebar on the classic Backtesting layout). */
+const MENU = '[data-tour="sidebar"]';
+/** The rail's width, where the corner Hoot sits when he's on the left. */
+const RAIL = 76;
 
 /** First element matching `selector` that's actually on screen (the mobile menu keeps a hidden copy). */
 function findVisible(selector: string): HTMLElement | null {
@@ -47,7 +52,7 @@ function findVisible(selector: string): HTMLElement | null {
 
 /** Scrolls a section to the top of the screen (or a menu item into the menu's view) and waits for it to settle. */
 function bringIntoView(el: HTMLElement, reduced: boolean): Promise<void> {
-  if (el.closest("aside")) {
+  if (el.closest(MENU)) {
     el.scrollIntoView({ block: "nearest" });
   } else {
     const r = el.getBoundingClientRect();
@@ -70,6 +75,19 @@ function bringIntoView(el: HTMLElement, reduced: boolean): Promise<void> {
   });
 }
 
+/**
+ * A Hoot the page itself shows (Today's greeting, Research's intro, an empty state), big enough to take off from and
+ * land on. One Hoot per screen: while the tour runs these are hidden (globals.css), so the flying one replaces him.
+ */
+function pageHootSpot(): HootSpot | null {
+  for (const el of document.querySelectorAll<HTMLElement>("[data-hoot-sprite]")) {
+    if (el.closest("[data-tour-hoot], [data-hoot-companion]")) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width >= 60 && r.bottom > 0 && r.top < window.innerHeight) return { x: r.left, y: r.top, size: r.width };
+  }
+  return null;
+}
+
 /** Where the corner Hoot sits, so the tour can take off from him and hand back to him. */
 function cornerSpot(): HootSpot {
   const trigger = document.querySelector("[data-hoot-companion]");
@@ -83,16 +101,16 @@ function cornerSpot(): HootSpot {
   } catch {
     // Storage blocked: he lives on the right.
   }
-  return { x: left ? 240 + 20 : window.innerWidth - 20 - PERCHED, y: window.innerHeight - 20 - PERCHED, size: PERCHED };
+  return { x: left ? RAIL + 20 : window.innerWidth - 20 - PERCHED, y: window.innerHeight - 20 - PERCHED, size: PERCHED };
 }
 
 const sameSpot = (a: HootSpot, b: HootSpot) => Math.abs(a.x - b.x) < 3 && Math.abs(a.y - b.y) < 3 && Math.abs(a.size - b.size) < 1;
 
 /**
- * Hoot's guided tour of what's new, for execs and admins. After the loading screen, he flies to the middle of
- * the screen, asks light or dark, then offers the tour: he perches beside each new menu item, waits for a click,
+ * Hoot's guided tour of the new look, for execs and admins. After the loading screen, he flies to the middle of
+ * the screen, asks light or dark, then offers the tour: he perches beside each menu item or tab, waits for a click,
  * and walks through the page's sections while the rest of the app dims. Progress is saved on the profile, so
- * a refresh picks up at the same page; finishing or declining is final until "Replay what's new".
+ * a refresh picks up at the same page; finishing or declining is final until "Replay the tour".
  */
 export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: string; offer: TourOffer | null; hootEnabled: boolean }) {
   const pathname = usePathname();
@@ -149,7 +167,8 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
   const begin = useCallback((first: Phase) => {
     if (runningRef.current || window.innerWidth < MIN_WIDTH) return;
     runningRef.current = true;
-    const from = cornerSpot();
+    const from = pageHootSpot() ?? cornerSpot();
+    document.documentElement.dataset.touring = "";
     flightKey.current = null;
     setStart(from);
     setSpot(from);
@@ -219,15 +238,19 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
     goTo(after === -1 ? FLAT.length : after, phase.index);
   }, [phase, goTo]);
 
-  /** Back to his corner (or off screen if he's switched off), then hand over to the corner Hoot. */
+  /**
+   * Back to the page's own Hoot, or his corner (off screen if he's switched off or the page hides him), then hand
+   * over to that Hoot.
+   */
   const leave = useCallback(
     (status: TourRecord["status"]) => {
       save(status);
       flightKey.current = "leaving";
       setPhase({ kind: "leaving" });
-      setSpot(start && hootEnabled ? cornerSpotAfter(start) : { x: window.innerWidth + 40, y: window.innerHeight - 140, size: PERCHED });
+      const home = pageHootSpot() ?? (hootEnabled && !companionHiddenOn(pathname) ? cornerSpot() : null);
+      setSpot(home ?? { x: window.innerWidth + 40, y: window.innerHeight - 140, size: PERCHED });
     },
-    [save, start, hootEnabled],
+    [save, hootEnabled, pathname],
   );
 
   // Find the step's part of the page (it may stream in), bring it into view, then let Hoot fly there.
@@ -344,6 +367,7 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
     const landedFor = flightKey.current;
     if (landedFor === "leaving") {
       setTourActive(false);
+      delete document.documentElement.dataset.touring;
       // Stay a moment while the corner Hoot rises into the same spot, so the hand-off doesn't blink.
       window.setTimeout(() => {
         runningRef.current = false;
@@ -445,16 +469,16 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
       case "offer":
         return {
           key,
-          title: phase.later ? "Still up for a quick tour?" : "Want a quick tour of what's new?",
-          body: "We added a lot today: a new Today page, Risk and Exposure pages, what-if trades in Backtesting, the releases that matter on the Economic calendar, and new research tools for me. It takes about 5 minutes.",
+          title: phase.later ? WHATS_NEW_PITCH.again : WHATS_NEW_PITCH.title,
+          body: WHATS_NEW_PITCH.body,
           actions: [
             { id: "later", label: "Later", variant: "outline" },
             { id: "start", label: "Show me around" },
           ],
           links: [{ id: "end", label: "No thanks" }],
           footnote: phase.chose
-            ? `${phase.chose === "system" ? "Matching your computer" : phase.chose === "dark" ? "Dark it is" : "Light it is"}. You can change it any time: click your name at the bottom left.`
-            : "You can replay the tour any time: click your name at the bottom left.",
+            ? `${phase.chose === "system" ? "Matching your computer" : phase.chose === "dark" ? "Dark it is" : "Light it is"}. You can change it any time: click your initials at the bottom of the menu.`
+            : "You can replay the tour any time: click your initials at the bottom of the menu.",
         };
       case "resume":
         return {
@@ -470,10 +494,10 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
       case "finish":
         return {
           key,
-          title: "That's everything new!",
+          title: "That's the new look!",
           body: hootEnabled
-            ? "I'll be back in my corner. Click me, or press ⌘J, whenever you want to ask a research question."
-            : "Turn on Floating Hoot under your name if you'd like me in the corner of every page.",
+            ? "Press ⌘K any time to jump somewhere or ask me something. On most pages I'm in the corner too: click me, or press ⌘J."
+            : "Press ⌘K any time to jump somewhere or ask me something. Turn on Floating Hoot under your initials if you'd like me in the corner of every page too.",
           actions: [{ id: "end", label: "Thanks, Hoot" }],
         };
       case "step": {
@@ -528,8 +552,8 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
           : step?.step.kind === "wait"
             ? "thinking"
             : (step?.step.mood ?? "idle");
-  const inMenu = !!lit?.closest("aside");
-  const isMenu = lit?.tagName === "ASIDE";
+  const inMenu = !!lit?.closest(MENU);
+  const isMenu = !!lit?.matches(MENU);
 
   return (
     <>
@@ -540,8 +564,3 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
   );
 }
 
-/** The corner spot measured at the start, re-anchored to the current window size. */
-function cornerSpotAfter(start: HootSpot): HootSpot {
-  const right = start.x > window.innerWidth / 2;
-  return { x: right ? window.innerWidth - 20 - PERCHED : start.x, y: window.innerHeight - 20 - PERCHED, size: PERCHED };
-}

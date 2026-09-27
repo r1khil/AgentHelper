@@ -30,12 +30,13 @@ export function LayoutSwitch({ to, href, className }: { to: "new" | "classic"; h
   const cls = cn(to === "classic" && "text-ink-2", className);
   if (href)
     return (
-      <Link href={href} className={cn(buttonVariants({ variant: "outline", size: "sm" }), cls)}>
+      <Link data-tour="bt-layout" href={href} className={cn(buttonVariants({ variant: "outline", size: "sm" }), cls)}>
         {content}
       </Link>
     );
   return (
     <Button
+      data-tour="bt-layout"
       type="button"
       variant="outline"
       size="sm"

@@ -128,6 +128,7 @@ export function HootSprite({
   return (
     <div
       ref={root}
+      data-hoot-sprite
       // In dark mode a soft light sits behind him (--hoot-halo); on a light page it's nothing.
       className={cn("hoot-halo relative shrink-0 select-none", lean && "transition-transform duration-500 ease-out", className)}
       style={{ width: size, height: size, transform: tilt ? `rotate(${tilt.toFixed(2)}deg)` : undefined, transformOrigin: "50% 90%" }}

@@ -211,7 +211,7 @@ export function CalendarView(props: CalendarViewProps) {
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-      <div className="flex min-h-0 flex-col gap-5">
+      <div data-tour="calendar-side" className="flex min-h-0 flex-col gap-5">
         <MiniMonth
           mini={mini}
           today={today}
@@ -307,7 +307,7 @@ export function CalendarView(props: CalendarViewProps) {
         </Panel>
       </div>
 
-      <Panel className="min-h-[520px]">
+      <Panel data-tour="calendar-week" className="min-h-[520px]">
         <div className="flex h-14 shrink-0 items-center gap-3 border-b px-5">
           <h2 className="text-[17px] font-semibold tracking-[-0.015em] whitespace-nowrap">{title}</h2>
           <span className="truncate text-[13px] text-muted-foreground">{meta.join(" · ")}</span>

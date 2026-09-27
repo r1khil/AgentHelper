@@ -99,7 +99,7 @@ export function HootList() {
   const more = nudges.length - shown.length;
 
   return (
-    <Panel aria-label="Hoot's list for you" className="shrink-0">
+    <Panel data-tour="today-list" aria-label="Hoot's list for you" className="shrink-0">
       <PanelHeader
         title="Hoot's list for you"
         count={nudges.length ? nudges.length : undefined}

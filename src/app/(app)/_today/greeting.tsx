@@ -23,7 +23,7 @@ function MarketClock({ initial }: { initial: string }) {
  */
 export function Greeting({ hello, name, dateLine, lead, askHref }: { hello: string; name: string; dateLine: string; lead?: React.ReactNode; askHref: string }) {
   return (
-    <header className="flex h-[84px] shrink-0 items-center gap-4">
+    <header data-tour="today-greeting" className="flex h-[84px] shrink-0 items-center gap-4">
       <HootOnPage />
       <Link href={askHref} aria-label="Ask Hoot" title="Ask Hoot" className="shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
         <HootSprite mood="wave" size={84} track />

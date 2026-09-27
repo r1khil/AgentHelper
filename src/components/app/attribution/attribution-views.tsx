@@ -132,7 +132,7 @@ export function FundAttributionView({
     <div className="flex min-h-0 flex-1 flex-col gap-5">
       <InteractionScope className={FOLD}>
         <Toolbar view={view} days={result.days} notices={notices} ledger />
-        <StatStrip cells={cells} size="lg" />
+        <StatStrip data-tour="attribution-strip" cells={cells} size="lg" />
         <div className={`${GRID} lg:min-h-[252px]`}>
           <CumulativePanel
             portfolioLabel="Owl Fund"
@@ -231,7 +231,7 @@ export function TeamAttributionView({
     <div className="flex min-h-0 flex-1 flex-col gap-5">
       <InteractionScope className={FOLD}>
         <Toolbar view={view} days={result.days} notices={notices} />
-        <StatStrip cells={cells} size="lg" />
+        <StatStrip data-tour="attribution-strip" cells={cells} size="lg" />
         <div className={`${GRID} lg:min-h-[252px]`}>
           <CumulativePanel
             portfolioLabel={teamName}

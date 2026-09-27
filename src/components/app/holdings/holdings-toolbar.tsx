@@ -19,7 +19,7 @@ export function parseHoldingFilter(v: string | string[] | undefined): HoldingFil
 /** Filter chips (links, `?filter=`) on the left; the market line and "Add holding" on the right. */
 export function HoldingsToolbar({ basePath, active, counts, aside }: { basePath: string; active: HoldingFilter; counts: Record<HoldingFilter, number>; aside?: React.ReactNode }) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2">
+    <div data-tour="holdings-filters" className="flex shrink-0 flex-wrap items-center gap-2">
       {HOLDING_FILTERS.map((f) => (
         <FilterChip
           key={f}

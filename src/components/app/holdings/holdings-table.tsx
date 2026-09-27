@@ -46,7 +46,7 @@ export function HoldingsTable({ groups, quotes, grouped = true, empty }: { group
   const any = groups.some((g) => g.rows.length > 0);
 
   return (
-    <section className="panel flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-hidden">
+    <section data-tour="holdings-table" className="panel flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-hidden">
       <div className="flex min-w-[1100px] flex-1 flex-col">
         <div role="row" className={cn(GRID, "h-9 shrink-0 border-b text-xs text-muted-foreground")}>
           <span>Ticker</span>

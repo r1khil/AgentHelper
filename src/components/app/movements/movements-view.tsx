@@ -38,7 +38,7 @@ export function MovementsView({ items, selected }: { items: MovementListItem[]; 
 function MovementList({ items, selectedId }: { items: MovementListItem[]; selectedId: string | null }) {
   const open = items.filter((i) => i.status !== "completed").length;
   return (
-    <Panel className="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6.5rem)]">
+    <Panel data-tour="movements-list" className="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6.5rem)]">
       <div className="shrink-0 border-b px-4 py-3.5">
         <div className="flex items-baseline gap-2">
           <h2 className="text-[14.5px] font-semibold">Movements</h2>
@@ -94,7 +94,7 @@ function MovementDetail({ d }: { d: MovementDetailData }) {
   const completed = d.status === "completed";
   const owner = firstName(d.ownerName);
   return (
-    <div className="flex min-w-0 flex-col gap-5">
+    <div data-tour="movement-detail" className="flex min-w-0 flex-col gap-5">
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">

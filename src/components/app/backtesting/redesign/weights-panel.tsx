@@ -59,7 +59,7 @@ export function WeightsPanel({
   const unchanged = positions.filter((p) => weights[p.id]?.trim() !== "" && Math.abs(scenarioWeights[p.id] - p.weight) < 1e-8).length;
 
   return (
-    <form onSubmit={bt.run} className="panel flex min-h-0 min-w-0 flex-col overflow-hidden">
+    <form data-tour="bt-weights" onSubmit={bt.run} className="panel flex min-h-0 min-w-0 flex-col overflow-hidden">
       <div className="flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3">
         <div className="flex items-center gap-2.5">
           <h2 className="flex-1 text-[17px] font-semibold tracking-[-0.015em]">What if the weights were different?</h2>

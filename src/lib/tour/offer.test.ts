@@ -24,7 +24,7 @@ describe("tourOffer", () => {
   });
 
   it("resumes at the saved chapter, ignoring chapters that no longer exist", () => {
-    expect(tourOffer(tour, "exec", { tours: { [id]: { status: "active", chapter: "exposure", themed: true, at: ago(1000) } } }, now)).toEqual({ mode: "resume", chapter: "exposure", themed: true });
+    expect(tourOffer(tour, "exec", { tours: { [id]: { status: "active", chapter: "research", themed: true, at: ago(1000) } } }, now)).toEqual({ mode: "resume", chapter: "research", themed: true });
     expect(tourOffer(tour, "exec", { tours: { [id]: { status: "active", chapter: "gone", at: ago(1000) } } }, now)).toEqual({ mode: "resume", chapter: undefined, themed: false });
   });
 
@@ -45,7 +45,7 @@ describe("cleanTourRecord", () => {
   });
 });
 
-describe("the what's-new script", () => {
+describe("the new-look tour script", () => {
   const steps = tour.chapters.flatMap((c) => c.steps);
 
   it("has unique step ids and a go step opening every page chapter", () => {
@@ -53,23 +53,33 @@ describe("the what's-new script", () => {
     for (const c of tour.chapters.filter((c) => !["menu", "wrap"].includes(c.id))) expect(c.steps[0].kind).toBe("go");
   });
 
-  it("says where the numbers come from on every page section", () => {
-    const pageSections = tour.chapters
-      .filter((c) => ["today", "risk", "exposure", "backtesting", "calendar"].includes(c.id))
-      .flatMap((c) => c.steps.filter((s) => s.kind === "info"));
-    // The method, lookback-toggle and ETF-toggle steps explain controls rather than numbers.
-    const exempt = new Set(["risk-method", "exposure-toolbar"]);
-    for (const s of pageSections.filter((s) => !exempt.has(s.id))) expect(s.source, s.id).toBeTruthy();
+  it("tells the member what to click on every go step, and says something on every info step", () => {
+    for (const s of steps.filter((s) => s.kind === "go")) expect(s.target && s.prompt, s.id).toBeTruthy();
+    for (const s of steps.filter((s) => s.kind === "info")) expect(s.body || s.what || s.points?.length, s.id).toBeTruthy();
+  });
+
+  it("says where the numbers come from on the sections that show figures", () => {
+    const figures = ["today-list", "today-teams", "today-result", "holdings-table", "movements-list", "calendar-week", "attribution-strip", "bt-weights", "weekly-packs"];
+    for (const id of figures) expect(steps.find((s) => s.id === id)?.source, id).toBeTruthy();
   });
 
   it("matches each chapter's route to its page", () => {
     const route = (id: string) => tour.chapters.find((c) => c.id === id)!.route;
     expect(route("risk").test("/risk")).toBe(true);
     expect(route("risk").test("/t/tech/risk")).toBe(true);
-    expect(route("exposure").test("/exposure")).toBe(true);
+    expect(route("portfolio").test("/attribution")).toBe(true);
+    expect(route("portfolio").test("/t/tech/attribution")).toBe(true);
+    expect(route("calendar").test("/t/fund/earnings")).toBe(true);
     expect(route("calendar").test("/t/fund/economic-calendar")).toBe(true);
-    expect(route("hoot").test("/t/fund/agent")).toBe(true);
-    expect(route("hoot").test("/t/fund/agent/abc")).toBe(false);
+    expect(route("research").test("/t/fund/agent")).toBe(true);
+    expect(route("research").test("/t/fund/agent/abc")).toBe(false);
+    expect(route("holdings").test("/t/fund")).toBe(true);
+    expect(route("holdings").test("/t/fund/movements")).toBe(false);
+    expect(route("holding").test("/t/tech/h/NVDA")).toBe(true);
+    expect(route("movements").test("/t/tech/movements")).toBe(true);
+    expect(route("movements").test("/t/tech/movements/m1")).toBe(true);
+    expect(route("manage").test("/weekly")).toBe(true);
+    expect(route("manage").test("/weekly/2026-09-27")).toBe(true);
     expect(route("today").test("/")).toBe(true);
     expect(route("today").test("/risk")).toBe(false);
   });

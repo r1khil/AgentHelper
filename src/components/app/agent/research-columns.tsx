@@ -15,7 +15,7 @@ export function ResearchGrid({ children }: { children: ReactNode }) {
 }
 
 export function ListColumn({ children }: { children: ReactNode }) {
-  return <div className="flex min-h-0 flex-col gap-4 border-b px-3 py-4 lg:border-r lg:border-b-0">{children}</div>;
+  return <div data-tour="research-list" className="flex min-h-0 flex-col gap-4 border-b px-3 py-4 lg:border-r lg:border-b-0">{children}</div>;
 }
 
 export function CenterColumn({ children, className }: { children: ReactNode; className?: string }) {
@@ -23,5 +23,5 @@ export function CenterColumn({ children, className }: { children: ReactNode; cla
 }
 
 export function SideColumn({ children }: { children: ReactNode }) {
-  return <aside className="flex min-h-0 min-w-0 flex-col border-t px-3.5 py-4 lg:border-t-0 lg:border-l">{children}</aside>;
+  return <aside data-tour="research-side" className="flex min-h-0 min-w-0 flex-col border-t px-3.5 py-4 lg:border-t-0 lg:border-l">{children}</aside>;
 }

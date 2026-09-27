@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 
 /**
  * Shared between the tour, the corner Hoot and the sidebar. While a tour runs, the corner Hoot steps aside (the
- * tour flies its own copy of him), and the sidebar's "Replay what's new" asks the tour to start again.
+ * tour flies its own copy of him), and the account menu's "Replay the tour" asks the tour to start again.
  */
 let active = false;
 const listeners = new Set<() => void>();
