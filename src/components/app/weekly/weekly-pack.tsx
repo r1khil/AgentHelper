@@ -195,6 +195,22 @@ export function WeeklyPack(props: WeeklyPackProps) {
         <PerformerList title="Worst 3 Performers" list={props.performers?.worst ?? []} section="Worst 3 Performers" />
       </div>
 
+      {props.performers?.why?.length ? (
+        <Card className="p-4">
+          <SectionTitle aside="Hoot's read of the news, not for the slide">Why they moved</SectionTitle>
+          <ul className="grid gap-1.5 text-sm">
+            {props.performers.why.map((w) => (
+              <li key={w.ticker}>
+                <span className="font-medium">{w.ticker}</span>: {w.text}{" "}
+                <a className="text-muted-foreground underline" href={w.url} target="_blank" rel="noreferrer" title={w.headline}>
+                  {w.source}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
       <Card className="p-4">
         <SectionTitle aside={<CopyButton text={AGENDA_SECTIONS.map((s) => agendaLine(AGENDA_LABELS[s], props.lastWeekAgenda[s])).join("\n")} label="Copy section" />}>
           Last Week&apos;s Agenda

@@ -24,7 +24,7 @@ async function main() {
     { event: "message.received", event_id: id, inbox_id: "", thread_id: "smoke", message: { id, from, to: process.env.OPENMAIL_INBOX ?? "hoot@omail.sh", subject: "Re: Owl Fund Daily Attribution Analysis", body_text: question, attachments } },
     { dryRun: (text) => console.log(`\n=== would send ===\n${text}\n`) },
   );
-  console.log(JSON.stringify("tickets" in r ? r : { status: r.status, reason: r.reason, model: r.model, steps: r.steps }, null, 2));
+  console.log(JSON.stringify("tickets" in r || "weekEnding" in r ? r : { status: r.status, reason: r.reason, model: r.model, steps: r.steps }, null, 2));
   process.exit(0);
 }
 
