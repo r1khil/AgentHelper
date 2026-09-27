@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { loadTeam } from "@/lib/teams";
 import { canManageTeam, transparencyEnabled } from "@/lib/auth";
 import { effectiveRunStatus, listHoldingChats, loadMessages } from "@/lib/chats";
+import { isFundWide } from "@/lib/roles";
 import { getHolding } from "@/lib/holdings";
 import { getOpenMovement } from "@/lib/movements";
 import { marketSnapshot } from "@/lib/market";
@@ -23,7 +24,7 @@ export default async function HoldingBoardPage({ params, searchParams }: { param
   const row = await getHolding(team.id, ticker);
   if (!row) notFound();
   const { h } = row;
-  const [rows, movement, memories, upcoming] = await Promise.all([listHoldingChats(h.id), getOpenMovement(h.id), listHoldingMemories(h.id).catch(() => []), getUpcomingEarnings(h.id).catch(() => null)]);
+  const [rows, movement, memories, upcoming] = await Promise.all([listHoldingChats(h.id, { fundWide: isFundWide(user) }), getOpenMovement(h.id), listHoldingMemories(h.id).catch(() => []), getUpcomingEarnings(h.id).catch(() => null)]);
   const fundWide = user.role === "admin" || user.role === "lead_analyst" || user.role === "exec";
   const chats: BoardChat[] = rows.map(({ c, authorName, questions }) => ({
     id: c.id,

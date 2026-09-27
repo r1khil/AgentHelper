@@ -67,6 +67,7 @@ function setup(responses: (ReturnType<typeof says> | Error)[]) {
   });
   def = {
     modelId: "mock",
+    answeredBy: () => "mock",
     model,
     instructions: "SYS",
     tools: { read_filing: readFiling },

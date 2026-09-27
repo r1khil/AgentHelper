@@ -3,11 +3,12 @@ import { sellSideCalls } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { after } from "next/server";
 import { createUIMessageStreamResponse, type UIMessage } from "ai";
-import { getCurrentUser, canAccessTeam, transparencyEnabled } from "@/lib/auth";
+import { getCurrentUser, canOpenChat, transparencyEnabled } from "@/lib/auth";
 import { effectiveRunStatus, getChat, loadMessages, maybeTitleChat, saveMessages, setRunStatus } from "@/lib/chats";
 import { agentConfigured } from "@/lib/agent/model";
 import { runAgentTurn } from "@/lib/agent/run";
 import { distillTurn } from "@/lib/agent/memory/distill";
+import { usesPtSheet } from "@/lib/agent/pt-sheet-guard";
 import { ensureDriveIndexFresh } from "@/lib/jobs/drive";
 import { ensureIngested } from "@/lib/jobs/ingest";
 
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
   const body = (await req.json()) as { chatId?: string; message?: UIMessage };
   if (!body.chatId || !body.message) return new Response("Bad request", { status: 400 });
   const chat = await getChat(body.chatId);
-  if (!chat || !canAccessTeam(user, chat.teamId)) return new Response("Not found", { status: 404 });
+  if (!chat || !canOpenChat(user, chat)) return new Response("Not found", { status: 404 });
   if (effectiveRunStatus(chat) === "running") return new Response("This chat is still working on the previous question.", { status: 409 });
 
   const [call] = await db.select().from(sellSideCalls).where(eq(sellSideCalls.chatId, chat.id)).limit(1);
@@ -47,7 +48,9 @@ export async function POST(req: Request) {
     messages,
     trace: transparencyEnabled(user),
     // Once saved, distill the turn into the holding's research log (one extra model call; failures are logged, never surfaced).
-    onComplete: async ({ response }) => {
+    onComplete: async ({ messages: all, response }) => {
+      // Nothing from a conversation that read the price target sheet goes into the shared research log.
+      if (chat.fundOnly || usesPtSheet(all)) return;
       const r = await distillTurn({ chat, question, response });
       if (r) console.log("[memory]", chat.id, JSON.stringify(r));
     },

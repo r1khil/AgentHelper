@@ -34,6 +34,8 @@ vi.mock("@/lib/agent/financials", () => ({
   }),
   searchConcepts: vi.fn(),
 }));
+vi.mock("@/lib/agent/memory/store", () => ({ MARKET_FACT_TTL_DAYS: 90, rememberMemory: vi.fn(async () => ({ id: "m1", merged: false })), searchMemories: vi.fn(async () => []) }));
+import { rememberMemory } from "@/lib/agent/memory/store";
 import { getFilingText, listFilings, listFilingDocuments } from "@/lib/providers/edgar";
 import { searchIndex } from "@/lib/drive/index";
 import { getDocument } from "@/lib/documents/index";
@@ -118,5 +120,30 @@ describe("retrieval citation metadata", () => {
     expect(result.sources[0]).toMatchObject({ documentId: filingMeta.id, url: filingUrl, publisher: "SEC EDGAR", publishedAt: "2026-02-10", sourceType: "SEC filing", location: { section: "Item 1A", text: "Credit losses may rise." } });
     expect(resolveSource(result.sources[0])).toEqual({ kind: "document", documentId: filingMeta.id });
     expect(result.data).toMatchObject({ passages: [{ form: "10-K", section: "Item 1A", filedAt: "2026-02-10" }] });
+  });
+});
+
+describe("remember and the price target sheet", () => {
+  const sheetSource = { id: "ptsheet-abc", title: "PT sheet: Price Targets", url: "https://docs.google.com/spreadsheets/d/F/edit", publisher: "Owl Fund Price Targets (execs' sheet)", sourceType: "PT sheet", retrievedAt: "2026-09-27" };
+
+  it("saves nothing once the conversation has used the sheet", async () => {
+    const tools = makeTools({ teamId: "team", userId: "user", memoryBlocked: () => true });
+    const r = await run(tools, "remember", { kind: "lesson", scope: "team", body: "Use find_documents before search_documents.", sourceIds: [] });
+    expect(r.error).toMatch(/price target sheet/);
+    expect(rememberMemory).not.toHaveBeenCalled();
+  });
+
+  it("refuses a fact that cites the sheet", async () => {
+    const tools = makeTools({ teamId: "team", userId: "user", sources: [sheetSource] });
+    const r = await run(tools, "remember", { kind: "fact", scope: "team", body: "AMZN's price target is $271 per the PT sheet.", sourceIds: ["ptsheet-abc"] });
+    expect(r.error).toMatch(/never saved/);
+    expect(rememberMemory).not.toHaveBeenCalled();
+  });
+
+  it("still saves ordinary lessons", async () => {
+    const tools = makeTools({ teamId: "team", userId: "user", memoryBlocked: () => false });
+    const r = await run(tools, "remember", { kind: "lesson", scope: "team", body: "Use find_documents before search_documents.", sourceIds: [] });
+    expect(r.error).toBeUndefined();
+    expect(rememberMemory).toHaveBeenCalledOnce();
   });
 });

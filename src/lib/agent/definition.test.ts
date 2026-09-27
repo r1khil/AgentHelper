@@ -3,11 +3,14 @@ import type { ModelMessage } from "ai";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/db/client", () => ({ db: {} }));
-vi.mock("./model", () => ({ AGENT_MODELS: [{ id: "a" }, { id: "b" }, { id: "c" }], agentModelId: async () => "b", chatModel: (id: string) => ({ id }) }));
+vi.mock("./model", () => ({ AGENT_MODELS: [{ id: "a" }, { id: "b" }, { id: "c" }], agentModelId: async () => "b", chatModel: (id: string) => ({ id, modelId: id, provider: "mock" }) }));
+vi.mock("./mcp", () => ({ loadMcpTools: async () => ({ tools: {}, servers: [], instructions: [] }) }));
+vi.mock("@/lib/pt-sheet/read", () => ({ ptSheetConfigured: () => true, readPtSheet: vi.fn() }));
 vi.mock("./instructions", () => ({ buildInstructions: async () => "SYS" }));
 vi.mock("./tools", () => ({ makeTools: () => ({}) }));
 
-import { fallbackOrder, FINAL_STEP, FINAL_STEP_NUDGE, KEEP_FULL_STEPS, prepareAgentStep } from "./definition";
+import { buildAgentDefinition, fallbackOrder, FINAL_STEP, FINAL_STEP_NUDGE, KEEP_FULL_STEPS, prepareAgentStep } from "./definition";
+import { PT_SHEET_MODEL_ID } from "./pt-sheet-guard";
 
 describe("fallbackOrder", () => {
   it("puts the admin's choice first and keeps the rest in list order", () => {
@@ -41,5 +44,26 @@ describe("prepareAgentStep", () => {
     expect(r?.toolChoice).toBe("none");
     expect(r?.instructions).toBe(`SYS\n\n${FINAL_STEP_NUDGE}`);
     expect(r?.messages).toBeUndefined();
+  });
+});
+
+describe("the PT sheet tool in an agent definition", () => {
+  const base = { teamId: "t1", holdingId: null, user: { id: "u1", fullName: "U", role: "exec" }, purpose: "chat" as const };
+  const viewer = (role: string) => ({ id: "u1", role, teamId: null, fullName: "U", transparencyMode: false }) as never;
+
+  it("is given to execs and admins in a saved chat, and to nobody else", async () => {
+    expect(Object.keys((await buildAgentDefinition({ ...base, viewer: viewer("exec"), chatId: "c1" })).tools)).toContain("read_pt_sheet");
+    expect(Object.keys((await buildAgentDefinition({ ...base, viewer: viewer("admin"), chatId: "c1" })).tools)).toContain("read_pt_sheet");
+    expect(Object.keys((await buildAgentDefinition({ ...base, viewer: viewer("lead_analyst"), chatId: "c1" })).tools)).not.toContain("read_pt_sheet");
+    expect(Object.keys((await buildAgentDefinition({ ...base, viewer: viewer("exec") })).tools)).not.toContain("read_pt_sheet");
+    expect(Object.keys((await buildAgentDefinition({ ...base, purpose: "prep" })).tools)).not.toContain("read_pt_sheet");
+  });
+
+  it("keeps a conversation that already holds sheet data on the sheet-safe model", async () => {
+    const pinned = await buildAgentDefinition({ ...base, viewer: viewer("exec"), chatId: "c1", sheetInHistory: true });
+    expect((pinned.model as { modelId: string }).modelId).toBe(PT_SHEET_MODEL_ID);
+    expect(pinned.answeredBy()).toBe(PT_SHEET_MODEL_ID);
+    const fresh = await buildAgentDefinition({ ...base, viewer: viewer("exec"), chatId: "c1" });
+    expect(fresh.answeredBy()).toBe("b");
   });
 });

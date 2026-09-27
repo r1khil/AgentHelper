@@ -46,11 +46,12 @@ async function fetchSheet(): Promise<PtSheet> {
   const meta = await getJson<{ name: string; modifiedTime: string; webViewLink?: string; lastModifyingUser?: { displayName?: string } }>(
     `${DRIVE_FILES}/${PT_SHEET_FILE_ID}?fields=name,modifiedTime,webViewLink,lastModifyingUser(displayName)&supportsAllDrives=true`,
   );
-  const book = await getJson<{ sheets?: { properties: { title: string } }[] }>(`${SHEETS_API}/${PT_SHEET_FILE_ID}?fields=sheets.properties.title`);
+  const book = await getJson<{ sheets?: { properties: { title: string; sheetId: number } }[] }>(`${SHEETS_API}/${PT_SHEET_FILE_ID}?fields=sheets.properties(title,sheetId)`);
+  const gids = new Map((book.sheets ?? []).map((s) => [s.properties.title, s.properties.sheetId]));
   const { present, missing } = rangesFor((book.sheets ?? []).map((s) => s.properties.title));
   const ranges = present.map((p) => p.range);
   const [raw, shown] = ranges.length ? await Promise.all([batchGet(ranges, "UNFORMATTED_VALUE"), batchGet(ranges, "FORMATTED_VALUE")]) : [[], []];
-  const tabs = present.map((p, i) => parseTab(p.tab, raw[i]?.values ?? [], shown[i]?.values ?? [], PT_SHEET_MAX_CELLS_PER_TAB));
+  const tabs = present.map((p, i) => ({ ...parseTab(p.tab, raw[i]?.values ?? [], shown[i]?.values ?? [], PT_SHEET_MAX_CELLS_PER_TAB), gid: gids.get(p.tab.name) }));
   return {
     fileId: PT_SHEET_FILE_ID,
     name: meta.name,

@@ -1,17 +1,27 @@
 import "server-only";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
 import type { UIMessage } from "ai";
 import { db } from "@/db/client";
 import { chatMessages, chats, holdings, profiles } from "@/db/schema";
 import { inTeams, type TeamIds } from "@/lib/team-filter";
 
-export async function listChats(teamId: string) {
+/** Who is listing chats: members who aren't execs or admins never see fund-only chats (those that read the PT sheet). */
+export type ChatViewer = { fundWide: boolean };
+
+const visibleTo = (viewer: ChatViewer): SQL | undefined => (viewer.fundWide ? undefined : eq(chats.fundOnly, false));
+
+/** Mark a chat fund-only. Called by Hoot's PT sheet tool before it returns anything; it never goes back. */
+export async function markChatFundOnly(chatId: string) {
+  await db.update(chats).set({ fundOnly: true }).where(eq(chats.id, chatId));
+}
+
+export async function listChats(teamId: string, viewer: ChatViewer) {
   return db
     .select({ c: chats, authorName: profiles.fullName, ticker: holdings.ticker })
     .from(chats)
     .leftJoin(profiles, eq(profiles.id, chats.createdBy))
     .leftJoin(holdings, eq(holdings.id, chats.holdingId))
-    .where(eq(chats.teamId, teamId))
+    .where(and(eq(chats.teamId, teamId), visibleTo(viewer)))
     .orderBy(desc(chats.updatedAt))
     .limit(100);
 }
@@ -77,7 +87,7 @@ export type HoldingChatStats = {
 };
 
 /** Research activity per holding, for the agent index cards. */
-export async function listHoldingChatStats(teamId: TeamIds): Promise<Map<string, HoldingChatStats>> {
+export async function listHoldingChatStats(teamId: TeamIds, viewer: ChatViewer): Promise<Map<string, HoldingChatStats>> {
   const ids = Array.isArray(teamId) ? teamId : [teamId];
   if (ids.length === 0) return new Map();
   const [stats, live] = await Promise.all([
@@ -92,14 +102,14 @@ export async function listHoldingChatStats(teamId: TeamIds): Promise<Map<string,
       left join lateral jsonb_array_elements(
         case when jsonb_typeof(p->'output'->'sources') = 'array' then p->'output'->'sources' else '[]'::jsonb end
       ) s on true
-      where c.team_id in (${sql.join(ids.map((id) => sql`${id}`), sql`, `)}) and c.holding_id is not null
+      where c.team_id in (${sql.join(ids.map((id) => sql`${id}`), sql`, `)}) and c.holding_id is not null${viewer.fundWide ? sql`` : sql` and not c.fund_only`}
       group by c.holding_id
     `),
     db
       .select({ c: chats, authorName: profiles.fullName })
       .from(chats)
       .leftJoin(profiles, eq(profiles.id, chats.createdBy))
-      .where(and(inTeams(chats.teamId, teamId), eq(chats.runStatus, "running"))),
+      .where(and(inTeams(chats.teamId, teamId), eq(chats.runStatus, "running"), visibleTo(viewer))),
   ]);
   const map = new Map<string, HoldingChatStats>();
   for (const r of stats) {
@@ -116,7 +126,7 @@ export async function listHoldingChatStats(teamId: TeamIds): Promise<Map<string,
 export type HoldingChat = { c: typeof chats.$inferSelect; authorName: string | null; questions: number };
 
 /** Every chat pinned to one holding, newest first, with how many questions each holds. */
-export async function listHoldingChats(holdingId: string): Promise<HoldingChat[]> {
+export async function listHoldingChats(holdingId: string, viewer: ChatViewer): Promise<HoldingChat[]> {
   const rows = await db
     .select({
       c: chats,
@@ -125,7 +135,7 @@ export async function listHoldingChats(holdingId: string): Promise<HoldingChat[]
     })
     .from(chats)
     .leftJoin(profiles, eq(profiles.id, chats.createdBy))
-    .where(eq(chats.holdingId, holdingId))
+    .where(and(eq(chats.holdingId, holdingId), visibleTo(viewer)))
     .orderBy(desc(chats.updatedAt))
     .limit(100);
   return rows.map((r) => ({ ...r, questions: Number(r.questions) }));
@@ -137,14 +147,14 @@ export type GeneralChat = { c: typeof chats.$inferSelect; authorName: string | n
  * Hoot conversations that aren't about one holding (asked from attribution, backtesting, Today…), newest first.
  * Chats that never got a question are left out: Hoot creates the chat before the first message is sent.
  */
-export async function listGeneralChats(teamId: TeamIds, limit = 50): Promise<GeneralChat[]> {
+export async function listGeneralChats(teamId: TeamIds, viewer: ChatViewer, limit = 50): Promise<GeneralChat[]> {
   if (Array.isArray(teamId) && teamId.length === 0) return [];
   const questions = sql<number>`(select count(*) from chat_messages m where m.chat_id = ${chats.id} and m.role = 'user')`;
   const rows = await db
     .select({ c: chats, authorName: profiles.fullName, questions })
     .from(chats)
     .leftJoin(profiles, eq(profiles.id, chats.createdBy))
-    .where(and(inTeams(chats.teamId, teamId), isNull(chats.holdingId), sql`${questions} > 0`))
+    .where(and(inTeams(chats.teamId, teamId), isNull(chats.holdingId), sql`${questions} > 0`, visibleTo(viewer)))
     .orderBy(desc(chats.updatedAt))
     .limit(limit);
   return rows.map((r) => ({ ...r, questions: Number(r.questions) }));

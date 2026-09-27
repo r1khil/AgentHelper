@@ -30,6 +30,7 @@ import { searchFullText } from "@/lib/drive/read";
 import { windowText } from "@/lib/drive/text";
 import { MARKET_FACT_TTL_DAYS, rememberMemory, searchMemories } from "@/lib/agent/memory/store";
 import { newestEvidenceDate } from "@/lib/agent/memory/distill";
+import { isPtSheetSource } from "@/lib/agent/pt-sheet-guard";
 import { EARNINGS_DOC_TYPES, effectiveDate, passageCoverage, type EarningsDocType } from "@/lib/agent/doc-recency";
 
 export type ToolResult<T> = { data: T; sources: Source[]; error?: string };
@@ -113,7 +114,8 @@ async function keyFinancialsFor(ticker: string, periodKind: "quarter" | "annual"
   return { cik, company: name, kf, rows, sources };
 }
 
-export function makeTools(ctx: { teamId: string; holdingId?: string | null; userId: string; sources?: Source[] }) {
+/** `memoryBlocked` turns true once the PT sheet is in the conversation: nothing from such a chat is saved. */
+export function makeTools(ctx: { teamId: string; holdingId?: string | null; userId: string; sources?: Source[]; memoryBlocked?: () => boolean }) {
   const filingSources = new Map<string, Source>((ctx.sources ?? []).filter((s) => s.id.startsWith("sec-") && s.url?.startsWith("https://www.sec.gov/Archives/")).map((s) => [s.url!, s]));
   /** Every source any tool returned in this conversation, so `remember` can attach real Source objects to a fact. */
   const seen = new Map<string, Source>((ctx.sources ?? []).map((s) => [s.id, s]));
@@ -132,7 +134,9 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
       }),
       execute: async ({ kind, scope, body, sourceIds, expiresInDays }): Promise<ToolResult<unknown>> => {
         try {
+          if (ctx.memoryBlocked?.()) throw new Error("This conversation used the price target sheet, so nothing from it is saved to memory.");
           const cited = sourceIds.map((id) => seen.get(id)).filter((s): s is Source => !!s);
+          if (cited.some(isPtSheetSource)) throw new Error("Figures from the price target sheet are never saved to memory.");
           if (kind === "fact" && cited.length === 0) throw new Error("A fact needs at least one source id returned by a tool in this conversation. Save it as a lesson if it is about how to use the tools.");
           const effScope = scope === "holding" && !ctx.holdingId ? "team" : scope;
           const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 86_400_000) : kind === "fact" ? new Date(Date.now() + MARKET_FACT_TTL_DAYS * 86_400_000) : null;

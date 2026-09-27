@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Trash2 } from "lucide-react";
-import { canAccessTeam, isFundWide, requireUser, transparencyEnabled } from "@/lib/auth";
+import { canOpenChat, isFundWide, requireUser, transparencyEnabled } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { getTeam } from "@/lib/teams";
 import { effectiveRunStatus, getChat, loadMessages } from "@/lib/chats";
@@ -23,7 +23,7 @@ export default async function HootChatPage({ params }: { params: Promise<{ chatI
   const { chatId } = await params;
   const user = await requireUser();
   const chat = await getChat(chatId);
-  if (!chat || !canAccessTeam(user, chat.teamId)) notFound();
+  if (!chat || !canOpenChat(user, chat)) notFound();
   const team = await getTeam(chat.teamId);
   if (!team) notFound();
   const holdings = await listTeamHoldings(team.id, "all");

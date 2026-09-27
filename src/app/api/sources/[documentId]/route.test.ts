@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/sell-side/store", () => ({ getCall: vi.fn(), callParts: vi.fn() }));
-vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn(), canAccessTeam: vi.fn() }));
+vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn(), canOpenChat: vi.fn() }));
 vi.mock("@/lib/chats", () => ({ getChat: vi.fn(), loadMessages: vi.fn(), effectiveRunStatus: vi.fn() }));
 vi.mock("@/lib/drive/index", () => ({ getFileText: vi.fn() }));
 vi.mock("@/lib/documents/index", () => ({ getDocument: vi.fn() }));
-import { getCurrentUser, canAccessTeam } from "@/lib/auth";
+import { getCurrentUser, canOpenChat } from "@/lib/auth";
 import { effectiveRunStatus, getChat, loadMessages } from "@/lib/chats";
 import { getDocument } from "@/lib/documents/index";
 import { getFileText } from "@/lib/drive/index";
@@ -15,7 +15,7 @@ const request = (id = "file_123") => GET(new Request(`http://localhost/api/sourc
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(getCurrentUser).mockResolvedValue({ id: "user" } as never);
-  vi.mocked(canAccessTeam).mockReturnValue(true);
+  vi.mocked(canOpenChat).mockReturnValue(true);
   vi.mocked(getChat).mockResolvedValue({ id: chatId, teamId: "team" } as never);
   vi.mocked(loadMessages).mockResolvedValue([
     {
@@ -71,7 +71,7 @@ describe("source document endpoint", () => {
     expect(getFileText).not.toHaveBeenCalled();
   });
   it.each(["other-team", "unretrieved"])("rejects %s document access", async (scenario) => {
-    if (scenario === "other-team") vi.mocked(canAccessTeam).mockReturnValue(false);
+    if (scenario === "other-team") vi.mocked(canOpenChat).mockReturnValue(false);
     else vi.mocked(loadMessages).mockResolvedValue([]);
     expect((await request()).status).toBe(404);
     expect(getDocument).not.toHaveBeenCalled();

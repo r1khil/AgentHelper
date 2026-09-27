@@ -4,7 +4,7 @@ import { loadTeam } from "@/lib/teams";
 import { getCall } from "@/lib/sell-side/store";
 import { getChat, loadMessages, effectiveRunStatus } from "@/lib/chats";
 import { agentConfigured } from "@/lib/agent/model";
-import { transparencyEnabled } from "@/lib/auth";
+import { canOpenChat, transparencyEnabled } from "@/lib/auth";
 import { CallDiscussion } from "@/components/app/sell-side/call-discussion";
 import { AnalysisBrief } from "@/components/app/sell-side/analysis-brief";
 import { CallWorkspace } from "@/components/app/sell-side/call-workspace";
@@ -17,6 +17,8 @@ export default async function CallPage({ params }: { params: Promise<{ team: str
   if (!call || call.teamId !== team.id) notFound();
   const [chat, messages] = await Promise.all([getChat(call.chatId), loadMessages(call.chatId)]);
   if (!chat) notFound();
+  // Once an exec's follow-up read the price target sheet, the discussion is for execs and admins only.
+  const hidden = !canOpenChat(user, chat);
   return (
     <div className="space-y-5">
       <Link className="text-sm underline" href={`/t/${team.slug}/sell-side`}>
@@ -29,9 +31,10 @@ export default async function CallPage({ params }: { params: Promise<{ team: str
         <p className="text-sm text-muted-foreground">Transcript, structured summary, and comparison with your company files.</p>
       </div>
       <CallWorkspace callId={call.id} configured={agentConfigured()}>
-        {call.status === "ready" && <AnalysisBrief chatId={chat.id} messages={messages} />}
+        {call.status === "ready" && !hidden && <AnalysisBrief chatId={chat.id} messages={messages} />}
       </CallWorkspace>
-      {call.status === "ready" && (
+      {hidden && <p className="text-sm text-muted-foreground">The analysis and discussion for this call are visible to execs and admins only, because they draw on the price target sheet.</p>}
+      {call.status === "ready" && !hidden && (
         <CallDiscussion
           chatId={chat.id}
           initialMessages={messages}

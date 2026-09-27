@@ -30,6 +30,8 @@ export type PtTab = {
   rows: PtRow[];
   errorCells: number;
   truncated: boolean;
+  /** The tab's id inside the sheet, for links that open that tab. */
+  gid?: number;
 };
 
 export const ERROR_RE = /^#(N\/A|REF!|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!|ERROR!|SPILL!|CALC!)/;
@@ -128,12 +130,20 @@ export function displayValue(cell: PtCell): string {
   return acct ? `-${acct[1]}` : s;
 }
 
-/** Plain-text rendering of one tab with cell references, the form Hoot is given. */
-export function renderTab(tab: PtTab): string {
+/** Rows holding the ticker as a whole cell value (case-insensitive), e.g. the holding's own row in each tab. */
+export function rowsForTicker(tab: PtTab, ticker: string): PtRow[] {
+  const t = ticker.trim().toUpperCase();
+  return tab.rows.filter((r) => r.cells.some((c) => typeof c.v === "string" && c.v.trim().toUpperCase() === t));
+}
+
+/** Plain-text rendering of one tab with cell references, the form Hoot is given; `ticker` keeps only that ticker's rows. */
+export function renderTab(tab: PtTab, opts: { ticker?: string } = {}): string {
   const head = `## ${tab.name}`;
   if (tab.status === "layout_changed") return `${head}\nNot read: the tab's layout changed (missing column labels: ${tab.missingLabels.join(", ")}).`;
+  const rows = opts.ticker ? rowsForTicker(tab, opts.ticker) : tab.rows;
   const lines = [head, tab.about, `Columns: ${tab.columns.map((c) => `${c.col}=${c.label}`).join(", ")}`];
-  for (const r of tab.rows) lines.push(`r${r.row}: ${r.cells.map((c) => `${c.col}=${displayValue(c)}`).join(" | ")}`);
+  for (const r of rows) lines.push(`r${r.row}: ${r.cells.map((c) => `${c.col}=${displayValue(c)}`).join(" | ")}`);
+  if (opts.ticker && !rows.length) lines.push(`(No row mentions ${opts.ticker.toUpperCase()}.)`);
   if (tab.truncated) lines.push("(Tab cut short: too many cells.)");
   return lines.join("\n");
 }
