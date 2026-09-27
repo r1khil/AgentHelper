@@ -1,22 +1,10 @@
-import { loadScope } from "@/lib/teams";
-import { EconomicCalendar } from "@/components/app/economic-calendar/calendar";
-import { calendarWeek } from "@/lib/economic-calendar/dates";
-import { calendarFactorContext } from "@/lib/risk/factor-context";
+import type { Metadata } from "next";
+import { CalendarPage } from "../earnings/calendar-page";
 
-export default async function EconomicCalendarPage({
-  params,
-}: {
-  params: Promise<{ team: string }>;
-}) {
-  const { team: slug } = await params;
-  const scope = await loadScope(slug);
-  // Not awaited: the calendar renders at once and the factor lines stream in when the risk report is ready.
-  const factorContext = calendarFactorContext(scope.user);
-  return (
-    <EconomicCalendar
-      initialRange={calendarWeek()}
-      teamSlug={slug}
-      factorContext={factorContext}
-    />
-  );
+export const metadata: Metadata = { title: "Economic calendar" };
+
+/** The Calendar with only the economic releases shown; the Show filters bring the earnings back. */
+export default async function EconomicCalendarPage({ params, searchParams }: PageProps<"/t/[team]/economic-calendar">) {
+  const [{ team }, sp] = await Promise.all([params, searchParams]);
+  return <CalendarPage slug={team} sp={sp} route="economic-calendar" defaultShow={["economic"]} />;
 }
