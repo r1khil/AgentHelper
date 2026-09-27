@@ -7,12 +7,12 @@ import { listTeamMovements } from "@/lib/movements";
 import { listTeamEarnings } from "@/lib/earnings";
 import { marketSnapshot } from "@/lib/market";
 import { agentConfigured } from "@/lib/agent/model";
-import { HoldingCards, type HoldingCardData, type MarketByTicker } from "@/components/app/agent/holding-cards";
-import { AskHoot } from "@/components/app/agent/ask-hoot";
-import { HootHomeIntro } from "@/components/app/agent/hoot-home";
+import { ResearchBoards, type HoldingCardData, type MarketByTicker } from "@/components/app/agent/research-boards";
+import { AskPanel } from "@/components/app/agent/hoot-home";
+import { Panel, PanelHeader } from "@/components/app/panel";
 import { ConversationSidebar } from "@/components/app/agent/conversation-list";
 import { loadResearchSidebar } from "@/components/app/agent/load-sidebar";
-import { CenterColumn, ListColumn, ResearchGrid, SideColumn } from "@/components/app/agent/research-columns";
+import { HomeMain, ListColumn, ResearchHomeGrid } from "@/components/app/agent/research-columns";
 
 export const metadata: Metadata = { title: "Hoot" };
 
@@ -46,12 +46,14 @@ export default async function AgentIndex({ params }: { params: Promise<{ team: s
     }
   }
 
-  const holdings: HoldingCardData[] = rows.map(({ h }) => {
+  const holdings: HoldingCardData[] = rows.map(({ h, ownerName }) => {
     const s = stats.get(h.id);
     return {
       id: h.id,
       ticker: h.ticker,
       name: h.companyName,
+      ownerName,
+      teamName: scope.kind === "fund" ? teamById.get(h.teamId)?.name : undefined,
       href: `/t/${teamById.get(h.teamId)?.slug}/agent/h/${h.ticker}`,
       chats: s?.chats ?? 0,
       sources: s?.sources ?? 0,
@@ -65,33 +67,28 @@ export default async function AgentIndex({ params }: { params: Promise<{ team: s
   const configured = agentConfigured();
   const teamSlug = scope.kind === "team" ? scope.slug : null;
   const scopeName = scope.kind === "team" ? scope.team.name : "The Fund";
+  // Starter questions name a holding worth asking about: one with an open movement, else the latest researched.
+  const latest = (h: HoldingCardData) => (h.lastActivity ? Date.parse(h.lastActivity) : 0);
+  const suggestFor = holdings.find((h) => h.movement) ?? [...holdings].sort((a, b) => latest(b) - latest(a))[0];
 
   return (
-    <ResearchGrid>
+    <ResearchHomeGrid>
       <ListColumn>
         <ConversationSidebar data={sidebar} teamSlug={teamSlug} configured={configured} />
       </ListColumn>
-      <CenterColumn>
-        <div className="flex h-12 shrink-0 items-center gap-2.5 border-b px-7">
-          <h2 className="text-sm font-semibold">New conversation</h2>
-          <span className="truncate text-[12.5px] text-muted-foreground">General question · {scopeName}</span>
-        </div>
-        {!configured && <div className="mx-6 mt-4 rounded-[10px] bg-caution px-3 py-2 text-[13px] text-caution-foreground xl:mx-14">Hoot is not configured: set OPENROUTER_API_KEY.</div>}
-        <HootHomeIntro ticker={rows[0]?.h.ticker} configured={configured} />
-        <AskHoot teamSlug={teamSlug} configured={configured} />
-      </CenterColumn>
-      <SideColumn>
+      <HomeMain>
+        <AskPanel ticker={suggestFor?.ticker} configured={configured} teamSlug={teamSlug} scopeName={scopeName} />
         {rows.length === 0 ? (
-          <>
-            <h2 className="text-sm font-semibold">Research boards</h2>
-            <p className="mt-2 text-[12.5px] leading-relaxed text-muted-foreground">
+          <Panel className="flex-1">
+            <PanelHeader title="Research boards" />
+            <p className="px-4 py-4 text-[13px] leading-relaxed text-muted-foreground">
               No holdings yet. Add the tickers {scope.kind === "fund" ? "each team covers on its" : "this team covers on the"} Holdings page. Each one gets its own research board here.
             </p>
-          </>
+          </Panel>
         ) : (
-          <HoldingCards holdings={holdings} market={market} />
+          <ResearchBoards holdings={holdings} market={market} showTeam={scope.kind === "fund"} />
         )}
-      </SideColumn>
-    </ResearchGrid>
+      </HomeMain>
+    </ResearchHomeGrid>
   );
 }
