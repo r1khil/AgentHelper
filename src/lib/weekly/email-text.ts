@@ -87,6 +87,8 @@ export function weeklyEmailText(input: WeeklyEmailInput): string {
     "",
     "Here is everything for Monday's weekly update deck, in the deck's order. Each section is ready to paste.",
     "",
+    `The numbers and lists are pulled automatically from the PT sheet, the fund calendar and market data.${p?.why?.length ? ` The "Why they moved" lines are my AI read of the week's news.` : ""} Reply with any changes (for example "drop Wholesale Trade, add ORCL on Tuesday") and I'll update the pack and send back the new lines.`,
+    "",
     packTitle(input.weekEnding),
     "",
     heading("Portfolio Highlights"),
@@ -98,6 +100,7 @@ export function weeklyEmailText(input: WeeklyEmailInput): string {
     heading("Worst 3 Performers"),
     ...(p?.worst.length ? p.worst.map(performerLine) : ["(none)"]),
     "",
+    ...whySection(p),
     heading("Last Week's Agenda"),
     ...agendaLines(input.lastWeekAgenda),
     "",
@@ -126,4 +129,10 @@ export function weeklyEmailText(input: WeeklyEmailInput): string {
 function sourcesLine(p: WeeklyPerformers | null): string {
   const movers = p?.source === "sheet" ? `the PT sheet's "% 1 Week"` : "the app's Monday and Friday closes";
   return `Where this comes from: highlights from the PT sheet's 2025 Time-Weighted Returns tab; top and worst 3 from ${movers}; earnings for holdings from the sheet's Price Targets tab, plus sector bellwethers and the week's largest reporters (worth $10B or more, from Finnhub and Yahoo); market news from the economic calendar; process updates from the fund's semester calendar in Drive.`;
+}
+
+/** Hoot's notes on the movers, each with the headline it rests on. Omitted when there are none. */
+function whySection(p: WeeklyPerformers | null): string[] {
+  if (!p?.why?.length) return [];
+  return [heading("Why they moved (Hoot's read of the news, for context, not for the slide)"), ...p.why.map((w) => `${w.ticker}: ${w.text} (${w.source}: ${w.url})`), ""];
 }

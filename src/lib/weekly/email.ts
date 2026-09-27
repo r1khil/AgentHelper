@@ -81,7 +81,7 @@ export async function sendWeeklyEmail(weekEnding: string, opts: { force?: boolea
   const key = `weekly-email:${weekEnding}:${[to, ...cc].join(",")}${test || opts.force ? `:${Date.now()}` : ""}`;
   try {
     const sent = await deliverEmail({ to, cc, subject: email.subject, text: email.text, idempotencyKey: key });
-    await record({ status: "ok", detail: `to ${to}${cc.length ? `, cc ${cc.join(", ")}` : ""}` });
+    await record({ status: "ok", detail: `to ${to}${cc.length ? `, cc ${cc.join(", ")}` : ""}`, ...(sent.id ? { messageId: sent.id } : {}) });
     return { status: "sent", to, cc, id: sent.id };
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e);

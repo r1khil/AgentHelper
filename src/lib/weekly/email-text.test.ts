@@ -55,6 +55,15 @@ describe("weeklyEmailText", () => {
     expect(filled).not.toContain("for reference");
   });
 
+  it("says what is automatic, invites edits by reply, and adds Hoot's notes only when there are some", () => {
+    expect(text).toContain("The numbers and lists are pulled automatically from the PT sheet, the fund calendar and market data. Reply with any changes");
+    expect(text).not.toContain("WHY THEY MOVED");
+    const why = [{ ticker: "SOXX", text: "Rose with chip stocks.", headline: "Chips rally", source: "Reuters", url: "https://example.com/1" }];
+    const withWhy = weeklyEmailText({ ...input, performers: { ...input.performers!, why } });
+    expect(withWhy).toContain(`The "Why they moved" lines are my AI read of the week's news.`);
+    expect(withWhy).toContain("WHY THEY MOVED (HOOT'S READ OF THE NEWS, FOR CONTEXT, NOT FOR THE SLIDE)\nSOXX: Rose with chip stocks. (Reuters: https://example.com/1)\n\nLAST WEEK'S AGENDA");
+  });
+
   it("says there is nothing to flag, where the numbers come from, and asks for a double check", () => {
     expect(text).toContain("CHECKS\nNothing to flag.");
     expect(text).toContain(`top and worst 3 from the PT sheet's "% 1 Week"`);

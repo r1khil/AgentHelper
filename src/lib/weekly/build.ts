@@ -1,11 +1,17 @@
 import "server-only";
+import { DateTime } from "luxon";
 import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/db/client";
 import { dailyCloses, holdings, securities, weeklyUpdates } from "@/db/schema";
 import { listBellwethers, listCalendarHoldingEvents } from "@/lib/earnings";
 import { getEconomicCalendar } from "@/lib/economic-calendar/service";
 import { noopReporter, type JobReporter } from "@/lib/jobs/progress";
-import { getEarningsCalendarRange } from "@/lib/providers/finnhub";
+import { generateText } from "ai";
+import { agentConfigured, chatModel } from "@/lib/agent/model";
+import { PT_SHEET_MODEL_ID } from "@/lib/agent/pt-sheet-guard";
+import { getCompanyNews, getEarningsCalendarRange } from "@/lib/providers/finnhub";
+import type { NewsItem } from "@/lib/providers/types";
+import { NY } from "@/lib/providers/calendar";
 import { getQuotes } from "@/lib/providers/yahoo";
 import { tickerKey } from "@/lib/pt-sheet/reconcile";
 import { carryForward, withSheetFigures } from "./figures";
@@ -13,6 +19,7 @@ import { readSheetWeekly, sheetReadDetail, type SheetWeeklyRead } from "./sheet"
 import { readFundCalendar } from "./calendar-read";
 import { US_TICKER, pickEarnings, type Reporter } from "./earnings";
 import { calendarProcessUpdates } from "./fund-calendar";
+import { parseWhy, whyInstructions, whyPrompt } from "./why";
 import { deckName } from "./format";
 import { deckMarketNews } from "./market-news";
 import { buildCloseLookup, chooseMovers, weeklyReturns, type PerformerHolding } from "./performers";
@@ -62,6 +69,30 @@ async function computeWeeklyPerformers(weekEnding: string, sheet: SheetWeeklyRea
   const quotes = await quotesFor([...movers.top, ...movers.worst].map((p) => p.ticker));
   const withName = (list: WeeklyPerformers["top"]) => list.map((p) => ({ ...p, name: deckName(quotes[p.ticker]?.name ?? p.name) }));
   return { ...movers, top: withName(movers.top), worst: withName(movers.worst) };
+}
+
+/**
+ * Hoot's one-line read of why each top and worst performer moved, from Finnhub headlines for the week. The prompt carries
+ * the week's returns, which come from the PT sheet, so it runs on the sheet-safe model only, with no fallback.
+ */
+async function explainMovers(performers: WeeklyPerformers): Promise<{ notes: NonNullable<WeeklyPerformers["why"]>; headlines: number }> {
+  const movers = [...performers.top, ...performers.worst];
+  // The Friday before the window too: a Monday move often follows weekend news.
+  const from = DateTime.fromISO(performers.window.start, { zone: NY }).minus({ days: 3 }).toISODate()!;
+  const news = new Map<string, NewsItem[]>();
+  for (const m of movers) news.set(m.ticker, await getCompanyNews(m.ticker, from, performers.window.end).catch(() => []));
+  const headlines = [...news.values()].reduce((n, list) => n + list.length, 0);
+  if (!headlines) return { notes: [], headlines };
+  const r = await generateText({
+    model: chatModel(PT_SHEET_MODEL_ID),
+    instructions: whyInstructions(),
+    prompt: whyPrompt(movers, news),
+    // Ling's reasoning counts against this; a small budget has cut its answers off before.
+    maxOutputTokens: 4000,
+    maxRetries: 2,
+    abortSignal: AbortSignal.timeout(90_000),
+  });
+  return { notes: parseWhy(r.text, movers, news), headlines };
 }
 
 /** Yahoo quotes (name, market cap) for many tickers, 100 per request. Empty when Yahoo is down: callers fall back. */
@@ -203,6 +234,20 @@ export async function buildWeeklyPack(weekEnding: string, opts: { reason: string
     failed.push("performers");
     sources = noteSource(sources, "performers", { status: "failed", error: message(e) });
     progress.warn("performers failed", { error: message(e) });
+  }
+
+  if (performers && agentConfigured()) {
+    progress.step("explain the week's movers");
+    try {
+      const { notes, headlines } = await explainMovers(performers);
+      performers = { ...performers, why: notes };
+      update.performers = performers;
+      sources = noteSource(sources, "why", { status: "ok", detail: `${notes.length} of ${performers.top.length + performers.worst.length} movers explained from ${headlines} headlines` });
+    } catch (e) {
+      // Optional context: the email goes out without it.
+      sources = noteSource(sources, "why", { status: "failed", error: message(e) });
+      progress.warn("mover notes failed", { error: message(e) });
+    }
   }
 
   const agenda = normalizeAgenda(row.agenda);
