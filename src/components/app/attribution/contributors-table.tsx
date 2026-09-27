@@ -1,26 +1,26 @@
 import Link from "next/link";
-import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { HoldingRow } from "@/lib/attribution/attribution";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
 import { Move } from "../move";
 import { EXPLAIN } from "./explainers";
 import { bps, fmtWeight, pct } from "./format";
-import { Explained } from "./info-tip";
+import { Tip } from "./info-tip";
 
 export type TeamLookup = Map<string, { name: string; slug: string }>;
 
+/** Every holding in the period with its weight, return and contribution. Sits inside a panel. */
 export function ContributorsTable({ rows, teams, showTeam = true }: { rows: HoldingRow[]; teams: TeamLookup; showTeam?: boolean }) {
   return (
-    <Card className="overflow-x-auto p-0">
+    <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Holding</TableHead>
+            <TableHead className="pl-4">Holding</TableHead>
             <TableHead>{showTeam ? "Team" : "Sector"}</TableHead>
-            <TableHead className="text-right"><Explained align="right" label="Avg wt">{EXPLAIN.holdingWeight}</Explained></TableHead>
-            <TableHead className="text-right"><Explained align="right" label="Return">{EXPLAIN.holdingReturn}</Explained></TableHead>
-            <TableHead className="text-right"><Explained align="right" label="Contribution">{EXPLAIN.contribution}</Explained></TableHead>
+            <TableHead className="text-right"><Tip label="Avg wt" side="bottom">{EXPLAIN.holdingWeight}</Tip></TableHead>
+            <TableHead className="text-right"><Tip label="Return" side="bottom">{EXPLAIN.holdingReturn}</Tip></TableHead>
+            <TableHead className="pr-4 text-right"><Tip label="Contribution" side="bottom">{EXPLAIN.contribution}</Tip></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -28,19 +28,21 @@ export function ContributorsTable({ rows, teams, showTeam = true }: { rows: Hold
             const team = h.teamId ? teams.get(h.teamId) : undefined;
             return (
               <TableRow key={h.ticker}>
-                <TableCell>
-                  {team ? <Link href={`/t/${team.slug}/h/${h.ticker}`} className="font-medium hover:underline">{h.ticker}</Link> : <span className="font-medium">{h.ticker}</span>}
-                  <span className="ml-2 hidden text-muted-foreground sm:inline">{h.name}</span>
+                <TableCell className="pl-4">
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    {team ? <Link href={`/t/${team.slug}/h/${h.ticker}`} className="font-mono font-semibold hover:underline">{h.ticker}</Link> : <span className="font-mono font-semibold">{h.ticker}</span>}
+                    <span className="max-w-64 truncate text-ink-2">{h.name}</span>
+                  </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{showTeam ? (team?.name ?? "—") : h.sector ? SECTOR_LABELS[h.sector] : "Unclassified"}</TableCell>
-                <TableCell className="tnum text-right">{fmtWeight(h.avgWeight)}</TableCell>
-                <TableCell className="text-right"><Move value={pct(h.ret)} unit="%" digits={2} /></TableCell>
-                <TableCell className="text-right"><Move value={bps(h.contribution)} unit=" bps" digits={1} /></TableCell>
+                <TableCell className="max-w-44 truncate text-muted-foreground">{showTeam ? (team?.name ?? "—") : h.sector ? SECTOR_LABELS[h.sector] : "Unclassified"}</TableCell>
+                <TableCell className="text-right font-mono text-[12.5px]">{fmtWeight(h.avgWeight)}</TableCell>
+                <TableCell className="text-right text-[12.5px]"><Move value={pct(h.ret)} unit="%" digits={2} /></TableCell>
+                <TableCell className="pr-4 text-right text-[12.5px]"><Move value={bps(h.contribution)} unit=" bp" digits={1} /></TableCell>
               </TableRow>
             );
           })}
         </TableBody>
       </Table>
-    </Card>
+    </div>
   );
 }
