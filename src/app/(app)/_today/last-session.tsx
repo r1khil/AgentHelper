@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { DateTime } from "luxon";
 import { NY } from "@/lib/providers/calendar";
-import { sessionStamp, signed } from "@/lib/today";
+import { sessionStamp } from "@/lib/today";
+import { fmtAccounting } from "@/lib/format";
+import { Acct } from "./acct";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { BriefDialog, Cited } from "./brief-dialog";
@@ -36,14 +38,14 @@ export function LastSessionCard({ book }: { book: Book }) {
         </Link>
       </div>
       <div className="mt-2.5 flex items-baseline gap-3">
-        <span className={cn("font-mono text-[44px] leading-none font-medium tracking-[-0.04em] tabular-nums", onRail(book.ret))}>{signed(book.ret, 2, "%")}</span>
+        <span className={cn("font-mono text-[44px] leading-none font-medium tracking-[-0.04em] tabular-nums", onRail(book.ret))}>{fmtAccounting(book.ret, 2, "%")}</span>
         <span className="truncate text-[13px] text-rail-label">{book.label}</span>
       </div>
       <div className="mt-3.5 grid grid-cols-3 gap-2.5">
         {book.cells.map((c) => (
           <div key={c.label} className="min-w-0" title={c.label === "vs sectors" || (c.label === "Difference" && book.kind === "team") ? effectsText(book.effects) : undefined}>
             <div className="truncate text-xs text-rail-label">{c.label}</div>
-            <div className={cn("font-mono text-[17px] leading-[21px] font-medium tabular-nums", c.tone && onRail(c.value))}>{signed(c.value, c.unit === "%" ? 2 : 0, c.unit)}</div>
+            <div className={cn("font-mono text-[17px] leading-[21px] font-medium tabular-nums", c.tone && onRail(c.value))}><Acct value={c.value} digits={c.unit === "%" ? 2 : 0} unit={c.unit} /></div>
           </div>
         ))}
       </div>
@@ -57,7 +59,7 @@ export function LastSessionCard({ book }: { book: Book }) {
 
 /** Where the gap to the sector benchmark came from, in bp. The Attribution page shows it in full. */
 function effectsText(e: Effects | null) {
-  return e ? `Against the sector benchmark: allocation ${signed(bps(e.allocation), 0)}, selection ${signed(bps(e.selection), 0)}, interaction ${signed(bps(e.interaction), 0)} bp` : undefined;
+  return e ? `Against the sector benchmark: allocation ${fmtAccounting(bps(e.allocation), 0)}, selection ${fmtAccounting(bps(e.selection), 0)}, interaction ${fmtAccounting(bps(e.interaction), 0)} bp` : undefined;
 }
 
 function MoverList({ title, rows }: { title: string; rows: { ticker: string; contribution: number }[] }) {
@@ -70,7 +72,7 @@ function MoverList({ title, rows }: { title: string; rows: { ticker: string; con
         rows.map((r) => (
           <div key={r.ticker} className="flex h-6 items-center font-mono text-[13px]">
             <span className="flex-1 font-semibold">{r.ticker}</span>
-            <span className={cn("tabular-nums", onRail(r.contribution))}>{signed(bps(r.contribution), 0)}</span>
+            <span className={cn("tabular-nums", onRail(r.contribution))}><Acct value={bps(r.contribution)} digits={0} /></span>
           </div>
         ))
       )}

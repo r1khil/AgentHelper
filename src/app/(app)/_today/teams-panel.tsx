@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { signed } from "@/lib/today";
+import { Acct } from "./acct";
 import { Panel, PanelHeader } from "@/components/app/panel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fmtMoney } from "@/lib/format";
+import { fmtAccounting, fmtMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { TeamRowData } from "./types";
 
@@ -93,13 +93,13 @@ export function TeamsPanel({
               </span>
               {withBook && (
                 <>
-                  <span className={cn("text-right font-mono text-[13.5px] font-medium tabular-nums", tone(t.stats?.ret))}>{t.stats ? signed(t.stats.ret * 100, 2, "%") : "—"}</span>
-                  <span className={cn("text-right font-mono text-[13.5px] tabular-nums", tone(c))}>{c === null ? "—" : signed(c, 0, " bp")}</span>
+                  <span className={cn("text-right font-mono text-[13.5px] font-medium tabular-nums", tone(t.stats?.ret))}>{t.stats ? <Acct value={t.stats.ret * 100} unit="%" /> : "—"}</span>
+                  <span className={cn("text-right font-mono text-[13.5px] tabular-nums", tone(c))}>{c === null ? "—" : <Acct value={c} digits={0} unit=" bp" />}</span>
                   <ContributionBar bp={c} scale={scale} />
                 </>
               )}
               <span className="truncate font-mono text-[12.5px] text-ink-2">
-                {t.mover ? `${t.mover.ticker} ${signed(t.mover.pct, 2, "%")}` : live || withBook ? "—" : <Skeleton className="h-4 w-24" />}
+                {t.mover ? `${t.mover.ticker} ${fmtAccounting(t.mover.pct, 2, "%")}` : live || withBook ? "—" : <Skeleton className="h-4 w-24" />}
               </span>
             </button>
             {isOpen && <TeamHoldings team={t} live={live} />}
@@ -144,8 +144,8 @@ function TeamHoldings({ team, live }: { team: TeamRowData; live: boolean }) {
             {live ? (
               <>
                 <span role="cell" className="text-right font-mono tabular-nums">{h.price === null ? "—" : `$${fmtMoney(h.price)}`}</span>
-                <span role="cell" className={cn("text-right font-mono tabular-nums", tone(h.changePct))}>{signed(h.changePct, 2, "%")}</span>
-                <span role="cell" className="text-right font-mono text-muted-foreground tabular-nums">{signed(h.relativePp, 2, " pp")}</span>
+                <span role="cell" className={cn("text-right font-mono tabular-nums", tone(h.changePct))}><Acct value={h.changePct} unit="%" /></span>
+                <span role="cell" className="text-right font-mono text-muted-foreground tabular-nums"><Acct value={h.relativePp} unit=" pp" /></span>
               </>
             ) : (
               <>
