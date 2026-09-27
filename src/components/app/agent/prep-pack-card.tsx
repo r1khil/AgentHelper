@@ -15,20 +15,20 @@ export function PrepPackCard({ pack, compact, actions, className }: { pack: Prep
   const numbers = new Map(pack.sources.map((s, i) => [s.id, i + 1]));
   const n = bulletCount(pack);
   return (
-    <div className={cn("rounded-xl bg-card ring-1 ring-foreground/10", compact ? "mx-6 mt-4" : "", className)}>
-      <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
+    <div className={cn("bg-card shadow-[0_0_0_1px_var(--border)]", compact ? "rounded-[10px]" : "rounded-[14px]", className)}>
+      <div className={cn("flex flex-wrap items-center gap-2 py-2.5", compact ? "px-3" : "px-4")}>
         <ClipboardList className="size-3.5 text-muted-foreground" />
-        <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">Earnings prep pack</span>
+        <span className="label-mono text-muted-foreground">Earnings prep pack</span>
         <span className="text-xs text-muted-foreground">
           reports {fmtDate(pack.reportDate)} · {n} sourced bullet{n === 1 ? "" : "s"} · built {relativeTime(pack.builtAt)}
         </span>
         {actions && <div className="ml-auto">{actions}</div>}
       </div>
-      <div className={cn("border-t px-4 pt-3 pb-3.5 text-[12.8px] leading-[18px]", compact && "max-h-[45vh] overflow-auto")}>
+      <div className={cn("border-t pt-3 pb-3.5 text-[12.8px] leading-[18px]", compact ? "px-3" : "px-4")}>
         <div className={cn("grid gap-4", compact ? "grid-cols-1" : "md:grid-cols-2")}>
           {pack.sections.map((s) => (
             <section key={s.key} className={cn(!compact && s.key === "not_retrieved" && "md:col-span-2")}>
-              <h3 className={cn("text-[11px] font-semibold tracking-wide uppercase", s.key === "not_retrieved" ? "text-warning-foreground" : "text-muted-foreground")}>{s.title}</h3>
+              <h3 className={cn("label-mono", s.key === "not_retrieved" ? "text-caution-foreground" : "text-muted-foreground")}>{s.title}</h3>
               <ul className="mt-1.5 space-y-1.5">
                 {s.bullets.map((b, i) => (
                   <li key={i} className="flex gap-1.5">
@@ -40,9 +40,9 @@ export function PrepPackCard({ pack, compact, actions, className }: { pack: Prep
                         const num = numbers.get(id);
                         if (!src || !num) return null;
                         const t = resolveSource(src);
-                        const chip = "ml-1 inline-grid size-4 place-items-center rounded-[4px] border bg-muted align-text-bottom text-[10px] leading-none text-foreground";
+                        const chip = "ml-1 inline-grid h-4 min-w-4 place-items-center rounded-full bg-hoot px-1 align-[1px] font-mono text-[10px] leading-none font-medium text-hoot-foreground";
                         return t.kind === "external" ? (
-                          <a key={id} href={t.href} target="_blank" rel="noopener noreferrer" title={`${src.title}${src.publishedAt ? ` (${src.publishedAt.slice(0, 10)})` : ""}`} className={cn(chip, "hover:bg-primary hover:text-primary-foreground")}>
+                          <a key={id} href={t.href} target="_blank" rel="noopener noreferrer" title={`${src.title}${src.publishedAt ? ` (${src.publishedAt.slice(0, 10)})` : ""}`} className={cn(chip, "hover:ring-1 hover:ring-hoot-foreground/50")}>
                             {num}
                           </a>
                         ) : (
@@ -65,7 +65,7 @@ export function PrepPackCard({ pack, compact, actions, className }: { pack: Prep
               const label = `${s.title}${s.publishedAt ? ` · ${s.publishedAt.slice(0, 10)}` : ""}`;
               return (
                 <li key={s.id} className="flex gap-1.5">
-                  <span className="tnum w-4 shrink-0 text-right">{i + 1}.</span>
+                  <span className="w-4 shrink-0 text-right font-mono">{i + 1}.</span>
                   {t.kind === "external" ? (
                     <a href={t.href} target="_blank" rel="noopener noreferrer" className="min-w-0 truncate hover:text-foreground hover:underline" title={label}>
                       {label}

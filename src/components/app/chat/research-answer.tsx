@@ -8,6 +8,7 @@ import type { Source } from "@/lib/providers/types";
 import { remarkCitations } from "@/lib/agent/citation-markdown";
 import { resolveCitedId } from "@/lib/agent/citations";
 import { externalUrl, resolveSource, sourceType } from "@/lib/agent/source-resolution";
+import { cn } from "@/lib/utils";
 import { SourceViewer } from "./source-viewer";
 
 /**
@@ -59,6 +60,11 @@ export function ResearchSources({
   );
 }
 
+/** Open a source in the shared viewer (documents); for use beside the answers, e.g. a sources list. */
+export function useSourceViewer() {
+  return useContext(SourceContext).open;
+}
+
 export function Citation({ id: cited, full = false }: { id: string; full?: boolean }) {
   const { sources, numbers, open, links } = useContext(SourceContext);
   // Answers saved (or still streaming) with a mistyped id still point at the one source they meant.
@@ -71,7 +77,7 @@ export function Citation({ id: cited, full = false }: { id: string; full?: boole
   if (links && !full) return <ChipCitation id={id} n={numbers.get(id)} title={title} source={source} unavailable={unavailable} links={links} />;
   const className = full
     ? "block w-full rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted"
-    : `mx-0.5 inline-flex rounded border px-1.5 align-baseline text-[11px] font-medium not-italic no-underline focus-visible:outline-2 ${unavailable ? "border-destructive/40 text-destructive" : "bg-muted/60 hover:bg-muted"}`;
+    : `${CHIP} ${unavailable ? "bg-destructive/10 text-destructive" : "bg-hoot text-hoot-foreground hover:ring-1 hover:ring-hoot-foreground/50"}`;
   const content = full ? (
     <>
       <span className="line-clamp-2 font-medium">
@@ -84,7 +90,7 @@ export function Citation({ id: cited, full = false }: { id: string; full?: boole
       {unavailable && <span>Source unavailable</span>}
     </>
   ) : (
-    label
+    (numbers.get(id) ?? "?")
   );
   const trigger =
     target.kind === "external" ? (
@@ -127,15 +133,16 @@ function ChipCitation({ id, n, title, source, unavailable, links }: { id: string
   const isOpen = links.openIds?.has(id) ?? false;
   const hot = links.highlight === id;
   const className = [
-    "mx-0.5 inline-flex rounded border px-[5px] align-baseline text-[11px] leading-4 font-medium not-italic no-underline transition-colors focus-visible:outline-2",
+    CHIP,
+    "transition-[color,background-color,box-shadow,opacity]",
     unavailable
-      ? "border-destructive/40 text-destructive"
+      ? "bg-destructive/10 text-destructive"
       : isOpen
-        ? "border-primary bg-primary text-primary-foreground"
+        ? "bg-hoot-foreground text-hoot"
         : hot
-          ? "border-foreground bg-background text-foreground"
-          : "border-border bg-muted",
-    links.dim && !isOpen && !hot ? "opacity-70" : "",
+          ? "bg-hoot text-hoot-foreground ring-1 ring-hoot-foreground/60"
+          : "bg-hoot text-hoot-foreground",
+    links.dim && !isOpen && !hot ? "opacity-60" : "",
   ].join(" ");
   return (
     <Tooltip.Root>
@@ -173,10 +180,13 @@ function ChipCitation({ id, n, title, source, unavailable, links }: { id: string
   );
 }
 
+/** Hoot's pink numbered citation chip: tiny, round, mono. */
+const CHIP = "mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1.5 align-[1px] font-mono text-[10.5px] leading-none font-medium not-italic no-underline focus-visible:outline-2";
+
 /** Reusable for research prose anywhere in the app. Markdown's URL protections stay enabled. */
-export function ResearchAnswer({ text }: { text: string }) {
+export function ResearchAnswer({ text, className }: { text: string; className?: string }) {
   return (
-    <div className="prose-sm max-w-none text-sm leading-relaxed [&_h1]:mt-3 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-semibold [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_table]:my-2 [&_table]:text-xs [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:bg-muted [&_th]:px-2 [&_th]:py-1 [&_ul]:list-disc [&_ul]:pl-5">
+    <div className={cn("prose-sm max-w-none text-sm leading-relaxed [&_h1]:mt-3 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-semibold [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_table]:my-2 [&_table]:text-xs [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:bg-muted [&_th]:px-2 [&_th]:py-1 [&_ul]:list-disc [&_ul]:pl-5", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkCitations]}
         components={{

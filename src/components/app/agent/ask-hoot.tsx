@@ -4,12 +4,10 @@ import { useHootCommand } from "@/components/app/hoot/use-hoot-command";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp } from "lucide-react";
 import { toast } from "sonner";
 import { startHootChat } from "@/lib/actions/chats";
 import { leaveHootQuestion } from "@/components/app/hoot/handoff";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { ComposerBox, LEARNING_BOUNDARY, SendButton } from "@/components/app/chat/thread-parts";
 
 /** A question that isn't about one holding: starts a general conversation, the same way the floating Hoot does. */
 export function AskHoot({ teamSlug, configured }: { teamSlug: string | null; configured: boolean }) {
@@ -20,7 +18,7 @@ export function AskHoot({ teamSlug, configured }: { teamSlug: string | null; con
   const [error, setError] = useState<string | null>(null);
   const box = useRef<HTMLTextAreaElement>(null);
 
-  // Hoot's tour offers example questions; picking one puts it here to edit or send.
+  // Hoot's tour offers example questions (and the suggestions above the box); picking one puts it here to edit or send.
   useEffect(() => {
     const fill = (e: Event) => {
       const q = (e as CustomEvent<string>).detail;
@@ -60,6 +58,7 @@ export function AskHoot({ teamSlug, configured }: { teamSlug: string | null; con
   return (
     <form
       data-tour="ask-hoot"
+      className="shrink-0 border-t px-6 pt-3.5 pb-[18px] xl:px-14"
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
@@ -68,8 +67,8 @@ export function AskHoot({ teamSlug, configured }: { teamSlug: string | null; con
       <label htmlFor="ask-hoot" className="sr-only">
         Ask Hoot
       </label>
-      <div className="relative">
-        <Textarea
+      <ComposerBox>
+        <textarea
           ref={box}
           id="ask-hoot"
           value={text}
@@ -83,14 +82,15 @@ export function AskHoot({ teamSlug, configured }: { teamSlug: string | null; con
             }
           }}
           placeholder={configured ? "Ask Hoot anything: the portfolio, a sector, an upcoming report…" : "Hoot is not configured: add OPENROUTER_API_KEY"}
-          className="min-h-16 resize-none bg-background pr-11 text-sm"
+          className="field-sizing-content max-h-40 min-h-11 w-full resize-none bg-transparent text-sm leading-[22px] outline-none placeholder:text-muted-foreground disabled:opacity-60"
         />
-        <Button type="submit" size="icon" className="absolute right-2 bottom-2 size-7" disabled={!text.trim() || asking} aria-label="Ask">
-          <ArrowUp className="size-4" />
-        </Button>
-      </div>
-      <div className="mt-1.5 text-[11px] text-muted-foreground">{asking ? "Opening a chat…" : "For one holding, open its research board below."}</div>
-      {error && <div className="mt-1.5 text-xs text-destructive">{error}</div>}
+        <div className="flex items-center gap-2">
+          <span className="min-w-0 truncate text-xs text-muted-foreground">{asking ? "Opening a chat…" : "For one holding, open its research board on the right."}</span>
+          <span className="flex-1" />
+          <SendButton disabled={!text.trim() || asking || !configured} label="Ask" />
+        </div>
+      </ComposerBox>
+      {error ? <div className="mt-1.5 text-xs text-destructive">{error}</div> : <div className="mt-1.5 text-[11.5px] text-muted-foreground">{LEARNING_BOUNDARY}</div>}
     </form>
   );
 }
