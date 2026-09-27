@@ -109,6 +109,8 @@ describe("read_pt_sheet", () => {
   it("only offers the allowlisted tabs", () => {
     const schema = makePtSheetTools({ chatId: "c", state: { read: false } }).read_pt_sheet.inputSchema as unknown as { safeParse: (v: unknown) => { success: boolean } };
     expect(schema.safeParse({ tabs: ["Price Targets"] }).success).toBe(true);
+    expect(schema.safeParse({ tabs: "Price Targets" }).success).toBe(true);
+    expect(schema.safeParse({ tabs: "Credit Spreads" }).success).toBe(false);
     expect(schema.safeParse({ tabs: ["Credit Spreads"] }).success).toBe(false);
     expect(schema.safeParse({ tabs: ["Sells/Unbought Pitches"] }).success).toBe(false);
   });
