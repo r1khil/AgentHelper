@@ -37,6 +37,11 @@ export type WeeklyPerformers = {
   /** Tickers with no close at one or both ends of the window. */
   missing: string[];
   window: { start: string; end: string };
+  /** Where the ranking came from: the sheet's "% 1 Week" (read at `readAt`) or the app's Monday and Friday closes. */
+  source?: "sheet" | "closes";
+  readAt?: string;
+  /** Plain-English notes for the Sunday email's Checks list (why the source was chosen, tickers the two disagree on). */
+  checks?: string[];
 };
 
 /** Phase 2 placeholder: the YTD chart is still pasted into the deck by hand. */

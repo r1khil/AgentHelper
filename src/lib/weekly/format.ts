@@ -26,6 +26,21 @@ export function fmtAumK(n: number | null | undefined): string {
   return n < 0 ? `($${body}k)` : `$${body}k`;
 }
 
+/** Kept as written when a name arrives in capitals. */
+const ACRONYMS = new Set(["ETF", "ADR", "LLC", "LP", "PLC", "NV", "SA", "AG", "SE", "II", "III", "US", "USA", "REIT", "SPDR", "MSCI", "S&P"]);
+
+/**
+ * SEC filers' names arrive in capitals ("TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD"); the deck writes them in title case.
+ * A name that already has lower case letters is left alone.
+ */
+export function deckName(name: string): string {
+  if (/[a-z]/.test(name)) return name;
+  return name
+    .split(/(\s+)/)
+    .map((w) => (ACRONYMS.has(w) || !/[A-Z]/.test(w) ? w : w.charAt(0) + w.slice(1).toLowerCase()))
+    .join("");
+}
+
 export function performerLine(p: Performer): string {
   return `${p.name} (${p.ticker}): ${fmtDeckPct(p.pct)}`;
 }

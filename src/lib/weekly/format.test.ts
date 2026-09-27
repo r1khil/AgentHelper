@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agendaLine, figureLines, fmtAumK, fmtDeckPct, itemsToLines, linesToItems, normalizeWeekday, packText, performerLine } from "./format";
+import { agendaLine, deckName, figureLines, fmtAumK, fmtDeckPct, itemsToLines, linesToItems, normalizeWeekday, packText, performerLine } from "./format";
 import type { AgendaItem, WeeklyFigures } from "./types";
 
 describe("fmtDeckPct", () => {
@@ -105,5 +105,14 @@ describe("packText", () => {
     expect(text).toContain("AnaptysBio (ANAB): 7.2%");
     expect(text).toContain("Earnings: ANAB (Monday)");
     expect(text).toContain("YTD Performance chart");
+  });
+});
+
+describe("deckName", () => {
+  it("title-cases names filed in capitals and leaves the rest alone", () => {
+    expect(deckName("TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD")).toBe("Taiwan Semiconductor Manufacturing Co Ltd");
+    expect(deckName("MICROSOFT CORP")).toBe("Microsoft Corp");
+    expect(deckName("SPDR S&P REGIONAL BANKING ETF")).toBe("SPDR S&P Regional Banking ETF");
+    expect(deckName("KKR & Co. Inc.")).toBe("KKR & Co. Inc.");
   });
 });

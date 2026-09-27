@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
-import { inboundConfigured } from "@/lib/weekly/ask";
-import { getPack, listRequests, normalizeAgenda, packFigures } from "@/lib/weekly/store";
+import { composeWeeklyEmail, weeklyEmailRecipients } from "@/lib/weekly/email";
+import { getPack, normalizeAgenda, packFigures } from "@/lib/weekly/store";
 import { agendaWeek, isFriday, packTitle } from "@/lib/weekly/weeks";
-import { WeeklyPack, type RequestView } from "@/components/app/weekly/weekly-pack";
+import { WeeklyPack, type EmailView } from "@/components/app/weekly/weekly-pack";
 
 export const metadata: Metadata = { title: "Weekly update" };
 export const maxDuration = 300;
@@ -23,19 +23,12 @@ export default async function WeeklyPackPage({ params, searchParams }: PageProps
   if (!isFriday(week)) notFound();
   const { ok, error } = await searchParams;
   const pack = await getPack(week);
-  const requests = pack ? await listRequests(week) : [];
-
-  const views: RequestView[] = requests.map((r) => ({
-    id: r.id,
-    email: r.recipientEmail,
-    sentAt: r.sentAt?.toISOString() ?? null,
-    sendError: r.sendError,
-    repliedAt: r.repliedAt?.toISOString() ?? null,
-    replyText: r.replyText,
-    parsedItems: r.parsedItems,
-    parseError: r.parseError,
-    parseModel: r.parseModel,
-  }));
+  let email: EmailView | null = null;
+  if (pack) {
+    const recipients = await weeklyEmailRecipients();
+    const draft = await composeWeeklyEmail(week, recipients.to);
+    if (draft) email = { ...recipients, ...draft, record: pack.sources?.email ?? null };
+  }
 
   return (
     <>
@@ -62,11 +55,10 @@ export default async function WeeklyPackPage({ params, searchParams }: PageProps
             agenda={normalizeAgenda(pack.agenda)}
             lastWeekAgenda={normalizeAgenda(pack.lastWeekAgenda)}
             sources={pack.sources ?? {}}
-            requests={views}
+            email={email}
             builtAt={pack.builtAt?.toISOString() ?? null}
             editedAt={pack.editedAt?.toISOString() ?? null}
             sentAt={pack.sentAt?.toISOString() ?? null}
-            inboundConfigured={inboundConfigured()}
           />
         )}
       </div>

@@ -1,14 +1,16 @@
 import "server-only";
 import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/db/client";
-import { dailyCloses, holdings, weeklyUpdates } from "@/db/schema";
+import { dailyCloses, holdings, securities, weeklyUpdates } from "@/db/schema";
 import { listBellwethers, listCalendarHoldingEvents } from "@/lib/earnings";
 import { getEconomicCalendar } from "@/lib/economic-calendar/service";
 import { noopReporter, type JobReporter } from "@/lib/jobs/progress";
+import { tickerKey } from "@/lib/pt-sheet/reconcile";
 import { carryForward, withSheetFigures } from "./figures";
-import { readSheetWeeklyFigures, sheetReadDetail } from "./sheet";
+import { readSheetWeekly, sheetReadDetail, type SheetWeeklyRead } from "./sheet";
+import { deckName } from "./format";
 import { pickMarketNews } from "./market-news";
-import { buildCloseLookup, rankWeeklyMovers, type PerformerHolding } from "./performers";
+import { buildCloseLookup, chooseMovers, weeklyReturns, type PerformerHolding } from "./performers";
 import { ensurePack, getPack, noteSource, normalizeAgenda, packFigures } from "./store";
 import type { AgendaItem, FigureValue, WeeklyAgenda, WeeklyFigures, WeeklyPerformers, WeeklySources } from "./types";
 import { agendaWeek, previousWeekEnding, priceWindow, weekdayLabel } from "./weeks";
@@ -18,7 +20,7 @@ export type BuildResult = {
   weekEnding: string;
   status: "ok" | "skipped";
   reason?: string;
-  performers?: { ranked: number; missing: number };
+  performers?: { ranked: number; missing: number; source: "sheet" | "closes" };
   earnings?: number;
   marketNews?: number;
   agendaHeld?: boolean;
@@ -27,31 +29,44 @@ export type BuildResult = {
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-/** Monday-close-to-Friday-close price returns for every active holding. */
-async function computeWeeklyPerformers(weekEnding: string): Promise<WeeklyPerformers> {
-  const { start, end } = priceWindow(weekEnding);
-  const rows = await db
-    .select({ ticker: holdings.ticker, name: holdings.companyName })
-    .from(holdings)
-    .where(eq(holdings.status, "active"));
-  const unique = new Map<string, PerformerHolding>();
-  for (const r of rows) if (!unique.has(r.ticker)) unique.set(r.ticker, r);
-  const list = [...unique.values()];
-  if (!list.length) return { top: [], worst: [], missing: [], window: { start, end } };
-  const closeRows = await db
-    .select({ ticker: dailyCloses.ticker, sessionDate: dailyCloses.sessionDate, close: dailyCloses.close })
-    .from(dailyCloses)
-    .where(and(inArray(dailyCloses.ticker, list.map((h) => h.ticker)), gte(dailyCloses.sessionDate, start), lte(dailyCloses.sessionDate, end)));
-  return rankWeeklyMovers({ holdings: list, closes: buildCloseLookup(closeRows), start, end }, 3);
+/**
+ * The week's top and worst performers: the sheet's "% 1 Week" when it measures the deck's window, else the app's
+ * Monday-close-to-Friday-close returns. The universe is the active holdings plus anything the sheet lists, so a position the
+ * ledger hasn't caught up with still counts.
+ */
+async function computeWeeklyPerformers(weekEnding: string, sheet: SheetWeeklyRead | null): Promise<WeeklyPerformers> {
+  const window = priceWindow(weekEnding);
+  const [held, named] = await Promise.all([
+    db.select({ ticker: holdings.ticker, name: holdings.companyName, status: holdings.status }).from(holdings),
+    db.select({ ticker: securities.ticker, name: securities.name }).from(securities),
+  ]);
+  // A holding's own name wins over the securities table's.
+  const names = new Map<string, string>([...named, ...held].map((r) => [tickerKey(r.ticker), deckName(r.name)]));
+  const active = held.filter((h) => h.status === "active");
+  const tickers = new Set([...active.map((h) => h.ticker), ...(sheet?.moves.rows ?? []).map((m) => m.ticker), ...(sheet?.moves.blank ?? [])]);
+  const universe: PerformerHolding[] = [...tickers].map((ticker) => ({ ticker, name: names.get(tickerKey(ticker)) ?? ticker }));
+  const closeRows = universe.length
+    ? await db
+        .select({ ticker: dailyCloses.ticker, sessionDate: dailyCloses.sessionDate, close: dailyCloses.close })
+        .from(dailyCloses)
+        .where(and(inArray(dailyCloses.ticker, [...tickers]), gte(dailyCloses.sessionDate, window.start), lte(dailyCloses.sessionDate, window.end)))
+    : [];
+  const closes = weeklyReturns({ holdings: universe, closes: buildCloseLookup(closeRows), ...window });
+  return chooseMovers({ sheet: sheet?.moves.rows ?? null, sheetBlank: sheet?.moves.blank, sheetProblem: sheet ? sheet.moves.problem : "Google Drive is not configured here", readAt: sheet?.readAt, closes, names, window });
 }
 
-/** Holdings' reports plus tracked sector bellwethers in the coming week, grouped by weekday. */
-async function computeEarningsItems(weekEnding: string): Promise<AgendaItem[]> {
+/**
+ * Holdings' reports plus tracked sector bellwethers in the coming week, grouped by weekday. For holdings the sheet's
+ * Earnings Date wins; the app's earnings calendar fills in any holding the sheet has no date for.
+ */
+async function computeEarningsItems(weekEnding: string, sheet: SheetWeeklyRead["earnings"] | null): Promise<AgendaItem[]> {
   const { from, to } = agendaWeek(weekEnding);
   const [holdingEvents, bellwethers] = await Promise.all([listCalendarHoldingEvents(from, to), listBellwethers()]);
+  const sheetDated = new Set(sheet?.dated ?? []);
   const byTicker = new Map<string, { date: string; ticker: string }>();
+  for (const e of sheet?.rows ?? []) byTicker.set(e.ticker, { date: e.date, ticker: e.ticker });
   for (const row of holdingEvents) {
-    if (!row.e.reportDate) continue;
+    if (!row.e.reportDate || byTicker.has(row.h.ticker) || sheetDated.has(tickerKey(row.h.ticker))) continue;
     byTicker.set(row.h.ticker, { date: row.e.reportDate, ticker: row.h.ticker });
   }
   for (const b of bellwethers) {
@@ -113,12 +128,14 @@ export async function buildWeeklyPack(weekEnding: string, opts: { reason: string
     progress.warn("carry forward failed", { error: message(e) });
   }
 
-  // The sheet is the execs' source for these; an exec's own entry still wins.
-  progress.step("read the price target sheet's figures");
+  // The sheet is the execs' source for the figures, the performers and holdings' earnings; an exec's own entry still wins.
+  progress.step("read the price target sheet");
+  let sheet: SheetWeeklyRead | null = null;
   try {
-    const read = await readSheetWeeklyFigures();
-    if (!read) sources = noteSource(sources, "sheet", { status: "held", detail: "Google Drive is not configured here" });
+    sheet = await readSheetWeekly(agendaWeek(weekEnding));
+    if (!sheet) sources = noteSource(sources, "sheet", { status: "held", detail: "Google Drive is not configured here" });
     else {
+      const read = sheet.figures;
       update.figures = withSheetFigures(update.figures ?? packFigures(row), read, read.asOf);
       sources = noteSource(sources, "sheet", { status: read.problems.length ? "failed" : "ok", detail: sheetReadDetail(read), ...(read.problems.length ? { error: read.problems.join(" ") } : {}) });
     }
@@ -131,11 +148,14 @@ export async function buildWeeklyPack(weekEnding: string, opts: { reason: string
   progress.step("rank weekly performers");
   let performers: WeeklyPerformers | null = null;
   try {
-    performers = await computeWeeklyPerformers(weekEnding);
+    performers = await computeWeeklyPerformers(weekEnding, sheet);
     update.performers = performers;
     sources = noteSource(sources, "performers", {
       status: "ok",
-      detail: `${performers.top.length + performers.worst.length} ranked, ${performers.missing.length} without closes`,
+      detail:
+        performers.source === "sheet"
+          ? `${performers.top.length + performers.worst.length} ranked from the PT sheet's "% 1 Week"`
+          : `${performers.top.length + performers.worst.length} ranked from closes, ${performers.missing.length} without closes`,
     });
   } catch (e) {
     failed.push("performers");
@@ -149,7 +169,7 @@ export async function buildWeeklyPack(weekEnding: string, opts: { reason: string
 
   progress.step("collect earnings for the coming week");
   try {
-    const items = await computeEarningsItems(weekEnding);
+    const items = await computeEarningsItems(weekEnding, sheet && !sheet.earnings.problem ? sheet.earnings : null);
     if (!edited) earningsItems = items;
     sources = noteSource(sources, "earnings", edited ? { status: "held", detail: `${items.length} found; the pack has exec edits` } : { status: "ok", detail: `${items.length} reports` });
   } catch (e) {
@@ -177,7 +197,7 @@ export async function buildWeeklyPack(weekEnding: string, opts: { reason: string
   return {
     weekEnding,
     status: "ok",
-    performers: performers ? { ranked: performers.top.length + performers.worst.length, missing: performers.missing.length } : undefined,
+    performers: performers ? { ranked: performers.top.length + performers.worst.length, missing: performers.missing.length, source: performers.source ?? "closes" } : undefined,
     earnings: earningsItems.length,
     marketNews: marketNewsItems.length,
     agendaHeld: edited,

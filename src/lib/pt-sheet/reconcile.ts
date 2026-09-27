@@ -22,7 +22,7 @@ export type QuantityCheck = {
 };
 
 /** The sheet sometimes writes GOOGLEFINANCE-style tickers with the exchange ("BATS:DRAM"). */
-const TICKER = /^(?:[A-Z]+:)?[A-Z][A-Z0-9.-]{0,9}$/;
+export const TICKER = /^(?:[A-Z]+:)?[A-Z][A-Z0-9.-]{0,9}$/;
 /** BATS:DRAM in the sheet is DRAM in the app, and BRK.B is BRK-B. */
 export const tickerKey = (t: string) => t.trim().toUpperCase().replace(/^[A-Z]+:/, "").replace(/\./g, "-");
 

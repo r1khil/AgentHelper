@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Mail, Send, Undo2 } from "lucide-react";
+import { Mail, Send, Undo2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,23 +10,22 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionTitle } from "@/components/app/page-header";
 import { CopyButton } from "./copy-button";
-import { buildWeeklyNow, fillWeeklyFromSheet, markWeeklySent, reopenWeekly, saveWeeklyField, saveWeeklyFigures, sendWeeklyAskNow } from "@/lib/actions/weekly";
+import { buildWeeklyNow, fillWeeklyFromSheet, markWeeklySent, reopenWeekly, saveWeeklyField, saveWeeklyFigures, sendWeeklyEmailNow } from "@/lib/actions/weekly";
 import { agendaLine, fmtAumK, fmtDeckPct, itemsToLines, packText, performerLine } from "@/lib/weekly/format";
 import { carriedFigureKeys, deriveRelative, parseFigureInput } from "@/lib/weekly/figures";
-import { AGENDA_LABELS, AGENDA_SECTIONS, type AgendaItem, type WeeklyAgenda, type WeeklyFigures, type WeeklyPerformers, type WeeklySources } from "@/lib/weekly/types";
+import { AGENDA_LABELS, AGENDA_SECTIONS, type AgendaItem, type SourceEntry, type WeeklyAgenda, type WeeklyFigures, type WeeklyPerformers, type WeeklySources } from "@/lib/weekly/types";
 import { packTitle, weekRangeLabel } from "@/lib/weekly/weeks";
 import { fmtDateTime } from "@/lib/format";
 
-export type RequestView = {
-  id: string;
-  email: string;
-  sentAt: string | null;
-  sendError: string | null;
-  repliedAt: string | null;
-  replyText: string | null;
-  parsedItems: AgendaItem[] | null;
-  parseError: string | null;
-  parseModel: string | null;
+/** The Sunday email as it would go out now, and what happened to it. */
+export type EmailView = {
+  to: string | null;
+  cc: string[];
+  /** Test accounts on the list, which are never emailed. */
+  skipped: string[];
+  subject: string;
+  text: string;
+  record: SourceEntry | null;
 };
 
 export type WeeklyPackProps = {
@@ -38,11 +37,10 @@ export type WeeklyPackProps = {
   agenda: WeeklyAgenda;
   lastWeekAgenda: WeeklyAgenda;
   sources: WeeklySources;
-  requests: RequestView[];
+  email: EmailView | null;
   builtAt: string | null;
   editedAt: string | null;
   sentAt: string | null;
-  inboundConfigured: boolean;
 };
 
 function Notice({ tone, children }: { tone: "ok" | "warn" | "info"; children: React.ReactNode }) {
@@ -103,8 +101,8 @@ export function WeeklyPack(props: WeeklyPackProps) {
     lastWeekAgenda: props.lastWeekAgenda,
   });
 
-  const failedSteps = Object.entries(props.sources).filter(([, v]) => v.status === "failed");
-  const heldReplies = props.sources.replies?.status === "held";
+  // The email's own record shows on its card.
+  const failedSteps = Object.entries(props.sources).filter(([step, v]) => v.status === "failed" && step !== "email");
   const missing = props.performers?.missing ?? [];
 
   return (
@@ -136,19 +134,20 @@ export function WeeklyPack(props: WeeklyPackProps) {
       </div>
 
       {sent && <Notice tone="info">This pack is marked sent. The Sunday job leaves it alone; reopen it to make changes.</Notice>}
-      {heldReplies && (
-        <Notice tone="warn">
-          <AlertTriangle className="mr-1.5 inline size-4" />
-          A reply arrived after you edited this pack, so Process Updates were left as you wrote them. The replies are below; fold in anything you want by hand.
-        </Notice>
-      )}
       {carried.length > 0 && <Notice tone="info">{carried.join(", ")} {carried.length === 1 ? "is" : "are"} carried from last week. Check the numbers and save to confirm them.</Notice>}
       {missing.length > 0 && <Notice tone="info">No Monday and Friday closes for {missing.join(", ")}; they are left out of the rankings.</Notice>}
+      {props.performers?.checks?.map((c) => (
+        <Notice key={c} tone="info">
+          {c}
+        </Notice>
+      ))}
       {failedSteps.length > 0 && (
         <Notice tone="warn">
           Could not build: {failedSteps.map(([step, v]) => `${step} (${v.error ?? "unknown error"})`).join("; ")}. Everything else on this page is current.
         </Notice>
       )}
+
+      {props.email && <EmailCard week={props.weekEnding} email={props.email} />}
 
       <Card className="p-4">
         <SectionTitle aside={<CopyButton text={`Portfolio Highlights\n${highlights.join("\n")}`} label="Copy section" />}>Portfolio Highlights</SectionTitle>
@@ -224,51 +223,57 @@ export function WeeklyPack(props: WeeklyPackProps) {
         </p>
       </Card>
 
-      <Card className="p-4">
-        <SectionTitle aside={props.inboundConfigured ? undefined : "inbound email not configured"}>Process update replies</SectionTitle>
-        {!props.inboundConfigured && (
-          <p className="mb-3 text-xs text-muted-foreground">
-            Set <code>INBOUND_EMAIL_DOMAIN</code> and the Resend inbound webhook before the asks can be answered by reply. See <code>docs/weekly-update.md</code>.
-          </p>
-        )}
-        {props.requests.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No asks have gone out for this week yet.</p>
-        ) : (
-          <div className="grid gap-3">
-            {props.requests.map((r) => (
-              <div key={r.id} className="grid gap-1.5 border-t pt-3 first:border-t-0 first:pt-0">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-medium">{r.email}</span>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={r.repliedAt ? "secondary" : "outline"}>
-                      {r.repliedAt ? `Replied ${fmtDateTime(r.repliedAt)}` : r.sendError ? r.sendError : r.sentAt ? `Asked ${fmtDateTime(r.sentAt)}` : "Not sent"}
-                    </Badge>
-                    <form action={sendWeeklyAskNow}>
-                      <input type="hidden" name="week" value={props.weekEnding} />
-                      <input type="hidden" name="recipient" value={r.email} />
-                      <Button type="submit" size="sm" variant="ghost">
-                        <Mail data-icon="inline-start" />
-                        Resend ask
-                      </Button>
-                    </form>
-                  </div>
-                </div>
-                {r.replyText && <pre className="max-h-40 overflow-auto rounded-md bg-muted/40 p-2 text-xs whitespace-pre-wrap">{r.replyText}</pre>}
-                {r.parsedItems && r.parsedItems.length > 0 && (
-                  <div className="text-sm">
-                    <span className="text-xs text-muted-foreground">Parsed{r.parseModel ? ` by ${r.parseModel}` : " from the lines they wrote"}:</span>
-                    {r.parsedItems.map((i, n) => (
-                      <Line key={`${n}-${i.text}`} text={i.day ? `${i.day}: ${i.text}` : i.text} />
-                    ))}
-                  </div>
-                )}
-                {r.parseError && <p className="text-xs text-destructive">Parsing fell back to one item per line: {r.parseError}</p>}
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
     </div>
+  );
+}
+
+function emailStatus(email: EmailView): { text: string; tone: "ok" | "warn" | "info" } {
+  const r = email.record;
+  if (r?.status === "ok") return { text: `Sent ${fmtDateTime(r.at)} ${r.detail ?? ""}`.trim(), tone: "ok" };
+  if (r?.status === "failed") return { text: `Last send failed ${fmtDateTime(r.at)}: ${r.error ?? "unknown error"}`, tone: "warn" };
+  if (!email.to) return { text: `Paused: only test accounts are on the list (${email.skipped.join(", ")}). Change it on the Admin page.`, tone: "info" };
+  return { text: "Not sent yet. It goes out with the Sunday build.", tone: "info" };
+}
+
+function EmailCard({ week, email }: { week: string; email: EmailView }) {
+  const status = emailStatus(email);
+  const sentBefore = email.record?.status === "ok";
+  return (
+    <Card className="p-4">
+      <SectionTitle aside={<CopyButton text={email.text} label="Copy email" />}>Sunday email</SectionTitle>
+      <p className="text-sm text-muted-foreground">
+        Hoot emails this pack, every data point in the deck&apos;s order, so the deck can be put together by pasting.{" "}
+        {email.to ? (
+          <>
+            To {email.to}
+            {email.cc.length ? `, CC ${email.cc.join(", ")}` : ""}.
+          </>
+        ) : null}
+      </p>
+      <div className={`mt-2 text-sm ${status.tone === "warn" ? "text-destructive" : status.tone === "ok" ? "" : "text-muted-foreground"}`}>{status.text}</div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <form action={sendWeeklyEmailNow}>
+          <input type="hidden" name="week" value={week} />
+          <input type="hidden" name="mode" value="list" />
+          <Button type="submit" size="sm" variant={sentBefore ? "outline" : "default"} disabled={!email.to}>
+            <Send data-icon="inline-start" />
+            {sentBefore ? "Send again" : "Send now"}
+          </Button>
+        </form>
+        <form action={sendWeeklyEmailNow}>
+          <input type="hidden" name="week" value={week} />
+          <input type="hidden" name="mode" value="me" />
+          <Button type="submit" size="sm" variant="ghost">
+            <Mail data-icon="inline-start" />
+            Send a copy to me
+          </Button>
+        </form>
+      </div>
+      <details className="mt-3">
+        <summary className="cursor-pointer text-sm">Preview: {email.subject}</summary>
+        <pre className="mt-2 max-h-[32rem] overflow-auto rounded-md bg-muted/40 p-3 text-xs whitespace-pre-wrap">{email.text}</pre>
+      </details>
+    </Card>
   );
 }
 

@@ -5,8 +5,8 @@ import { jobRuns } from "@/db/schema";
 import { claimJobLock, releaseJobLock } from "@/lib/jobs/lock";
 import { createJobReporter } from "@/lib/jobs/progress";
 import { todayNY } from "@/lib/providers/calendar";
-import { sendProcessUpdateAsks, type AskResult } from "./ask";
 import { buildWeeklyPack, type BuildResult } from "./build";
+import { sendWeeklyEmail, type WeeklyEmailResult } from "./email";
 import { lastFriday } from "./weeks";
 
 const LOCK = "weekly";
@@ -18,15 +18,14 @@ export type WeeklyJobResult = {
   today: string;
   weekEnding: string;
   build?: BuildResult | { error: string };
-  asks?: AskResult | { error: string };
+  email?: WeeklyEmailResult | { error: string };
 };
 
 /**
- * The Sunday run: build the pack for the Friday that just passed, then ask the execs for their
- * process updates for the coming week. Both halves are independent, so one failing still leaves
- * the other's work in place.
+ * The Sunday run: build the pack for the Friday that just passed, then email it to the exec who builds the deck. The
+ * email goes out even when a build step failed: its Checks list says which part to fill in by hand.
  */
-export async function runWeeklyJob(opts: { today?: string; resendAsks?: boolean } = {}): Promise<WeeklyJobResult> {
+export async function runWeeklyJob(opts: { today?: string; resendEmail?: boolean } = {}): Promise<WeeklyJobResult> {
   const today = opts.today || todayNY();
   const weekEnding = lastFriday(today);
   const [jobRow] = await db.insert(jobRuns).values({ job: "weekly" }).returning({ id: jobRuns.id });
@@ -56,13 +55,17 @@ export async function runWeeklyJob(opts: { today?: string; resendAsks?: boolean 
       progress.warn("build failed", { error: result.build.error });
     }
 
-    progress.step("send process-update asks");
+    progress.step("email the pack");
     try {
-      result.asks = await sendProcessUpdateAsks(weekEnding, { resend: opts.resendAsks });
+      result.email = await sendWeeklyEmail(weekEnding, { force: opts.resendEmail });
+      if (result.email.status === "failed") {
+        result.status = "failed";
+        progress.warn("email failed", { error: result.email.reason });
+      }
     } catch (e) {
-      result.asks = { error: e instanceof Error ? e.message : String(e) };
+      result.email = { error: e instanceof Error ? e.message : String(e) };
       result.status = "failed";
-      progress.warn("asks failed", { error: result.asks.error });
+      progress.warn("email failed", { error: result.email.error });
     }
     return finish();
   } finally {

@@ -1,6 +1,6 @@
 # Weekly update pack
 
-Every Monday the execs email the fund a one-page deck, *Update for the week ended \<Friday\>*. Rebuilding it by hand is eight steps. The app now prepares the parts it can evidence and leaves the judgement to the execs: **the agent prepares the evidence; the student owns the interpretation.** Nothing is emailed to the fund by the app — the execs still assemble and send the deck.
+Every Monday the execs email the fund a one-page deck, *Update for the week ended \<Friday\>*. The app gathers every data point on that slide and Hoot emails it to Aadi every Sunday, with Saad in CC, in the deck's order and style so each section pastes straight in. **The agent prepares the evidence; the student owns the interpretation.** Nothing is emailed to the fund by the app: Aadi still assembles and sends the deck.
 
 ## What the app builds
 
@@ -8,13 +8,13 @@ Every Monday the execs email the fund a one-page deck, *Update for the week ende
 
 | Section | Where it comes from |
 | --- | --- |
-| Portfolio Highlights | Three numbers typed by an exec: AUM in $k, fund YTD %, SPXTR YTD %. Relative return is computed as YTD less the benchmark and rendered in the deck's style (`$4,646.9k`, `6.8%`, `(5.7%)`). Last week's values are pre-filled and flagged *carried from last week* until someone saves them. |
-| Top 3 / Worst 3 performers | Monday-close-to-Friday-close price return per active holding from `daily_closes`, no weights. That is the window the execs use: the 18-Sep-2026 deck's SOXX, EVR and CI figures reproduce exactly from it. A holding with a close missing at either end is named in a notice instead of ranked. |
+| Portfolio Highlights | The price target sheet's *2025 Time-Weighted Returns* tab: AUM (latest dated row), "Owl Fund YTD Performance" and "SPX YTD Performance". Relative return is YTD less the benchmark. A figure an exec types and saves wins over the sheet; if the sheet can't be read, last week's values are carried and flagged. |
+| Top 3 / Worst 3 performers | The sheet's Price Targets **"% 1 Week"**, for the tickers Portfolio Data holds shares of. Read on the weekend, that column is exactly the deck's Monday-close-to-Friday-close window (checked 2026-09-27 against the app's closes). It is live, so the build cross-checks it against the app's own Monday and Friday closes from `daily_closes`: if fewer than 80% of holdings agree within 0.15 points, the sheet's window has moved on and the closes are used instead. Rows with no value (an error, or a flat 0.0% where the formula is missing) take the closes too. Names come from the app, title-cased when they were filed in capitals. |
 | Last Week's Agenda | A read-only snapshot of the previous pack's agenda, rolled forward on every build. |
-| This Week's Agenda | Earnings (holdings' reports plus tracked sector bellwethers for the coming Mon–Fri), Market News (economic-calendar events of importance ≥ 2, minus auctions, speeches, inventories and positioning, with companion series folded into their headline release, at most 12), Process Updates (the execs' own words, from their email replies). Each section is a textarea of `Day: text` lines and renders as `Earnings: ANAB (Monday), TCOM, FPS (Tuesday), LEN (Wednesday)`. |
-| YTD Performance chart | Still pasted by hand from the price target sheet, which the app cannot read yet. |
+| This Week's Agenda | Earnings: holdings reporting in the coming Monday to Friday per the sheet's Earnings Date column (the app's earnings calendar fills in a holding the sheet has no date for), plus tracked sector bellwethers. Market News: economic-calendar events of importance ≥ 2, minus auctions, speeches, inventories and positioning, companion series folded into their headline release, at most 12. Process Updates: left for the execs; the email quotes last week's for reference. |
+| YTD Performance chart | Pasted by hand, as before. It is deliberately left out of the automation. |
 
-Every line and section has a copy button, and **Copy whole pack** puts the lot on the clipboard in the deck's order.
+Every line and section on the page has a copy button, and **Copy whole pack** puts the lot on the clipboard in the deck's order.
 
 ## The Sunday cycle
 
@@ -22,42 +22,26 @@ One cron, `/api/cron/weekly` at `0 13 * * 0` (Sunday 09:00 New York), guarded by
 
 1. takes the Friday that just passed as the week ending, and creates the pack if it does not exist;
 2. snapshots the previous pack's agenda into *Last Week's Agenda* and carries its figures forward as placeholders;
-3. ranks the week's performers from the Friday closes the prices job already stored;
-4. collects the coming week's earnings and economic releases;
-5. emails each exec for their Process Updates, pre-filled with last week's items.
+3. reads the price target sheet once: the three figures, each holding's "% 1 Week", and the coming week's earnings dates;
+4. ranks the performers and collects the coming week's earnings and economic releases;
+5. has Hoot email the pack (`src/lib/weekly/email-text.ts` writes it, `email.ts` sends it through OpenMail).
 
-Each step is caught on its own: a provider that is down costs that one section, is recorded in the pack's `sources`, and shows on the page as a notice. **A pack an exec has edited keeps its agenda, and a pack marked sent is not touched at all.**
+Each step is caught on its own: a provider that is down costs that one section, is recorded in the pack's `sources`, and shows on the page. The email still goes out and its **Checks** list names what to fill in by hand, along with anything the sheet and the app disagree on. **A pack an exec has edited keeps its agenda, and a pack marked sent is not rebuilt.**
 
-There is no reminder job. **Resend ask** on the pack page sends the request again.
+The email is sent once per week (recorded as `sources.email`); a retried cron reuses the same OpenMail idempotency key, so it cannot go out twice. On the pack page, **Send now / Send again** sends it to the list and **Send a copy to me** sends a test copy to whoever pressed it without counting as the week's email. The card also previews the exact text.
 
-Admins can run the whole thing by hand from **Admin → Jobs → Weekly update**, optionally with a date, which builds the pack for the Friday on or before it. Execs can rebuild a pack from `/weekly`.
+Admins can run the whole thing by hand from **Admin → Jobs → Weekly update**, optionally with a date, which builds the pack for the Friday on or before it and sends its email if it hasn't gone. Execs can rebuild a pack from `/weekly`.
 
-## Process updates by email
+## Recipients and pausing
 
-Each ask is one `weekly_requests` row with a random token and a reply-to address of `weekly+<week ending>-<token>@$INBOUND_EMAIL_DOMAIN`. The exec replies in the same `Day: text` shape; Resend posts an `email.received` webhook to `/api/email/inbound`; the route verifies the signature, answers 200, and reads the message afterwards. The raw reply is stored **before** any parsing, so a model failure never loses what an exec wrote. Parsing uses `OPENROUTER_SUMMARY_MODEL` (the chat model by default) under instructions that forbid rewording or inventing anything, and falls back to one item per line.
+By default the email goes to Aadi (`apatil@`) with Saad (`squddus@`) in CC. **Admin → Weekly update → Email the pack to** overrides it (the `weekly_recipients` app setting): the first address goes in To, the rest in CC. Test accounts (`*.owlfund.local`) are never emailed, so a list holding only a test account pauses the email while the pack still builds. That is how it was paused on 2026-09-27; clear the setting to go back to the default.
 
-The merged result replaces the pack's Process Updates — unless the exec edited the pack after the reply arrived, or the pack is marked sent. Then the page shows a banner and the exec folds in whatever they want by hand.
-
-Replies are idempotent: `reply_email_id` is unique, so a webhook Resend delivers twice is applied once.
-
-## One-time setup
-
-1. **Apply the migration** (it creates `weekly_updates` and `weekly_requests` and nothing else):
-   ```bash
-   npx tsx scripts/apply-sql.ts drizzle/0015_weekly.sql
-   ```
-   Do not run `db:generate`; migrations from `0002` on are hand-written.
-2. **Sending account.** The fund has no domain verified in Resend, and Resend's shared `onboarding@resend.dev` sender only delivers to the Resend account owner, so outgoing mail goes through a Gmail account made for the app. Turn on 2-Step Verification for it, create an app password (Google Account → Security → App passwords), and set `GMAIL_USER` and `GMAIL_APP_PASSWORD` (optionally `GMAIL_FROM_NAME`, default `The Owl's Nest`). When both are set, every email the app sends goes through Gmail; otherwise it falls back to Resend and `EMAIL_FROM`. The Gmail inbox itself receives nothing useful: replies go to the reply-to address below.
-3. **Inbound domain.** Replies still come in through Resend, which gives every account a free receiving domain, `<id>.resend.app` (Resend → Emails → Receiving). Set `INBOUND_EMAIL_DOMAIN` to it. No DNS is needed. A custom domain with Resend's MX record also works if the fund gets one later. `RESEND_API_KEY` stays set, because the app reads each reply through the Resend API.
-4. **Webhook.** In Resend, add a webhook for the `email.received` event pointing at `<APP_URL>/api/email/inbound`, and put its signing secret in `RESEND_WEBHOOK_SECRET`. The route is public by design (it is listed in `PUBLIC_PATHS` in `src/proxy.ts`); the svix signature is its authentication, and a request without a valid one is rejected with 400.
-5. **Recipients.** By default the ask goes to every profile with the `exec` role. Override it on the Admin page (**Weekly update → Ask these people**), which writes the `weekly_recipients` app setting.
-6. **Production env.** `vercel env add` each of `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `INBOUND_EMAIL_DOMAIN` and `RESEND_WEBHOOK_SECRET` for production, then redeploy.
-
-With no sender configured (neither Gmail nor `RESEND_API_KEY`), without `INBOUND_EMAIL_DOMAIN`, or for a `*.owlfund.local` test account, the request row is still created and its `send_error` records the skip (`skipped: test account`, `skipped: email not configured`, `skipped: INBOUND_EMAIL_DOMAIN is not set`) — the same behaviour as the movement notifications. That makes it safe to exercise the job against test accounts without emailing a real exec.
+Replies reach Hoot's inbox and are answered like any question to Hoot. Filing a reply's process updates on the pack is the next release: it will match replies by OpenMail thread and retire the older Resend inbound route (`/api/email/inbound`, `weekly_requests`), which no longer receives anything.
 
 ## Known limits
 
-- The three highlight figures and the YTD chart live in the execs' price target sheet, which the app may not read yet. Phase 2 replaces the inputs with a Drive-based sheet reader.
-- Performers need Friday closes in `daily_closes`, which the prices job writes on weekday nights. Weeks before 2026-09-18 have no usable data.
-- Gmail caps a regular account at about 500 recipients a day, far above what the app sends. Google can lock an account it thinks is automated; if sends start failing with an auth error, sign in to the Gmail account once and make a new app password.
-- Vercel Hobby allows up to 100 daily crons per project, so the Sunday cron deploys as-is; Hobby timing is only accurate to the hour.
+- Earnings lists holdings and bellwethers only. The decks also name broader S&P reporters, which the execs still add by hand.
+- "% 1 Week" measures the deck's window only until Monday's open. A rebuild after that falls back to the closes, which give the same numbers.
+- Performers need Friday closes in `daily_closes` for the cross-check, which the prices job writes on weekday nights. Weeks before 2026-09-18 have no usable data.
+- Vercel Hobby timing is only accurate to the hour, so the email can land any time between 09:00 and 10:00 New York.
+- `npm run smoke:weekly -- <Friday>` builds a pack against the live database and prints the email without sending it.

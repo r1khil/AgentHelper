@@ -34,7 +34,7 @@ export default async function WeeklyIndexPage({ searchParams }: PageProps<"/week
     <>
       <PageHeader
         title="Weekly update"
-        description="The evidence for the Monday deck: performers, the coming week's earnings and market news, and the process updates the execs sent back."
+        description="The data for the Monday deck: highlights, performers, and the coming week's earnings and market news, emailed to Aadi every Sunday."
         actions={
           <form action={buildWeeklyNow}>
             <Button type="submit" size="sm" variant={haveTarget ? "outline" : "default"}>
@@ -50,7 +50,7 @@ export default async function WeeklyIndexPage({ searchParams }: PageProps<"/week
       {packs.length === 0 ? (
         <EmptyState title="No packs yet" hoot="sleepy">
           Every Sunday at 09:00 New York the app builds the pack for the Friday that just passed — the week&apos;s best and worst performers, the coming week&apos;s
-          earnings and economic releases, and last week&apos;s agenda rolled forward — then emails the execs for their process updates. Build the first one now,
+          earnings and economic releases, and last week&apos;s agenda rolled forward — then Hoot emails it to Aadi, with Saad in CC. Build the first one now,
           or wait for Sunday.
         </EmptyState>
       ) : (
