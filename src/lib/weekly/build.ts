@@ -5,7 +5,8 @@ import { dailyCloses, holdings, weeklyUpdates } from "@/db/schema";
 import { listBellwethers, listCalendarHoldingEvents } from "@/lib/earnings";
 import { getEconomicCalendar } from "@/lib/economic-calendar/service";
 import { noopReporter, type JobReporter } from "@/lib/jobs/progress";
-import { carryForward } from "./figures";
+import { carryForward, withSheetFigures } from "./figures";
+import { readSheetWeeklyFigures, sheetReadDetail } from "./sheet";
 import { pickMarketNews } from "./market-news";
 import { buildCloseLookup, rankWeeklyMovers, type PerformerHolding } from "./performers";
 import { ensurePack, getPack, noteSource, normalizeAgenda, packFigures } from "./store";
@@ -69,8 +70,9 @@ async function computeMarketNewsItems(weekEnding: string): Promise<AgendaItem[]>
   return pickMarketNews(feed.events, range).map((e) => ({ day: weekdayLabel(e.date), text: e.name }));
 }
 
+/** An exec's entry, or a figure already read from the sheet, beats last week's placeholder. */
 const keepEntered = (current: FigureValue, carried: FigureValue): FigureValue =>
-  current.source === "entered" && current.value !== null ? current : carried;
+  current.source !== "carried" && current.value !== null ? current : carried;
 
 /**
  * Build (or rebuild) the pack for a Friday. Every step stands on its own: a provider that is down
@@ -109,6 +111,21 @@ export async function buildWeeklyPack(weekEnding: string, opts: { reason: string
     failed.push("carry");
     sources = noteSource(sources, "carry", { status: "failed", error: message(e) });
     progress.warn("carry forward failed", { error: message(e) });
+  }
+
+  // The sheet is the execs' source for these; an exec's own entry still wins.
+  progress.step("read the price target sheet's figures");
+  try {
+    const read = await readSheetWeeklyFigures();
+    if (!read) sources = noteSource(sources, "sheet", { status: "held", detail: "Google Drive is not configured here" });
+    else {
+      update.figures = withSheetFigures(update.figures ?? packFigures(row), read, read.asOf);
+      sources = noteSource(sources, "sheet", { status: read.problems.length ? "failed" : "ok", detail: sheetReadDetail(read), ...(read.problems.length ? { error: read.problems.join(" ") } : {}) });
+    }
+  } catch (e) {
+    failed.push("sheet");
+    sources = noteSource(sources, "sheet", { status: "failed", error: message(e) });
+    progress.warn("sheet figures failed", { error: message(e) });
   }
 
   progress.step("rank weekly performers");

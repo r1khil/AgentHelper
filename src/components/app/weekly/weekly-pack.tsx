@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionTitle } from "@/components/app/page-header";
 import { CopyButton } from "./copy-button";
-import { buildWeeklyNow, markWeeklySent, reopenWeekly, saveWeeklyField, saveWeeklyFigures, sendWeeklyAskNow } from "@/lib/actions/weekly";
+import { buildWeeklyNow, fillWeeklyFromSheet, markWeeklySent, reopenWeekly, saveWeeklyField, saveWeeklyFigures, sendWeeklyAskNow } from "@/lib/actions/weekly";
 import { agendaLine, fmtAumK, fmtDeckPct, itemsToLines, packText, performerLine } from "@/lib/weekly/format";
 import { carriedFigureKeys, deriveRelative, parseFigureInput } from "@/lib/weekly/figures";
 import { AGENDA_LABELS, AGENDA_SECTIONS, type AgendaItem, type WeeklyAgenda, type WeeklyFigures, type WeeklyPerformers, type WeeklySources } from "@/lib/weekly/types";
@@ -86,6 +86,9 @@ export function WeeklyPack(props: WeeklyPackProps) {
   };
   const relative = deriveRelative(num(ytdPct), num(benchmarkYtdPct));
   const carried = carriedFigureKeys(props.figures);
+  const sheetAsOf = [props.figures.aumK, props.figures.ytdPct, props.figures.benchmarkYtdPct].find((f) => f.source === "sheet")?.asOf;
+  const figureNote = (f: WeeklyFigures[keyof WeeklyFigures]) =>
+    f.source === "sheet" ? `From the PT sheet${f.ref ? `, cell ${f.ref}` : ""}` : f.source === "carried" ? "Carried from last week" : f.value === null ? "" : "Typed by an exec";
   const highlights = [`AUM: ${fmtAumK(num(aumK))}`, `YTD Return: ${fmtDeckPct(num(ytdPct))}`, `YTD Relative Return (vs SPXTR): ${fmtDeckPct(relative)}`];
 
   const whole = packText({
@@ -155,22 +158,29 @@ export function WeeklyPack(props: WeeklyPackProps) {
             <div className="grid gap-1.5">
               <Label htmlFor="aumK">AUM ($k)</Label>
               <Input id="aumK" name="aumK" value={aumK} onChange={(e) => setAumK(e.target.value)} placeholder="4646.9" inputMode="decimal" disabled={sent} />
+              <span className="text-xs text-muted-foreground">{figureNote(props.figures.aumK)}</span>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="ytdPct">YTD return (%)</Label>
               <Input id="ytdPct" name="ytdPct" value={ytdPct} onChange={(e) => setYtdPct(e.target.value)} placeholder="6.8" inputMode="decimal" disabled={sent} />
+              <span className="text-xs text-muted-foreground">{figureNote(props.figures.ytdPct)}</span>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="benchmarkYtdPct">SPXTR YTD (%)</Label>
               <Input id="benchmarkYtdPct" name="benchmarkYtdPct" value={benchmarkYtdPct} onChange={(e) => setBenchmarkYtdPct(e.target.value)} placeholder="12.5" inputMode="decimal" disabled={sent} />
+              <span className="text-xs text-muted-foreground">{figureNote(props.figures.benchmarkYtdPct)}</span>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            These three come from the price target sheet, which the app cannot read yet. Relative return is computed as YTD less the benchmark.
+            The app reads these from the price target sheet&apos;s 2025 Time-Weighted Returns tab when it builds the pack
+            {sheetAsOf ? ` (sheet last edited ${fmtDateTime(sheetAsOf)})` : ""}; the benchmark is the cell the sheet labels &ldquo;SPX YTD Performance&rdquo;. Anything you type and save wins over the sheet. Relative return is YTD less the benchmark.
           </p>
           {!sent && (
-            <div>
+            <div className="flex flex-wrap gap-2">
               <Button type="submit" size="sm" variant="outline">Save highlights</Button>
+              <Button type="submit" size="sm" variant="ghost" formAction={fillWeeklyFromSheet}>
+                Refresh from PT sheet
+              </Button>
             </div>
           )}
         </form>
@@ -210,7 +220,7 @@ export function WeeklyPack(props: WeeklyPackProps) {
       <Card className="p-4">
         <SectionTitle>YTD Performance chart</SectionTitle>
         <p className="text-sm text-muted-foreground">
-          Still pasted by hand from the price target sheet (OF vs SPXTR, SVX, SGX). The app cannot read that sheet yet, so nothing here replaces it.
+          Still pasted by hand from the price target sheet (OF vs SPXTR, SVX, SGX). The daily history behind it isn&apos;t in the sheet tabs the app reads, so this chart stays manual.
         </p>
       </Card>
 

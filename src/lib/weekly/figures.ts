@@ -39,9 +39,29 @@ export function carryForward(prev: WeeklyFigures | null | undefined): WeeklyFigu
   return { aumK: carry(prev.aumK), ytdPct: carry(prev.ytdPct), benchmarkYtdPct: carry(prev.benchmarkYtdPct) };
 }
 
-/** True once every figure holds a number an exec actually entered. */
+/** True once every figure holds a number an exec entered or the app read from the sheet (nothing carried). */
 export function figuresComplete(f: WeeklyFigures): boolean {
-  return [f.aumK, f.ytdPct, f.benchmarkYtdPct].every((v) => v.value !== null && v.source === "entered");
+  return [f.aumK, f.ytdPct, f.benchmarkYtdPct].every((v) => v.value !== null && v.source !== "carried");
+}
+
+/**
+ * Merge a fresh sheet read into the pack's figures: an exec's own entry always wins, then the sheet, then whatever
+ * was there (a carried placeholder). `force` (an exec pressed "Refresh from PT sheet") lets the sheet replace entries too.
+ */
+export function withSheetFigures(
+  current: WeeklyFigures,
+  sheet: Partial<Record<keyof WeeklyFigures, { value: number; ref: string } | null>>,
+  asOf: string,
+  opts: { force?: boolean } = {},
+): WeeklyFigures {
+  const next = { ...current };
+  for (const key of Object.keys(current) as (keyof WeeklyFigures)[]) {
+    const s = sheet[key];
+    if (!s) continue;
+    if (!opts.force && current[key].source === "entered" && current[key].value !== null) continue;
+    next[key] = { value: s.value, source: "sheet", ref: s.ref, asOf };
+  }
+  return next;
 }
 
 /** Figures still showing last week's numbers, for the page's warning. */
@@ -58,10 +78,12 @@ export function normalizeFigures(raw: unknown): WeeklyFigures {
   for (const key of Object.keys(base) as (keyof WeeklyFigures)[]) {
     const v = src[key];
     if (!v || typeof v !== "object") continue;
-    const { value, source } = v as { value?: unknown; source?: unknown };
+    const { value, source, ref, asOf } = v as { value?: unknown; source?: unknown; ref?: unknown; asOf?: unknown };
     base[key] = {
       value: typeof value === "number" && Number.isFinite(value) ? value : null,
-      source: source === "carried" ? "carried" : "entered",
+      source: source === "carried" ? "carried" : source === "sheet" ? "sheet" : "entered",
+      ...(source === "sheet" && typeof ref === "string" ? { ref } : {}),
+      ...(source === "sheet" && typeof asOf === "string" ? { asOf } : {}),
     };
   }
   return base;

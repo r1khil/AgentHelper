@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { asc, desc } from "drizzle-orm";
 import { ArrowLeft } from "lucide-react";
@@ -17,6 +18,8 @@ import { CashFlowDialog } from "@/components/app/attribution/cash-flow-dialog";
 import { SecurityRowForm } from "@/components/app/attribution/security-row-form";
 import { TeamSectorsForm } from "@/components/app/attribution/team-sectors-form";
 import { TicketDialog } from "@/components/app/attribution/ticket-dialog";
+import { SheetCheck } from "@/components/app/attribution/sheet-check";
+import { recordedShares } from "@/lib/pt-sheet/reconcile";
 import { TradeDialog } from "@/components/app/attribution/trade-dialog";
 import { VoidButton } from "@/components/app/attribution/void-button";
 import { deleteBenchmarkWeights, voidCashFlow, voidTrade } from "@/lib/actions/ledger";
@@ -77,6 +80,10 @@ export default async function LedgerPage({ searchParams }: PageProps<"/attributi
           </Button>
         }
       />
+
+      <Suspense fallback={<p className="mb-6 text-xs text-muted-foreground">Checking the ledger against the PT sheet…</p>}>
+        <SheetCheck positions={recordedShares(tradeRows)} />
+      </Suspense>
 
       <Tabs defaultValue={tab}>
         <TabsList>

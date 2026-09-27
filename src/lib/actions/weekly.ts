@@ -10,7 +10,8 @@ import { todayNY } from "@/lib/providers/calendar";
 import { sendProcessUpdateAsks } from "@/lib/weekly/ask";
 import { buildWeeklyPack } from "@/lib/weekly/build";
 import { linesToItems } from "@/lib/weekly/format";
-import { parseFigureInput } from "@/lib/weekly/figures";
+import { parseFigureInput, withSheetFigures } from "@/lib/weekly/figures";
+import { readSheetWeeklyFigures } from "@/lib/weekly/sheet";
 import { ensurePack, getPack, normalizeAgenda, packFigures } from "@/lib/weekly/store";
 import { isAgendaSection, AGENDA_LABELS, type WeeklyFigures } from "@/lib/weekly/types";
 import { isFriday, lastFriday } from "@/lib/weekly/weeks";
@@ -63,12 +64,35 @@ export async function saveWeeklyFigures(fd: FormData) {
   for (const { key, label } of fields) {
     const parsed = parseFigureInput(String(fd.get(key) ?? ""));
     if (parsed === undefined) back(week, `${label} is not a number I can read. Try 4646.9, 6.8%, or (5.7%).`);
+    // A figure read from the sheet and left as it was stays marked as the sheet's.
+    if (current[key].source === "sheet" && current[key].value === parsed) continue;
     next[key] = { value: parsed, source: "entered" };
   }
   const now = new Date();
   await db.update(weeklyUpdates).set({ figures: next, editedAt: now, editedBy: me.id, updatedAt: now }).where(eq(weeklyUpdates.weekEnding, week));
   revalidateWeek(week);
   back(week, "Highlights saved", true);
+}
+
+/** Replace the three highlights with a fresh read of the price target sheet, including figures an exec typed. */
+export async function fillWeeklyFromSheet(fd: FormData) {
+  const me = await requireRole(...FUND_WIDE);
+  const week = weekFrom(fd);
+  const row = await ensurePack(week);
+  if (row.status === "sent") back(week, "This pack is marked sent. Reopen it before editing.");
+  let read: Awaited<ReturnType<typeof readSheetWeeklyFigures>>;
+  try {
+    read = await readSheetWeeklyFigures();
+  } catch (e) {
+    back(week, `Could not read the price target sheet: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  if (!read) back(week, "Google Drive is not configured here, so the sheet can't be read.");
+  const next = withSheetFigures(packFigures(row), read, read.asOf, { force: true });
+  const now = new Date();
+  await db.update(weeklyUpdates).set({ figures: next, editedAt: now, editedBy: me.id, updatedAt: now }).where(eq(weeklyUpdates.weekEnding, week));
+  revalidateWeek(week);
+  const got = [read.aumK, read.ytdPct, read.benchmarkYtdPct].filter(Boolean).length;
+  back(week, got === 3 ? "Highlights refreshed from the PT sheet" : `Read ${got} of 3 figures from the PT sheet. ${read.problems.join(" ")}`, got === 3);
 }
 
 /** Save one agenda section from its "Day: text" textarea. */
