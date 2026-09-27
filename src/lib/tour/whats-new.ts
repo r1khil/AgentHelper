@@ -54,7 +54,7 @@ export const WHATS_NEW_TOUR: Tour = {
           kind: "go",
           target: nav("today"),
           title: "Today got a redesign",
-          body: "The home page now reads top to bottom as one calm column: how the last session went, your teams, and what's coming up.",
+          body: "The home page leads with my list of things for you, then how each team did. On the right: how the last session went, my evening brief, and what's coming up.",
           prompt: "Click Today in the menu.",
         },
         {
@@ -111,12 +111,13 @@ export const WHATS_NEW_TOUR: Tour = {
           id: "risk-headline",
           kind: "info",
           target: 'section[aria-label="Headline risk"]',
-          title: "Four numbers for how bumpy the fund is",
+          title: "Five numbers for how bumpy the fund is",
           points: [
             { label: "Volatility", text: "how much the fund typically swings up or down in a year." },
             { label: "Beta", text: "how much it tends to move when the S&P 500 moves 1%." },
             { label: "Tracking error", text: "how far it tends to drift from its benchmark in a year." },
             { label: "1-day VaR", text: "a daily loss we'd expect to be beaten on only about 1 day in 20." },
+            { label: "Worst day", text: "the biggest one-day loss today's holdings would have taken in the window." },
           ],
           how: "We take what the fund owns today and replay a year of daily price moves on it. So it describes today's portfolio, not how the fund actually did.",
           source: `${POSITIONS} ${BENCHMARK}`,
@@ -148,7 +149,7 @@ export const WHATS_NEW_TOUR: Tour = {
           target: '[data-tour="risk-holdings"]',
           title: "Holdings by share of risk",
           what: "Each holding's size next to its share of the risk. A small position can carry a lot of risk if it's jumpy.",
-          how: "The \"What if\" link on each row opens Backtesting with that holding trimmed by 2 percentage points, so you can see how the risk would change before you trade.",
+          how: "\"Trim 1 pp\" next to the biggest sources of risk (and \"What if\" on each row further down, which trims 2 points) opens Backtesting with that holding trimmed, so you can see how the risk would change before you trade.",
           source: `${POSITIONS} ${PRICES}`,
         },
         {
@@ -220,7 +221,7 @@ export const WHATS_NEW_TOUR: Tour = {
           kind: "info",
           target: '[data-tour="exposure-toolbar"]',
           title: "Two ways to count an ETF",
-          what: "\"ETFs as held\" counts an ETF like KRE as one position in its sector. \"Through ETFs\" splits it into the companies it actually owns.",
+          what: "\"Direct holdings\" counts an ETF like KRE as one position in its sector. \"Through ETFs\" splits it into the companies it actually owns.",
           how: "The lookback window works the same way it does on Risk.",
         },
         {

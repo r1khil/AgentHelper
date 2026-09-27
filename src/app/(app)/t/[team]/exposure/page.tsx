@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/app/empty-state";
-import { PageHeader } from "@/components/app/page-header";
 import { DataNoticesButton } from "@/components/app/attribution/data-quality-notice";
 import { ExposureView } from "@/components/app/exposure/exposure-view";
-import { FactorSection } from "@/components/app/exposure/factor-section";
-import { LookthroughSections, SectorViewToggle, parseThroughEtfs, sectorViewQuery } from "@/components/app/exposure/lookthrough";
+import { SectorViewToggle, parseThroughEtfs, sectorViewQuery } from "@/components/app/exposure/lookthrough";
 import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { riskNotices } from "@/components/app/risk/notices";
 import { loadTeamSectors } from "@/lib/attribution/load";
@@ -37,8 +35,7 @@ export default async function TeamExposurePage({ params, searchParams }: PagePro
   if (loaded.state !== "ok" || !loaded.report.holdings.length) {
     return (
       <>
-        <PageHeader title="Exposure" description={team.name} />
-        <EmptyState title={loaded.state === "no-prices" ? "Price history is still loading" : "No positions"}>
+        <EmptyState title={loaded.state === "no-prices" ? "Price history is still loading" : `No positions for ${team.name}`}>
           {loaded.state === "no-prices" ? "Closing prices load after each ledger change and every weeknight." : `The ledger shows no current positions for ${team.name}.`}
         </EmptyState>
       </>
@@ -54,11 +51,6 @@ export default async function TeamExposurePage({ params, searchParams }: PagePro
   );
   return (
     <>
-      <PageHeader
-        title="Exposure"
-        description={`${team.name} holdings as their own portfolio (scaled to 100%, no cash) against the team's own sectors`}
-        actions={<DataNoticesButton notices={notices} />}
-      />
       <PageContextPublisher value={{ kind: "exposure", path: base, title: `${team.name} exposure`, scope: "team", team: team.slug, lookback, asOf: report.asOf }} />
       <ExposureView
         report={report}
@@ -73,10 +65,11 @@ export default async function TeamExposurePage({ params, searchParams }: PagePro
         throughEtfs={throughEtfs}
         query={sectorViewQuery(throughEtfs)}
         controls={<SectorViewToggle basePath={base} lookback={lookback} throughEtfs={throughEtfs} available={lookthrough.state === "ok"} />}
-      >
-        <FactorSection report={report} transparency={transparency} exportQuery={`&team=${team.slug}`} benchmarkLabel={sectors.length ? sectors.map((s) => ETF_BY_SECTOR[s]).join(" + ") : "the team's sectors"} />
-        <LookthroughSections state={lookthrough} scope="team" transparency={transparency} />
-      </ExposureView>
+        context={`${team.name} holdings as their own portfolio (scaled to 100%, no cash) against the team's own sectors`}
+        notices={<DataNoticesButton notices={notices} />}
+        teams={new Map([[team.id, { name: team.name, slug: team.slug }]])}
+        factorBenchmarkLabel={sectors.length ? sectors.map((s) => ETF_BY_SECTOR[s]).join(" + ") : "the team's sectors"}
+      />
     </>
   );
 }

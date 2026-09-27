@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
-import { ExposureView } from "@/components/app/exposure/exposure-view";
-import { FactorSection } from "@/components/app/exposure/factor-section";
-import { LookthroughSections, SectorViewToggle, parseThroughEtfs, sectorViewQuery } from "@/components/app/exposure/lookthrough";
+import { ExposureView, fundExposureContext } from "@/components/app/exposure/exposure-view";
+import { SectorViewToggle, parseThroughEtfs, sectorViewQuery } from "@/components/app/exposure/lookthrough";
 import type { LookthroughState } from "@/lib/risk/lookthrough-report";
 import { parseLookback } from "@/lib/risk/model";
 import { PREVIEW_ETFS, previewEnabled, previewLookthrough, previewReport } from "@/lib/risk/preview";
@@ -21,8 +20,8 @@ export default async function Preview({ searchParams }: PageProps<"/dev/exposure
   const throughEtfs = parseThroughEtfs(one(query.sectors)) && lookthrough.state === "ok";
   const transparency = one(query.transparency) !== "0";
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
-      <p className="mb-4 rounded border border-dashed p-3 text-sm">
+    <main className="flex min-h-dvh flex-col p-6">
+      <p className="mb-4 rounded-[10px] border border-dashed p-3 text-sm">
         Local browser QA · synthetic prices and holdings · no live portfolio data · add ?scope=team for the team view, ?transparency=0 to hide the working, ?lookthrough=none for no ETF lists. CHRL, GOLF, ECHO and NOVR stand in as ETFs (full list, top 10 only, partial and stale, no list).
       </p>
       <ExposureView
@@ -38,10 +37,10 @@ export default async function Preview({ searchParams }: PageProps<"/dev/exposure
         throughEtfs={throughEtfs}
         query={`${sectorViewQuery(throughEtfs)}${team ? "&scope=team" : ""}`}
         controls={<SectorViewToggle basePath="/dev/exposure" lookback={lookback} throughEtfs={throughEtfs} available={lookthrough.state === "ok"} extra={team ? "&scope=team" : ""} />}
-      >
-        <FactorSection report={report} transparency={transparency} exportQuery="" benchmarkLabel={team ? "XLK + XLC" : "the S&P 500 sector benchmark"} />
-        <LookthroughSections state={lookthrough} scope={team ? "team" : "fund"} transparency={transparency} />
-      </ExposureView>
+        context={team ? "Tech & media holdings as their own portfolio (scaled to 100%, no cash) against the team's own sectors" : fundExposureContext("2026-09-01", throughEtfs)}
+        teams={new Map()}
+        factorBenchmarkLabel={team ? "XLK + XLC" : "the S&P 500 sector benchmark"}
+      />
     </main>
   );
 }

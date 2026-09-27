@@ -12,7 +12,7 @@ const sqrt252 = Math.sqrt(TRADING_DAYS);
 export function VolWorking({ r }: { r: RiskReport }) {
   const p = r.portfolio;
   return (
-    <Working>
+    <Working title="Volatility working">
       <Step label="Daily variance">wᵀΣw = {rsci(p.dailyVariance, 8)}</Step>
       <Step label="Daily volatility">√{rsci(p.dailyVariance, 8)} = {rsci(p.dailySigma)} ({rpct(p.dailySigma, 3)})</Step>
       <Step label="Annualized">{rsci(p.dailySigma)} × √252 ({sqrt252.toFixed(4)}) = <b>{rpct(p.vol, 2)}</b></Step>
@@ -25,7 +25,7 @@ export function VolWorking({ r }: { r: RiskReport }) {
 export function BetaWorking({ r }: { r: RiskReport }) {
   const top = [...r.holdings].sort((a, b) => Math.abs(b.weight * b.beta) - Math.abs(a.weight * a.beta));
   return (
-    <Working>
+    <Working title="Beta working">
       <Step label="Formula">β = Σ wᵢ × βᵢ, with βᵢ = cov(rᵢ, r_SPY) ÷ var(r_SPY)</Step>
       <div className="max-h-48 overflow-y-auto">
         <table className="tnum w-full">
@@ -46,7 +46,7 @@ export function BetaWorking({ r }: { r: RiskReport }) {
 export function TeWorking({ r }: { r: RiskReport }) {
   if (r.portfolio.dailyTe === null) return null;
   return (
-    <Working>
+    <Working title="Tracking error working">
       <Step label="Active weights a">holdings at their weights ({rpct(r.portfolio.invested, 1)} in total), minus the benchmark&apos;s sector ETFs:</Step>
       <div className="tnum text-muted-foreground">{r.benchmarkLegs.map((l) => `${l.etf} ${rsigned(l.weight, 2)}`).join(" · ")}</div>
       <Step label="Daily">√(aᵀΣa) = {rsci(r.portfolio.dailyTe)}</Step>
@@ -61,7 +61,7 @@ export function VarWorking({ r }: { r: RiskReport }) {
   const lo = Math.floor(v.rank);
   const sorted = [...v.tail].sort((a, b) => a.ret - b.ret);
   return (
-    <Working>
+    <Working title="VaR working">
       <Step label="Simulate">each of the {v.observations} days: Σ wᵢ × rᵢ,day with today&apos;s weights.</Step>
       <Step label="Percentile">PERCENTILE.INC at 5%: rank = 0.05 × ({v.observations} − 1) = {v.rank.toFixed(2)}, between sorted days #{lo + 1} and #{lo + 2}.</Step>
       <div className="max-h-40 overflow-y-auto">
