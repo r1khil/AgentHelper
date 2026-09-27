@@ -17,7 +17,7 @@ export function AppHeader({ nav, counts, onOpenCommand }: { nav: NavModel; count
     <header className="sticky top-0 z-30 hidden h-14 shrink-0 items-center gap-6 border-b bg-background px-6 md:flex">
       <h1 className="text-[17px] font-semibold tracking-[-0.015em] whitespace-nowrap">{nav.title}</h1>
       {nav.tabs.length > 0 && (
-        <nav aria-label={`${nav.title} pages`} className="flex gap-5 self-stretch">
+        <nav data-tour="section-tabs" aria-label={`${nav.title} pages`} className="flex gap-5 self-stretch">
           {nav.tabs.map((t) => {
             const c = counts[t.key];
             return (
@@ -50,6 +50,7 @@ export function AppHeader({ nav, counts, onOpenCommand }: { nav: NavModel; count
       <div className="flex-1" />
       <button
         type="button"
+        data-tour="command"
         onClick={onOpenCommand}
         aria-keyshortcuts={mac ? "Meta+K" : "Control+K"}
         className="flex h-9 w-full max-w-[380px] min-w-56 items-center gap-2.5 rounded-full bg-card pr-2 pl-3.5 text-left shadow-[0_0_0_1px_var(--border)] transition-shadow hover:shadow-[0_0_0_1px_var(--border-strong)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"

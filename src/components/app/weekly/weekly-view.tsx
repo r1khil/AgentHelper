@@ -54,7 +54,7 @@ export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyView
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <Panel className="lg:max-h-[calc(100dvh-104px)] lg:self-stretch">
+      <Panel data-tour="weekly-packs" className="lg:max-h-[calc(100dvh-104px)] lg:self-stretch">
         <PanelHeader title="Packs" aside="Every Sunday 12:00" className="px-3.5" />
         <div className="min-h-0 flex-1 overflow-y-auto">
           {packs.map((p) => {

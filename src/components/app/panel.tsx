@@ -65,9 +65,9 @@ export type StatCell = {
 };
 
 /** One panel split into equal cells: label, a big mono figure, a note. */
-export function StatStrip({ cells, className, size = "md" }: { cells: StatCell[]; className?: string; size?: "md" | "lg" }) {
+export function StatStrip({ cells, className, size = "md", ...props }: { cells: StatCell[]; className?: string; size?: "md" | "lg" } & Omit<React.ComponentProps<"section">, "children">) {
   return (
-    <section className={cn("panel grid shrink-0 overflow-hidden", className)} style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }}>
+    <section className={cn("panel grid shrink-0 overflow-hidden", className)} style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }} {...props}>
       {cells.map((c, i) => (
         <div key={i} className={cn("min-w-0 px-[18px] py-3.5", i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
           <div className="truncate text-[12.5px] text-muted-foreground">{c.label}</div>

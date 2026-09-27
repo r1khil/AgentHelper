@@ -83,6 +83,7 @@ export const FlyingHoot = forwardRef<FlyingHootHandle, {
   return (
     <div
       ref={wrap}
+      data-tour-hoot
       aria-hidden
       className="pointer-events-none fixed top-0 left-0 z-[920] origin-top-left transition-opacity duration-200"
       style={{ transform: place(from), opacity: visible ? 1 : 0, width: TOUR_HOOT_BASE, height: TOUR_HOOT_BASE }}

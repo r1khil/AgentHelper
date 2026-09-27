@@ -29,7 +29,7 @@ export function RiskSources({ report: r, teams, className }: { report: RiskRepor
     : [...r.holdings].sort((a, b) => b.riskShare - a.riskShare).slice(0, ROWS).map((h) => ({ ticker: h.ticker, teamId: h.teamId, weight: h.weight, share: h.riskShare }));
   const max = Math.max(...rows.map((h) => Math.abs(h.share)), 0);
   return (
-    <Panel className={className}>
+    <Panel data-tour="risk-sources" className={className}>
       <PanelHeader
         title="Where the risk comes from"
         aside={
