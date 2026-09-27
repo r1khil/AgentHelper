@@ -13,11 +13,12 @@ export type WeeklyAgenda = {
 };
 
 /**
- * A figure the execs keep in their price target sheet. `carried` means it was copied from last
- * week's pack as a placeholder and nobody has confirmed it yet; `entered` means an exec saved it.
+ * A figure the execs keep in their price target sheet. `sheet` means the app read it from the sheet (`ref` is the
+ * cell, `asOf` the sheet's last edit); `carried` means it was copied from last week's pack as a placeholder and nobody
+ * has confirmed it yet; `entered` means an exec typed and saved it.
  */
-export type FigureSource = "entered" | "carried";
-export type FigureValue = { value: number | null; source: FigureSource };
+export type FigureSource = "entered" | "carried" | "sheet";
+export type FigureValue = { value: number | null; source: FigureSource; ref?: string; asOf?: string };
 
 export type WeeklyFigures = {
   /** Assets under management, in thousands of dollars. */

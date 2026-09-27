@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PT_SHEET_TABS, type PtTabConfig } from "./config";
-import { cleanLabel, colLetter, displayValue, parseTab, quoteTab, rangesFor, renderTab } from "./parse";
+import { cleanLabel, colLetter, displayValue, parseTab, quoteTab, rangesFor, renderTab, rowsForTicker } from "./parse";
 
 const cfg: PtTabConfig = { name: "Price Targets", headerRow: 1, required: ["Ticker", "Target Price", "Owl Fund Weights"], about: "Targets." };
 
@@ -99,6 +99,13 @@ describe("parseTab", () => {
     const text = renderTab(parseTab(cfg, raw, shown, 1000));
     expect(text).toContain("Columns: B=Ticker, C=Current Price, D=Target Price, E=% Off Target, F=Owl Fund Weights");
     expect(text).toContain("r4: B=AMZN | C=$249.67 | D=$271.00 | E=-7.9% | F=3.30%");
+  });
+});
+
+describe("rowsForTicker", () => {
+  it("matches a ticker the sheet writes with its exchange", () => {
+    const tab = parseTab(cfg, [["", "Ticker", "Target Price", "% Off Target", "Owl Fund Weights"], ["", "BATS:DRAM", 70], ["", "XLY", 1]], [["", "Ticker", "Target Price", "% Off Target", "Owl Fund Weights"], ["", "BATS:DRAM", "$70.00"], ["", "XLY", "$1.00"]], 100);
+    expect(rowsForTicker(tab, "dram").map((r) => r.row)).toEqual([2]);
   });
 });
 

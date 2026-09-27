@@ -130,10 +130,13 @@ export function displayValue(cell: PtCell): string {
   return acct ? `-${acct[1]}` : s;
 }
 
-/** Rows holding the ticker as a whole cell value (case-insensitive), e.g. the holding's own row in each tab. */
+/** A ticker as the sheet may write it: case-insensitive, without an exchange prefix ("BATS:DRAM" is DRAM). */
+const bareTicker = (s: string) => s.trim().toUpperCase().replace(/^[A-Z]+:/, "");
+
+/** Rows holding the ticker as a whole cell value, e.g. the holding's own row in each tab. */
 export function rowsForTicker(tab: PtTab, ticker: string): PtRow[] {
-  const t = ticker.trim().toUpperCase();
-  return tab.rows.filter((r) => r.cells.some((c) => typeof c.v === "string" && c.v.trim().toUpperCase() === t));
+  const t = bareTicker(ticker);
+  return tab.rows.filter((r) => r.cells.some((c) => typeof c.v === "string" && bareTicker(c.v) === t));
 }
 
 /** Plain-text rendering of one tab with cell references, the form Hoot is given; `ticker` keeps only that ticker's rows. */
