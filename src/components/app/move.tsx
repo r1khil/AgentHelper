@@ -6,7 +6,7 @@ export function Move({ value, unit = "", digits = 1, className }: { value: numbe
   const n = Number(value);
   const tone = n > 0.005 ? "text-up" : n < -0.005 ? "text-down" : "text-muted-foreground";
   return (
-    <span className={cn("tnum", tone, className)}>
+    <span className={cn("font-mono tnum", tone, className)}>
       {n > 0 ? "+" : ""}
       {n.toFixed(digits)}
       {unit}

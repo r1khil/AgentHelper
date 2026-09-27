@@ -113,6 +113,12 @@ describe("moods and routes", () => {
     expect(companionHiddenOn("/t/tech/agents-guide")).toBe(false);
     expect(companionHiddenOn("/hoot/0b7f")).toBe(true);
     expect(companionHiddenOn("/hootenanny")).toBe(false);
+    // Today's greeter and the Calendar's sleeping Hoot are the page's one Hoot.
+    expect(companionHiddenOn("/")).toBe(true);
+    expect(companionHiddenOn("/t/tech/earnings")).toBe(true);
+    expect(companionHiddenOn("/t/fund/economic-calendar")).toBe(true);
+    expect(companionHiddenOn("/t/tech/earnings/e1")).toBe(false);
+    expect(companionHiddenOn("/t/tech")).toBe(false);
   });
 
   it("gives each page's tip once and fits suggestions to the page", () => {

@@ -66,9 +66,17 @@ export function teamSlugFromPath(pathname: string) {
   return pathname.match(/^\/t\/([^/]+)/)?.[1] ?? null;
 }
 
-/** Floating Hoot steps aside where the page is already Hoot: his home, a research board or a conversation. */
+/**
+ * One Hoot per screen: the corner companion steps aside where the page shows Hoot in its content. That's Today
+ * (the greeter), Research conversations (the thinking sprite) and the Calendar (sleeping Hoot on an empty day).
+ */
 export function companionHiddenOn(pathname: string) {
-  return /^\/t\/[^/]+\/agent(\/|$)/.test(pathname) || /^\/hoot(\/|$)/.test(pathname);
+  return (
+    pathname === "/" ||
+    /^\/t\/[^/]+\/agent(\/|$)/.test(pathname) ||
+    /^\/hoot(\/|$)/.test(pathname) ||
+    /^\/t\/[^/]+\/(earnings|economic-calendar)(\/?$)/.test(pathname)
+  );
 }
 
 type Tip = { id: string; match: RegExp; title: string; detail: string };

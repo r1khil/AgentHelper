@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { leaveHootQuestion } from "./handoff";
 import { pageContextFor } from "./page-context";
+import { useHootOnPage, usePageMood } from "./presence";
 import { pageContextLabel } from "@/lib/agent/page-context";
 import { HootPanel } from "./hoot-panel";
 import { HootSprite, preloadHoot, usePrefersReducedMotion } from "./hoot-sprite";
@@ -106,7 +107,7 @@ function memberIsBusy() {
  * (dozing after the close, alert on earnings day, worried about an overdue write-up); a click opens a quick ask
  * to research and everything that needs you. He speaks up on his own rarely: a few times a session at most.
  */
-export function HootCompanion({ firstName }: { firstName: string }) {
+export function HootCompanion({ firstName, suppressed = false }: { firstName: string; suppressed?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const runCommand = useHootCommand();
@@ -142,7 +143,10 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   const pageSpoke = useRef(false);
   // During a tour the tour flies its own Hoot, taking off from this spot and landing back on it.
   const touring = useTourActive();
-  const hidden = companionHiddenOn(pathname) || touring;
+  // One Hoot per screen: he steps aside where the page already shows him, and while ⌘K is open.
+  const shownOnPage = useHootOnPage();
+  const pageMood = usePageMood();
+  const hidden = companionHiddenOn(pathname) || touring || shownOnPage || suppressed;
 
   const load = useCallback(async () => {
     try {
@@ -261,7 +265,7 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   const ticker = tickerFromPath(pathname);
   const teamSlug = teamSlugFromPath(pathname);
 
-  const resting = feed ? restingMood(feed.marketOpen, nudges) : "idle";
+  const resting = pageMood ?? (feed ? restingMood(feed.marketOpen, nudges) : "idle");
   const awake = resting === "sleepy" ? "idle" : resting;
   const mood: HootMood = drag
     ? "alert"
@@ -401,9 +405,9 @@ export function HootCompanion({ firstName }: { firstName: string }) {
   return (
     <div
       className={cn(
-        "pointer-events-none fixed bottom-3 z-40 flex flex-col gap-2 md:bottom-5",
-        // On the left he sits just past the sidebar, never over its account menu.
-        side === "right" ? "right-3 items-end md:right-5" : "left-3 items-start md:left-[calc(15rem+1.25rem)]",
+        "pointer-events-none fixed bottom-3 z-40 flex flex-col gap-2 md:bottom-[18px]",
+        // On the left he sits just past the rail, never over its account menu.
+        side === "right" ? "right-3 items-end md:right-5" : "left-3 items-start md:left-[calc(76px+1.25rem)]",
       )}
       style={{ paddingBottom: "env(safe-area-inset-bottom)", transform: drag ? `translate(${drag.dx}px, ${drag.dy}px)` : undefined }}
       // A drag ends with a click on the trigger; don't let it open the panel.
@@ -522,11 +526,11 @@ export function HootCompanion({ firstName }: { firstName: string }) {
         >
           {/* Soft floor shadow grounds him on the page. Nothing inside the button takes pointer events, so a
               mood change under the cursor can never swallow the click. */}
-          <span aria-hidden className="pointer-events-none absolute inset-x-3 bottom-0.5 h-2 rounded-[50%] bg-black/15 blur-[3px]" />
+          <span aria-hidden className="pointer-events-none absolute inset-x-3 bottom-0.5 h-[7px] rounded-[50%] bg-[rgba(40,25,10,0.2)] blur-[3px]" />
           {/* Perks up a little under the pointer. */}
           <span className="pointer-events-none relative block transition-transform duration-300 ease-out group-hover:-translate-y-0.5">
             <span ref={body} className="relative block">
-              <HootSprite mood={mood} size={64} track bob lean gaze={glance ?? undefined} className="max-md:size-[52px]!" />
+              <HootSprite mood={mood} size={60} track bob lean gaze={glance ?? undefined} className="max-md:size-[52px]!" />
             </span>
           </span>
           {mood === "sleepy" && (

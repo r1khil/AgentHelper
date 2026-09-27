@@ -79,7 +79,7 @@ export function BootSplash() {
     >
       {/* One frame of the strip at a time. The frames leave room on the right for his wing, so nudge him over to
           put his body, not the frame, in the middle. */}
-      <div className="relative size-40 translate-x-[13%] overflow-hidden" aria-hidden>
+      <div className="hoot-halo relative size-40 translate-x-[13%] overflow-hidden" aria-hidden>
         {/* Plain <img>: it has to be in the first bytes of the page, with no optimizer round-trip. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -92,7 +92,7 @@ export function BootSplash() {
           className="hoot-wave-loop absolute top-0 left-0 h-full w-[1200%] max-w-none select-none"
         />
       </div>
-      <div className="h-1.5 w-48 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Loading">
+      <div className="h-1.5 w-48 overflow-hidden rounded-full bg-row" role="progressbar" aria-label="Loading">
         <div ref={fill} className="boot-trickle h-full w-full rounded-full bg-primary" />
       </div>
     </div>
