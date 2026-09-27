@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 import type { TimeRange } from "@/lib/charts/series";
 import { cn } from "@/lib/utils";
 
-export const chartTick = { fontSize: 11, fill: "var(--muted-foreground)" };
+/** Axis ticks: small muted mono, like every other figure in the app. */
+export const chartTick = { fontSize: 10.5, fill: "var(--muted-foreground)", fontFamily: "var(--font-mono)" };
+/** Light gridlines in the row-divider color. */
+export const chartGrid = "var(--row)";
 export const signed = (value: number, digits = 2) =>
   `${value > 0 ? "+" : ""}${value.toFixed(digits)}`;
 export const percent = (value: number) => `${signed(value)}%`;
@@ -31,7 +34,7 @@ export function RangeControlGroup({
     <div
       role="group"
       aria-label={label}
-      className="flex flex-wrap gap-1 rounded-lg bg-muted/60 p-1"
+      className="inline-flex flex-wrap items-center rounded-full bg-muted p-0.5"
     >
       {children}
     </div>
@@ -40,9 +43,9 @@ export function RangeControlGroup({
 
 export function rangeControlClass(active: boolean) {
   return cn(
-    "rounded-md px-2.5 py-1.5 sm:px-3 text-xs font-medium transition-colors motion-reduce:transition-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring",
+    "rounded-full px-2.5 py-1 font-mono text-[11px] transition-colors motion-reduce:transition-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring",
     active
-      ? "bg-background text-foreground shadow-sm"
+      ? "bg-card font-semibold text-foreground shadow-[0_1px_2px_rgba(60,40,20,.08)]"
       : "text-muted-foreground",
   );
 }
@@ -81,9 +84,9 @@ export function ChartTooltip({
   children: ReactNode;
 }) {
   return (
-    <div className="max-w-full rounded-lg border bg-popover/95 p-3 text-xs text-popover-foreground shadow-sm backdrop-blur-sm">
+    <div className="max-w-full rounded-[10px] border bg-popover/95 p-3 text-xs text-popover-foreground shadow-sm backdrop-blur-sm">
       <div className="mb-2 font-medium">{label}</div>
-      <div className="space-y-1.5 tnum">{children}</div>
+      <div className="space-y-1.5 font-mono tnum">{children}</div>
     </div>
   );
 }
@@ -99,13 +102,11 @@ export function ChartLegend({
     <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
       {series.map((s) => (
         <span key={s.key} className="inline-flex items-center gap-1.5">
-          <span
-            className="inline-block w-4 border-t-2"
-            style={{
-              borderColor: s.color,
-              borderTopStyle: s.dashed ? "dashed" : "solid",
-            }}
-          />
+          {s.dashed ? (
+            <span className="inline-block w-4 border-t-2" style={{ borderColor: s.color, borderTopStyle: "dashed" }} />
+          ) : (
+            <span className="inline-block size-2 rounded-full" style={{ background: s.color }} />
+          )}
           {s.label}
         </span>
       ))}

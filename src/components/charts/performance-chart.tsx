@@ -241,8 +241,8 @@ function ChartSession({
           >
             <CartesianGrid
               vertical={false}
-              stroke="var(--border)"
-              strokeDasharray="2 4"
+              stroke="var(--row)"
+              strokeDasharray=""
             />
             <XAxis
               dataKey="time"
