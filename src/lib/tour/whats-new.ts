@@ -13,6 +13,11 @@ const POSITIONS = "What the fund owns comes from the trade ledger, replayed to t
 const BENCHMARK = "The benchmark is the S&P 500's sector weights, which an exec saves on the ledger's Benchmark tab.";
 
 const nav = (id: string) => `[data-tour="nav-${id}"]`;
+/**
+ * A header tab of a rail section. From another section the rail item is lit instead (clicking it opens the
+ * section, then the tab lights up); the rail item stops matching once its section is open.
+ */
+const tab = (id: string, section: string) => `${nav(id)}, ${nav(section)}:not([aria-current])`;
 
 export const WHATS_NEW_TOUR: Tour = {
   id: WHATS_NEW_TOUR_ID,
@@ -26,15 +31,15 @@ export const WHATS_NEW_TOUR: Tour = {
           id: "menu",
           kind: "info",
           target: '[data-tour="sidebar"]',
-          title: "The menu is organized now",
-          body: "Pages are grouped by what they're for: Research (Holdings, me, the sell-side analyzer, models), Markets (movements, earnings, the economic calendar), Portfolio (attribution, and two new pages: Risk and Exposure), and Manage.",
+          title: "Five places to go",
+          body: "Today, Holdings, Research, Calendar and Portfolio, with Manage at the bottom. Each one has its pages as tabs along the top: Movements and Models sit under Holdings, Risk and Exposure under Portfolio. Press ⌘K to jump anywhere or ask me something.",
         },
         {
           id: "scope",
           kind: "info",
           target: '[data-tour="scope"]',
           title: "Whose numbers you're looking at",
-          what: "This card says whose holdings every page is showing. \"Whole fund\" is everyone.",
+          what: "This tile says whose holdings every page is showing. \"Fund\" is everyone.",
           how: "Click it to narrow the whole app to one sector team. If you switch while you're on Risk or Exposure, you stay on that page.",
         },
       ],
@@ -88,10 +93,10 @@ export const WHATS_NEW_TOUR: Tour = {
         {
           id: "go-risk",
           kind: "go",
-          target: nav("risk"),
+          target: tab("risk", "portfolio"),
           title: "New page: Risk",
           body: "How bumpy the fund is, where that bumpiness comes from, and how today's holdings would have handled past crashes.",
-          prompt: "Click Risk in the menu to open it.",
+          prompt: "Open Portfolio, then click Risk along the top.",
         },
         {
           id: "risk-lookback",
@@ -193,10 +198,10 @@ export const WHATS_NEW_TOUR: Tour = {
         {
           id: "go-exposure",
           kind: "go",
-          target: nav("exposure"),
+          target: tab("exposure", "portfolio"),
           title: "New page: Exposure",
           body: "Where our money sits compared with the index: by sector, by company, and inside the ETFs we own.",
-          prompt: "Click Exposure in the menu to open it.",
+          prompt: "Click Exposure along the top.",
         },
         {
           id: "exposure-headline",
@@ -266,10 +271,10 @@ export const WHATS_NEW_TOUR: Tour = {
         {
           id: "go-backtesting",
           kind: "go",
-          target: nav("backtesting"),
+          target: tab("backtesting", "portfolio"),
           title: "Backtesting can ask \"what if?\"",
           body: "Try a change to the portfolio and see what it would do to risk before anyone trades.",
-          prompt: "Click Backtesting in the menu.",
+          prompt: "Click Backtesting along the top.",
         },
         {
           id: "backtesting-quick",
@@ -313,16 +318,16 @@ export const WHATS_NEW_TOUR: Tour = {
     },
     {
       id: "calendar",
-      label: "Economic calendar",
-      route: /^\/t\/[^/]+\/economic-calendar$/,
+      label: "Calendar",
+      route: /^\/t\/[^/]+\/(earnings|economic-calendar)$/,
       steps: [
         {
           id: "go-calendar",
           kind: "go",
-          target: nav("economic-calendar"),
-          title: "New on the Economic calendar",
-          body: "Which upcoming releases matter most for our portfolio, and why.",
-          prompt: "Click Economic calendar in the menu.",
+          target: nav("calendar"),
+          title: "Earnings and releases, one calendar",
+          body: "Our holdings' reports and the big economic releases now share one week view, and it shows which releases matter most for our portfolio, and why.",
+          prompt: "Click Calendar in the menu.",
         },
         {
           id: "calendar-lines",
@@ -346,10 +351,10 @@ export const WHATS_NEW_TOUR: Tour = {
         {
           id: "go-hoot",
           kind: "go",
-          target: nav("hoot"),
+          target: nav("research"),
           title: "I learned some new tricks",
           body: "I can look things up in a lot more places now.",
-          prompt: "Click Hoot in the menu.",
+          prompt: "Click Research in the menu.",
         },
         {
           id: "hoot-tools",
