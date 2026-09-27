@@ -8,9 +8,10 @@ import { toast } from "sonner";
 import { startHootChat } from "@/lib/actions/chats";
 import { leaveHootQuestion } from "@/components/app/hoot/handoff";
 import { ComposerBox, LEARNING_BOUNDARY, SendButton } from "@/components/app/chat/thread-parts";
+import { cn } from "@/lib/utils";
 
 /** A question that isn't about one holding: starts a general conversation, the same way the floating Hoot does. */
-export function AskHoot({ teamSlug, configured }: { teamSlug: string | null; configured: boolean }) {
+export function AskHoot({ teamSlug, configured, hint, className }: { teamSlug: string | null; configured: boolean; hint: string; className?: string }) {
   const router = useRouter();
   const runCommand = useHootCommand();
   const [text, setText] = useState("");
@@ -58,7 +59,7 @@ export function AskHoot({ teamSlug, configured }: { teamSlug: string | null; con
   return (
     <form
       data-tour="ask-hoot"
-      className="shrink-0 border-t px-6 pt-3.5 pb-[18px] xl:px-14"
+      className={cn("shrink-0", className)}
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
@@ -85,7 +86,7 @@ export function AskHoot({ teamSlug, configured }: { teamSlug: string | null; con
           className="field-sizing-content max-h-40 min-h-11 w-full resize-none bg-transparent text-sm leading-[22px] outline-none placeholder:text-muted-foreground disabled:opacity-60"
         />
         <div className="flex items-center gap-2">
-          <span className="min-w-0 truncate text-xs text-muted-foreground">{asking ? "Opening a chat…" : "For one holding, open its research board on the right."}</span>
+          <span className="min-w-0 truncate text-xs text-muted-foreground">{asking ? "Opening a chat…" : hint}</span>
           <span className="flex-1" />
           <SendButton disabled={!text.trim() || asking || !configured} label="Ask" />
         </div>

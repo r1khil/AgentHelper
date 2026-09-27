@@ -8,10 +8,26 @@ import { cn } from "@/lib/utils";
  */
 export function ResearchGrid({ children }: { children: ReactNode }) {
   return (
-    <div data-full-bleed className="grid min-h-0 flex-1 grid-cols-1 lg:h-[calc(100dvh-3.5rem)] lg:grid-cols-[288px_minmax(0,1fr)_312px] lg:overflow-hidden">
+    <div data-full-bleed className="grid min-h-0 flex-1 grid-cols-1 lg:h-[calc(100dvh-3.5rem)] lg:flex-none lg:grid-rows-[minmax(0,1fr)] lg:grid-cols-[288px_minmax(0,1fr)_312px] lg:overflow-hidden">
       {children}
     </div>
   );
+}
+
+/**
+ * Research › Conversations with no conversation open: the same list (288px, 248px under 1280px), then one main area (the ask box over
+ * every holding's research board) with the content area's usual 24px padding.
+ */
+export function ResearchHomeGrid({ children }: { children: ReactNode }) {
+  return (
+    <div data-full-bleed className="grid min-h-0 flex-1 grid-cols-1 lg:h-[calc(100dvh-3.5rem)] lg:flex-none lg:grid-rows-[minmax(0,1fr)] lg:grid-cols-[248px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[288px_minmax(0,1fr)]">
+      {children}
+    </div>
+  );
+}
+
+export function HomeMain({ children }: { children: ReactNode }) {
+  return <div className="flex min-h-0 min-w-0 flex-col gap-4 p-5 xl:gap-5 xl:p-6">{children}</div>;
 }
 
 export function ListColumn({ children }: { children: ReactNode }) {
