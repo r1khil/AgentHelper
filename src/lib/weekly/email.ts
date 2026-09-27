@@ -26,7 +26,6 @@ async function firstName(email: string): Promise<string | null> {
 export async function composeWeeklyEmail(weekEnding: string, to: string | null): Promise<{ subject: string; text: string } | null> {
   const pack = await getPack(weekEnding);
   if (!pack) return null;
-  const appUrl = process.env.APP_URL?.replace(/\/$/, "");
   return {
     subject: weeklyEmailSubject(weekEnding),
     text: weeklyEmailText({
@@ -36,7 +35,6 @@ export async function composeWeeklyEmail(weekEnding: string, to: string | null):
       agenda: normalizeAgenda(pack.agenda),
       lastWeekAgenda: pack.lastWeekAgenda ? normalizeAgenda(pack.lastWeekAgenda) : null,
       sources: pack.sources ?? {},
-      packUrl: appUrl ? `${appUrl}/weekly/${weekEnding}` : null,
       toName: to ? await firstName(to) : null,
     }),
   };

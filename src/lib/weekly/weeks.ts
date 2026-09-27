@@ -83,8 +83,17 @@ export function weekEndingLabel(weekEnding: string): string {
   return d.isValid ? d.toFormat("MMMM d, yyyy") : weekEnding;
 }
 
+/** "18th", "21st", "22nd", "23rd", "11th". */
+function ordinal(n: number): string {
+  const teen = n % 100 >= 11 && n % 100 <= 13;
+  const suffix = teen ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th";
+  return `${n}${suffix}`;
+}
+
+/** The deck's title line: "Update for the week ended September 18th, 2026". */
 export function packTitle(weekEnding: string): string {
-  return `Update for the week ended ${weekEndingLabel(weekEnding)}`;
+  const d = at(weekEnding);
+  return `Update for the week ended ${d.isValid ? `${d.toFormat("MMMM")} ${ordinal(d.day)}, ${d.year}` : weekEnding}`;
 }
 
 /** "September 21–25, 2026" for a Monday-to-Friday span. */

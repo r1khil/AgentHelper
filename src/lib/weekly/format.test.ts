@@ -98,7 +98,7 @@ describe("packText", () => {
       agenda: { earnings: [{ day: "Monday", text: "ANAB" }], marketNews: [], processUpdates: [] },
       lastWeekAgenda: null,
     });
-    expect(text).toContain("Update for the week ended September 18, 2026");
+    expect(text).toContain("Update for the week ended September 18th, 2026");
     expect(text.indexOf("Portfolio Highlights")).toBeLessThan(text.indexOf("Top 3 Performers"));
     expect(text.indexOf("Top 3 Performers")).toBeLessThan(text.indexOf("Worst 3 Performers"));
     expect(text.indexOf("Last Week's Agenda")).toBeLessThan(text.indexOf("This Week's Agenda"));
@@ -110,9 +110,18 @@ describe("packText", () => {
 
 describe("deckName", () => {
   it("title-cases names filed in capitals and leaves the rest alone", () => {
-    expect(deckName("TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD")).toBe("Taiwan Semiconductor Manufacturing Co Ltd");
+    expect(deckName("TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD")).toBe("Taiwan Semiconductor Manufacturing Co");
     expect(deckName("MICROSOFT CORP")).toBe("Microsoft Corp");
     expect(deckName("SPDR S&P REGIONAL BANKING ETF")).toBe("SPDR S&P Regional Banking ETF");
     expect(deckName("KKR & Co. Inc.")).toBe("KKR & Co. Inc.");
+  });
+
+  it("keeps a company's own name and shortens its suffix the deck's way", () => {
+    expect(deckName("Amazon.com, Inc.")).toBe("Amazon.com, Inc.");
+    expect(deckName("Microsoft Corporation")).toBe("Microsoft Corp.");
+    expect(deckName("Stryker Corporation")).toBe("Stryker Corp.");
+    expect(deckName("American Express Company")).toBe("American Express Co.");
+    expect(deckName("Taiwan Semiconductor Manufacturing Company Limited")).toBe("Taiwan Semiconductor Manufacturing Co.");
+    expect(deckName("The Cigna Group")).toBe("The Cigna Group");
   });
 });

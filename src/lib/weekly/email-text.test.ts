@@ -32,7 +32,6 @@ const input: WeeklyEmailInput = {
   },
   lastWeekAgenda: { ...emptyAgenda(), processUpdates: [{ day: "Monday", text: "IT ICR Due" }, { day: "Friday", text: "C&C ICR Due" }] },
   sources: { sheet: { status: "ok", at: "2026-09-27T13:00:00Z" } },
-  packUrl: "https://owlfund-workspace.vercel.app/weekly/2026-09-25",
   toName: "Aadi",
 };
 
@@ -56,10 +55,11 @@ describe("weeklyEmailText", () => {
     expect(filled).not.toContain("for reference");
   });
 
-  it("says there is nothing to flag, where the numbers come from, and links the page", () => {
+  it("says there is nothing to flag, where the numbers come from, and asks for a double check", () => {
     expect(text).toContain("CHECKS\nNothing to flag.");
     expect(text).toContain(`top and worst 3 from the PT sheet's "% 1 Week"`);
-    expect(text).toContain("https://owlfund-workspace.vercel.app/weekly/2026-09-25");
+    expect(text).toContain("Please double check figures for accuracy.\n\nFeel free to reply");
+    expect(text).not.toContain("http");
     expect(weeklyEmailText({ ...input, toName: null }).startsWith("Hi,\n")).toBe(true);
   });
 });
