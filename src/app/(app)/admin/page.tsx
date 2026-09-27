@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { asc, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { invitations, profiles, teams } from "@/db/schema";
@@ -402,6 +403,14 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               </div>
               <p className="text-xs text-muted-foreground">Layout expected inside it: one folder per sector team, then one folder per company named like &ldquo;American Express (AXP)&rdquo;.</p>
             </form>
+          )}
+          {drive.connected && (
+            <div className="mt-4 flex items-center justify-between gap-2 border-t pt-3">
+              <span className="text-xs text-muted-foreground">The price target sheet is read separately: allowed tabs only, never edited.</span>
+              <Button nativeButton={false} render={<Link href="/admin/pt-sheet" prefetch={false} />} size="sm" variant="outline" className="shrink-0">
+                Test PT sheet read
+              </Button>
+            </div>
           )}
         </Card>
         <Card className="p-4 text-sm">
