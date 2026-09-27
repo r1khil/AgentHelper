@@ -10,7 +10,6 @@ import { parsePeriodLabel } from "@/lib/models/periods";
 import { periodEndsFor, saveMapping, searchConcepts, suggestFromValue } from "@/lib/actions/models";
 import type { ConceptSuggestion } from "@/lib/models/proposals";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -164,23 +163,23 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
     }
   }
 
-  if (!sheet) return <Card className="mb-6 p-4 text-sm text-muted-foreground">This workbook has no readable sheets.</Card>;
+  if (!sheet) return <div className="panel p-4 text-sm text-muted-foreground">This workbook has no readable sheets.</div>;
 
   return (
-    <Card className="mb-6 p-0">
-      <div className="flex flex-wrap items-center gap-1 border-b px-3 py-2">
+    <section className="panel overflow-hidden">
+      <div className="flex flex-wrap items-center gap-1 border-b bg-band px-3 py-2">
         {workbook.sheets.map((s, i) => (
-          <button key={s.name} type="button" onClick={() => { setSheetIdx(i); setRow(null); }} className={cn("rounded-md px-2.5 py-1 text-xs", i === sheetIdx ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
+          <button key={s.name} type="button" onClick={() => { setSheetIdx(i); setRow(null); }} className={cn("h-7 rounded-full px-3 text-xs", i === sheetIdx ? "bg-primary font-medium text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
             {s.name}
           </button>
         ))}
-        <span className="ml-auto text-xs text-muted-foreground">Click a row to map it. Shaded cells hold formulas and are never written.</span>
+        <span className="ml-auto text-[12.5px] text-muted-foreground">Click a row to map it. Shaded cells hold formulas and are never written.</span>
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div className="max-h-[420px] overflow-auto border-b lg:border-r lg:border-b-0">
-          <table className="w-max min-w-full border-collapse text-xs">
-            <thead className="sticky top-0 z-10 bg-muted">
+        <div className="max-h-[520px] overflow-auto border-b lg:border-r lg:border-b-0">
+          <table className="w-max min-w-full border-collapse font-mono text-[11.5px]">
+            <thead className="sticky top-0 z-10 bg-band">
               <tr>
                 <th className="w-8 border-r border-b px-1 py-1 text-right text-muted-foreground">#</th>
                 {cols.map((c) => (
@@ -254,7 +253,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
                   </Button>
                 </div>
                 {suggestions && (
-                  <div className="rounded-md border p-2">
+                  <div className="rounded-lg border p-2">
                     <div className="mb-1 text-xs font-medium">Facts matching {(grid.get(`${anchor}${row}`)?.v as number)?.toLocaleString()} for {periods[anchor]}:</div>
                     {suggestions.length === 0 ? (
                       <p className="text-xs text-muted-foreground">No reported fact matches at ×1, ×1k, ×1M, or ×1B. Check the period end or the number.</p>
@@ -272,7 +271,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
                   </div>
                 )}
                 {hits.length > 0 && !concept && (
-                  <ul className="max-h-40 space-y-0.5 overflow-auto rounded-md border p-1">
+                  <ul className="max-h-40 space-y-0.5 overflow-auto rounded-lg border p-1">
                     {hits.map((h) => (
                       <li key={h.concept}>
                         <button type="button" className="w-full rounded px-1.5 py-1 text-left text-xs hover:bg-muted" onClick={() => chooseConcept(h)}>
@@ -283,7 +282,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
                   </ul>
                 )}
                 {concept && (
-                  <div className="flex items-center justify-between rounded-md border bg-muted/40 px-2 py-1.5 text-xs">
+                  <div className="flex items-center justify-between rounded-lg border bg-band px-2 py-1.5 text-xs">
                     <span><span className="font-medium">{concept.label}</span> <code className="text-muted-foreground">{concept.concept}</code></span>
                     <button type="button" className="text-muted-foreground hover:underline" onClick={() => setConcept(null)}>change</button>
                   </div>
@@ -338,7 +337,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
           )}
         </div>
       </div>
-    </Card>
+    </section>
   );
 }
 

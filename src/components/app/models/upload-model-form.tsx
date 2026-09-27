@@ -8,6 +8,7 @@ import { MODEL_BUCKET, MODEL_CONTENT_TYPES, validateModelFile } from "@/lib/mode
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 type Stage = "idle" | "uploading" | "reading";
 
@@ -15,7 +16,7 @@ type Stage = "idle" | "uploading" | "reading";
  * Uploads a workbook without sending it through a Server Action body (1MB default, 4.5MB on Vercel):
  * sign → PUT straight to the private bucket with the publishable key → finalize (small JSON), which redirects.
  */
-export function UploadModelForm({ holdingId, hasModel }: { holdingId: string; hasModel: boolean }) {
+export function UploadModelForm({ holdingId, hasModel, stacked }: { holdingId: string; hasModel: boolean; /** File picker above the button (in a dialog). */ stacked?: boolean }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [stage, setStage] = useState<Stage>("idle");
   const [pending, start] = useTransition();
@@ -46,9 +47,9 @@ export function UploadModelForm({ holdingId, hasModel }: { holdingId: string; ha
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex items-center gap-2">
-      <Input ref={fileRef} type="file" name="file" accept=".xlsx,.xlsm" required disabled={busy} className="w-56" />
-      <Button type="submit" size="sm" variant="outline" disabled={busy}>
+    <form onSubmit={onSubmit} className={cn("flex gap-2", stacked ? "flex-col" : "items-center")}>
+      <Input ref={fileRef} type="file" name="file" accept=".xlsx,.xlsm" required disabled={busy} className={stacked ? "w-full" : "w-56"} />
+      <Button type="submit" size={stacked ? "default" : "sm"} variant={stacked ? "default" : "outline"} disabled={busy} className={cn(stacked && "self-end")}>
         {busy ? <Loader2 className="animate-spin" /> : <Upload />}
         {stage === "uploading" ? "Uploading…" : stage === "reading" ? "Reading workbook…" : hasModel ? "New version" : "Upload"}
       </Button>
