@@ -1,0 +1,155 @@
+import "server-only";
+import { inArray, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { profiles, sellSideParts, type Team } from "@/db/schema";
+import { listTeamHoldings } from "@/lib/holdings";
+import { listCalls } from "@/lib/sell-side/store";
+import { getChat, loadMessages, effectiveRunStatus } from "@/lib/chats";
+import { agentConfigured } from "@/lib/agent/model";
+import { canOpenChat, transparencyEnabled, type CurrentUser } from "@/lib/auth";
+import type { TeamIds } from "@/lib/team-filter";
+import { HootMoodFor } from "@/components/app/hoot/presence";
+import { NewCall } from "@/components/app/sell-side/new-call";
+import { CallWorkspace } from "@/components/app/sell-side/call-workspace";
+import { AnalysisBrief } from "@/components/app/sell-side/analysis-brief";
+import { CallDiscussion } from "@/components/app/sell-side/call-discussion";
+import { PickACall, PickATeam, SellSideLayout, type SavedCallRow } from "@/components/app/sell-side/sell-side-layout";
+import { listStatus, minutesLabel } from "@/components/app/sell-side/timeline";
+
+type Call = Awaited<ReturnType<typeof listCalls>>[number];
+export type SellSideScope = { team: Team | null; teamIds: TeamIds; teamById: Map<string, Team>; user: CurrentUser };
+
+const TZ = "America/New_York";
+const year = (d: Date) => new Intl.DateTimeFormat("en-US", { year: "numeric", timeZone: TZ }).format(d);
+function shortDate(d: Date) {
+  const sameYear = year(d) === year(new Date());
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }), timeZone: TZ }).format(d);
+}
+function longDate(d: Date) {
+  const sameYear = year(d) === year(new Date());
+  return new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", ...(sameYear ? {} : { year: "numeric" }), timeZone: TZ }).format(d);
+}
+
+/** Who recorded each call and how far its saved audio has got, for the saved-calls rows and the call's meta line. */
+async function callFacts(calls: Call[]) {
+  const ids = calls.map((c) => c.id);
+  const creators = [...new Set(calls.map((c) => c.createdBy).filter((id): id is string => !!id))];
+  const [parts, people] = await Promise.all([
+    ids.length
+      ? db
+          .select({
+            callId: sellSideParts.callId,
+            parts: sql<number>`count(*)::int`,
+            transcribed: sql<number>`count(${sellSideParts.segments})::int`,
+            summarized: sql<number>`count(${sellSideParts.summary})::int`,
+            seconds: sql<string>`coalesce(sum(${sellSideParts.duration}), 0)`,
+          })
+          .from(sellSideParts)
+          .where(inArray(sellSideParts.callId, ids))
+          .groupBy(sellSideParts.callId)
+      : [],
+    creators.length ? db.select({ id: profiles.id, name: profiles.fullName }).from(profiles).where(inArray(profiles.id, creators)) : [],
+  ]);
+  const counts = new Map(parts.map((p) => [p.callId, { parts: p.parts, transcribed: p.transcribed, summarized: p.summarized, seconds: Number(p.seconds) }]));
+  const names = new Map(people.map((p) => [p.id, p.name]));
+  return {
+    counts: (id: string) => counts.get(id) ?? { parts: 0, transcribed: 0, summarized: 0, seconds: 0 },
+    name: (c: Call) => (c.createdBy ? names.get(c.createdBy) : undefined),
+  };
+}
+
+/**
+ * Research › Sell-side calls. Both routes render this: the list route selects the most recent call,
+ * the call route selects its call.
+ */
+export async function SellSideScreen({ scope, call }: { scope: SellSideScope; call?: Call }) {
+  const { team, teamIds, teamById, user } = scope;
+  const [calls, holdings] = await Promise.all([listCalls(teamIds), team ? listTeamHoldings(team.id) : []]);
+  const selected = call ?? calls[0] ?? null;
+  const facts = await callFacts(selected && !calls.some((c) => c.id === selected.id) ? [...calls, selected] : calls);
+  const rows: SavedCallRow[] = calls.map((c) => {
+    const counts = facts.counts(c.id);
+    return {
+      id: c.id,
+      href: `/t/${teamById.get(c.teamId)?.slug}/sell-side/${c.id}`,
+      ticker: c.ticker,
+      title: c.title,
+      meta: [facts.name(c), shortDate(c.createdAt), counts.seconds > 0 ? minutesLabel(counts.seconds) : null, !team ? teamById.get(c.teamId)?.name : null]
+        .filter(Boolean)
+        .join(" · "),
+      status: listStatus(c, counts),
+    };
+  });
+  return (
+    <SellSideLayout
+      record={
+        team ? (
+          <NewCall team={team.slug} teamId={team.id} holdings={holdings.map(({ h }) => ({ id: h.id, ticker: h.ticker, companyName: h.companyName }))} />
+        ) : (
+          <PickATeam />
+        )
+      }
+      calls={rows}
+      selectedId={selected?.id ?? null}
+      aside={
+        <>
+          {team ? team.name : "Whole fund"} · <span className="font-mono">{calls.length}</span>
+        </>
+      }
+      empty={`${team ? "Your team’s" : "Every team’s"} calls, summaries, transcripts, and follow-up chats will appear here.`}
+    >
+      {selected ? (
+        <CallPane
+          call={selected}
+          user={user}
+          byline={[facts.name(selected), longDate(selected.createdAt)].filter(Boolean).join(" · ")}
+          sector={teamById.get(selected.teamId)?.name}
+        />
+      ) : (
+        <PickACall>{team ? "Record a call on the left. Its brief, transcript and saved chat open here." : "Calls from every team open here once one is recorded."}</PickACall>
+      )}
+    </SellSideLayout>
+  );
+}
+
+async function CallPane({ call, user, byline, sector }: { call: Call; user: CurrentUser; byline: string; sector?: string }) {
+  const [chat, messages] = await Promise.all([getChat(call.chatId), loadMessages(call.chatId)]);
+  if (!chat) return <PickACall>This call’s saved discussion could not be found.</PickACall>;
+  // Once an exec's follow-up read the price target sheet, the discussion is for execs and admins only.
+  const hidden = !canOpenChat(user, chat);
+  const ready = call.status === "ready";
+  const configured = agentConfigured();
+  return (
+    <>
+      {ready && <HootMoodFor mood="happy" />}
+      <CallWorkspace
+        key={call.id}
+        callId={call.id}
+        configured={configured}
+        header={{ ticker: call.ticker, title: call.title, byline, sector }}
+        chat={
+          ready && !hidden ? (
+            <CallDiscussion
+              embedded
+              chatId={chat.id}
+              initialMessages={messages}
+              initialRunStatus={effectiveRunStatus(chat)}
+              tickers={[call.ticker]}
+              configured={configured}
+              transparency={transparencyEnabled(user)}
+            />
+          ) : undefined
+        }
+      >
+        {ready &&
+          (hidden ? (
+            <p className="px-5 py-4 text-[13.5px] text-muted-foreground">
+              The analysis and discussion for this call are visible to execs and admins only, because they draw on the price target sheet.
+            </p>
+          ) : (
+            <AnalysisBrief chatId={chat.id} messages={messages} />
+          ))}
+      </CallWorkspace>
+    </>
+  );
+}

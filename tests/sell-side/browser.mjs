@@ -21,7 +21,8 @@ try {
   await page.getByLabel("Company name", { exact: true }).fill("Snowflake");
   await page.getByLabel("Ticker", { exact: true }).fill("snow");
   await page.getByLabel("Call title", { exact: true }).fill("Broker outlook");
-  await page.getByRole("button", { name: "New call", exact: true }).click();
+  // The Record a call card comes first on the page; the call's own recorder has a button with the same name.
+  await page.getByRole("button", { name: "Start recording", exact: true }).first().click();
   await expect(page.getByRole("heading", { name: "SNOW · Snowflake · Broker outlook" })).toBeVisible();
   const callUrl = page.url();
   await page.getByRole("button", { name: "Start recording", exact: true }).click();
@@ -56,7 +57,7 @@ try {
   expect(afterRetry.transcriptions).toBe(beforeRetry.transcriptions);
   expect(afterRetry.notes).toBe(beforeRetry.notes);
   expect(afterRetry.uploads).toBe(beforeRetry.uploads);
-  for (const name of ["Key points", "Important numbers", "Positive commentary", "Risks & watch points", "Themes", "Internal-file cross-check"])
+  for (const name of ["What was said", "Important numbers", "Positive commentary", "Risks & watch points", "Themes", "Checked against the team’s files"])
     await expect(page.getByRole("heading", { name, exact: true }).first()).toBeVisible();
   await expect(page.getByRole("region", { name: "Call analysis" })).toContainText("$3.2 billion");
   await expect(page.getByRole("region", { name: "Call analysis" })).toContainText("periods differ");
@@ -99,6 +100,8 @@ try {
   expect(retrieved.sources[0].documentId).toContain("call-");
   const denied = await (await page.request.get(`${origin}/test/search?ticker=SNOW&team=99999999-9999-4999-8999-999999999999`)).json();
   expect(denied.data.passages).toHaveLength(0);
+  // The transcript is a tab of the call pane.
+  await page.getByRole("tab", { name: "Transcript" }).click();
   await page.getByLabel("Search transcript").fill("not in this transcript");
   await expect(page.getByRole("region", { name: "Call transcript" }).getByText("We expect FY27", { exact: false })).toHaveCount(0);
   await page.getByLabel("Search transcript").fill("");
@@ -116,7 +119,8 @@ try {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(origin);
   await page.getByLabel("Call title", { exact: true }).fill("Long AMZN call");
-  await page.getByRole("button", { name: "New call", exact: true }).click();
+  // The Record a call card comes first on the page; the call's own recorder has a button with the same name.
+  await page.getByRole("button", { name: "Start recording", exact: true }).first().click();
   await expect(page.getByRole("heading", { name: "AMZN · Long AMZN call" })).toBeVisible();
   await page.clock.install();
   await page.getByRole("button", { name: "Start recording", exact: true }).click();
