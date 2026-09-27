@@ -12,7 +12,7 @@ const JOB = "email_ticket";
 const OPENMAIL_API = "https://api.openmail.sh/";
 
 /** An attachment or raw message, fetched with the API key. Only ever from OpenMail's own API, so the key goes nowhere else. */
-async function download(url: string | null | undefined): Promise<Buffer | null> {
+export async function downloadOpenMail(url: string | null | undefined): Promise<Buffer | null> {
   const key = process.env.OPENMAIL_API_KEY;
   if (!key || !url?.startsWith(OPENMAIL_API)) return null;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15_000) }).catch(() => null);
@@ -31,7 +31,7 @@ export async function readEmailTickets(msg: InboundEvent["message"]): Promise<Ti
       reads.push({ file: a.filename, ticket: null, errors: ["This file is too large to be a trade ticket."], warnings: [] });
       continue;
     }
-    const bytes = await download(a.url);
+    const bytes = await downloadOpenMail(a.url);
     if (bytes) reads.push(await readTicketDocx(a.filename, bytes));
     else if (a.parsedText) reads.push(parseTicket(a.parsedText, a.filename));
     else reads.push({ file: a.filename, ticket: null, errors: ["I couldn't download this attachment."], warnings: [] });
@@ -84,7 +84,7 @@ export async function recordEmailedTickets(opts: {
   }
   // The From address alone proves nothing; only a theowlfund.com DKIM signature lets an email write to the ledger.
   if (!opts.dryRun) {
-    const raw = await download(ev.message.raw_url);
+    const raw = await downloadOpenMail(ev.message.raw_url);
     const check = raw ? await verifyFundSender(raw, ev.message.from) : ({ ok: false, reason: "the original message could not be downloaded" } as const);
     if (!check.ok) {
       await reply(ticketNotAllowedBody({ name: sender.name, reason: "unverified" }));

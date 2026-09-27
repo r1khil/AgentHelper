@@ -15,6 +15,7 @@ import { createJobReporter } from "@/lib/jobs/progress";
 import { resolveOpenMailInbox, sendEmail } from "@/lib/jobs/notify";
 import { cleanBrief, numberCitations, sourcesFooter } from "@/lib/jobs/daily-brief-format";
 import { finalReply, writeUpFromEvidence } from "@/lib/agent/write-up";
+import { handleWeeklyReply, weeklyReplyTarget, type WeeklyReplyResult } from "@/lib/weekly/reply";
 import { readEmailTickets, recordEmailedTickets, type EmailTicketResult } from "./ticket-intake";
 import { answerBody, bareAddress, failureBody, firstName, isAutoReply, isFundAddress, newReplyText, receiptBody, replyRecipients, type InboundEvent } from "./inbound";
 
@@ -100,7 +101,7 @@ const NUDGE = "Your research budget is used up. Write the answer now from the ev
  * Handle one inbound email to Hoot: confirm receipt in the thread, research, and reply with the answer.
  * Idempotent per OpenMail message (webhooks are delivered at least once).
  */
-export async function answerEmail(ev: InboundEvent, opts: { dryRun?: (text: string) => void } = {}): Promise<EmailReplyResult | EmailTicketResult> {
+export async function answerEmail(ev: InboundEvent, opts: { dryRun?: (text: string) => void } = {}): Promise<EmailReplyResult | EmailTicketResult | WeeklyReplyResult> {
   const msg = ev.message;
   const from = bareAddress(msg.from);
   const base: EmailReplyResult = { eventId: ev.event_id, messageId: msg.id, threadId: ev.thread_id, from, status: "ignored" };
@@ -122,6 +123,19 @@ export async function answerEmail(ev: InboundEvent, opts: { dryRun?: (text: stri
     return recordEmailedTickets({
       ev,
       reads: tickets,
+      sender: { name: sender.name, address: from, profileId: sender.profileId, role: sender.viewer.role },
+      reply: async (text) => (opts.dryRun ? opts.dryRun(text) : void (await sendEmail({ to, cc, threadId: ev.thread_id, text }))),
+      dryRun: !!opts.dryRun,
+    });
+  }
+
+  // A reply to the Sunday weekly email edits that week's pack (on the sheet-safe model), and is never answered as a question.
+  const weekEnding = await weeklyReplyTarget(ev);
+  if (weekEnding) {
+    const { to, cc } = replyRecipients(msg, hoot);
+    return handleWeeklyReply({
+      ev,
+      weekEnding,
       sender: { name: sender.name, address: from, profileId: sender.profileId, role: sender.viewer.role },
       reply: async (text) => (opts.dryRun ? opts.dryRun(text) : void (await sendEmail({ to, cc, threadId: ev.thread_id, text }))),
       dryRun: !!opts.dryRun,

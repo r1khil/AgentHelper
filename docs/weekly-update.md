@@ -40,7 +40,21 @@ The execs keep the semester's schedule in an Excel file in the app's Drive folde
 
 By default the email goes to Aadi (`apatil@`) with Saad (`squddus@`) in CC. **Admin → Weekly update → Email the pack to** overrides it (the `weekly_recipients` app setting): the first address goes in To, the rest in CC. Test accounts (`*.owlfund.local`) are never emailed, so a list holding only a test account pauses the email while the pack still builds. That is how it was paused on 2026-09-27, until the noon schedule shipped the same day.
 
-Replies reach Hoot's inbox and are answered like any question to Hoot. The older Resend inbound route for process-update replies (`/api/email/inbound`, `weekly_requests`) no longer receives anything now that the calendar supplies them.
+## Replies: edits by email
+
+A reply in the Sunday email's thread changes that week's pack. Aadi can write, for example, "drop Wholesale Trade, add ORCL on Tuesday, move IT Follow-Up to Thursday, AUM is 4,650.1". The flow (`src/lib/weekly/reply.ts`, called from Hoot's inbound email handler after trade tickets):
+
+- The reply is matched to the pack by the email's OpenMail message id, recorded in `sources.email.messageId` when it's sent. The subject is the fallback for emails sent before that.
+- Only execs and admins, signed in and passing the same theowlfund.com DKIM check as emailed trade tickets, can edit.
+- Hoot's model (Ling only, since the thread quotes PT sheet numbers) turns the reply into JSON edits: remove, add, move or rename an agenda item, or set a figure. Code checks each edit against the pack (`reply-edits.ts`), applies what fits, removes at most 3 items per section per email, and reports anything it couldn't do.
+- Hoot replies in the thread with what changed, what didn't, and the changed lines ready to paste. The pack is marked edited, so a rebuild keeps the changes.
+- A reply that asks for no change gets no answer. A question gets pointed to the app, because the general Q&A agent can fall back to other models.
+
+## Why they moved
+
+After ranking, the build pulls each top and worst performer's headlines for the week from Finnhub (the Friday before, through Friday). Hoot's model (Ling only) writes one neutral line per mover, citing a headline by number (`why.ts`). Code keeps only notes that cite one of that ticker's own headlines, and attaches that headline's link itself. A mover with no explaining headline is left out. The email labels the section as Hoot's read of the news, for context and not for the slide. If the step fails, the email goes out without it.
+
+The older Resend inbound route for process-update replies (`/api/email/inbound`, `weekly_requests`) no longer receives anything.
 
 ## Known limits
 

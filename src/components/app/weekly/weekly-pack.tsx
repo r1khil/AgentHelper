@@ -200,7 +200,9 @@ function Banner({ tone = "info", children }: { tone?: "info" | "caution"; childr
 function SummaryGrid(props: WeeklyPackProps) {
   const teamOf = (t: string) => props.teamByTicker[t.toUpperCase()];
   const why = props.performers?.source === "sheet" ? "Ranked from the PT sheet's % 1 Week" : "Ranked from the app's Monday and Friday closes";
+  const notes = props.performers?.why ?? [];
   return (
+    <>
     <div className="grid min-h-[520px] flex-1 grid-cols-1 gap-5 lg:grid-cols-2 lg:grid-rows-2">
       <PerformerPanel title="Best performers" section="Top 3 Performers" list={props.performers?.top ?? []} teamOf={teamOf} why={why} />
       <PerformerPanel title="Worst performers" section="Worst 3 Performers" list={props.performers?.worst ?? []} teamOf={teamOf} why={why} />
@@ -215,6 +217,21 @@ function SummaryGrid(props: WeeklyPackProps) {
       />
       <DayPanel title="Economic releases" aside="from the economic calendar" label={AGENDA_LABELS.marketNews} items={props.agenda.marketNews} from={props.agendaRange.from} />
     </div>
+    {notes.length > 0 && (
+      // Hoot wrote these from the week's headlines, so each one cites its headline in pink.
+      <PanelShell title="Why they moved" aside="Hoot's read of the news, not for the slide">
+        {notes.map((w) => (
+          <div key={w.ticker} className="flex items-baseline gap-4 border-b border-row px-4 py-2.5 text-[13.5px] last:border-0">
+            <span className="w-14 shrink-0 font-mono font-semibold">{w.ticker}</span>
+            <span className="min-w-0 flex-1">{w.text}</span>
+            <a href={w.url} target="_blank" rel="noreferrer" title={w.headline} className="shrink-0 rounded-full bg-hoot px-2 py-0.5 text-xs text-hoot-foreground hover:underline">
+              {w.source}
+            </a>
+          </div>
+        ))}
+      </PanelShell>
+    )}
+    </>
   );
 }
 

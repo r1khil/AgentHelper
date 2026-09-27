@@ -42,13 +42,24 @@ export type WeeklyPerformers = {
   readAt?: string;
   /** Plain-English notes for the Sunday email's Checks list (why the source was chosen, tickers the two disagree on). */
   checks?: string[];
+  /** Hoot's one-line read of why each mover moved, from that week's headlines; each note cites the headline it rests on. */
+  why?: MoverNote[];
 };
+
+export type MoverNote = { ticker: string; text: string; headline: string; source: string; url: string };
 
 /** Phase 2 placeholder: the YTD chart is still pasted into the deck by hand. */
 export type WeeklyChart = { note?: string };
 
 export type SourceStatus = "ok" | "failed" | "held";
-export type SourceEntry = { status: SourceStatus; at: string; error?: string; detail?: string };
+export type SourceEntry = {
+  status: SourceStatus;
+  at: string;
+  error?: string;
+  detail?: string;
+  /** The Sunday email's OpenMail message id, so a reply in its thread can be recognised as being about this pack. */
+  messageId?: string;
+};
 /** One entry per build step, so a partial pack says plainly which part did not come through. */
 export type WeeklySources = Record<string, SourceEntry>;
 
