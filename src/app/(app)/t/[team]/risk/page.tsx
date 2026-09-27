@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { EmptyState } from "@/components/app/empty-state";
-import { PageHeader } from "@/components/app/page-header";
 import { DataNoticesButton } from "@/components/app/attribution/data-quality-notice";
 import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { riskNotices } from "@/components/app/risk/notices";
 import { RiskView } from "@/components/app/risk/risk-view";
-import { StressSection, StressSectionFallback } from "@/components/app/risk/stress-section";
+import { StressPanelFallback, StressPanelSection, StressSection, StressSectionFallback } from "@/components/app/risk/stress-section";
 import { loadTeamSectors } from "@/lib/attribution/load";
 import { ETF_BY_SECTOR } from "@/lib/attribution/sectors";
 import { canManageTeam, isFundWide, transparencyEnabled } from "@/lib/auth";
@@ -36,8 +35,7 @@ export default async function TeamRiskPage({ params, searchParams }: PageProps<"
   if (loaded.state !== "ok" || !loaded.report.holdings.length) {
     return (
       <>
-        <PageHeader title="Risk" description={team.name} />
-        <EmptyState title={loaded.state === "no-prices" ? "Price history is still loading" : "No positions"}>
+        <EmptyState title={loaded.state === "no-prices" ? "Price history is still loading" : `No positions for ${team.name}`}>
           {loaded.state === "no-prices" ? "Closing prices load after each ledger change and every weeknight." : `The ledger shows no current positions for ${team.name}.`}
         </EmptyState>
       </>
@@ -50,11 +48,6 @@ export default async function TeamRiskPage({ params, searchParams }: PageProps<"
   );
   return (
     <>
-      <PageHeader
-        title="Risk"
-        description={`${team.name} holdings as their own portfolio (scaled to 100%, no cash) · ${LOOKBACKS[lookback].label} of daily returns`}
-        actions={<DataNoticesButton notices={notices} />}
-      />
       <PageContextPublisher value={{ kind: "risk", path: base, title: `${team.name} risk`, scope: "team", team: team.slug, lookback, asOf: report.asOf }} />
       <RiskView
         report={report}
@@ -67,6 +60,13 @@ export default async function TeamRiskPage({ params, searchParams }: PageProps<"
         scopeLabel={`${team.name} sleeve`}
         benchmarkLabel={sectors.length ? sectors.map((s) => ETF_BY_SECTOR[s]).join(" + ") : "team sectors"}
         showAll={one(query.all) === "1"}
+        context={`${team.name} holdings as their own portfolio (scaled to 100%, no cash) · ${LOOKBACKS[lookback].label} of daily returns`}
+        notices={<DataNoticesButton notices={notices} />}
+        stressPanel={
+          <Suspense fallback={<StressPanelFallback />}>
+            <StressPanelSection report={report} fundLabel={team.name} />
+          </Suspense>
+        }
         stress={
           <Suspense fallback={<StressSectionFallback />}>
             <StressSection

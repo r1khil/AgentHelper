@@ -28,3 +28,24 @@ export function Explained({ label, children, align = "left" }: { label: string; 
     </span>
   );
 }
+
+/**
+ * A label that is its own explainer: no icon, so headers stay as clean as the design, but hovering, focusing or
+ * tapping it opens the definition. A dotted underline appears on hover so it reads as explainable.
+ */
+export function Tip({ label, children, className, side = "top" }: { label: React.ReactNode; children: React.ReactNode; className?: string; side?: "top" | "bottom" }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={<span tabIndex={0} />}
+        className={cn(
+          "cursor-help rounded-sm underline decoration-transparent decoration-dotted underline-offset-[3px] outline-none hover:decoration-muted-foreground/60 focus-visible:decoration-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-ring",
+          className,
+        )}
+      >
+        {label}
+      </TooltipTrigger>
+      <TooltipContent side={side} className="block max-w-72 text-left leading-relaxed font-normal tracking-normal whitespace-normal normal-case">{children}</TooltipContent>
+    </Tooltip>
+  );
+}

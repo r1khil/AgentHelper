@@ -3,12 +3,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/app/empty-state";
-import { PageHeader } from "@/components/app/page-header";
 import { DataNoticesButton } from "@/components/app/attribution/data-quality-notice";
 import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { riskNotices } from "@/components/app/risk/notices";
 import { RiskView } from "@/components/app/risk/risk-view";
-import { StressSection, StressSectionFallback } from "@/components/app/risk/stress-section";
+import { StressPanelFallback, StressPanelSection, StressSection, StressSectionFallback } from "@/components/app/risk/stress-section";
 import { listAccessibleTeams, requireRole, transparencyEnabled } from "@/lib/auth";
 import { loadRisk } from "@/lib/risk/load";
 import { LOOKBACKS, parseLookback } from "@/lib/risk/model";
@@ -26,7 +25,6 @@ export default async function RiskPage({ searchParams }: PageProps<"/risk">) {
   if (loaded.state !== "ok") {
     return (
       <>
-        <PageHeader title="Fund risk" />
         <EmptyState
           title={loaded.state === "no-ledger" ? "No trades recorded" : "Price history is still loading"}
           action={loaded.state === "no-ledger" ? <Button nativeButton={false} size="sm" render={<Link href="/attribution/ledger" />}>Open ledger</Button> : undefined}
@@ -41,11 +39,6 @@ export default async function RiskPage({ searchParams }: PageProps<"/risk">) {
   const teams = new Map(teamList.map((t) => [t.id, { name: t.name, slug: t.slug }]));
   return (
     <>
-      <PageHeader
-        title="Fund risk"
-        description={`Today's positions · ${LOOKBACKS[lookback].label} of daily returns · vs S&P 500 and sector benchmark`}
-        actions={<DataNoticesButton notices={riskNotices(report.notices, { canEdit: true })} />}
-      />
       <PageContextPublisher value={{ kind: "risk", path: "/risk", title: "Fund risk", scope: "fund", lookback, asOf: report.asOf }} />
       <RiskView
         report={report}
@@ -58,6 +51,13 @@ export default async function RiskPage({ searchParams }: PageProps<"/risk">) {
         scopeLabel="NAV"
         benchmarkLabel="S&P 500 sectors"
         showAll={one(query.all) === "1"}
+        context={`Today's positions · ${LOOKBACKS[lookback].label} of daily returns · vs S&P 500 and sector benchmark`}
+        notices={<DataNoticesButton notices={riskNotices(report.notices, { canEdit: true })} />}
+        stressPanel={
+          <Suspense fallback={<StressPanelFallback />}>
+            <StressPanelSection report={report} fundLabel="Fund" />
+          </Suspense>
+        }
         stress={
           <Suspense fallback={<StressSectionFallback />}>
             <StressSection report={report} fundLabel="Fund" scopeLabel="NAV" benchmarkLabel="S&P 500 sectors" transparency={transparencyEnabled(user)} exportQuery="" />

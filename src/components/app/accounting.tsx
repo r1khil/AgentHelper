@@ -10,7 +10,7 @@ export function Accounting({ value, digits = 2, unit = "", tone = true, classNam
   const negative = text.startsWith("(");
   const color = !tone || value === null || value === undefined || text === "—" ? "" : negative ? "text-down" : Number(value.toFixed(digits)) > 0 ? "text-up" : "";
   return (
-    <span className={cn("tnum", color, className)}>
+    <span className={cn("font-mono tnum", color, className)}>
       {text}
       {!negative && text !== "—" && <span className="invisible" aria-hidden>)</span>}
     </span>

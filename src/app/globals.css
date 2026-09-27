@@ -6,8 +6,37 @@
 
 @theme inline {
     --font-heading: var(--font-sans);
-    --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+    --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+    --color-ink-2: var(--ink-2);
+    --color-row: var(--row);
+    --color-band: var(--band);
+    --color-band-2: var(--band-2);
+    --color-border-strong: var(--border-strong);
+    --color-rail: var(--rail);
+    --color-rail-2: var(--rail-2);
+    --color-rail-line: var(--rail-line);
+    --color-rail-foreground: var(--rail-foreground);
+    --color-rail-label: var(--rail-label);
+    --color-cream: var(--cream);
+    --color-cream-foreground: var(--cream-foreground);
+    --color-avatar: var(--avatar);
+    --color-hoot: var(--hoot);
+    --color-hoot-foreground: var(--hoot-foreground);
+    --color-hoot-panel: var(--hoot-panel);
+    --color-hoot-panel-ring: var(--hoot-panel-ring);
+    --color-caution: var(--caution);
+    --color-caution-foreground: var(--caution-foreground);
+    --color-good: var(--good);
+    --color-good-foreground: var(--good-foreground);
+    --color-good-tint: var(--good-tint);
+    --color-series-1: var(--series-1);
+    --color-series-2: var(--series-2);
+    --color-series-3: var(--series-3);
+    --color-series-neutral: var(--series-neutral);
+    --color-bench-bar: var(--bench-bar);
+    --color-up-on-rail: var(--up-on-rail);
+    --color-down-on-rail: var(--down-on-rail);
     --color-up: var(--up);
     --color-down: var(--down);
     --color-warning: var(--warning);
@@ -54,7 +83,169 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* The Owl's Nest palette: charcoal and cream from Hoot's feathers and face, pink from his cheeks. */
 :root {
+    --background: oklch(0.982 0.007 85);
+    --foreground: oklch(0.23 0.01 60);
+    --card: oklch(0.997 0.003 85);
+    --card-foreground: oklch(0.23 0.01 60);
+    --popover: oklch(0.997 0.003 85);
+    --popover-foreground: oklch(0.23 0.01 60);
+    --primary: oklch(0.25 0.01 60);
+    --primary-foreground: oklch(0.97 0.012 85);
+    --secondary: oklch(0.955 0.011 82);
+    --secondary-foreground: oklch(0.23 0.01 60);
+    --muted: oklch(0.955 0.011 82);
+    --muted-foreground: oklch(0.52 0.014 65);
+    --accent: oklch(0.965 0.01 82);
+    --accent-foreground: oklch(0.23 0.01 60);
+    --destructive: oklch(0.56 0.17 32);
+    --border: oklch(0.9 0.012 80);
+    --border-strong: oklch(0.85 0.014 78);
+    --input: oklch(0.9 0.012 80);
+    --ring: oklch(0.23 0.01 60 / 0.4);
+    --chart-1: oklch(0.5 0.1 245);
+    --chart-2: oklch(0.66 0.14 50);
+    --chart-3: oklch(0.62 0.012 70);
+    --chart-4: oklch(0.52 0.12 155);
+    --chart-5: oklch(0.44 0.013 62);
+    --radius: 0.625rem;
+    /* Secondary body text (company names), row dividers, the header band of a panel and its footer band. */
+    --ink-2: oklch(0.44 0.013 62);
+    --row: oklch(0.93 0.01 80);
+    --band: oklch(0.965 0.01 82);
+    --band-2: oklch(0.975 0.008 84);
+    /* The navigation rail and the dark scoreboard cards, with the cream of the active item. */
+    --rail: oklch(0.24 0.009 60);
+    --rail-2: oklch(0.32 0.01 60);
+    --rail-line: oklch(0.36 0.01 60);
+    --rail-foreground: oklch(0.72 0.012 75);
+    --rail-label: oklch(0.8 0.012 80);
+    --cream: oklch(0.95 0.015 85);
+    --cream-foreground: oklch(0.23 0.01 60);
+    --avatar: oklch(0.86 0.05 20);
+    /* Hoot's cheek pink marks anything Hoot found or wrote, and nothing else. */
+    --hoot: oklch(0.93 0.035 20);
+    --hoot-foreground: oklch(0.45 0.1 20);
+    --hoot-panel: oklch(0.97 0.018 30);
+    --hoot-panel-ring: oklch(0.9 0.03 25);
+    --caution: oklch(0.94 0.05 85);
+    --caution-foreground: oklch(0.46 0.1 70);
+    --good: oklch(0.93 0.05 155);
+    --good-foreground: oklch(0.4 0.1 155);
+    --good-tint: oklch(0.97 0.025 155);
+    /* Categorical series for multi-series charts: the fund or holding, a scenario or economic release, the index. */
+    --series-1: oklch(0.5 0.1 245);
+    --series-2: oklch(0.66 0.14 50);
+    --series-3: oklch(0.52 0.12 155);
+    --series-neutral: oklch(0.62 0.012 70);
+    --bench-bar: oklch(0.8 0.014 75);
+    --up: oklch(0.52 0.12 155);
+    --down: oklch(0.56 0.17 32);
+    --up-on-rail: oklch(0.8 0.13 155);
+    --down-on-rail: oklch(0.76 0.13 35);
+    --warning: oklch(0.8 0.13 80);
+    --warning-foreground: oklch(0.46 0.1 70);
+    /* Charcoal Hoot needs no light behind him on a light page. */
+    --hoot-halo: none;
+    /* Hoot's tour: the dim over the app, and the lit window over the part he's explaining. */
+    --tour-scrim: oklch(0.18 0.01 60 / 0.66);
+    --tour-lift: transparent;
+    --tour-halo: transparent;
+    --tour-ring: oklch(1 0 0 / 0.95);
+    --tour-glow: oklch(1 0 0 / 0.55);
+    /* Direction against consensus on the economic calendar: blue above, orange below, never good or bad. */
+    --above: oklch(0.5 0.1 245);
+    --below: oklch(0.55 0.13 45);
+    --sidebar: oklch(0.975 0.008 84);
+    --sidebar-foreground: oklch(0.23 0.01 60);
+    --sidebar-primary: oklch(0.25 0.01 60);
+    --sidebar-primary-foreground: oklch(0.97 0.012 85);
+    --sidebar-accent: oklch(0.955 0.011 82);
+    --sidebar-accent-foreground: oklch(0.23 0.01 60);
+    --sidebar-border: oklch(0.9 0.012 80);
+    --sidebar-ring: oklch(0.23 0.01 60 / 0.4);
+}
+
+.dark {
+    --background: oklch(0.2 0.008 60);
+    --foreground: oklch(0.94 0.012 85);
+    --card: oklch(0.24 0.009 60);
+    --card-foreground: oklch(0.94 0.012 85);
+    --popover: oklch(0.24 0.009 60);
+    --popover-foreground: oklch(0.94 0.012 85);
+    --primary: oklch(0.95 0.015 85);
+    --primary-foreground: oklch(0.23 0.01 60);
+    --secondary: oklch(0.29 0.01 60);
+    --secondary-foreground: oklch(0.94 0.012 85);
+    --muted: oklch(0.29 0.01 60);
+    --muted-foreground: oklch(0.7 0.012 75);
+    --accent: oklch(0.27 0.01 60);
+    --accent-foreground: oklch(0.94 0.012 85);
+    --destructive: oklch(0.74 0.14 35);
+    --border: oklch(0.31 0.01 60);
+    --border-strong: oklch(0.38 0.01 60);
+    --input: oklch(0.31 0.01 60);
+    --ring: oklch(0.94 0.012 85 / 0.4);
+    --chart-1: oklch(0.72 0.1 245);
+    --chart-2: oklch(0.72 0.13 50);
+    --chart-3: oklch(0.62 0.012 70);
+    --chart-4: oklch(0.78 0.13 155);
+    --chart-5: oklch(0.82 0.012 78);
+    --ink-2: oklch(0.82 0.012 78);
+    --row: oklch(0.28 0.009 60);
+    --band: oklch(0.27 0.01 60);
+    --band-2: oklch(0.26 0.009 60);
+    --rail: oklch(0.155 0.006 60);
+    --rail-2: oklch(0.24 0.009 60);
+    --rail-line: oklch(0.3 0.01 60);
+    --rail-foreground: oklch(0.72 0.012 75);
+    --rail-label: oklch(0.8 0.012 80);
+    --cream: oklch(0.95 0.015 85);
+    --cream-foreground: oklch(0.23 0.01 60);
+    --avatar: oklch(0.86 0.05 20);
+    --hoot: oklch(0.34 0.05 20);
+    --hoot-foreground: oklch(0.85 0.07 20);
+    --hoot-panel: oklch(0.26 0.02 25);
+    --hoot-panel-ring: oklch(0.36 0.04 22);
+    --caution: oklch(0.33 0.05 80);
+    --caution-foreground: oklch(0.85 0.1 80);
+    --good: oklch(0.32 0.05 155);
+    --good-foreground: oklch(0.83 0.1 155);
+    --good-tint: oklch(0.26 0.025 155);
+    --series-1: oklch(0.72 0.1 245);
+    --series-2: oklch(0.72 0.13 50);
+    --series-3: oklch(0.78 0.13 155);
+    --series-neutral: oklch(0.62 0.012 70);
+    --bench-bar: oklch(0.45 0.01 60);
+    --up: oklch(0.78 0.13 155);
+    --down: oklch(0.74 0.14 35);
+    --up-on-rail: oklch(0.8 0.13 155);
+    --down-on-rail: oklch(0.76 0.13 35);
+    --warning: oklch(0.8 0.12 80);
+    --warning-foreground: oklch(0.85 0.1 80);
+    /* Hoot is charcoal: a soft light behind every sprite keeps him visible on a dark page. */
+    --hoot-halo: radial-gradient(circle at 50% 55%, oklch(1 0 0 / 0.14), transparent 68%);
+    /* A plain dim barely shows on a dark page, so dim harder and lift the window a little. */
+    --tour-scrim: oklch(0 0 0 / 0.74);
+    --tour-lift: oklch(1 0 0 / 0.045);
+    --tour-halo: oklch(1 0 0 / 0.1);
+    --tour-ring: oklch(1 0 0 / 0.6);
+    --tour-glow: oklch(1 0 0 / 0.3);
+    --above: oklch(0.75 0.1 245);
+    --below: oklch(0.76 0.12 45);
+    --sidebar: oklch(0.155 0.006 60);
+    --sidebar-foreground: oklch(0.94 0.012 85);
+    --sidebar-primary: oklch(0.95 0.015 85);
+    --sidebar-primary-foreground: oklch(0.23 0.01 60);
+    --sidebar-accent: oklch(0.24 0.009 60);
+    --sidebar-accent-foreground: oklch(0.94 0.012 85);
+    --sidebar-border: oklch(0.31 0.01 60);
+    --sidebar-ring: oklch(0.94 0.012 85 / 0.4);
+}
+
+/* The classic Backtesting layout (profile preference) keeps the previous look: neutral grays and Inter. */
+.theme-classic {
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);
@@ -106,7 +297,7 @@
     --sidebar-ring: oklch(0.708 0 0);
 }
 
-.dark {
+.dark .theme-classic {
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.205 0 0);
@@ -155,6 +346,7 @@
     --above: #8fbcf2;
     --below: #f0a47f;
 }
+.theme-classic { font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif; background: var(--background); color: var(--foreground); }
 
 @layer base {
   * {
@@ -169,8 +361,16 @@
 }
 @layer utilities {
   .tnum { font-variant-numeric: tabular-nums; }
-  /* A page that renders a full-height workspace (the research board) opts out of the centered column. */
-  .app-container:has(> [data-full-bleed]) { max-width: none; padding: 0; }
+  /* A page that renders a full-height workspace (the research board) opts out of the page padding. */
+  .app-container:has(> [data-full-bleed]) { padding: 0; }
+  /* A panel: card background, a 1px ring instead of a border, no drop shadow. */
+  .panel { background: var(--card); border-radius: 14px; box-shadow: 0 0 0 1px var(--border); }
+  /* Small uppercase mono labels, e.g. MON 28 SEP. */
+  .label-mono { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+  /* Big figures in mono. */
+  .figure { font-family: var(--font-mono); font-weight: 500; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  /* Hoot is charcoal; on dark pages every sprite gets a soft light behind him. */
+  .hoot-halo { background: var(--hoot-halo); border-radius: 9999px; }
 }
 
 /* Fade the new range without morphing financial observations between prices. */

@@ -29,6 +29,8 @@ export const EXPLAIN = {
   teamBenchmark: "Return of the S&P 500 sectors assigned to this team, weighted as they are in the index and using the sector ETFs.",
   teamSelection: "Stock picking: how the team's holdings did against their sector ETFs. Includes the interaction effect.",
   teamAllocation: "How the team spread its capital across its sectors compared with the index. Zero for a team with a single sector.",
+  teamActive: "Team return minus the sector benchmark's return. Both include dividends. Positive means the team's holdings beat the S&P 500 sectors they cover.",
+  teamWeight: "Average share of the Fund held in this team's holdings over the period, measured at the start of each day.",
   fundContribution: "Points of the whole Fund's return that came from this team's holdings.",
 
   // Transparency mode: the per-day working behind a sector row.

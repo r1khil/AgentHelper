@@ -1,94 +1,51 @@
 "use client";
 
-import { useState } from "react";
-import { Mail, Send, Undo2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { useRef, useState } from "react";
+import { DateTime } from "luxon";
+import { Copy, Ellipsis, Mail, RefreshCw, Send, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { SectionTitle } from "@/components/app/page-header";
+import { CountChip, Panel, PanelFooter, PanelHeader, Pill, StatStrip, type StatCell } from "@/components/app/panel";
+import { Move } from "@/components/app/move";
+import { HootMoodFor } from "@/components/app/hoot/presence";
 import { CopyButton } from "./copy-button";
 import { buildWeeklyNow, fillWeeklyFromSheet, markWeeklySent, reopenWeekly, saveWeeklyField, saveWeeklyFigures, sendWeeklyEmailNow } from "@/lib/actions/weekly";
-import { agendaLine, fmtAumK, fmtDeckPct, itemsToLines, packText, performerLine } from "@/lib/weekly/format";
+import { WEEKDAYS, agendaLine, fmtAumK, fmtDeckPct, itemsToLines, packText, performerLine } from "@/lib/weekly/format";
 import { carriedFigureKeys, deriveRelative, parseFigureInput } from "@/lib/weekly/figures";
-import { AGENDA_LABELS, AGENDA_SECTIONS, type AgendaItem, type SourceEntry, type WeeklyAgenda, type WeeklyFigures, type WeeklyPerformers, type WeeklySources } from "@/lib/weekly/types";
+import { AGENDA_LABELS, AGENDA_SECTIONS, type AgendaItem, type Performer, type WeeklyFigures } from "@/lib/weekly/types";
 import { packTitle, weekRangeLabel } from "@/lib/weekly/weeks";
 import { fmtDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import type { EmailView, WeeklyPackProps } from "./types";
+import { whenBuilt } from "./when";
 
-/** The Sunday email as it would go out now, and what happened to it. */
-export type EmailView = {
-  to: string | null;
-  cc: string[];
-  /** Test accounts on the list, which are never emailed. */
-  skipped: string[];
-  subject: string;
-  text: string;
-  record: SourceEntry | null;
-};
+export type { EmailView, WeeklyPackProps } from "./types";
 
-export type WeeklyPackProps = {
-  weekEnding: string;
-  agendaRange: { from: string; to: string };
-  status: "draft" | "sent";
-  figures: WeeklyFigures;
-  performers: WeeklyPerformers | null;
-  agenda: WeeklyAgenda;
-  lastWeekAgenda: WeeklyAgenda;
-  sources: WeeklySources;
-  email: EmailView | null;
-  builtAt: string | null;
-  editedAt: string | null;
-  sentAt: string | null;
-};
+const NY = "America/New_York";
+const TABS = ["summary", "email", "highlights", "agenda", "checks"] as const;
+type Tab = (typeof TABS)[number];
+const TAB_LABELS: Record<Tab, string> = { summary: "Summary", email: "Email", highlights: "Highlights", agenda: "Agenda", checks: "Checks" };
 
-function Notice({ tone, children }: { tone: "ok" | "warn" | "info"; children: React.ReactNode }) {
-  const cls =
-    tone === "ok"
-      ? "border-up/30 bg-up/5"
-      : tone === "warn"
-        ? "border-destructive/30 bg-destructive/5 text-destructive"
-        : "bg-muted/40 text-muted-foreground";
-  return <div className={`mb-4 rounded-md border px-3 py-2 text-sm ${cls}`}>{children}</div>;
-}
-
-function Line({ text }: { text: string }) {
-  return (
-    <div className="flex items-start justify-between gap-2 border-t py-1.5 first:border-t-0">
-      <span className="min-w-0 text-sm break-words">{text}</span>
-      <CopyButton text={text} label="Copy" />
-    </div>
-  );
-}
-
-function PerformerList({ title, list, section }: { title: string; list: { ticker: string; name: string; pct: number }[]; section: string }) {
-  const lines = list.map(performerLine);
-  return (
-    <Card className="p-4">
-      <SectionTitle aside={lines.length ? <CopyButton text={`${section}\n${lines.join("\n")}`} label="Copy section" /> : "no closes yet"}>{title}</SectionTitle>
-      {lines.length ? lines.map((l) => <Line key={l} text={l} />) : <p className="text-sm text-muted-foreground">Nothing to rank yet. Friday&apos;s closes arrive with the price history job.</p>}
-    </Card>
-  );
-}
+const pct = (n: number | null, digits = 2) => (n === null ? "—" : `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n * 100).toFixed(digits)}%`);
 
 export function WeeklyPack(props: WeeklyPackProps) {
   const sent = props.status === "sent";
+  const [tab, setTab] = useState<Tab>("summary");
   const [aumK, setAumK] = useState(props.figures.aumK.value === null ? "" : String(props.figures.aumK.value));
   const [ytdPct, setYtdPct] = useState(props.figures.ytdPct.value === null ? "" : String(props.figures.ytdPct.value));
   const [benchmarkYtdPct, setBenchmarkYtdPct] = useState(props.figures.benchmarkYtdPct.value === null ? "" : String(props.figures.benchmarkYtdPct.value));
+  const markRef = useRef<HTMLFormElement>(null);
+  const meRef = useRef<HTMLFormElement>(null);
 
   const num = (raw: string) => {
     const v = parseFigureInput(raw);
     return v === undefined ? null : v;
   };
   const relative = deriveRelative(num(ytdPct), num(benchmarkYtdPct));
-  const carried = carriedFigureKeys(props.figures);
-  const sheetAsOf = [props.figures.aumK, props.figures.ytdPct, props.figures.benchmarkYtdPct].find((f) => f.source === "sheet")?.asOf;
-  const figureNote = (f: WeeklyFigures[keyof WeeklyFigures]) =>
-    f.source === "sheet" ? `From the PT sheet${f.ref ? `, cell ${f.ref}` : ""}` : f.source === "carried" ? "Carried from last week" : f.value === null ? "" : "Typed by an exec";
   const highlights = [`AUM: ${fmtAumK(num(aumK))}`, `YTD Return: ${fmtDeckPct(num(ytdPct))}`, `YTD Relative Return (vs SPXTR): ${fmtDeckPct(relative)}`];
-
   const whole = packText({
     weekEnding: props.weekEnding,
     figures: {
@@ -101,195 +58,457 @@ export function WeeklyPack(props: WeeklyPackProps) {
     lastWeekAgenda: props.lastWeekAgenda,
   });
 
-  // The email's own record shows on its card.
+  const email = props.email;
+  const name = (addr: string) => email?.names[addr.toLowerCase()] ?? addr;
+  const sentBefore = email?.record?.status === "ok";
+  const agendaCount = props.agenda.earnings.length + props.agenda.marketNews.length + props.agenda.processUpdates.length;
+  const title = DateTime.fromISO(props.weekEnding, { zone: NY }).toFormat("cccc, MMMM d");
+  const meta = [
+    props.builtAt ? `Built ${whenBuilt(props.builtAt, props.weekEnding)}` : "Not built yet",
+    props.editedAt ? `edited ${fmtDateTime(props.editedAt)}` : null,
+    email?.to ? `to ${name(email.to)}${email.cc.length ? `, ${email.cc.map(name).join(", ")} in CC` : ""}` : email ? "email paused" : null,
+    `${agendaCount} agenda ${agendaCount === 1 ? "item" : "items"}`,
+  ].filter(Boolean);
+
+  // The email's own record shows on the Email tab.
   const failedSteps = Object.entries(props.sources).filter(([step, v]) => v.status === "failed" && step !== "email");
+  const carried = carriedFigureKeys(props.figures);
   const missing = props.performers?.missing ?? [];
+  const checks = props.performers?.checks ?? [];
+  const checkCount = checks.length + (missing.length ? 1 : 0) + (carried.length ? 1 : 0) + failedSteps.length;
+
+  const { fund, spx, movementsOpened } = props.stats;
+  const diffBp = fund !== null && spx !== null ? Math.round((fund - spx) * 10_000) : null;
+  const cells: StatCell[] = [
+    { label: "Fund, week", value: pct(fund), tone: fund === null ? null : fund > 0 ? "up" : fund < 0 ? "down" : null },
+    { label: "S&P 500, week", value: pct(spx) },
+    { label: "Difference", value: diffBp === null ? "—" : `${diffBp > 0 ? "+" : diffBp < 0 ? "−" : ""}${Math.abs(diffBp)} bp`, tone: diffBp === null ? null : diffBp > 0 ? "up" : diffBp < 0 ? "down" : null },
+    { label: "Movements opened", value: movementsOpened ?? "—" },
+  ];
 
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight">{packTitle(props.weekEnding)}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Agenda covers {weekRangeLabel(props.agendaRange.from, props.agendaRange.to)}.
-            {props.builtAt ? ` Built ${fmtDateTime(props.builtAt)}.` : " Not built yet."}
-            {props.editedAt ? ` Edited ${fmtDateTime(props.editedAt)}.` : ""}
-          </p>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-5">
+      {props.builtAt && !sent && <HootMoodFor mood="happy" />}
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[19px] font-semibold tracking-[-0.015em]" title={packTitle(props.weekEnding)}>
+            Week ending {title}
+          </h2>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">{meta.join(" · ")}</p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Badge variant={sent ? "secondary" : "outline"}>{sent ? `Sent${props.sentAt ? ` ${fmtDateTime(props.sentAt)}` : ""}` : "Draft"}</Badge>
-          <CopyButton text={whole} label="Copy whole pack" variant="outline" />
-          <form action={buildWeeklyNow}>
+        <form action={buildWeeklyNow}>
+          <input type="hidden" name="week" value={props.weekEnding} />
+          <Button type="submit" size="lg" variant="outline">
+            <RefreshCw data-icon="inline-start" />
+            Rebuild
+          </Button>
+        </form>
+        {email && (
+          <form action={sendWeeklyEmailNow}>
             <input type="hidden" name="week" value={props.weekEnding} />
-            <Button type="submit" size="sm" variant="outline">Rebuild</Button>
-          </form>
-          <form action={sent ? reopenWeekly : markWeeklySent}>
-            <input type="hidden" name="week" value={props.weekEnding} />
-            <Button type="submit" size="sm" variant={sent ? "outline" : "default"}>
-              {sent ? <Undo2 data-icon="inline-start" /> : <Send data-icon="inline-start" />}
-              {sent ? "Reopen" : "Mark sent"}
+            <input type="hidden" name="mode" value="list" />
+            <Button type="submit" size="lg" variant={sentBefore ? "outline" : "default"} disabled={!email.to}>
+              <Send data-icon="inline-start" />
+              {sentBefore ? "Send again" : email.to ? `Send to ${name(email.to)}` : "Send now"}
             </Button>
           </form>
-        </div>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button size="icon-lg" variant="outline" aria-label="More pack actions" />}>
+            <Ellipsis />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem onClick={() => void navigator.clipboard?.writeText(whole).catch(() => {})}>
+              <Copy />
+              Copy whole pack
+            </DropdownMenuItem>
+            {email && (
+              <DropdownMenuItem onClick={() => meRef.current?.requestSubmit()}>
+                <Mail />
+                Send a copy to me
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => markRef.current?.requestSubmit()}>
+              {sent ? <Undo2 /> : <Send />}
+              {sent ? "Reopen as a draft" : "Mark sent"}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <form ref={markRef} action={sent ? reopenWeekly : markWeeklySent} hidden>
+          <input type="hidden" name="week" value={props.weekEnding} />
+        </form>
+        <form ref={meRef} action={sendWeeklyEmailNow} hidden>
+          <input type="hidden" name="week" value={props.weekEnding} />
+          <input type="hidden" name="mode" value="me" />
+        </form>
       </div>
 
-      {sent && <Notice tone="info">This pack is marked sent. The Sunday job leaves it alone; reopen it to make changes.</Notice>}
-      {carried.length > 0 && <Notice tone="info">{carried.join(", ")} {carried.length === 1 ? "is" : "are"} carried from last week. Check the numbers and save to confirm them.</Notice>}
-      {missing.length > 0 && <Notice tone="info">No Monday and Friday closes for {missing.join(", ")}; they are left out of the rankings.</Notice>}
-      {props.performers?.checks?.map((c) => (
-        <Notice key={c} tone="info">
-          {c}
-        </Notice>
-      ))}
+      {sent && <Banner>This pack is marked sent{props.sentAt ? ` (${fmtDateTime(props.sentAt)})` : ""}. The Sunday job leaves it alone; reopen it from ⋯ to make changes.</Banner>}
       {failedSteps.length > 0 && (
-        <Notice tone="warn">
+        <Banner tone="caution">
           Could not build: {failedSteps.map(([step, v]) => `${step} (${v.error ?? "unknown error"})`).join("; ")}. Everything else on this page is current.
-        </Notice>
+        </Banner>
       )}
 
-      {props.email && <EmailCard week={props.weekEnding} email={props.email} />}
+      <StatStrip cells={cells} />
 
-      <Card className="p-4">
-        <SectionTitle aside={<CopyButton text={`Portfolio Highlights\n${highlights.join("\n")}`} label="Copy section" />}>Portfolio Highlights</SectionTitle>
-        <form action={saveWeeklyFigures} className="grid gap-3">
-          <input type="hidden" name="week" value={props.weekEnding} />
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="aumK">AUM ($k)</Label>
-              <Input id="aumK" name="aumK" value={aumK} onChange={(e) => setAumK(e.target.value)} placeholder="4646.9" inputMode="decimal" disabled={sent} />
-              <span className="text-xs text-muted-foreground">{figureNote(props.figures.aumK)}</span>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="ytdPct">YTD return (%)</Label>
-              <Input id="ytdPct" name="ytdPct" value={ytdPct} onChange={(e) => setYtdPct(e.target.value)} placeholder="6.8" inputMode="decimal" disabled={sent} />
-              <span className="text-xs text-muted-foreground">{figureNote(props.figures.ytdPct)}</span>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="benchmarkYtdPct">SPXTR YTD (%)</Label>
-              <Input id="benchmarkYtdPct" name="benchmarkYtdPct" value={benchmarkYtdPct} onChange={(e) => setBenchmarkYtdPct(e.target.value)} placeholder="12.5" inputMode="decimal" disabled={sent} />
-              <span className="text-xs text-muted-foreground">{figureNote(props.figures.benchmarkYtdPct)}</span>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            The app reads these from the price target sheet&apos;s 2025 Time-Weighted Returns tab when it builds the pack
-            {sheetAsOf ? ` (sheet last edited ${fmtDateTime(sheetAsOf)})` : ""}; the benchmark is the cell the sheet labels &ldquo;SPX YTD Performance&rdquo;. Anything you type and save wins over the sheet. Relative return is YTD less the benchmark.
-          </p>
-          {!sent && (
-            <div className="flex flex-wrap gap-2">
-              <Button type="submit" size="sm" variant="outline">Save highlights</Button>
-              <Button type="submit" size="sm" variant="ghost" formAction={fillWeeklyFromSheet}>
-                Refresh from PT sheet
-              </Button>
-            </div>
-          )}
-        </form>
-        <div className="mt-3 border-t pt-2">
-          {highlights.map((l) => (
-            <Line key={l} text={l} />
-          ))}
-        </div>
-      </Card>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <PerformerList title="Top 3 Performers" list={props.performers?.top ?? []} section="Top 3 Performers" />
-        <PerformerList title="Worst 3 Performers" list={props.performers?.worst ?? []} section="Worst 3 Performers" />
-      </div>
-
-      {props.performers?.why?.length ? (
-        <Card className="p-4">
-          <SectionTitle aside="Hoot's read of the news, not for the slide">Why they moved</SectionTitle>
-          <ul className="grid gap-1.5 text-sm">
-            {props.performers.why.map((w) => (
-              <li key={w.ticker}>
-                <span className="font-medium">{w.ticker}</span>: {w.text}{" "}
-                <a className="text-muted-foreground underline" href={w.url} target="_blank" rel="noreferrer" title={w.headline}>
-                  {w.source}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      ) : null}
-
-      <Card className="p-4">
-        <SectionTitle aside={<CopyButton text={AGENDA_SECTIONS.map((s) => agendaLine(AGENDA_LABELS[s], props.lastWeekAgenda[s])).join("\n")} label="Copy section" />}>
-          Last Week&apos;s Agenda
-        </SectionTitle>
-        <p className="mb-2 text-xs text-muted-foreground">A snapshot of the previous pack&apos;s agenda. Rebuilding refreshes it; you cannot edit it here.</p>
-        {AGENDA_SECTIONS.map((s) => (
-          <Line key={s} text={agendaLine(AGENDA_LABELS[s], props.lastWeekAgenda[s])} />
+      <nav aria-label="Pack sections" className="-mt-1 flex shrink-0 gap-5 border-b">
+        {TABS.map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            aria-current={tab === t ? "page" : undefined}
+            className={cn(
+              "flex h-9 items-center gap-1.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+              tab === t ? "font-semibold text-foreground shadow-[inset_0_-2px_0_var(--foreground)]" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {TAB_LABELS[t]}
+            {t === "checks" && checkCount > 0 && <CountChip>{checkCount}</CountChip>}
+            {t === "agenda" && <CountChip>{agendaCount}</CountChip>}
+          </button>
         ))}
-      </Card>
+      </nav>
 
-      <Card className="p-4">
-        <SectionTitle aside={<CopyButton text={AGENDA_SECTIONS.map((s) => agendaLine(AGENDA_LABELS[s], props.agenda[s])).join("\n")} label="Copy section" />}>
-          This Week&apos;s Agenda
-        </SectionTitle>
-        <div className="grid gap-4">
-          {AGENDA_SECTIONS.map((section) => (
-            <AgendaEditor key={section} week={props.weekEnding} section={section} items={props.agenda[section]} disabled={sent} />
-          ))}
-        </div>
-      </Card>
-
-      <Card className="p-4">
-        <SectionTitle>YTD Performance chart</SectionTitle>
-        <p className="text-sm text-muted-foreground">
-          Still pasted by hand from the price target sheet (OF vs SPXTR, SVX, SGX). The daily history behind it isn&apos;t in the sheet tabs the app reads, so this chart stays manual.
-        </p>
-      </Card>
-
+      {tab === "summary" && <SummaryGrid {...props} />}
+      {tab === "email" && (email ? <EmailPanel week={props.weekEnding} email={email} name={name} /> : <Banner>The email can be written once the pack is built.</Banner>)}
+      {tab === "highlights" && (
+        <HighlightsPanel
+          week={props.weekEnding}
+          figures={props.figures}
+          sent={sent}
+          carried={carried}
+          values={{ aumK, ytdPct, benchmarkYtdPct }}
+          setters={{ setAumK, setYtdPct, setBenchmarkYtdPct }}
+          highlights={highlights}
+        />
+      )}
+      {tab === "agenda" && <AgendaPanels {...props} sent={sent} />}
+      {tab === "checks" && <ChecksPanel {...props} checks={checks} missing={missing} carried={carried} />}
     </div>
   );
 }
+
+function Banner({ tone = "info", children }: { tone?: "info" | "caution"; children: React.ReactNode }) {
+  return <div className={cn("shrink-0 rounded-[10px] px-3.5 py-2 text-[13px]", tone === "caution" ? "bg-caution text-caution-foreground" : "bg-band text-ink-2")}>{children}</div>;
+}
+
+/* ---------- Summary: the 2×2 grid ---------- */
+
+function SummaryGrid(props: WeeklyPackProps) {
+  const teamOf = (t: string) => props.teamByTicker[t.toUpperCase()];
+  const why = props.performers?.source === "sheet" ? "Ranked from the PT sheet's % 1 Week" : "Ranked from the app's Monday and Friday closes";
+  const notes = props.performers?.why ?? [];
+  return (
+    <>
+    <div className="grid min-h-[520px] flex-1 grid-cols-1 gap-5 lg:grid-cols-2 lg:grid-rows-2">
+      <PerformerPanel title="Best performers" section="Top 3 Performers" list={props.performers?.top ?? []} teamOf={teamOf} why={why} />
+      <PerformerPanel title="Worst performers" section="Worst 3 Performers" list={props.performers?.worst ?? []} teamOf={teamOf} why={why} />
+      <DayPanel
+        title="Next week's earnings"
+        aside="holdings, bellwethers, largest reporters"
+        label={AGENDA_LABELS.earnings}
+        items={props.agenda.earnings}
+        from={props.agendaRange.from}
+        note={(t) => props.teamByTicker[t.toUpperCase()] ?? props.bellwetherByTicker[t.toUpperCase()]}
+        mono
+      />
+      <DayPanel title="Economic releases" aside="from the economic calendar" label={AGENDA_LABELS.marketNews} items={props.agenda.marketNews} from={props.agendaRange.from} />
+    </div>
+    {notes.length > 0 && (
+      // Hoot wrote these from the week's headlines, so each one cites its headline in pink.
+      <PanelShell title="Why they moved" aside="Hoot's read of the news, not for the slide">
+        {notes.map((w) => (
+          <div key={w.ticker} className="flex items-baseline gap-4 border-b border-row px-4 py-2.5 text-[13.5px] last:border-0">
+            <span className="w-14 shrink-0 font-mono font-semibold">{w.ticker}</span>
+            <span className="min-w-0 flex-1">{w.text}</span>
+            <a href={w.url} target="_blank" rel="noreferrer" title={w.headline} className="shrink-0 rounded-full bg-hoot px-2 py-0.5 text-xs text-hoot-foreground hover:underline">
+              {w.source}
+            </a>
+          </div>
+        ))}
+      </PanelShell>
+    )}
+    </>
+  );
+}
+
+function PanelShell({ title, aside, copy, children }: { title: string; aside: React.ReactNode; copy?: string; children: React.ReactNode }) {
+  return (
+    <Panel className="min-h-0">
+      <PanelHeader
+        title={title}
+        className="h-[42px]"
+        aside={
+          <>
+            <span className="text-xs">{aside}</span>
+            {copy && <CopyIcon text={copy} label={`Copy ${title}`} />}
+          </>
+        }
+      />
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
+    </Panel>
+  );
+}
+
+function CopyIcon({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      type="button"
+      size="icon-xs"
+      variant="ghost"
+      aria-label={copied ? "Copied" : label}
+      title={copied ? "Copied" : label}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1200);
+        } catch {
+          /* clipboard unavailable */
+        }
+      }}
+    >
+      <Copy />
+    </Button>
+  );
+}
+
+function Row({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn("flex min-h-10 flex-1 items-center gap-2.5 border-b border-row px-4 text-[13.5px] last:border-b-0", className)}>{children}</div>;
+}
+
+function PerformerPanel({ title, section, list, teamOf, why }: { title: string; section: string; list: Performer[]; teamOf: (t: string) => string | undefined; why: string }) {
+  const lines = list.map(performerLine);
+  return (
+    <PanelShell title={title} aside={<span title={why}>week, price return</span>} copy={lines.length ? `${section}\n${lines.join("\n")}` : undefined}>
+      {list.length ? (
+        list.map((p) => (
+          <Row key={p.ticker}>
+            <span className="w-[84px] shrink-0 font-mono text-[12.5px] font-semibold">{p.ticker}</span>
+            <span className="min-w-0 flex-1 truncate" title={performerLine(p)}>
+              {p.name}
+              {teamOf(p.ticker) && <span className="text-ink-2"> · {teamOf(p.ticker)}</span>}
+            </span>
+            <Move value={p.pct} unit="%" className="text-[12.5px]" />
+          </Row>
+        ))
+      ) : (
+        <p className="p-4 text-[13px] text-muted-foreground">Nothing to rank yet. Friday&apos;s closes arrive with the price history job.</p>
+      )}
+    </PanelShell>
+  );
+}
+
+/** One row per weekday of the agenda week (Monday first), so an empty day reads as empty rather than missing. */
+function DayPanel({ title, aside, label, items, from, note, mono }: { title: string; aside: string; label: string; items: AgendaItem[]; from: string; note?: (text: string) => string | undefined; mono?: boolean }) {
+  const monday = DateTime.fromISO(from, { zone: NY });
+  const days: { key: string; stamp: string; items: AgendaItem[] }[] = WEEKDAYS.slice(0, 5).map((day, i) => ({ key: day as string, stamp: monday.plus({ days: i }).toFormat("ccc d LLL").toUpperCase(), items: items.filter((it) => it.day === day) }));
+  const other = items.filter((it) => !it.day || !WEEKDAYS.slice(0, 5).includes(it.day as (typeof WEEKDAYS)[number]));
+  if (other.length) days.push({ key: "other", stamp: "NO DAY", items: other });
+  return (
+    <PanelShell title={title} aside={aside} copy={agendaLine(label, items)}>
+      {days.map((d) => (
+        <Row key={d.key} className="items-center py-2">
+          <span className="w-[92px] shrink-0 font-mono text-[12.5px] font-semibold">{d.stamp}</span>
+          <span className="min-w-0 flex-1 leading-relaxed">
+            {d.items.length === 0 ? (
+              <span className="text-muted-foreground">Nothing scheduled</span>
+            ) : (
+              d.items.map((it, i) => {
+                const n = note?.(it.text);
+                return (
+                  <span key={`${it.text}-${i}`}>
+                    {i > 0 && <span className="text-muted-foreground">{mono ? ", " : " · "}</span>}
+                    <span className={cn(mono && "font-mono text-[12.5px] font-medium")}>{it.text}</span>
+                    {n && <span className="text-ink-2"> {n}</span>}
+                  </span>
+                );
+              })
+            )}
+          </span>
+        </Row>
+      ))}
+    </PanelShell>
+  );
+}
+
+/* ---------- Email ---------- */
 
 function emailStatus(email: EmailView): { text: string; tone: "ok" | "warn" | "info" } {
   const r = email.record;
   if (r?.status === "ok") return { text: `Sent ${fmtDateTime(r.at)} ${r.detail ?? ""}`.trim(), tone: "ok" };
   if (r?.status === "failed") return { text: `Last send failed ${fmtDateTime(r.at)}: ${r.error ?? "unknown error"}`, tone: "warn" };
   if (!email.to) return { text: `Paused: only test accounts are on the list (${email.skipped.join(", ")}). Change it on the Admin page.`, tone: "info" };
-  return { text: "Not sent yet. It goes out with the Sunday build.", tone: "info" };
+  return { text: "Not sent yet. It goes out with the Sunday build at 12:00 New York time.", tone: "info" };
 }
 
-function EmailCard({ week, email }: { week: string; email: EmailView }) {
+function EmailPanel({ week, email, name }: { week: string; email: EmailView; name: (a: string) => string }) {
   const status = emailStatus(email);
   const sentBefore = email.record?.status === "ok";
   return (
-    <Card className="p-4">
-      <SectionTitle aside={<CopyButton text={email.text} label="Copy email" />}>Sunday email</SectionTitle>
-      <p className="text-sm text-muted-foreground">
-        Hoot emails this pack, every data point in the deck&apos;s order, so the deck can be put together by pasting.{" "}
-        {email.to ? (
-          <>
-            To {email.to}
-            {email.cc.length ? `, CC ${email.cc.join(", ")}` : ""}.
-          </>
-        ) : null}
-      </p>
-      <div className={`mt-2 text-sm ${status.tone === "warn" ? "text-destructive" : status.tone === "ok" ? "" : "text-muted-foreground"}`}>{status.text}</div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <form action={sendWeeklyEmailNow}>
-          <input type="hidden" name="week" value={week} />
-          <input type="hidden" name="mode" value="list" />
-          <Button type="submit" size="sm" variant={sentBefore ? "outline" : "default"} disabled={!email.to}>
-            <Send data-icon="inline-start" />
-            {sentBefore ? "Send again" : "Send now"}
-          </Button>
-        </form>
-        <form action={sendWeeklyEmailNow}>
-          <input type="hidden" name="week" value={week} />
-          <input type="hidden" name="mode" value="me" />
-          <Button type="submit" size="sm" variant="ghost">
-            <Mail data-icon="inline-start" />
-            Send a copy to me
-          </Button>
-        </form>
+    <Panel className="min-h-[420px] flex-1">
+      <PanelHeader title="Sunday email" aside={<CopyButton text={email.text} label="Copy email" />} />
+      <div className="grid gap-3 border-b border-row px-4 py-3 text-[13.5px]">
+        <p className="text-ink-2">
+          Hoot emails this pack, every data point in the deck&apos;s order, so the deck can be put together by pasting.{" "}
+          {email.to ? (
+            <>
+              To {name(email.to)} ({email.to}){email.cc.length ? `, CC ${email.cc.map((c) => `${name(c)} (${c})`).join(", ")}` : ""}.
+            </>
+          ) : null}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Pill tone={status.tone === "ok" ? "good" : status.tone === "warn" ? "caution" : "neutral"}>{status.tone === "ok" ? "Sent" : status.tone === "warn" ? "Failed" : email.to ? "Not sent" : "Paused"}</Pill>
+          <span className="text-[13px] text-muted-foreground">{status.text}</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <form action={sendWeeklyEmailNow}>
+            <input type="hidden" name="week" value={week} />
+            <input type="hidden" name="mode" value="list" />
+            <Button type="submit" variant={sentBefore ? "outline" : "default"} disabled={!email.to}>
+              <Send data-icon="inline-start" />
+              {sentBefore ? "Send again" : "Send now"}
+            </Button>
+          </form>
+          <form action={sendWeeklyEmailNow}>
+            <input type="hidden" name="week" value={week} />
+            <input type="hidden" name="mode" value="me" />
+            <Button type="submit" variant="outline">
+              <Mail data-icon="inline-start" />
+              Send a copy to me
+            </Button>
+          </form>
+        </div>
       </div>
-      <details className="mt-3">
-        <summary className="cursor-pointer text-sm">Preview: {email.subject}</summary>
-        <pre className="mt-2 max-h-[32rem] overflow-auto rounded-md bg-muted/40 p-3 text-xs whitespace-pre-wrap">{email.text}</pre>
-      </details>
-    </Card>
+      <div className="flex min-h-0 flex-1 flex-col px-4 py-3">
+        <div className="label-mono mb-2 text-muted-foreground">Preview · {email.subject}</div>
+        <pre className="min-h-0 flex-1 overflow-auto rounded-[10px] bg-band-2 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">{email.text}</pre>
+      </div>
+    </Panel>
+  );
+}
+
+/* ---------- Highlights ---------- */
+
+function HighlightsPanel({
+  week,
+  figures,
+  sent,
+  carried,
+  values,
+  setters,
+  highlights,
+}: {
+  week: string;
+  figures: WeeklyFigures;
+  sent: boolean;
+  carried: string[];
+  values: { aumK: string; ytdPct: string; benchmarkYtdPct: string };
+  setters: { setAumK: (v: string) => void; setYtdPct: (v: string) => void; setBenchmarkYtdPct: (v: string) => void };
+  highlights: string[];
+}) {
+  const sheetAsOf = [figures.aumK, figures.ytdPct, figures.benchmarkYtdPct].find((f) => f.source === "sheet")?.asOf;
+  const figureNote = (f: WeeklyFigures[keyof WeeklyFigures]) =>
+    f.source === "sheet" ? `From the PT sheet${f.ref ? `, cell ${f.ref}` : ""}` : f.source === "carried" ? "Carried from last week" : f.value === null ? "" : "Typed by an exec";
+  const fields = [
+    { id: "aumK", label: "AUM ($k)", value: values.aumK, set: setters.setAumK, placeholder: "4646.9", fig: figures.aumK },
+    { id: "ytdPct", label: "YTD return (%)", value: values.ytdPct, set: setters.setYtdPct, placeholder: "6.8", fig: figures.ytdPct },
+    { id: "benchmarkYtdPct", label: "SPXTR YTD (%)", value: values.benchmarkYtdPct, set: setters.setBenchmarkYtdPct, placeholder: "12.5", fig: figures.benchmarkYtdPct },
+  ];
+  return (
+    <div className="grid flex-1 content-start gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <Panel>
+        <PanelHeader title="Portfolio highlights" aside={sheetAsOf ? `sheet last edited ${fmtDateTime(sheetAsOf)}` : undefined} />
+        <form action={saveWeeklyFigures} className="grid gap-3 p-4">
+          <input type="hidden" name="week" value={week} />
+          {carried.length > 0 && (
+            <Banner tone="caution">
+              {carried.join(", ")} {carried.length === 1 ? "is" : "are"} carried from last week. Check the numbers and save to confirm them.
+            </Banner>
+          )}
+          <div className="grid gap-3 sm:grid-cols-3">
+            {fields.map((f) => (
+              <div key={f.id} className="grid gap-1.5">
+                <Label htmlFor={f.id}>{f.label}</Label>
+                <Input id={f.id} name={f.id} value={f.value} onChange={(e) => f.set(e.target.value)} placeholder={f.placeholder} inputMode="decimal" disabled={sent} className="font-mono" />
+                <span className="text-xs text-muted-foreground">{figureNote(f.fig)}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            The app reads these from the price target sheet&apos;s 2025 Time-Weighted Returns tab when it builds the pack; the benchmark is the cell the sheet labels &ldquo;SPX YTD
+            Performance&rdquo;. Anything you type and save wins over the sheet. Relative return is YTD less the benchmark.
+          </p>
+          {!sent && (
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" variant="outline">Save highlights</Button>
+              <Button type="submit" variant="ghost" formAction={fillWeeklyFromSheet}>
+                Refresh from PT sheet
+              </Button>
+            </div>
+          )}
+        </form>
+      </Panel>
+      <div className="grid content-start gap-5">
+        <Panel>
+          <PanelHeader title="As it goes in the deck" aside={<CopyButton text={`Portfolio Highlights\n${highlights.join("\n")}`} label="Copy section" />} />
+          {highlights.map((l) => (
+            <Line key={l} text={l} />
+          ))}
+        </Panel>
+        <Panel>
+          <PanelHeader title="YTD performance chart" />
+          <p className="p-4 text-[13px] text-muted-foreground">
+            Still pasted by hand from the price target sheet (OF vs SPXTR, SVX, SGX). The daily history behind it isn&apos;t in the sheet tabs the app reads, so this chart stays manual.
+          </p>
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+function Line({ text }: { text: string }) {
+  return (
+    <div className="flex min-h-10 items-center justify-between gap-2 border-b border-row px-4 py-1 last:border-b-0">
+      <span className="min-w-0 text-[13.5px] break-words">{text}</span>
+      <CopyButton text={text} label="Copy" />
+    </div>
+  );
+}
+
+/* ---------- Agenda ---------- */
+
+function AgendaPanels(props: WeeklyPackProps & { sent: boolean }) {
+  return (
+    <div className="grid flex-1 content-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+      <Panel className="self-start">
+        <PanelHeader title="Last week's agenda" aside={<CopyButton text={AGENDA_SECTIONS.map((s) => agendaLine(AGENDA_LABELS[s], props.lastWeekAgenda[s])).join("\n")} label="Copy section" />} />
+        <p className="border-b border-row px-4 py-2 text-xs text-muted-foreground">A snapshot of the previous pack&apos;s agenda. Rebuilding refreshes it; you cannot edit it here.</p>
+        {AGENDA_SECTIONS.map((s) => (
+          <Line key={s} text={agendaLine(AGENDA_LABELS[s], props.lastWeekAgenda[s])} />
+        ))}
+      </Panel>
+      <Panel>
+        <PanelHeader
+          title="This week's agenda"
+          aside={
+            <>
+              <span>covers {weekRangeLabel(props.agendaRange.from, props.agendaRange.to)}</span>
+              <CopyButton text={AGENDA_SECTIONS.map((s) => agendaLine(AGENDA_LABELS[s], props.agenda[s])).join("\n")} label="Copy section" />
+            </>
+          }
+        />
+        <div className="grid gap-5 p-4">
+          {AGENDA_SECTIONS.map((section) => (
+            <AgendaEditor key={section} week={props.weekEnding} section={section} items={props.agenda[section]} disabled={props.sent} />
+          ))}
+        </div>
+      </Panel>
+    </div>
   );
 }
 
@@ -317,9 +536,66 @@ function AgendaEditor({ week, section, items, disabled }: { week: string; sectio
       <p className="text-xs text-muted-foreground">One item per line, as &ldquo;Day: text&rdquo;. Renders as: {line}</p>
       {!disabled && (
         <div>
-          <Button type="submit" size="sm" variant="outline">Save {AGENDA_LABELS[section]}</Button>
+          <Button type="submit" size="sm" variant="outline">
+            Save {AGENDA_LABELS[section]}
+          </Button>
         </div>
       )}
     </form>
+  );
+}
+
+/* ---------- Checks ---------- */
+
+const STEP_LABELS: Record<string, string> = {
+  carry: "Last week's agenda and figures",
+  sheet: "Price target sheet",
+  performers: "Best and worst performers",
+  earnings: "Next week's earnings",
+  marketNews: "Economic releases",
+  processUpdates: "Process updates (fund calendar .xlsx)",
+  email: "Sunday email",
+};
+
+function ChecksPanel(props: WeeklyPackProps & { checks: string[]; missing: string[]; carried: string[] }) {
+  const notes = [
+    ...props.checks,
+    ...(props.missing.length ? [`No Monday and Friday closes for ${props.missing.join(", ")}; they are left out of the rankings.`] : []),
+    ...(props.carried.length ? [`${props.carried.join(", ")} ${props.carried.length === 1 ? "is" : "are"} carried from last week. Check the numbers on Highlights and save to confirm them.`] : []),
+  ];
+  const steps = Object.entries(props.sources).sort(([a], [b]) => Object.keys(STEP_LABELS).indexOf(a) - Object.keys(STEP_LABELS).indexOf(b));
+  return (
+    <div className="grid flex-1 content-start gap-5 lg:grid-cols-2">
+      <Panel className="self-start">
+        <PanelHeader title="Checks" count={notes.length} aside="also listed in the Sunday email" />
+        {notes.length ? (
+          notes.map((n) => (
+            <div key={n} className="border-b border-row px-4 py-2.5 text-[13.5px] last:border-b-0">
+              {n}
+            </div>
+          ))
+        ) : (
+          <p className="p-4 text-[13px] text-muted-foreground">Nothing to double-check this week.</p>
+        )}
+      </Panel>
+      <Panel className="self-start">
+        <PanelHeader title="How this pack was built" count={steps.length} />
+        {steps.length ? (
+          steps.map(([step, v]) => (
+            <div key={step} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 border-b border-row px-4 py-2.5 last:border-b-0">
+              <span className="text-[13.5px] font-medium">{STEP_LABELS[step] ?? step}</span>
+              <Pill className="justify-self-end" tone={v.status === "ok" ? "good" : v.status === "failed" ? "caution" : "neutral"}>{v.status === "ok" ? "OK" : v.status === "failed" ? "Failed" : "Held"}</Pill>
+              <span className="text-xs text-muted-foreground">
+                {[v.detail, v.error].filter(Boolean).join(" · ") || "—"}
+              </span>
+              <span className="font-mono text-[11px] text-muted-foreground">{fmtDateTime(v.at)}</span>
+            </div>
+          ))
+        ) : (
+          <p className="p-4 text-[13px] text-muted-foreground">No build steps recorded yet.</p>
+        )}
+        <PanelFooter>A step that failed costs only its own section; the Sunday email&apos;s Checks list says which part to fill in by hand.</PanelFooter>
+      </Panel>
+    </div>
   );
 }

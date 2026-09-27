@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * One line per rates-, dollar- or oil-moving release this week, with the viewer's book's beta where they may see
- * it, linking to the Exposure page's factor section. Descriptive only; it never suggests a trade.
+ * it, linking to the Exposure page's factor section. Descriptive only; it never suggests a trade. The what's-new
+ * tour points at this panel by its aria-label.
  */
 export function BookSensitivity({
   context,
@@ -26,43 +27,58 @@ export function BookSensitivity({
   const lines = factorLines(events, ctx.exposure);
   if (!lines.length) return null;
   const byId = new Map(events.map((e) => [e.id, e]));
-  const caption =
-    ctx.exposure && ctx.basis
-      ? `With ${ctx.exposure.subject}'s factor betas over ${ctx.basis}. Betas with |t| below 2 read "no clear exposure". Past co-movement, not a forecast or a recommendation.`
-      : "Which factors each release tends to move.";
+  const caption = ctx.exposure ? `Open one for ${ctx.exposure.subject}'s beta. Past co-movement, not a forecast.` : "Which factors each release tends to move.";
   return (
-    <section aria-label="Factor-sensitive releases" className="mb-5 rounded-xl border bg-card px-4 py-3 lg:pl-[18px]">
-      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 className="text-xs leading-4 font-semibold text-foreground/70">Factor-sensitive releases</h2>
-        {ctx.href && (
-          <Link href={ctx.href} className="text-xs font-medium text-foreground underline decoration-border underline-offset-[3px] hover:decoration-foreground">
-            Factor exposure →
-          </Link>
-        )}
-      </div>
-      <ul className="grid gap-0.5">
+    <section aria-label="Factor-sensitive releases" className="panel shrink-0 px-3.5 pt-3.5 pb-3">
+      <h2 className="text-[14.5px] font-semibold whitespace-nowrap">Factor-sensitive releases</h2>
+      {/* One line each; the book's exposure for a release is in that release's details (click the line). */}
+      <ul className="mt-1.5 flex flex-col">
         {lines.map((l) => {
           const e = byId.get(l.eventId)!;
           const out = isReleased(e, now);
           return (
-            <li key={`${l.ruleKey}-${l.date}`}>
+            <li key={`${l.ruleKey}-${l.date}`} className="border-t border-row first:border-t-0">
               <button
                 type="button"
                 onClick={() => onPick(e)}
-                className={cn(
-                  "tnum w-full rounded-sm py-1 text-left text-[13px] leading-5 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring",
-                  out ? "text-muted-foreground" : "text-foreground",
-                )}
+                title={l.text}
+                className={cn("block w-full truncate py-1.5 text-left text-[12.5px] leading-[18px] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring", out ? "text-muted-foreground" : "text-foreground")}
               >
                 <span className="font-medium">{l.head}</span>
-                {l.clause && <span className={out ? undefined : "text-foreground/80"}> · {l.clause}</span>}
                 {out && <span> · released</span>}
               </button>
             </li>
           );
         })}
       </ul>
-      <p className="mt-1 text-xs text-muted-foreground">{caption}</p>
+      <p className="mt-1 text-[11.5px] leading-4 text-muted-foreground">
+        {caption}
+        {ctx.href && (
+          <>
+            {" "}
+            <Link href={ctx.href} className="whitespace-nowrap text-foreground underline decoration-border underline-offset-[3px] hover:decoration-foreground">
+              Factor exposure →
+            </Link>
+          </>
+        )}
+      </p>
     </section>
+  );
+}
+
+/** The factor line for one release, with the book's exposure, for the release's details. */
+export function FactorClause({ context, event }: { context: Promise<CalendarFactorContext>; event: EconomicEvent }) {
+  const ctx = use(context);
+  const line = factorLines([event], ctx.exposure)[0];
+  if (!line) return null;
+  return (
+    <p className="mt-2.5 text-[12.5px] leading-[18px] text-ink-2">
+      {line.text}
+      {ctx.exposure && ctx.basis && (
+        <span className="block text-muted-foreground">
+          {`With ${ctx.exposure.subject}'s factor betas over ${ctx.basis}. Betas with |t| below 2 read "no clear exposure". Past co-movement, not a forecast or a recommendation.`}
+        </span>
+      )}
+    </p>
   );
 }

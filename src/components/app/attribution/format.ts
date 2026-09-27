@@ -25,3 +25,15 @@ export function fmtBpsShort(v: number) {
   const s = n.toFixed(0);
   return `${n > 0 && Number(s) !== 0 ? "+" : ""}${s}`;
 }
+
+/** Signed basis points with the unit the redesign uses, e.g. "+61 bp"; "—" when there is no figure. */
+export function fmtBp(v: number | null | undefined) {
+  return v === null || v === undefined ? "—" : `${fmtBpsShort(v)} bp`;
+}
+
+/** "up" / "down" / null for coloring a figure by its sign (at the precision shown). */
+export function toneOf(v: number | null | undefined, scale = 10_000): "up" | "down" | null {
+  if (v === null || v === undefined) return null;
+  const n = Math.round(v * scale);
+  return n > 0 ? "up" : n < 0 ? "down" : null;
+}

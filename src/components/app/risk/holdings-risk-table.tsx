@@ -35,7 +35,7 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
             return (
               <TableRow key={h.ticker}>
                 <TableCell>
-                  {team ? <Link href={`/t/${team.slug}/h/${h.ticker}`} className="font-medium hover:underline">{h.ticker}</Link> : <span className="font-medium">{h.ticker}</span>}
+                  {team ? <Link href={`/t/${team.slug}/h/${h.ticker}`} className="font-mono font-semibold hover:underline">{h.ticker}</Link> : <span className="font-mono font-semibold">{h.ticker}</span>}
                   {h.source !== "own" && (
                     <span className="ml-1.5 rounded border px-1 py-px text-[10px] text-muted-foreground" title={h.source === "proxy" ? `Too little price history; modeled with ${h.proxy}` : "No price history or sector; treated as riskless"}>
                       {h.source === "proxy" ? `via ${h.proxy}` : "not modeled"}
@@ -47,19 +47,19 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
                   <div className="grid gap-1">
                     <div className="flex items-center gap-2" title="Share of value">
                       <MagnitudeBar value={h.weight} max={maxShare} color="var(--muted-foreground)" className="h-1.5 w-24" />
-                      <span className="tnum w-12 text-xs text-muted-foreground">{rpct(h.weight)}</span>
+                      <span className="w-12 font-mono text-xs text-muted-foreground">{rpct(h.weight)}</span>
                     </div>
                     <div className="flex items-center gap-2" title="Share of risk">
                       <MagnitudeBar value={h.riskShare} max={maxShare} color={h.riskShare < 0 ? "var(--down)" : "var(--series-1)"} className="h-1.5 w-24" />
-                      <span className="tnum w-12 text-xs font-medium">{rpct(h.riskShare)}</span>
+                      <span className="w-12 font-mono text-xs font-medium">{rpct(h.riskShare)}</span>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="tnum text-right text-sm">{rpct(h.contribution, 2)}</TableCell>
-                <TableCell className="tnum text-right text-sm">{rpct(h.vol)}</TableCell>
-                <TableCell className="tnum text-right text-sm">{rnum(h.beta)}</TableCell>
-                <TableCell className="tnum text-right text-sm">{rnum(h.corrToPortfolio)}</TableCell>
-                {showActive && <TableCell className="tnum text-right text-sm">{rpct(h.activeRiskShare)}</TableCell>}
+                <TableCell className="text-right font-mono text-[12.5px]">{rpct(h.contribution, 2)}</TableCell>
+                <TableCell className="text-right font-mono text-[12.5px]">{rpct(h.vol)}</TableCell>
+                <TableCell className="text-right font-mono text-[12.5px]">{rnum(h.beta)}</TableCell>
+                <TableCell className="text-right font-mono text-[12.5px]">{rnum(h.corrToPortfolio)}</TableCell>
+                {showActive && <TableCell className="text-right font-mono text-[12.5px]">{rpct(h.activeRiskShare)}</TableCell>}
                 <TableCell className="text-right">
                   <Link href={`/backtesting?trade=${encodeURIComponent(`${h.ticker}:-2:cash`)}`} className="text-xs whitespace-nowrap text-muted-foreground hover:text-foreground hover:underline">
                     Trim 2 pp →
@@ -73,8 +73,8 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
           <TableFooter>
             <TableRow>
               <TableCell className="font-medium">All holdings</TableCell>
-              <TableCell className="tnum text-xs">{rpct(totals.weight)} of value · 100.0% of risk</TableCell>
-              <TableCell className="tnum text-right text-sm font-medium">{rpct(totals.vol, 2)}</TableCell>
+              <TableCell className="font-mono text-xs">{rpct(totals.weight)} of value · 100.0% of risk</TableCell>
+              <TableCell className="text-right font-mono text-[12.5px] font-medium">{rpct(totals.vol, 2)}</TableCell>
               <TableCell colSpan={showActive ? 5 : 4} />
             </TableRow>
           </TableFooter>

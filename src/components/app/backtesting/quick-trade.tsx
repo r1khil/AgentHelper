@@ -8,11 +8,8 @@ import type { Funding, Trade } from "@/lib/backtesting/trade";
 
 const select = "h-9 rounded-md border bg-background px-2.5 text-sm";
 
-/**
- * Relative edits for the modified copy: trim or add percentage points to one holding and say where
- * the money comes from or goes. `onApply` returns an error message, or null when the trade applied.
- */
-export function QuickTrade({ positions, onApply, disabled }: { positions: Position[]; onApply: (trade: Trade) => string | null; disabled?: boolean }) {
+/** The quick trade's fields and its apply step, shared by both layouts. */
+export function useQuickTrade(positions: Position[], onApply: (trade: Trade) => string | null) {
   const holdings = positions.filter((p) => p.kind !== "cash");
   const hasCash = positions.some((p) => p.kind === "cash");
   const [ticker, setTicker] = useState(holdings[0]?.ticker ?? "");
@@ -27,6 +24,15 @@ export function QuickTrade({ positions, onApply, disabled }: { positions: Positi
     const f: Funding = funding === "cash" ? { kind: "cash" } : funding === "pro_rata" ? { kind: "pro_rata" } : { kind: "ticker", ticker: funding };
     setError(onApply({ ticker, changePp: side === "trim" ? -pp : pp, funding: f }) ?? "");
   }
+  return { holdings, hasCash, ticker, setTicker, side, setSide, amount, setAmount, funding, setFunding, error, apply };
+}
+
+/**
+ * Relative edits for the modified copy: trim or add percentage points to one holding and say where
+ * the money comes from or goes. `onApply` returns an error message, or null when the trade applied.
+ */
+export function QuickTrade({ positions, onApply, disabled }: { positions: Position[]; onApply: (trade: Trade) => string | null; disabled?: boolean }) {
+  const { holdings, hasCash, ticker, setTicker, side, setSide, amount, setAmount, funding, setFunding, error, apply } = useQuickTrade(positions, onApply);
 
   return (
     <div data-tour="bt-quick-trade" className="mt-3 rounded-md border border-dashed p-3">

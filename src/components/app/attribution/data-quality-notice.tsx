@@ -11,11 +11,11 @@ export function DataQualityNotices({ notices }: { notices: QualityNotice[] }) {
   return (
     <ul className="grid gap-1.5">
       {notices.map((n) => (
-        <li key={n.text} className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
-          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning-foreground" aria-hidden />
+        <li key={n.text} className="flex items-start gap-2 rounded-[10px] bg-caution/55 px-3 py-2 text-[13px] leading-relaxed">
+          <TriangleAlert className="mt-[3px] size-3.5 shrink-0 text-caution-foreground" aria-hidden />
           <span className="min-w-0">
             {n.text}{" "}
-            {n.href && <Link href={n.href} className="font-medium underline underline-offset-2">{n.action ?? "Fix"}</Link>}
+            {n.href && <Link href={n.href} className="font-medium text-caution-foreground underline underline-offset-2">{n.action ?? "Fix"}</Link>}
           </span>
         </li>
       ))}
@@ -23,16 +23,16 @@ export function DataQualityNotices({ notices }: { notices: QualityNotice[] }) {
   );
 }
 
-/** Header pill: the notice count, expanding to the list with its Fix links. */
+/** Warning pill for a toolbar: the notice count, opening the list with its Fix links. */
 export function DataNoticesButton({ notices }: { notices: QualityNotice[] }) {
   if (!notices.length) return null;
   return (
     <Popover>
-      <PopoverTrigger className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-warning/40 bg-warning/10 px-2.5 text-[0.8rem] font-medium text-warning-foreground hover:bg-warning/20 focus-visible:outline-2 focus-visible:outline-ring">
+      <PopoverTrigger className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-caution px-3 text-[13px] font-medium whitespace-nowrap text-caution-foreground transition-colors hover:bg-caution/80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
         <TriangleAlert className="size-3.5" aria-hidden />
         {notices.length} data {notices.length === 1 ? "notice" : "notices"}
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(28rem,90vw)] p-2">
+      <PopoverContent align="end" className="w-[min(28rem,90vw)] rounded-[14px] p-2">
         <DataQualityNotices notices={notices} />
       </PopoverContent>
     </Popover>

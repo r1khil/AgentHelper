@@ -19,12 +19,12 @@ export function suggestionsFor(ticker: string, memories: MemoryEntry[], fallback
 }
 
 function AgeChip({ m, now }: { m: MemoryEntry; now: Date }) {
-  if (!m.evidenceAt) return <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">noted {dateOf(m.createdAt)}</span>;
+  if (!m.evidenceAt) return <span className="rounded-full bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">noted {dateOf(m.createdAt)}</span>;
   const days = daysBetween(m.evidenceAt, now);
   const stale = isStaleFact(m, now);
   return (
     <span
-      className={cn("rounded px-1 text-[10px]", stale ? "bg-destructive/10 text-destructive" : days > OLD_EVIDENCE_DAYS ? "bg-warning/15 text-warning-foreground" : "bg-muted text-muted-foreground")}
+      className={cn("rounded-full px-1.5 font-mono text-[10px]", stale ? "bg-destructive/10 text-destructive" : days > OLD_EVIDENCE_DAYS ? "bg-caution text-caution-foreground" : "bg-muted text-muted-foreground")}
       title={`Evidence dated ${dateOf(m.evidenceAt)}${m.verifiedAt ? `, confirmed again ${dateOf(m.verifiedAt)}` : ""}`}
     >
       evidence {days} day{days === 1 ? "" : "s"} old{m.verifiedAt ? " · verified" : ""}
@@ -40,11 +40,11 @@ function SourceChips({ sources }: { sources: MemoryEntry["sources"] }) {
         const t = resolveSource(s);
         const label = (s.publisher || s.title || s.id).slice(0, 28);
         return t.kind === "external" ? (
-          <a key={s.id} href={t.href} target="_blank" rel="noopener noreferrer" title={s.title} className="rounded border px-1 text-[10px] text-muted-foreground hover:text-foreground">
+          <a key={s.id} href={t.href} target="_blank" rel="noopener noreferrer" title={s.title} className="rounded-full bg-hoot px-1.5 text-[10px] text-hoot-foreground hover:underline">
             {label}
           </a>
         ) : (
-          <span key={s.id} title={s.title} className="rounded border px-1 text-[10px] text-muted-foreground">
+          <span key={s.id} title={s.title} className="rounded-full bg-hoot px-1.5 text-[10px] text-hoot-foreground">
             {label}
           </span>
         );
@@ -73,8 +73,8 @@ function Remove({ id }: { id: string }) {
 
 /**
  * What the agent learned about this holding in earlier chats: one line per answered question, then the
- * facts and tool lessons it kept, each labeled with the age of its evidence. Compact and collapsible so it
- * sits above the source cards without pushing them off screen.
+ * facts and tool lessons it kept, each labeled with the age of its evidence. Collapsible; on the research board
+ * it sits in the side column's Board tab.
  */
 export function ResearchLogCard({ entries, canManage, defaultOpen }: { entries: MemoryEntry[]; canManage: boolean; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -84,22 +84,22 @@ export function ResearchLogCard({ entries, canManage, defaultOpen }: { entries: 
   const facts = live.filter((m) => m.kind !== "log").slice(0, 8);
   if (live.length === 0) return null;
   return (
-    <div className="mx-6 mt-4 rounded-xl bg-card ring-1 ring-foreground/10">
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-center gap-2 px-4 py-2.5 text-left">
+    <div className="rounded-[10px] bg-card shadow-[0_0_0_1px_var(--border)]">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-center gap-2 px-3 py-2.5 text-left">
         <BookOpen className="size-3.5 text-muted-foreground" />
-        <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">Research log</span>
-        <span className="text-xs text-muted-foreground">
+        <span className="label-mono text-muted-foreground">Research log</span>
+        <span className="font-mono text-[11px] text-muted-foreground">
           {logs.length} question{logs.length === 1 ? "" : "s"} · {facts.length} note{facts.length === 1 ? "" : "s"}
         </span>
         <ChevronDown className={cn("ml-auto size-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="max-h-[40vh] overflow-auto border-t px-4 pt-3 pb-3.5 text-[12.8px] leading-[18px]">
+        <div className="border-t px-3 pt-3 pb-3.5 text-[12.5px] leading-[18px]">
           {logs.length > 0 && (
             <ul className="space-y-2">
               {logs.map((m) => (
                 <li key={m.id} className="group flex gap-2">
-                  <span className="tnum shrink-0 text-[11px] text-muted-foreground">{dateOf(m.createdAt)}</span>
+                  <span className="shrink-0 font-mono text-[10.5px] leading-[18px] text-muted-foreground">{dateOf(m.createdAt)}</span>
                   <div className="min-w-0 flex-1">
                     {m.meta?.question && <div className="truncate text-[11px] text-muted-foreground" title={m.meta.question}>{m.meta.question}</div>}
                     <div>{m.body}</div>
@@ -111,12 +111,12 @@ export function ResearchLogCard({ entries, canManage, defaultOpen }: { entries: 
           )}
           {facts.length > 0 && (
             <>
-              <div className={cn("text-[11px] font-semibold tracking-wide text-muted-foreground uppercase", logs.length > 0 && "mt-3.5")}>Known facts and lessons</div>
+              <div className={cn("label-mono text-muted-foreground", logs.length > 0 && "mt-3.5")}>Known facts and lessons</div>
               <ul className="mt-1.5 space-y-1.5">
                 {facts.map((m) => (
                   <li key={m.id} className="group flex items-start gap-2">
                     <div className="min-w-0 flex-1">
-                      {m.kind === "lesson" && <span className="mr-1 rounded bg-primary/10 px-1 text-[10px] text-foreground">lesson</span>}
+                      {m.kind === "lesson" && <span className="mr-1 rounded-full bg-muted px-1.5 font-mono text-[10px] text-foreground">lesson</span>}
                       <span>{m.body}</span>
                       <SourceChips sources={m.sources} />
                       <span className="ml-1 inline-block align-middle">

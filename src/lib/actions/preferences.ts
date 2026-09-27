@@ -27,6 +27,18 @@ export async function setHootEnabled(on: boolean): Promise<ActionResult> {
   return { ok: true };
 }
 
+/** Backtesting in the redesign or the classic layout. Per member; both use the same engine and links. */
+export async function setBacktestingLayout(layout: "new" | "classic"): Promise<ActionResult> {
+  const user = await requireUser();
+  if (layout !== "new" && layout !== "classic") return { ok: false, error: "Unknown layout." };
+  await db
+    .update(profiles)
+    .set({ hoot: { ...user.hoot, layouts: { ...user.hoot?.layouts, backtesting: layout } } })
+    .where(eq(profiles.id, user.id));
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
 /** Remember how far through Hoot's what's-new tour the member got (or that they said later, or finished it). */
 export async function saveTourProgress(tourId: string, record: TourRecord): Promise<ActionResult> {
   const user = await requireUser();

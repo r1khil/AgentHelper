@@ -12,6 +12,7 @@ import {
   CalendarClock,
   CalendarRange,
   Check,
+  ChevronDown,
   ChevronsUpDown,
   FlaskConical,
   Home,
@@ -59,7 +60,7 @@ type Icon = React.ComponentType<{ className?: string }>;
 type NavLink = { href: string; label: string; icon: Icon; exact?: boolean; also?: string };
 
 /** Which team the section nav points at. Execs and admins default to the whole fund; everyone else to their team. */
-function useCurrentTeam(teams: Team[], user: SidebarUser, fundWide: boolean): Team | "fund" | null {
+export function useCurrentTeam(teams: Team[], user: SidebarUser, fundWide: boolean): Team | "fund" | null {
   const pathname = usePathname();
   const m = pathname.match(/^\/t\/([^/]+)/);
   const fromPath = m ? teams.find((t) => t.slug === m[1]) : undefined;
@@ -69,7 +70,7 @@ function useCurrentTeam(teams: Team[], user: SidebarUser, fundWide: boolean): Te
 }
 
 /** The list page under /t/<slug>/ being viewed ("" for Holdings), so switching scope keeps the reader on it. */
-function useTeamSection() {
+export function useTeamSection() {
   const pathname = usePathname();
   // A general Hoot conversation isn't under any team; switching scope from one lands on that scope's Hoot page.
   if (/^\/hoot(\/|$)/.test(pathname)) return "/agent";
@@ -82,6 +83,7 @@ function useTeamSection() {
   return section === "/h" ? "" : section;
 }
 
+/** The previous sidebar, kept for the classic Backtesting layout. */
 export function Sidebar(props: Props) {
   return (
     <>
@@ -93,7 +95,8 @@ export function Sidebar(props: Props) {
   );
 }
 
-function MobileBar(props: Props) {
+/** Under 768px the rail becomes this top bar and a sheet with the full navigation. */
+export function MobileBar(props: Props) {
   const [open, setOpen] = useState(false);
   return (
     <div className="sticky top-0 z-40 flex items-center justify-between border-b bg-sidebar/95 px-4 py-2.5 backdrop-blur md:hidden">
@@ -210,9 +213,10 @@ function NavGroup({ label, links, active }: { label: string; links: NavLink[]; a
 }
 
 /** Whose holdings the Research, Markets and book links show. Only fund-wide roles can switch. */
-function ScopeSwitcher({ teams, current, fundWide }: { teams: Team[]; current: Team | "fund" | null; fundWide: boolean }) {
+export function ScopeSwitcher({ teams, current, fundWide, variant = "card" }: { teams: Team[]; current: Team | "fund" | null; fundWide: boolean; variant?: "card" | "rail" }) {
   const section = useTeamSection();
   const name = current === "fund" ? "Whole fund" : (current?.name ?? "No team");
+  const rail = variant === "rail";
   const card = (
     <>
       <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
@@ -225,6 +229,20 @@ function ScopeSwitcher({ teams, current, fundWide }: { teams: Team[]; current: T
     </>
   );
   const cardClass = "flex w-full items-center gap-2.5 rounded-lg border bg-background px-2 py-1.5 text-left shadow-xs";
+  // The rail's version: a 44×34 tile with the Layers icon or team initials, and a short label under it.
+  const short = current === "fund" ? "Fund" : current ? initials(current.name) : "—";
+  const railTile = (
+    <>
+      <span className="grid h-[34px] w-11 place-items-center rounded-[10px] bg-rail-2 font-mono text-xs font-semibold text-cream shadow-[inset_0_0_0_1px_var(--rail-line)]">
+        {current === "fund" ? <Layers className="size-4" /> : short}
+      </span>
+      <span className="flex items-center gap-px text-[11px] font-medium text-rail-label">
+        {short}
+        {fundWide && teams.length >= 2 && <ChevronDown className="size-[11px]" />}
+      </span>
+    </>
+  );
+  const railClass = "flex flex-col items-center gap-1 rounded-xl px-1 py-0.5 focus-visible:ring-2 focus-visible:ring-cream/60 focus-visible:outline-none";
 
   const fundHref = `/t/${FUND_SCOPE_SLUG}${section}`;
   const teamOptions = teams.map((t) => ({ team: t, href: `/t/${t.slug}${section}` }));
@@ -242,7 +260,11 @@ function ScopeSwitcher({ teams, current, fundWide }: { teams: Team[]; current: T
     return (
       <>
         {hootScopes}
-        <div data-tour="scope" className={cardClass}>{card}</div>
+        {rail ? (
+          <div data-tour="scope" className={railClass} title={name}>{railTile}</div>
+        ) : (
+          <div data-tour="scope" className={cardClass}>{card}</div>
+        )}
       </>
     );
   }
@@ -250,18 +272,24 @@ function ScopeSwitcher({ teams, current, fundWide }: { teams: Team[]; current: T
     <>
       {hootScopes}
       <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <button
-              data-tour="scope"
-              className={cn(cardClass, "transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted")}
-            />
-          }
-        >
-          {card}
-          <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-72" align="start">
+        {rail ? (
+          <DropdownMenuTrigger render={<button data-tour="scope" aria-label={`Viewing ${name}. Change scope`} title={name} className={cn(railClass, "hover:bg-rail-2/60 data-popup-open:bg-rail-2/60")} />}>
+            {railTile}
+          </DropdownMenuTrigger>
+        ) : (
+          <DropdownMenuTrigger
+            render={
+              <button
+                data-tour="scope"
+                className={cn(cardClass, "transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-muted")}
+              />
+            }
+          >
+            {card}
+            <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+          </DropdownMenuTrigger>
+        )}
+        <DropdownMenuContent className="w-72" align="start" side={rail ? "right" : undefined}>
           <DropdownMenuGroup>
             <ScopeItem href={fundHref} selected={current === "fund"}>
               Whole fund
@@ -291,29 +319,44 @@ function ScopeItem({ href, selected, children }: { href: string; selected: boole
   );
 }
 
-function initials(name: string) {
+export function initials(name: string) {
   const words = name.split(/[\s&,]+/).filter(Boolean);
   return ((words[0]?.[0] ?? "") + (words[1]?.[0] ?? "")).toUpperCase();
 }
 
 /** Who is signed in, with the per-person preferences and sign out tucked behind it. */
-function AccountMenu({ user, fundWide, signOut }: { user: SidebarUser; fundWide: boolean; signOut: () => Promise<void> }) {
+export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user: SidebarUser; fundWide: boolean; signOut: () => Promise<void>; variant?: "row" | "rail" }) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <button data-tour="account" className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-sidebar-accent" />
-        }
-      >
-        <Avatar name={user.fullName} />
-        <span className="min-w-0 flex-1 leading-tight">
-          <span className="block truncate text-sm font-medium">{user.fullName}</span>
-          <span className="block truncate text-xs text-muted-foreground">{ROLE_LABELS[user.role]}</span>
-        </span>
-        <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
-      </PopoverTrigger>
-      <PopoverContent side="top" align="start" className="w-64 gap-0 p-1.5">
+      {variant === "rail" ? (
+        <PopoverTrigger
+          render={
+            <button
+              data-tour="account"
+              aria-label={`${user.fullName}: preferences and sign out`}
+              title={user.fullName}
+              className="grid size-8 place-items-center rounded-full bg-avatar text-[11.5px] font-semibold text-cream-foreground transition-shadow hover:shadow-[0_0_0_2px_var(--rail-line)] focus-visible:ring-2 focus-visible:ring-cream/60 focus-visible:outline-none data-popup-open:shadow-[0_0_0_2px_var(--rail-line)]"
+            />
+          }
+        >
+          {initials(user.fullName) || "?"}
+        </PopoverTrigger>
+      ) : (
+        <PopoverTrigger
+          render={
+            <button data-tour="account" className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:bg-sidebar-accent" />
+          }
+        >
+          <Avatar name={user.fullName} />
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block truncate text-sm font-medium">{user.fullName}</span>
+            <span className="block truncate text-xs text-muted-foreground">{ROLE_LABELS[user.role]}</span>
+          </span>
+          <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+        </PopoverTrigger>
+      )}
+      <PopoverContent side={variant === "rail" ? "right" : "top"} align={variant === "rail" ? "end" : "start"} className="w-64 gap-0 p-1.5">
         <div className="flex items-center gap-2.5 px-1.5 py-1.5">
           <Avatar name={user.fullName} />
           <span className="min-w-0 flex-1 leading-tight">

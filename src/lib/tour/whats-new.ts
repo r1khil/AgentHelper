@@ -13,6 +13,11 @@ const POSITIONS = "What the fund owns comes from the trade ledger, replayed to t
 const BENCHMARK = "The benchmark is the S&P 500's sector weights, which an exec saves on the ledger's Benchmark tab.";
 
 const nav = (id: string) => `[data-tour="nav-${id}"]`;
+/**
+ * A header tab of a rail section. From another section the rail item is lit instead (clicking it opens the
+ * section, then the tab lights up); the rail item stops matching once its section is open.
+ */
+const tab = (id: string, section: string) => `${nav(id)}, ${nav(section)}:not([aria-current])`;
 
 export const WHATS_NEW_TOUR: Tour = {
   id: WHATS_NEW_TOUR_ID,
@@ -26,15 +31,15 @@ export const WHATS_NEW_TOUR: Tour = {
           id: "menu",
           kind: "info",
           target: '[data-tour="sidebar"]',
-          title: "The menu is organized now",
-          body: "Pages are grouped by what they're for: Research (Holdings, me, the sell-side analyzer, models), Markets (movements, earnings, the economic calendar), Portfolio (attribution, and two new pages: Risk and Exposure), and Manage.",
+          title: "Five places to go",
+          body: "Today, Holdings, Research, Calendar and Portfolio, with Manage at the bottom. Each one has its pages as tabs along the top: Movements and Models sit under Holdings, Risk and Exposure under Portfolio. Press ⌘K to jump anywhere or ask me something.",
         },
         {
           id: "scope",
           kind: "info",
           target: '[data-tour="scope"]',
           title: "Whose numbers you're looking at",
-          what: "This card says whose holdings every page is showing. \"Whole fund\" is everyone.",
+          what: "This tile says whose holdings every page is showing. \"Fund\" is everyone.",
           how: "Click it to narrow the whole app to one sector team. If you switch while you're on Risk or Exposure, you stay on that page.",
         },
       ],
@@ -49,7 +54,7 @@ export const WHATS_NEW_TOUR: Tour = {
           kind: "go",
           target: nav("today"),
           title: "Today got a redesign",
-          body: "The home page now reads top to bottom as one calm column: how the last session went, your teams, and what's coming up.",
+          body: "The home page leads with my list of things for you, then how each team did. On the right: how the last session went, my evening brief, and what's coming up.",
           prompt: "Click Today in the menu.",
         },
         {
@@ -88,10 +93,10 @@ export const WHATS_NEW_TOUR: Tour = {
         {
           id: "go-risk",
           kind: "go",
-          target: nav("risk"),
+          target: tab("risk", "portfolio"),
           title: "New page: Risk",
           body: "How bumpy the fund is, where that bumpiness comes from, and how today's holdings would have handled past crashes.",
-          prompt: "Click Risk in the menu to open it.",
+          prompt: "Open Portfolio, then click Risk along the top.",
         },
         {
           id: "risk-lookback",
@@ -106,12 +111,13 @@ export const WHATS_NEW_TOUR: Tour = {
           id: "risk-headline",
           kind: "info",
           target: 'section[aria-label="Headline risk"]',
-          title: "Four numbers for how bumpy the fund is",
+          title: "Five numbers for how bumpy the fund is",
           points: [
             { label: "Volatility", text: "how much the fund typically swings up or down in a year." },
             { label: "Beta", text: "how much it tends to move when the S&P 500 moves 1%." },
             { label: "Tracking error", text: "how far it tends to drift from its benchmark in a year." },
             { label: "1-day VaR", text: "a daily loss we'd expect to be beaten on only about 1 day in 20." },
+            { label: "Worst day", text: "the biggest one-day loss today's holdings would have taken in the window." },
           ],
           how: "We take what the fund owns today and replay a year of daily price moves on it. So it describes today's portfolio, not how the fund actually did.",
           source: `${POSITIONS} ${BENCHMARK}`,
@@ -143,7 +149,7 @@ export const WHATS_NEW_TOUR: Tour = {
           target: '[data-tour="risk-holdings"]',
           title: "Holdings by share of risk",
           what: "Each holding's size next to its share of the risk. A small position can carry a lot of risk if it's jumpy.",
-          how: "The \"What if\" link on each row opens Backtesting with that holding trimmed by 2 percentage points, so you can see how the risk would change before you trade.",
+          how: "\"Trim 1 pp\" next to the biggest sources of risk (and \"What if\" on each row further down, which trims 2 points) opens Backtesting with that holding trimmed, so you can see how the risk would change before you trade.",
           source: `${POSITIONS} ${PRICES}`,
         },
         {
@@ -193,10 +199,10 @@ export const WHATS_NEW_TOUR: Tour = {
         {
           id: "go-exposure",
           kind: "go",
-          target: nav("exposure"),
+          target: tab("exposure", "portfolio"),
           title: "New page: Exposure",
           body: "Where our money sits compared with the index: by sector, by company, and inside the ETFs we own.",
-          prompt: "Click Exposure in the menu to open it.",
+          prompt: "Click Exposure along the top.",
         },
         {
           id: "exposure-headline",
@@ -215,7 +221,7 @@ export const WHATS_NEW_TOUR: Tour = {
           kind: "info",
           target: '[data-tour="exposure-toolbar"]',
           title: "Two ways to count an ETF",
-          what: "\"ETFs as held\" counts an ETF like KRE as one position in its sector. \"Through ETFs\" splits it into the companies it actually owns.",
+          what: "\"Direct holdings\" counts an ETF like KRE as one position in its sector. \"Through ETFs\" splits it into the companies it actually owns.",
           how: "The lookback window works the same way it does on Risk.",
         },
         {
@@ -266,10 +272,10 @@ export const WHATS_NEW_TOUR: Tour = {
         {
           id: "go-backtesting",
           kind: "go",
-          target: nav("backtesting"),
+          target: tab("backtesting", "portfolio"),
           title: "Backtesting can ask \"what if?\"",
           body: "Try a change to the portfolio and see what it would do to risk before anyone trades.",
-          prompt: "Click Backtesting in the menu.",
+          prompt: "Click Backtesting along the top.",
         },
         {
           id: "backtesting-quick",
@@ -287,7 +293,7 @@ export const WHATS_NEW_TOUR: Tour = {
           until: '[data-tour="bt-risk-impact"]',
           title: "Give it a try",
           body: "Change a weight if you like, then run it. A new risk panel appears under the settings.",
-          prompt: "Press Run backtest.",
+          prompt: "Press Run replay (Run backtest on the classic layout).",
         },
         {
           id: "backtesting-impact",
@@ -313,16 +319,16 @@ export const WHATS_NEW_TOUR: Tour = {
     },
     {
       id: "calendar",
-      label: "Economic calendar",
-      route: /^\/t\/[^/]+\/economic-calendar$/,
+      label: "Calendar",
+      route: /^\/t\/[^/]+\/(earnings|economic-calendar)$/,
       steps: [
         {
           id: "go-calendar",
           kind: "go",
-          target: nav("economic-calendar"),
-          title: "New on the Economic calendar",
-          body: "Which upcoming releases matter most for our portfolio, and why.",
-          prompt: "Click Economic calendar in the menu.",
+          target: nav("calendar"),
+          title: "Earnings and releases, one calendar",
+          body: "Our holdings' reports and the big economic releases now share one week view, and it shows which releases matter most for our portfolio, and why.",
+          prompt: "Click Calendar in the menu.",
         },
         {
           id: "calendar-lines",
@@ -346,10 +352,10 @@ export const WHATS_NEW_TOUR: Tour = {
         {
           id: "go-hoot",
           kind: "go",
-          target: nav("hoot"),
+          target: nav("research"),
           title: "I learned some new tricks",
           body: "I can look things up in a lot more places now.",
-          prompt: "Click Hoot in the menu.",
+          prompt: "Click Research in the menu.",
         },
         {
           id: "hoot-tools",

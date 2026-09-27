@@ -1,125 +1,126 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
+import { DateTime } from "luxon";
 import { loadScope } from "@/lib/teams";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
-import { listTeamHoldings, listTeamMembers } from "@/lib/holdings";
+import { listHoldingSignals, listRecentCloses, listTeamHoldings, listTeamMembers } from "@/lib/holdings";
 import { marketSnapshot, type MarketSnapshot } from "@/lib/market";
-import { fmtMoney, fmtPct } from "@/lib/format";
-import { PageHeader } from "@/components/app/page-header";
+import { NY, todayNY } from "@/lib/providers/calendar";
 import { EmptyState } from "@/components/app/empty-state";
-import { Move } from "@/components/app/move";
 import { AddHoldingDialog } from "@/components/app/add-holding-dialog";
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Team } from "@/db/schema";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { HoldingsTable, type HoldingGroup, type HoldingListRow, type QuoteCells } from "@/components/app/holdings/holdings-table";
+import { HoldingsToolbar, MarketLine, parseHoldingFilter, type HoldingFilter } from "@/components/app/holdings/holdings-toolbar";
+import { attentionFlags, reportsWithin, shortDate } from "@/components/app/holdings/attention";
 
 export async function generateMetadata({ params }: { params: Promise<{ team: string }> }): Promise<Metadata> {
   const { team } = await params;
   return { title: team === FUND_SCOPE_SLUG ? "Fund holdings" : team };
 }
 
-export default async function TeamHoldingsPage({ params }: { params: Promise<{ team: string }> }) {
-  const { team: slug } = await params;
+export default async function TeamHoldingsPage({ params, searchParams }: { params: Promise<{ team: string }>; searchParams: Promise<{ filter?: string | string[] }> }) {
+  const [{ team: slug }, sp] = await Promise.all([params, searchParams]);
+  const filter = parseHoldingFilter(sp.filter);
   const scope = await loadScope(slug);
   const { team, user, teamById } = scope;
+  const today = todayNY();
   const [rows, members] = await Promise.all([listTeamHoldings(scope.teamIds), team ? listTeamMembers(team.id) : []]);
+  const [signals, closes] = await Promise.all([
+    listHoldingSignals(rows.map((r) => r.h.id), today),
+    listRecentCloses(rows.map((r) => r.h.ticker), 6).catch(() => new Map<string, number[]>()),
+  ]);
   // Not awaited: the holdings render from the database at once and the quotes stream in when Yahoo answers.
   const market = marketSnapshot(rows.map((r) => r.h.ticker));
   const isMember = user.teamId === team?.id;
   const fund = scope.kind === "fund";
-  // Adding needs a team to own the holding, so the fund view leaves it to the sector pages.
+  const now = nowMs();
+
+  const listRows: (HoldingListRow & { teamId: string; reporting: boolean })[] = rows.map(({ h, ownerName }) => {
+    const t = teamById.get(h.teamId);
+    const s = signals.get(h.id);
+    const next = s?.nextReport ?? null;
+    return {
+      id: h.id,
+      teamId: h.teamId,
+      ticker: h.ticker,
+      company: h.companyName,
+      href: `/t/${t?.slug ?? slug}/h/${encodeURIComponent(h.ticker)}`,
+      weightPct: h.weightPct == null ? null : Number(h.weightPct),
+      shares: h.shares == null ? null : Number(h.shares),
+      spark: closes.get(h.ticker) ?? [],
+      nextReport: next ? `${shortDate(next.reportDate)}${next.estimated ? " est." : ""}` : null,
+      flags: attentionFlags(
+        { openMovement: s?.openMovement ?? null, nextReport: next, modelUpdates: s?.modelUpdates ?? 0, thesisProposed: s?.thesisProposed ?? false, hasOwner: !!h.ownerId },
+        { teamSlug: t?.slug ?? slug, ticker: h.ticker, today, now },
+      ),
+      owner: ownerName,
+      reporting: reportsWithin(next?.reportDate, today),
+    };
+  });
+
+  const counts: Record<HoldingFilter, number> = {
+    all: listRows.length,
+    attention: listRows.filter((r) => r.flags.length > 0).length,
+    reporting: listRows.filter((r) => r.reporting).length,
+    unassigned: listRows.filter((r) => !r.owner).length,
+  };
+  const shown = listRows.filter((r) => (filter === "attention" ? r.flags.length > 0 : filter === "reporting" ? r.reporting : filter === "unassigned" ? !r.owner : true));
+
+  // Group by team in the teams' own order. Weight is the team's share of NAV across all its holdings, not just the filtered ones.
+  const teams = [...teamById.values()].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+  const groups: HoldingGroup[] = teams.map((t) => {
+    const all = listRows.filter((r) => r.teamId === t.id);
+    const weights = all.map((r) => r.weightPct).filter((w): w is number => w != null);
+    return { id: t.id, name: t.name, navPct: weights.length ? weights.reduce((a, b) => a + b, 0) : null, rows: shown.filter((r) => r.teamId === t.id) };
+  });
+  const emptyText = filter === "attention" ? "Nothing needs attention right now." : filter === "reporting" ? "No holding reports in the next two weeks." : filter === "unassigned" ? "Every holding has an owner." : "No holdings.";
 
   return (
-    <>
-      <PageHeader
-        title={team?.name ?? "Fund holdings"}
-        description={
-          <Suspense fallback="Holdings">
-            <MarketLine market={market} />
-          </Suspense>
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <HoldingsToolbar
+        basePath={`/t/${slug}`}
+        active={filter}
+        counts={counts}
+        aside={
+          <>
+            <Suspense fallback={<Skeleton className="h-4 w-48" />}>
+              <LiveMarketLine market={market} today={today} />
+            </Suspense>
+            {/* Adding needs a team to own the holding, so the fund view leaves it to the sector pages. */}
+            {team && <AddHoldingDialog teamId={team.id} members={members} defaultOwnerId={isMember ? user.id : null} />}
+          </>
         }
-        actions={team ? <AddHoldingDialog teamId={team.id} members={members} defaultOwnerId={isMember ? user.id : null} /> : undefined}
       />
 
       {rows.length === 0 ? (
-        <EmptyState title="No holdings yet" hoot="wave">{fund ? "Pick a sector team in the sidebar to add its tickers." : "Add the tickers this team covers."} Each one gets live prices, filings, news, and movement alerts.</EmptyState>
+        <EmptyState title="No holdings yet" hoot="wave" className="flex-1">
+          {fund ? "Pick a sector team in the sidebar to add its tickers." : "Add the tickers this team covers."} Each one gets live prices, filings, news, and movement alerts.
+        </EmptyState>
       ) : (
-        <Suspense fallback={<HoldingsTable rows={rows} teamById={teamById} showTeam={fund} />}>
-          <LiveHoldingsTable rows={rows} teamById={teamById} showTeam={fund} market={market} />
+        <Suspense fallback={<HoldingsTable groups={groups} empty={emptyText} />}>
+          <LiveHoldingsTable groups={groups} empty={emptyText} market={market} />
         </Suspense>
       )}
-    </>
+    </div>
   );
 }
 
-async function MarketLine({ market }: { market: Promise<MarketSnapshot> }) {
+async function LiveMarketLine({ market, today }: { market: Promise<MarketSnapshot>; today: string }) {
   const { spx, error } = await market;
-  if (!spx) return error ?? "Holdings";
-  return <>S&amp;P 500 {fmtPct(spx.changePct)} today{spx.marketState && spx.marketState !== "REGULAR" ? " · market closed" : ""}</>;
+  if (!spx) return <MarketLine error={error} />;
+  const asOf = DateTime.fromISO(spx.asOf).setZone(NY);
+  const day = !asOf.isValid || asOf.toISODate() === today ? "today" : asOf.toFormat("cccc");
+  return <MarketLine changePct={spx.changePct} day={day} closed={!!spx.marketState && spx.marketState !== "REGULAR"} />;
 }
 
-type HoldingRow = Awaited<ReturnType<typeof listTeamHoldings>>[number];
-
-type TableProps = { rows: HoldingRow[]; teamById: Map<string, Team>; showTeam: boolean };
-
-async function LiveHoldingsTable({ market, ...props }: TableProps & { market: Promise<MarketSnapshot> }) {
-  return <HoldingsTable {...props} market={await market} />;
+async function LiveHoldingsTable({ market, ...props }: { groups: HoldingGroup[]; empty: string; market: Promise<MarketSnapshot> }) {
+  const snap = await market;
+  const quotes: QuoteCells = {};
+  for (const [ticker, m] of Object.entries(snap.rows)) quotes[ticker] = { price: m.quote?.price, changePct: m.quote?.changePct, relativePp: m.relativePp };
+  return <HoldingsTable {...props} quotes={quotes} />;
 }
 
-/** Without `market` the price columns show placeholders; that is the Suspense fallback while quotes load. */
-function HoldingsTable({ rows, teamById, showTeam, market }: TableProps & { market?: MarketSnapshot }) {
-  return (
-    <Card className="overflow-x-auto p-0">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Ticker</TableHead>
-            <TableHead>Company</TableHead>
-            {showTeam && <TableHead>Team</TableHead>}
-            <TableHead className="text-right">Shares</TableHead>
-            <TableHead className="text-right">Weight</TableHead>
-            <TableHead className="text-right">Price</TableHead>
-            <TableHead className="text-right">Day</TableHead>
-            <TableHead className="text-right">vs S&amp;P</TableHead>
-            <TableHead>Owner</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map(({ h, ownerName }) => {
-            const m = market?.rows[h.ticker];
-            const t = teamById.get(h.teamId);
-            return (
-              <TableRow key={h.id}>
-                <TableCell>
-                  <Link href={`/t/${t?.slug}/h/${h.ticker}`} className="font-semibold hover:underline">
-                    {h.ticker}
-                  </Link>
-                </TableCell>
-                <TableCell className="max-w-64 truncate text-muted-foreground">{h.companyName}</TableCell>
-                {showTeam && <TableCell className="text-muted-foreground">{t?.name}</TableCell>}
-                <TableCell className="tnum text-right">{h.shares != null ? Number(h.shares).toLocaleString("en-US", { maximumFractionDigits: 2 }) : <span className="text-muted-foreground">—</span>}</TableCell>
-                <TableCell className="tnum text-right">{h.weightPct != null ? fmtPct(h.weightPct, 2, false) : <span className="text-muted-foreground">—</span>}</TableCell>
-                {market ? (
-                  <>
-                    <TableCell className="tnum text-right">{m?.quote ? fmtMoney(m.quote.price) : <span className="text-muted-foreground">—</span>}</TableCell>
-                    <TableCell className="text-right"><Move value={m?.quote?.changePct} unit="%" digits={2} /></TableCell>
-                    <TableCell className="text-right"><Move value={m?.relativePp} unit=" pp" digits={1} /></TableCell>
-                  </>
-                ) : (
-                  <>
-                    <TableCell><Skeleton className="ml-auto h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
-                    <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
-                  </>
-                )}
-                <TableCell className={ownerName ? "" : "text-warning-foreground"}>{ownerName ?? "Unassigned"}</TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </Card>
-  );
+/** Read once per request; a helper so the render stays free of impure calls. */
+function nowMs() {
+  return Date.now();
 }

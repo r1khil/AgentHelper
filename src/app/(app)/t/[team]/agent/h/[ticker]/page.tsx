@@ -12,6 +12,7 @@ import { listHoldingMemories } from "@/lib/agent/memory/store";
 import { getUpcomingEarnings } from "@/lib/earnings";
 import { PrepPackCard } from "@/components/app/agent/prep-pack-card";
 import { HoldingBoard, type BoardChat, type BoardMarket } from "@/components/app/agent/holding-board";
+import { loadResearchSidebar } from "@/components/app/agent/load-sidebar";
 
 export async function generateMetadata({ params }: { params: Promise<{ ticker: string }> }): Promise<Metadata> {
   const { ticker } = await params;
@@ -24,7 +25,14 @@ export default async function HoldingBoardPage({ params, searchParams }: { param
   const row = await getHolding(team.id, ticker);
   if (!row) notFound();
   const { h } = row;
-  const [rows, movement, memories, upcoming] = await Promise.all([listHoldingChats(h.id, { fundWide: isFundWide(user) }), getOpenMovement(h.id), listHoldingMemories(h.id).catch(() => []), getUpcomingEarnings(h.id).catch(() => null)]);
+  const viewer = { fundWide: isFundWide(user) };
+  const [rows, movement, memories, upcoming, sidebar] = await Promise.all([
+    listHoldingChats(h.id, viewer),
+    getOpenMovement(h.id),
+    listHoldingMemories(h.id).catch(() => []),
+    getUpcomingEarnings(h.id).catch(() => null),
+    loadResearchSidebar(team.id, viewer),
+  ]);
   const fundWide = user.role === "admin" || user.role === "lead_analyst" || user.role === "exec";
   const chats: BoardChat[] = rows.map(({ c, authorName, questions }) => ({
     id: c.id,
@@ -44,20 +52,23 @@ export default async function HoldingBoardPage({ params, searchParams }: { param
 
   return (
     <HoldingBoard
-      team={{ id: team.id, slug: team.slug }}
+      team={{ id: team.id, slug: team.slug, name: team.name }}
       holding={{ id: h.id, ticker: h.ticker, name: h.companyName }}
       market={market}
-      movement={movement ? { id: movement.id, dueAt: movement.dueAt?.toISOString() ?? null } : null}
+      movement={movement ? { id: movement.id, dueAt: movement.dueAt?.toISOString() ?? null, overdue: movement.dueAt ? movement.dueAt < new Date() : false } : null}
       chats={chats}
       initialChatId={selected?.c.id ?? null}
       initialMessages={initialMessages}
       initialRunStatus={selected ? effectiveRunStatus(selected.c) : "idle"}
       configured={agentConfigured()}
       transparency={transparencyEnabled(user)}
+      canTrace={isFundWide(user)}
       userName={user.fullName}
       memories={memories}
       canManage={canManageTeam(user, team.id)}
       prepCard={upcoming?.prepPack ? <PrepPackCard pack={upcoming.prepPack} compact /> : undefined}
+      sidebar={sidebar}
+      newTeamSlug={team.slug}
     />
   );
 }

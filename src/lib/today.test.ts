@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { greeting, inDays, nextReportByTicker, nextSunday, reportDays, reportsLine, sessionHeading, type UpcomingReport } from "./today";
+import { agendaDate, citationParts, daysAway, greeting, greetingWord, inDays, listNudges, listSentence, marketLine, nextReportByTicker, nextSunday, nudgeAction, nudgeWhen, reportDays, reportsLine, sessionHeading, sessionSentence, sessionStamp, signed, type UpcomingReport } from "./today";
 
 const r = (ticker: string, reportDate: string, reportHour: string | null, dateStatus: "confirmed" | "estimated" = "confirmed"): UpcomingReport => ({ ticker, reportDate, reportHour, dateStatus });
 
@@ -54,5 +54,64 @@ describe("dates", () => {
     expect(greeting(new Date("2026-09-25T12:15:00Z"))).toBe("Good morning");
     expect(greeting(new Date("2026-09-25T18:00:00Z"))).toBe("Good afternoon");
     expect(greeting(new Date("2026-09-25T23:00:00Z"))).toBe("Good evening");
+  });
+});
+
+describe("Today v2", () => {
+  it("says when the market opens or closes, New York time", () => {
+    // Mon 28 Sep 2026, 8:18 NY (EDT = UTC-4).
+    expect(marketLine(new Date("2026-09-28T12:18:00Z"))).toBe("MON 28 SEP · MARKET OPENS IN 1H 12M");
+    expect(marketLine(new Date("2026-09-28T15:00:00Z"))).toBe("MON 28 SEP · MARKET CLOSES IN 5H 0M");
+    expect(marketLine(new Date("2026-09-28T19:45:00Z"))).toBe("MON 28 SEP · MARKET CLOSES IN 15M");
+    expect(marketLine(new Date("2026-09-28T21:00:00Z"))).toBe("MON 28 SEP · MARKET CLOSED · OPENS TOMORROW 9:30");
+    expect(marketLine(new Date("2026-09-26T15:00:00Z"))).toBe("SAT 26 SEP · MARKET CLOSED · OPENS MON 9:30");
+  });
+
+  it("formats greeting, stamps and agenda dates", () => {
+    expect(greetingWord(new Date("2026-09-25T12:15:00Z"))).toBe("Morning");
+    expect(greetingWord(new Date("2026-09-25T23:00:00Z"))).toBe("Evening");
+    expect(sessionStamp("2026-09-25")).toBe("FRI 25 SEP");
+    expect(agendaDate("2026-10-13")).toBe("Tue 13 Oct");
+    expect(daysAway("2026-09-28", "2026-10-13")).toBe("15 days");
+    expect(daysAway("2026-09-28", "2026-09-29")).toBe("tomorrow");
+  });
+
+  it("signs figures with a true minus", () => {
+    expect(signed(0.84, 2, "%")).toBe("+0.84%");
+    expect(signed(-2, 0, " bp")).toBe("\u22122 bp");
+    expect(signed(-0.001, 2, "%")).toBe("0.00%");
+    expect(signed(null)).toBe("—");
+  });
+
+  it("writes Hoot's sentence", () => {
+    expect(sessionSentence({ subject: "We", vs: "the S&P 500", diffBps: 25, ret: 0.84, weekday: "Friday" })).toBe("We beat the S&P 500 by 25 bps on Friday.");
+    expect(sessionSentence({ subject: "Healthcare", vs: "its sectors", diffBps: -1, ret: -0.5, weekday: "Friday" })).toBe("Healthcare trailed its sectors by 1 bp on Friday.");
+    expect(sessionSentence({ subject: "We", vs: "the S&P 500", diffBps: null, ret: -0.3, weekday: "Friday" })).toBe("The Fund lost 0.30% on Friday.");
+    expect(listSentence(4, 1)).toBe("I found four things for you, one of them overdue.");
+    expect(listSentence(2, 2)).toBe("I found two things for you, both overdue.");
+    expect(listSentence(1, 1)).toBe("I found one thing for you, and it's overdue.");
+    expect(listSentence(3, 0)).toBe("I found three things for you.");
+    expect(listSentence(0, 0)).toBe("Nothing on my list for you right now.");
+  });
+
+  it("orders the list and drops tips", () => {
+    const n = (id: string, kind: string, priority: number) => ({ id, kind, priority });
+    expect(listNudges([n("a", "weekly", 6), n("tip:x", "tip", 0), n("b", "movement", 1)]).map((x) => x.id)).toEqual(["b", "a"]);
+  });
+
+  it("labels list items from what the nudge says", () => {
+    const n = (id: string, kind: string, title = "", detail?: string) => ({ id, kind, title, detail });
+    expect(nudgeWhen(n("movement:1:overdue", "movement"))).toBe("Overdue");
+    expect(nudgeWhen(n("movement:1:due", "movement", "Your UNH write-up is due in 5h"))).toBe("Due in 5h");
+    expect(nudgeWhen(n("earnings:1:expectations", "earnings", "Write down expectations for JPM", "It reports Tuesday before the open."))).toBe("Reports Tue");
+    expect(nudgeWhen(n("weekly:2026-09-25", "weekly"))).toBe("Week to Sep 25");
+    expect(nudgeWhen(n("changelog:120", "changelog"))).toBe("PR #120");
+    expect(nudgeAction(n("movement:1:overdue", "movement"))).toBe("Open write-up");
+    expect(nudgeAction(n("weekly:2026-09-25", "weekly"))).toBe("Review pack");
+  });
+
+  it("splits citations out of the brief", () => {
+    expect(citationParts("NVDA added 14 bps [1]. UNH cost 7 bps [2][3].")).toEqual(["NVDA added 14 bps", 1, ". UNH cost 7 bps", 2, 3, "."]);
+    expect(citationParts("No citations.")).toEqual(["No citations."]);
   });
 });

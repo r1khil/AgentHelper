@@ -1,7 +1,7 @@
 "use client";
 
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ChartLegend, chartTick, exactDate } from "@/components/charts/primitives";
+import { ChartLegend, chartGrid, chartTick, exactDate } from "@/components/charts/primitives";
 
 export type StressPathPoint = { date: string; fund: number; market: number; benchmark: number | null };
 
@@ -17,7 +17,7 @@ export function StressPathChart({ data, fundLabel, benchmarkLabel }: { data: Str
       <div className="h-52 w-full" role="img" aria-label={`${fundLabel}, S&P 500 and sector benchmark cumulative return through the window`}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data.map((d) => ({ date: d.date, fund: d.fund * 100, market: d.market * 100, benchmark: d.benchmark === null ? null : d.benchmark * 100 }))} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-            <CartesianGrid vertical={false} stroke="var(--border)" />
+            <CartesianGrid vertical={false} stroke={chartGrid} />
             <XAxis dataKey="date" tick={chartTick} tickLine={false} axisLine={false} minTickGap={40} tickFormatter={(d: string) => exactDate(d).replace(/, \d{4}$/, "")} />
             <YAxis tick={chartTick} tickLine={false} axisLine={false} width={44} domain={[lo, hi]} tickFormatter={(v: number) => `${v.toFixed(0)}%`} />
             <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.4} />
@@ -27,7 +27,7 @@ export function StressPathChart({ data, fundLabel, benchmarkLabel }: { data: Str
               contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
             />
             <Line type="linear" dataKey="fund" stroke="var(--series-1)" strokeWidth={2} dot={false} isAnimationActive={false} />
-            <Line type="linear" dataKey="market" stroke="var(--muted-foreground)" strokeDasharray="4 3" strokeWidth={1.25} dot={false} isAnimationActive={false} />
+            <Line type="linear" dataKey="market" stroke="var(--series-neutral)" strokeDasharray="4 3" strokeWidth={1.25} dot={false} isAnimationActive={false} />
             {hasBench && <Line type="linear" dataKey="benchmark" stroke="var(--series-2)" strokeWidth={1.25} dot={false} isAnimationActive={false} />}
           </LineChart>
         </ResponsiveContainer>
@@ -35,7 +35,7 @@ export function StressPathChart({ data, fundLabel, benchmarkLabel }: { data: Str
       <ChartLegend
         series={[
           { key: "fund", label: fundLabel, color: "var(--series-1)" },
-          { key: "market", label: "S&P 500 (SPY)", color: "var(--muted-foreground)", dashed: true },
+          { key: "market", label: "S&P 500 (SPY)", color: "var(--series-neutral)", dashed: true },
           ...(hasBench ? [{ key: "benchmark", label: benchmarkLabel, color: "var(--series-2)" }] : []),
         ]}
       />

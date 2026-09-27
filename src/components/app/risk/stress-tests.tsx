@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ChevronRight, Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { SectionTitle } from "@/components/app/page-header";
 import { fmtDate } from "@/lib/format";
 import type { StressOk, StressResult } from "@/lib/risk/stress";
 import { cn } from "@/lib/utils";
@@ -9,6 +8,8 @@ import { Explained } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "./explainers";
 import { rpct, rsigned, rusd, rusdFull } from "./format";
 import { StressPathChart } from "./stress-path-chart";
+import { SectionHead } from "./section-head";
+import { backtestHref, stressAnchor, stressDates } from "./stress-panel";
 import { Source, Step, Working } from "./working";
 
 const tone = (v: number | null) => (v === null || Math.abs(v) < 5e-5 ? "" : v > 0 ? "text-up" : "text-down");
@@ -36,6 +37,9 @@ export function StressTests({
   transparency,
   exportQuery,
   backtesting = true,
+  label = "Historical stress tests",
+  title = "Historical stress tests",
+  id,
 }: {
   results: StressResult[];
   /** Name of the portfolio line, e.g. "Fund" or "Tech sleeve". */
@@ -48,6 +52,10 @@ export function StressTests({
   exportQuery: string | null;
   /** Link each window to Backtesting with its dates. */
   backtesting?: boolean;
+  /** The section's accessible name; the Risk page's summary panel owns "Historical stress tests". */
+  label?: string;
+  title?: string;
+  id?: string;
 }) {
   const download = (file: string, label: string) => (
     <a href={`/api/risk/export?file=${file}${exportQuery ?? ""}`} className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-2" download>
@@ -56,8 +64,8 @@ export function StressTests({
     </a>
   );
   return (
-    <section aria-label="Historical stress tests" className="mb-6">
-      <SectionTitle aside={<Explained label="Today's positions, buy-and-hold" align="right">{RISK_EXPLAIN.stressTests}</Explained>}>Historical stress tests</SectionTitle>
+    <section id={id} aria-label={label} className="scroll-mt-4">
+      <SectionHead aside={<Explained label="Today's positions, buy-and-hold" align="right">{RISK_EXPLAIN.stressTests}</Explained>}>{title}</SectionHead>
       <Card className="gap-0 overflow-hidden p-0">
         <div className={cn(GRID, "hidden border-b px-4 py-2 pl-10 text-xs font-medium text-muted-foreground md:grid")}>
           <span>Window</span>
@@ -99,19 +107,17 @@ function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, bac
   const small = "text-[11px] text-muted-foreground md:hidden";
   const stoodIn = r.holdings.filter((h) => h.proxied);
   return (
-    <details className="group border-b last:border-b-0">
-      <summary className="cursor-pointer list-none px-4 py-3 hover:bg-muted/40 [&::-webkit-details-marker]:hidden">
+    <details id={stressAnchor(r.key)} className="group scroll-mt-4 border-b border-row last:border-b-0">
+      <summary className="cursor-pointer list-none px-4 py-3 hover:bg-band [&::-webkit-details-marker]:hidden">
         <div className="flex items-start gap-2">
           <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden />
           <div className={cn(GRID, "tnum min-w-0 flex-1 text-sm")}>
             <div className="col-span-3 min-w-0 md:col-span-1">
               <div className="font-medium">{r.label}</div>
-              <div className="text-[11px] text-muted-foreground">
-                {fmtDate(r.start)} – {fmtDate(r.end)}
-              </div>
+              <div className="font-mono text-[11px] text-muted-foreground">{stressDates(r.start, r.end)}</div>
             </div>
             <div className="text-right">
-              <div className={cn("text-base font-semibold md:text-sm", tone(r.fund))}>{rsigned(r.fund)}</div>
+              <div className={cn("font-mono text-base font-semibold md:text-[12.5px]", tone(r.fund))}>{rsigned(r.fund)}</div>
               <div className={small}>{fundLabel}</div>
             </div>
             <Figure label="S&P 500" value={rsigned(r.market)} className={tone(r.market)} />
@@ -164,7 +170,7 @@ function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, bac
         {transparency && <StressWorking r={r} />}
         {backtesting && (
           <div className="text-xs">
-            <Link href={`/backtesting?${new URLSearchParams({ from: r.backtestFrom, to: r.end, stress: r.key })}`} className="font-medium underline underline-offset-2 hover:text-foreground">
+            <Link href={backtestHref(r)} className="font-medium underline underline-offset-2 hover:text-foreground">
               Open in Backtesting →
             </Link>
             <span className="text-muted-foreground"> with {fmtDate(r.backtestFrom)} – {fmtDate(r.end)} filled in. Backtesting replays saved weights rebalanced daily, so its result will differ.</span>
@@ -178,7 +184,7 @@ function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, bac
 function Figure({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
     <div className="md:text-right">
-      <div className={cn("text-sm whitespace-nowrap", className)}>{value}</div>
+      <div className={cn("font-mono text-[12.5px] whitespace-nowrap", className)}>{value}</div>
       <div className="text-[11px] text-muted-foreground md:hidden">{label}</div>
     </div>
   );
@@ -203,7 +209,7 @@ function ContributionTable({ r }: { r: StressOk }) {
           {r.holdings.map((h) => (
             <tr key={h.ticker} className="border-b border-border/50">
               <td className="px-2 py-1">
-                <span className="font-medium">{h.ticker}</span>
+                <span className="font-mono font-semibold">{h.ticker}</span>
                 {h.proxied && <span className="ml-1.5 rounded border px-1 py-px text-[10px] text-muted-foreground" title={h.proxyReason ?? undefined}>via {h.series}</span>}
               </td>
               <td className="px-2 py-1 text-right">{rpct(h.weight)}</td>

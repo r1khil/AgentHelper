@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RangeControlGroup, rangeControlClass } from "@/components/charts/primitives";
+import { Segmented } from "@/components/app/panel";
 import { activeRiskBreakdown, bumpCheck, type ActiveRisk, type ActiveRiskRow } from "@/lib/risk/active";
 import { TRADING_DAYS } from "@/lib/risk/math";
 import type { RiskReport } from "@/lib/risk/model";
@@ -36,8 +36,8 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
   const title = <Explained label="Where the active risk comes from">{RISK_EXPLAIN.activeRiskSection}</Explained>;
   if (!a) {
     return (
-      <section id={ACTIVE_RISK_ANCHOR} aria-label="Where the active risk comes from" className="mb-6 scroll-mt-4">
-        <h2 className="mb-2 text-sm font-semibold">{title}</h2>
+      <section id={ACTIVE_RISK_ANCHOR} aria-label="Where the active risk comes from" className="scroll-mt-4">
+        <h2 className="mb-2.5 text-[14.5px] font-semibold">{title}</h2>
         <Card className="p-4 text-sm text-muted-foreground">Tracking error needs benchmark sector weights, so active risk can&apos;t be split yet.</Card>
       </section>
     );
@@ -51,17 +51,20 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
   const q = `?lookback=${r.lookback}`;
 
   return (
-    <section id={ACTIVE_RISK_ANCHOR} aria-label="Where the active risk comes from" className="mb-6 scroll-mt-4">
-      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold">{title}</h2>
+    <section id={ACTIVE_RISK_ANCHOR} aria-label="Where the active risk comes from" className="scroll-mt-4">
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-[14.5px] font-semibold">{title}</h2>
         {a.holdings.length > TOP && (
-          <RangeControlGroup label="Active risk view">
-            <Link href={`${basePath}${q}#${ACTIVE_RISK_ANCHOR}`} aria-current={showAll ? undefined : "true"} className={rangeControlClass(!showAll)}>Largest {TOP}</Link>
-            <Link href={`${basePath}${q}&all=1#${ACTIVE_RISK_ANCHOR}`} aria-current={showAll ? "true" : undefined} className={rangeControlClass(showAll)}>All {a.holdings.length}</Link>
-          </RangeControlGroup>
+          <Segmented
+            label="Active risk view"
+            segments={[
+              { key: "top", label: `Largest ${TOP}`, href: `${basePath}${q}#${ACTIVE_RISK_ANCHOR}`, active: !showAll },
+              { key: "all", label: `All ${a.holdings.length}`, href: `${basePath}${q}&all=1#${ACTIVE_RISK_ANCHOR}`, active: showAll },
+            ]}
+          />
         )}
       </div>
-      <p className="mb-1 text-sm text-muted-foreground">
+      <p className="mb-1 text-[13px] text-ink-2">
         Tracking error {rpct(a.trackingError, 2)} vs {benchmarkLabel}. Holdings long, the benchmark&apos;s sector ETFs short; the rows add to 100%.
       </p>
       {a.sentences.length > 0 && (
@@ -92,7 +95,7 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
                 <TableCell>
                   <Bars weight={rest.reduce((s, h) => s + h.weight, 0)} share={rest.reduce((s, h) => s + h.share, 0)} max={max} aggregate />
                 </TableCell>
-                <TableCell className="tnum text-right text-sm">{rpct(rest.reduce((s, h) => s + h.teContribution, 0), 2)}</TableCell>
+                <TableCell className="text-right font-mono text-[12.5px]">{rpct(rest.reduce((s, h) => s + h.teContribution, 0), 2)}</TableCell>
                 <TableCell className="text-right text-xs">per holding in All</TableCell>
               </TableRow>
             )}
@@ -122,15 +125,15 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
               <TableCell className="align-top">
                 <Bars weight={a.benchmark.weight} share={a.benchmark.share} max={max} aggregate />
               </TableCell>
-              <TableCell className="tnum text-right align-top text-sm">{rpct(a.benchmark.teContribution, 2)}</TableCell>
+              <TableCell className="text-right font-mono align-top text-sm">{rpct(a.benchmark.teContribution, 2)}</TableCell>
               <TableCell className="text-right align-top text-xs text-muted-foreground">—</TableCell>
             </TableRow>
           </TableBody>
           <TableFooter>
             <TableRow>
               <TableCell className="font-medium">Total</TableCell>
-              <TableCell className="tnum text-xs">{rpct(a.total)} of active risk</TableCell>
-              <TableCell className="tnum text-right text-sm font-medium">{rpct(a.trackingError, 2)}</TableCell>
+              <TableCell className="font-mono text-xs">{rpct(a.total)} of active risk</TableCell>
+              <TableCell className="text-right font-mono text-[12.5px] font-medium">{rpct(a.trackingError, 2)}</TableCell>
               <TableCell />
             </TableRow>
           </TableFooter>
@@ -154,11 +157,11 @@ function Bars({ weight, share, max, aggregate }: { weight: number; share: number
     <div className="grid gap-1">
       <div className="flex items-center gap-2" title="Share of value">
         <MagnitudeBar value={weight} max={max} color="var(--muted-foreground)" className="h-1.5 w-24" />
-        <span className="tnum w-14 text-xs text-muted-foreground">{rpct(weight)}</span>
+        <span className="w-14 font-mono text-xs text-muted-foreground">{rpct(weight)}</span>
       </div>
       <div className="flex items-center gap-2" title="Share of active risk">
         <MagnitudeBar value={share} max={max} color={share < 0 ? "var(--down)" : "var(--series-1)"} className="h-1.5 w-24" />
-        <span className="tnum w-14 text-xs font-medium">{rpct(share)}</span>
+        <span className="w-14 font-mono text-xs font-medium">{rpct(share)}</span>
       </div>
     </div>
   );
@@ -169,7 +172,7 @@ function HoldingRow({ h, max, teams }: { h: ActiveRiskRow; max: number; teams: T
   return (
     <TableRow>
       <TableCell>
-        {team ? <Link href={`/t/${team.slug}/h/${h.ticker}`} className="font-medium hover:underline">{h.ticker}</Link> : <span className="font-medium">{h.ticker}</span>}
+        {team ? <Link href={`/t/${team.slug}/h/${h.ticker}`} className="font-mono font-semibold hover:underline">{h.ticker}</Link> : <span className="font-mono font-semibold">{h.ticker}</span>}
         {h.source !== "own" && (
           <span className="ml-1.5 rounded border px-1 py-px text-[10px] text-muted-foreground" title={h.source === "proxy" ? `Too little price history; modeled with ${h.proxy}` : "No price history or sector; treated as riskless"}>
             {h.source === "proxy" ? `via ${h.proxy}` : "not modeled"}
@@ -178,8 +181,8 @@ function HoldingRow({ h, max, teams }: { h: ActiveRiskRow; max: number; teams: T
         <div className="max-w-24 truncate text-[11px] text-muted-foreground sm:max-w-44">{team?.name ?? h.name}</div>
       </TableCell>
       <TableCell><Bars weight={h.weight} share={h.share} max={max} /></TableCell>
-      <TableCell className="tnum text-right text-sm">{rpct(h.teContribution, 2)}</TableCell>
-      <TableCell className="tnum text-right text-sm">{rpp(h.marginalTe)}</TableCell>
+      <TableCell className="text-right font-mono text-[12.5px]">{rpct(h.teContribution, 2)}</TableCell>
+      <TableCell className="text-right font-mono text-[12.5px]">{rpp(h.marginalTe)}</TableCell>
     </TableRow>
   );
 }

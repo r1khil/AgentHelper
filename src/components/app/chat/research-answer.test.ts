@@ -39,8 +39,8 @@ describe("research answer rendering (actual react-markdown pipeline)", () => {
       expect(html).toContain('href="https://www.sec.gov/Archives/report.htm"');
       expect(html.match(/target="_blank"/g)).toHaveLength(3);
       expect(html.match(/rel="noopener noreferrer"/g)).toHaveLength(3);
-      expect(html).toContain("[1]</a>");
-      expect(html).toContain("[2]</a>");
+      expect(html).toContain(">1</a>");
+      expect(html).toContain(">2</a>");
       expect(html).not.toMatch(/href="(?:src:|#|$)|href=""/);
       expect(html).not.toContain(">sec-1<");
     },
@@ -48,7 +48,7 @@ describe("research answer rendering (actual react-markdown pipeline)", () => {
   it("handles tables and repeated references with stable numbering", () => {
     const html = render("| Metric | Citation |\n| --- | --- |\n| Revenue | [src:sec-1] |\n\nAgain [src:sec-1]");
     expect(html).toContain("<table>");
-    expect(html.match(/\[1\]<\/a>/g)).toHaveLength(2);
+    expect(html.match(/>1<\/a>/g)).toHaveLength(2);
   });
   it("renders internal and unavailable citations as buttons, never navigable anchors", () => {
     const html = render("[src:drive-1] [src:missing-url] [src:invented]");
@@ -59,8 +59,8 @@ describe("research answer rendering (actual react-markdown pipeline)", () => {
   it("links an already-saved citation with a mistyped id to the one source it meant", () => {
     const html = render("AWS grew [src:web-1jo7h8]. Again [src:web-1jo7h8].");
     expect(html.match(/href="https:\/\/news\.example\.com\/amzn"/g)).toHaveLength(2);
-    expect(html).toContain("[6]</a>");
-    expect(html).not.toContain("[?]");
+    expect(html).toContain(">6</a>");
+    expect(html).not.toContain(">?<");
   });
   it("does not transform code examples or loosen Markdown URL protection", () => {
     const html = render("`[src:sec-1]`\n\n```\n[src:doc-1]\n```\n\n[Unsafe](javascript:alert%281%29)");

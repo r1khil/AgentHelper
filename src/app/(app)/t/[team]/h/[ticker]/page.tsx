@@ -1,283 +1,321 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DateTime } from "luxon";
 import { loadTeam } from "@/lib/teams";
-import { getHolding, listNotes, listPendingProposals, listTeamMembers } from "@/lib/holdings";
+import { getHolding, listNotes, listPendingProposals, listTeamMembers, loadHoldingActivity } from "@/lib/holdings";
 import { marketSnapshot } from "@/lib/market";
 import { getBarsRange, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { listFilings } from "@/lib/providers/edgar";
 import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
-import { addNote, deleteNote, exitHolding, updateOwner, updateThesis } from "@/lib/actions/holdings";
-import { canManageTeam } from "@/lib/auth";
+import { NY, todayNY } from "@/lib/providers/calendar";
+import { canManageTeam, isFundWide } from "@/lib/auth";
+import { FUND_SCOPE_SLUG } from "@/lib/constants";
+import { effectiveRunStatus, listHoldingChats } from "@/lib/chats";
 import { documentLabel } from "@/lib/drive/labels";
 import { driveStatus, listHoldingFiles } from "@/lib/drive/index";
 import { listHoldingFilings } from "@/lib/documents/index";
 import { DocumentUploadForm } from "@/components/app/document-upload-form";
 import { DocumentSummary } from "@/components/app/document-summary";
 import { ThesisProposal } from "@/components/app/thesis-proposal";
-import { fmtDate, fmtMoney, relativeTime } from "@/lib/format";
-import { PageHeader, SectionTitle } from "@/components/app/page-header";
-import { Move } from "@/components/app/move";
 import { PriceChart } from "@/components/app/price-chart";
 import { alignPrices } from "@/lib/charts/series";
-import { NativeSelect } from "@/components/app/native-select";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { HoldingHeader, HoldingTabs, type HeaderQuote } from "@/components/app/holdings/holding-header";
+import { HoldingActions, OwnerChangeLink, type OwnerChoice } from "@/components/app/holdings/holding-actions";
+import { ThesisPanel } from "@/components/app/holdings/thesis-panel";
+import { NotesPanel, NotesTab, monthDay, type NoteItem } from "@/components/app/holdings/notes";
+import { GlancePanel, LatestPanel, type GlanceRow, type LatestItem } from "@/components/app/holdings/overview-side";
+import { DocumentsTab, EarningsTab, ResearchTab, type EarningsRow } from "@/components/app/holdings/tab-panels";
+import { expectationsDue, shortDate } from "@/components/app/holdings/attention";
 
 const MATERIAL_FORMS = ["10-K", "10-K/A", "10-Q", "10-Q/A", "8-K", "8-K/A", "20-F", "6-K", "DEF 14A", "S-1", "424B4"];
+const TABS = ["overview", "research", "documents", "earnings", "notes"] as const;
+type Tab = (typeof TABS)[number];
+const DAY = 86_400_000;
 
 export async function generateMetadata({ params }: { params: Promise<{ ticker: string }> }): Promise<Metadata> {
   const { ticker } = await params;
   return { title: ticker.toUpperCase() };
 }
 
-export default async function HoldingPage({ params, searchParams }: { params: Promise<{ team: string; ticker: string }>; searchParams: Promise<{ error?: string }> }) {
+export default async function HoldingPage({ params, searchParams }: { params: Promise<{ team: string; ticker: string }>; searchParams: Promise<{ error?: string; tab?: string }> }) {
   const { team: slug, ticker } = await params;
-  const { error: flash } = await searchParams;
+  const { error: flash, tab: tabParam } = await searchParams;
+  const tab: Tab = (TABS as readonly string[]).includes(tabParam ?? "") ? (tabParam as Tab) : "overview";
   const { team, user } = await loadTeam(slug);
   const row = await getHolding(team.id, ticker);
   if (!row) notFound();
   const { h, ownerName } = row;
 
-  const { since, today } = newsWindow();
-  const [members, notes, market, bars, spxBars, filings, news, drive, docs, proposals, indexedFilings] = await Promise.all([
+  // Network sources load only on the tabs that show them: price history on Overview, EDGAR and news on Overview and Documents.
+  const wantsChart = tab === "overview";
+  const wantsFeeds = tab === "overview" || tab === "documents";
+  const { since, today: newsToday } = newsWindow();
+  const none = Promise.resolve([] as never[]);
+  const [members, notes, market, bars, spxBars, filings, news, drive, docs, proposals, indexedFilings, activity, chats] = await Promise.all([
     listTeamMembers(team.id),
     listNotes(h.id),
     marketSnapshot([h.ticker]),
-    getBarsRange(h.ticker, historyStart()).then((r) => r.bars).catch(() => []),
-    getBarsRange(SPX_SYMBOL, historyStart()).then((r) => r.bars).catch(() => []),
-    h.cik ? listFilings(h.cik, { forms: MATERIAL_FORMS, limit: 8 }).catch(() => []) : Promise.resolve([]),
-    finnhubConfigured() ? getCompanyNews(h.ticker, since, today).catch(() => []) : Promise.resolve([]),
+    wantsChart ? getBarsRange(h.ticker, historyStart()).then((r) => r.bars).catch(() => []) : none,
+    wantsChart ? getBarsRange(SPX_SYMBOL, historyStart()).then((r) => r.bars).catch(() => []) : none,
+    wantsFeeds && h.cik ? listFilings(h.cik, { forms: MATERIAL_FORMS, limit: 8 }).catch(() => []) : none,
+    wantsFeeds && finnhubConfigured() ? getCompanyNews(h.ticker, since, newsToday).catch(() => []) : none,
     driveStatus().catch(() => null),
     listHoldingFiles(h.id, 30).catch(() => []),
     listPendingProposals(h.id).catch(() => []),
     listHoldingFilings(h.id, 8).catch(() => []),
+    loadHoldingActivity(h.id),
+    listHoldingChats(h.id, { fundWide: isFundWide(user) }).catch(() => []),
   ]);
-  const newSince = recentCutoff();
+
+  const today = todayNY();
+  const now = nowMs();
+  const base = `/t/${team.slug}`;
+  const holdingPath = `${base}/h/${encodeURIComponent(h.ticker)}`;
+  const boardHref = `${base}/agent/h/${encodeURIComponent(h.ticker)}`;
+  const manage = canManageTeam(user, team.id);
   const thesisProposal = !h.thesis?.trim() ? proposals.find((p) => p.field === "thesis") : undefined;
   const driveReady = Boolean(drive?.connected && drive.rootFolderId && !drive.needsReconnect);
   const driveNote = !drive?.configured ? "Google Drive is not set up on this deployment." : !drive.connected || !drive.rootFolderId ? "Ask an admin to connect Google Drive from the Admin page." : drive.needsReconnect ? "Google Drive needs to be reconnected by an admin." : undefined;
+  const active = h.status === "active";
 
+  // ── Header ──
   const m = market.rows[h.ticker];
-  const chart = alignPrices(bars, spxBars);
-  const manage = canManageTeam(user, team.id);
+  const quote: HeaderQuote = m?.quote
+    ? { price: m.quote.price, currency: m.quote.currency, changePct: m.quote.changePct, relativePp: m.relativePp, when: quoteWhen(m.quote.asOf, m.quote.marketState, today) }
+    : { error: market.error ?? m?.error ?? "Quote unavailable" };
+  const owner: OwnerChoice = { holdingId: h.id, ticker: h.ticker, ownerId: h.ownerId, members: members.map((mm) => ({ id: mm.id, fullName: mm.fullName })), locked: !manage && h.ownerId !== null && h.ownerId !== user.id };
+
+  // ── Earnings ──
+  const upcoming = activity.reports.filter((e) => e.status === "upcoming" && e.reportDate >= today).sort((a, b) => a.reportDate.localeCompare(b.reportDate));
+  const next = upcoming[0];
+  const earningsRows: EarningsRow[] = activity.reports.map((e) => ({
+    id: e.id,
+    href: `${base}/earnings/${e.id}`,
+    date: e.reportDate,
+    when: [hourLabel(e.reportHour), e.dateStatus === "estimated" ? "estimated" : "confirmed"].filter(Boolean).join(" · "),
+    period: e.fiscalPeriod,
+    status: e.status,
+    expectations: e.preLockedAt ? "locked" : e.expectations?.trim() ? "draft" : "none",
+    eps: e.epsEstimate != null ? Number(e.epsEstimate).toFixed(2) : null,
+  }));
+
+  // ── Tabs ──
+  const docCount = docs.length + indexedFilings.length + activity.models.length;
+  const tabs = [
+    { key: "overview", label: "Overview" },
+    { key: "research", label: "Research", count: chats.length || undefined },
+    { key: "documents", label: "Documents & filings", count: docCount || undefined },
+    { key: "earnings", label: "Earnings", count: next ? shortDate(next.reportDate) : undefined },
+    { key: "notes", label: "Notes", count: notes.length || undefined },
+  ].map((t) => ({ ...t, href: t.key === "overview" ? holdingPath : `${holdingPath}?tab=${t.key}`, active: t.key === tab }));
+
+  const noteItems: NoteItem[] = notes.map(({ n, authorName }) => ({ id: n.id, body: n.body, authorName, createdAt: n.createdAt, canDelete: n.authorId === user.id || manage }));
+  const menuLinks = [
+    { label: "Research board", href: boardHref },
+    { label: "Earnings", href: `${holdingPath}?tab=earnings` },
+    { label: "Documents & filings", href: `${holdingPath}?tab=documents` },
+    { label: "Movements", href: `${base}/movements` },
+    ...(h.cik ? [{ label: "Open on SEC EDGAR", href: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${h.cik}`, external: true }] : []),
+  ];
 
   return (
-    <>
-      <PageHeader
-        title={
-          <span className="flex flex-wrap items-baseline gap-x-3">
-            <span>{h.ticker}</span>
-            <span className="text-base font-normal text-muted-foreground">{h.companyName}</span>
-            {h.status === "exited" && <Badge variant="secondary">Exited</Badge>}
-          </span>
-        }
-        description={
-          m?.quote ? (
-            <span className="flex flex-wrap items-center gap-x-3">
-              <span className="tnum text-foreground">{fmtMoney(m.quote.price)}</span>
-              <Move value={m.quote.changePct} unit="%" digits={2} />
-              <span>vs S&amp;P <Move value={m.relativePp} unit=" pp" /></span>
-              <span className="text-xs">{relativeTime(m.quote.asOf)}</span>
-            </span>
-          ) : (
-            market.error ?? "Quote unavailable"
-          )
-        }
-        actions={
-          manage && h.status === "active" ? (
-            <form action={exitHolding}>
-              <input type="hidden" name="holdingId" value={h.id} />
-              <Button type="submit" variant="outline" size="sm">
-                Mark exited
-              </Button>
-            </form>
-          ) : undefined
-        }
+    <div className="flex min-h-0 flex-1 flex-col gap-4 md:-mt-1">
+      <HoldingHeader
+        crumbs={[{ label: "Holdings", href: isFundWide(user) ? `/t/${FUND_SCOPE_SLUG}` : base }, { label: team.name, href: base }]}
+        ticker={h.ticker}
+        company={h.companyName}
+        exited={!active}
+        quote={quote}
+        actions={<HoldingActions ticker={h.ticker} holdingId={h.id} boardHref={boardHref} canUpload={active} uploadDisabledReason={driveNote} owner={owner} canExit={manage && active} links={menuLinks} />}
       />
+      <HoldingTabs tabs={tabs} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="min-w-0 space-y-6">
-          <Card className="p-4">
-            <SectionTitle aside="Daily closes">Price vs S&amp;P 500</SectionTitle>
-            <PriceChart data={chart} ticker={h.ticker} currency={m?.quote?.currency} />
-          </Card>
-
-          <Card className="p-4">
-            <SectionTitle aside={h.thesisUpdatedAt ? `Updated ${relativeTime(h.thesisUpdatedAt)}` : undefined}>Thesis</SectionTitle>
-            {flash && <p className="mb-2 text-sm text-destructive">{flash}</p>}
-            {thesisProposal && <ThesisProposal proposal={thesisProposal} />}
-            <form action={updateThesis} className="grid gap-2">
-              <input type="hidden" name="holdingId" value={h.id} />
-              <Textarea name="thesis" defaultValue={h.thesis ?? ""} rows={5} placeholder="The team's position, in its own words. The agent reads this for context but never edits it." />
-              <div className="flex justify-end">
-                <Button type="submit" size="sm" variant="outline">
-                  Save thesis
-                </Button>
-              </div>
-            </form>
-          </Card>
-
-          <Card className="p-4">
-            <SectionTitle aside={`${notes.length}`}>Notes</SectionTitle>
-            <form action={addNote} className="mb-4 grid gap-2">
-              <input type="hidden" name="holdingId" value={h.id} />
-              <Textarea name="body" rows={2} placeholder="Add a note for the team…" required />
-              <div className="flex justify-end">
-                <Button type="submit" size="sm">
-                  Add note
-                </Button>
-              </div>
-            </form>
-            {notes.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No notes yet.</p>
-            ) : (
-              <ul className="divide-y">
-                {notes.map(({ n, authorName }) => (
-                  <li key={n.id} className="py-3">
-                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                      <span>
-                        {authorName ?? "Unknown"} · {relativeTime(n.createdAt)}
-                      </span>
-                      {(n.authorId === user.id || manage) && (
-                        <form action={deleteNote}>
-                          <input type="hidden" name="id" value={n.id} />
-                          <button type="submit" className="hover:text-destructive">
-                            Delete
-                          </button>
-                        </form>
-                      )}
-                    </div>
-                    <p className="mt-1 text-sm whitespace-pre-wrap">{n.body}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+      {tab === "overview" && (
+        <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+          <div className="flex min-h-0 min-w-0 flex-col gap-5">
+            <PriceChart data={alignPrices(bars, spxBars)} ticker={h.ticker} currency={m?.quote?.currency} className="shrink-0" />
+            <ThesisPanel holdingId={h.id} thesis={h.thesis} meta={h.thesisUpdatedAt ? `updated ${monthDay(h.thesisUpdatedAt)}` : undefined} flash={flash} proposal={thesisProposal ? <ThesisProposal proposal={thesisProposal} /> : undefined} />
+            <NotesPanel holdingId={h.id} notes={noteItems} className="flex-1" />
+          </div>
+          <div className="flex min-h-0 min-w-0 flex-col gap-5">
+            <GlancePanel rows={glanceRows({ h, ownerName, owner, next, moves: activity.moves, base, now })} />
+            <LatestPanel
+              className="flex-1"
+              items={latestItems({
+                indexed: indexedFilings,
+                edgar: filings,
+                news,
+                docs,
+                models: activity.models,
+                base,
+                now,
+              })}
+            />
+          </div>
         </div>
+      )}
 
-        <div className="min-w-0 space-y-6">
-          <Card className="p-4">
-            <SectionTitle>Owner</SectionTitle>
-            <form action={updateOwner} className="flex items-center gap-2">
-              <input type="hidden" name="holdingId" value={h.id} />
-              <NativeSelect name="ownerId" defaultValue={h.ownerId ?? ""} disabled={!manage && h.ownerId !== null && h.ownerId !== user.id}>
-                <option value="">Unassigned</option>
-                {members.map((mm) => (
-                  <option key={mm.id} value={mm.id}>
-                    {mm.fullName}
-                  </option>
-                ))}
-              </NativeSelect>
-              <Button type="submit" size="sm" variant="outline">
-                Save
-              </Button>
-            </form>
-            {!ownerName && <p className="mt-2 text-xs text-warning-foreground">No owner. Movement alerts fall back to the lead analyst.</p>}
-          </Card>
+      {tab === "research" && (
+        <ResearchTab
+          ticker={h.ticker}
+          boardHref={boardHref}
+          chats={chats.map(({ c, authorName, questions }) => ({ id: c.id, title: c.title, author: authorName, questions, updatedAt: c.updatedAt, running: effectiveRunStatus(c) === "running", href: `${boardHref}?chat=${c.id}` }))}
+        />
+      )}
 
-          <Card className="p-4">
-            <SectionTitle aside={driveReady ? `${docs.length} in the Fund's Drive` : undefined}>Documents</SectionTitle>
-            {docs.length === 0 ? (
-              <p className="mb-3 text-sm text-muted-foreground">{driveReady ? "Nothing filed for this holding yet. The agent reads these documents for context." : "The agent reads the team's initiating report, earnings updates, and model from the Fund's Drive."}</p>
-            ) : (
-              <ul className="mb-3 space-y-2">
-                {docs.map((d) => (
-                  <li key={d.id} className="text-sm">
-                    <div className="flex items-baseline gap-2">
-                      <Badge variant="outline" className="w-32 shrink-0 justify-center text-[0.7rem]">
-                        {documentLabel(d)}
-                      </Badge>
-                      <a href={d.webViewLink ?? `https://drive.google.com/file/d/${d.id}/view`} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate hover:underline" title={d.path}>
-                        {d.name}
-                      </a>
-                      <span className="tnum shrink-0 text-xs text-muted-foreground">{d.modifiedTime ? relativeTime(d.modifiedTime) : ""}</span>
-                    </div>
-                    <div className="pl-34">
-                      <DocumentSummary summary={d.summary} summaryError={d.summaryError} summaryModel={d.summaryModel} summarizedAt={d.summarizedAt} />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {h.status === "active" && <DocumentUploadForm holdingId={h.id} disabledReason={driveNote} />}
-          </Card>
+      {tab === "documents" && (
+        <DocumentsTab
+          docs={docs.map((d) => ({
+            id: d.id,
+            name: d.name,
+            href: d.webViewLink ?? `https://drive.google.com/file/d/${d.id}/view`,
+            label: documentLabel(d),
+            path: d.path,
+            modified: d.modifiedTime,
+            summary: <DocumentSummary summary={d.summary} summaryError={d.summaryError} summaryModel={d.summaryModel} summarizedAt={d.summarizedAt} />,
+          }))}
+          docsNote={driveReady ? "Nothing filed for this holding yet. Hoot reads these documents for context." : "Hoot reads the team's initiating report, earnings updates, and model from the Fund's Drive."}
+          driveCount={driveReady ? `${docs.length} in the Fund's Drive` : undefined}
+          upload={active ? <DocumentUploadForm holdingId={h.id} disabledReason={driveNote} /> : undefined}
+          models={activity.models.map((mm) => ({ ...mm, href: `${base}/models/${mm.id}` }))}
+          modelsHref={`${base}/models`}
+          indexed={indexedFilings.map((f) => ({ id: f.id, form: f.form ?? "filing", title: f.title, url: f.url, note: f.sectionNote, date: f.publishedAt, isNew: !!f.publishedAt && now - f.publishedAt.getTime() < 7 * DAY }))}
+          indexedEmpty={h.cik ? "No filings indexed yet. The morning sweep indexes 10-K, 10-Q and 8-K filings; an admin can backfill two years from the Admin page." : "No SEC registrant matched this ticker."}
+          edgar={filings.map((f) => ({ key: f.accession, form: f.form, title: f.description || f.primaryDocument, url: f.url, filedAt: f.filedAt }))}
+          edgarEmpty={h.cik ? "No filings found." : "No SEC registrant matched this ticker."}
+          cikLabel={h.cik ? `CIK ${Number(h.cik)}` : "No CIK"}
+          news={news.slice(0, 8).map((n) => ({ id: n.id, headline: n.headline, url: n.url, source: n.source, publishedAt: n.publishedAt }))}
+          newsNote={!finnhubConfigured() ? "News needs a Finnhub key (FINNHUB_API_KEY)." : news.length === 0 ? "No news in the window." : undefined}
+        />
+      )}
 
-          <Card className="p-4">
-            <SectionTitle aside={indexedFilings.length ? "indexed for the agent" : undefined}>SEC filings</SectionTitle>
-            {indexedFilings.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{h.cik ? "No filings indexed yet. The morning sweep indexes 10-K, 10-Q and 8-K filings; an admin can backfill two years from the Admin page." : "No SEC registrant matched this ticker."}</p>
-            ) : (
-              <ul className="space-y-2">
-                {indexedFilings.map((f) => (
-                  <li key={f.id} className="flex items-baseline gap-2 text-sm">
-                    <Badge variant="outline" className="tnum w-16 shrink-0 justify-center text-[0.7rem]">{f.form ?? "filing"}</Badge>
-                    <a href={f.url ?? "#"} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate hover:underline" title={f.sectionNote ?? undefined}>
-                      {f.title}
-                    </a>
-                    {f.publishedAt && f.publishedAt.getTime() > newSince && <Badge className="shrink-0 text-[0.65rem]">new</Badge>}
-                    <span className="tnum shrink-0 text-xs text-muted-foreground">{f.publishedAt ? fmtDate(f.publishedAt) : ""}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+      {tab === "earnings" && <EarningsTab rows={earningsRows} calendarHref={`${base}/earnings`} />}
 
-          <Card className="p-4">
-            <SectionTitle aside={h.cik ? `CIK ${Number(h.cik)}` : "No CIK"}>Recent filings</SectionTitle>
-            {filings.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{h.cik ? "No filings found." : "No SEC registrant matched this ticker."}</p>
-            ) : (
-              <ul className="space-y-2">
-                {filings.map((f) => (
-                  <li key={f.accession} className="flex items-baseline gap-2 text-sm">
-                    <Badge variant="outline" className="tnum w-14 justify-center">{f.form}</Badge>
-                    <a href={f.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate hover:underline">
-                      {f.description || f.primaryDocument}
-                    </a>
-                    <span className="tnum shrink-0 text-xs text-muted-foreground">{fmtDate(f.filedAt)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-
-          <Card className="p-4">
-            <SectionTitle aside="Last 7 days">News</SectionTitle>
-            {!finnhubConfigured() ? (
-              <p className="text-sm text-muted-foreground">News needs a Finnhub key (FINNHUB_API_KEY).</p>
-            ) : news.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No news in the window.</p>
-            ) : (
-              <ul className="space-y-2.5">
-                {news.slice(0, 8).map((n) => (
-                  <li key={n.id} className="text-sm">
-                    <a href={n.url} target="_blank" rel="noreferrer" className="hover:underline">
-                      {n.headline}
-                    </a>
-                    <div className="text-xs text-muted-foreground">
-                      {n.source} · {relativeTime(n.publishedAt)}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </div>
-      </div>
-    </>
+      {tab === "notes" && <NotesTab holdingId={h.id} notes={noteItems} />}
+    </div>
   );
 }
 
-function newsWindow() {
-  const now = Date.now();
-  return { since: new Date(now - 7 * 86400000).toISOString().slice(0, 10), today: new Date(now).toISOString().slice(0, 10) };
+type HoldingRow = NonNullable<Awaited<ReturnType<typeof getHolding>>>;
+type Activity = Awaited<ReturnType<typeof loadHoldingActivity>>;
+
+function glanceRows({ h, ownerName, owner, next, moves, base, now }: { h: HoldingRow["h"]; ownerName: string | null; owner: OwnerChoice; next: Activity["reports"][number] | undefined; moves: Activity["moves"]; base: string; now: number }): GlanceRow[] {
+  const shares = h.shares != null ? `${Number(h.shares).toLocaleString("en-US", { maximumFractionDigits: 2 })} sh` : null;
+  const weight = h.weightPct != null ? `${Number(h.weightPct).toFixed(1)}% of NAV` : null;
+  const open = moves.filter((mv) => mv.status !== "completed");
+  const overdue = open.find((mv) => mv.dueAt && mv.dueAt.getTime() < now);
+  const last = moves[0];
+  const expectations = next ? (next.preLockedAt ? "Locked in" : next.expectations?.trim() ? "Draft" : "Not started") : null;
+  const link = "text-[12.5px] font-semibold hover:underline";
+  return [
+    {
+      label: "Owner",
+      value: ownerName ?? <span className="text-caution-foreground">Unassigned</span>,
+      title: ownerName ? undefined : "No owner. Movement alerts fall back to the lead analyst.",
+      action: <OwnerChangeLink choice={owner} />,
+    },
+    { label: "Position", value: shares || weight ? [shares, weight].filter(Boolean).join(" · ") : <span className="text-muted-foreground">Not recorded</span> },
+    {
+      label: "Next report",
+      value: next ? `${shortDate(next.reportDate)}${hourLabel(next.reportHour) ? `, ${hourLabel(next.reportHour)}` : ""}${next.dateStatus === "estimated" ? " (est.)" : ""}` : <span className="text-muted-foreground">None scheduled</span>,
+    },
+    {
+      label: "Expectations",
+      value: expectations ?? <span className="text-muted-foreground">—</span>,
+      title: next && !next.preLockedAt ? `Due ${shortDate(expectationsDue(next.reportDate, next.reportHour))}` : undefined,
+      action: next ? (
+        <Link href={`${base}/earnings/${next.id}`} className={next.preLockedAt ? `${link} text-muted-foreground` : expectations === "Not started" ? `${link} text-hoot-foreground` : link}>
+          {next.preLockedAt ? "Open" : expectations === "Not started" ? "Write now" : "Finish"}
+        </Link>
+      ) : undefined,
+    },
+    {
+      label: "Movements",
+      value: open.length
+        ? `${open.length} open${overdue ? " · write-up overdue" : open[0].dueAt ? ` · due ${DateTime.fromJSDate(open[0].dueAt).setZone(NY).toFormat("MMM d")}` : ""}`
+        : last
+          ? `None open · last ${shortDate(last.sessionDate)}`
+          : "None yet",
+      action: open.length ? (
+        <Link href={`${base}/movements/${open[0].id}`} className={overdue ? `${link} text-hoot-foreground` : link}>
+          Open
+        </Link>
+      ) : undefined,
+    },
+  ];
 }
 
-/** Filings filed within the last week get a "new" pill. */
-function recentCutoff() {
-  return Date.now() - 7 * 86400000;
+function latestItems({
+  indexed,
+  edgar,
+  news,
+  docs,
+  models,
+  base,
+  now,
+}: {
+  indexed: Awaited<ReturnType<typeof listHoldingFilings>>;
+  edgar: Awaited<ReturnType<typeof listFilings>>;
+  news: Awaited<ReturnType<typeof getCompanyNews>>;
+  docs: Awaited<ReturnType<typeof listHoldingFiles>>;
+  models: Activity["models"];
+  base: string;
+  now: number;
+}): LatestItem[] {
+  const items: LatestItem[] = [];
+  const seen = new Set<string>();
+  const fresh = (t: number) => now - t < 3 * DAY;
+  for (const f of indexed) {
+    const at = f.publishedAt?.getTime() ?? 0;
+    const day = f.publishedAt?.toISOString().slice(0, 10);
+    seen.add(`${f.form}|${day}`);
+    items.push({ kind: f.form ?? "SEC", title: f.title, meta: ["SEC", f.publishedAt ? monthDay(f.publishedAt) : null, fresh(at) ? "new" : null, "indexed for Hoot"].filter(Boolean).join(" · "), href: f.url ?? undefined, external: true, hot: fresh(at), at });
+  }
+  for (const f of edgar) {
+    if (seen.has(`${f.form}|${f.filedAt}`)) continue;
+    const at = Date.parse(`${f.filedAt}T12:00:00Z`);
+    items.push({ kind: f.form, title: f.description || f.primaryDocument, meta: ["SEC", shortDate(f.filedAt), fresh(at) ? "new" : null].filter(Boolean).join(" · "), href: f.url, external: true, hot: fresh(at), at });
+  }
+  for (const n of news) {
+    const at = Date.parse(n.publishedAt);
+    items.push({ kind: "NEWS", title: n.headline, meta: `${n.source} · ${monthDay(new Date(at))}`, href: n.url, external: true, at });
+  }
+  for (const d of docs) {
+    const at = d.modifiedTime?.getTime() ?? d.createdAt.getTime();
+    const s = d.summary;
+    const extra = [s?.rating ? `rating ${s.rating}` : null, s?.priceTarget ? `PT ${s.priceTarget}` : null].filter(Boolean).join(", ");
+    items.push({
+      kind: d.kind === "model" ? "MODEL" : "DRIVE",
+      title: d.name,
+      meta: [documentLabel(d), monthDay(new Date(at)), extra || null].filter(Boolean).join(" · "),
+      href: d.webViewLink ?? `https://drive.google.com/file/d/${d.id}/view`,
+      external: true,
+      at,
+    });
+  }
+  for (const mm of models) {
+    const at = mm.createdAt.getTime();
+    items.push({ kind: "MODEL", title: mm.fileName, meta: [`v${mm.version}`, monthDay(mm.createdAt), mm.pending ? `${mm.pending} values to review` : null].filter(Boolean).join(" · "), href: `${base}/models/${mm.id}`, at });
+  }
+  return items.sort((a, b) => b.at - a.at).slice(0, 7);
+}
+
+function hourLabel(hour: string | null) {
+  return hour === "bmo" ? "before open" : hour === "amc" ? "after close" : hour === "dmh" ? "during market hours" : "";
+}
+
+/** "Friday close" once the session is over, "today" or the time while it trades. */
+function quoteWhen(asOf: string, marketState: string | undefined, today: string) {
+  const t = DateTime.fromISO(asOf).setZone(NY);
+  if (!t.isValid) return "latest";
+  if (marketState === "REGULAR") return `as of ${t.toFormat("h:mm a")}`;
+  return t.toISODate() === today ? "today's close" : `${t.toFormat("cccc")} close`;
+}
+
+function newsWindow() {
+  const now = nowMs();
+  return { since: new Date(now - 7 * DAY).toISOString().slice(0, 10), today: new Date(now).toISOString().slice(0, 10) };
 }
 
 /** A full year plus a calendar cushion for the starting trading session. */
@@ -286,4 +324,9 @@ function historyStart() {
   date.setUTCFullYear(date.getUTCFullYear() - 1);
   date.setUTCDate(date.getUTCDate() - 10);
   return date.toISOString().slice(0, 10);
+}
+
+/** Read once per request; a helper so the render stays free of impure calls. */
+function nowMs() {
+  return Date.now();
 }

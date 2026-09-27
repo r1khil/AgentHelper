@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
 import type { UIMessage } from "ai";
 import { db } from "@/db/client";
-import { chatMessages, chats, holdings, profiles } from "@/db/schema";
+import { chatMessages, chats, holdings, profiles, teams } from "@/db/schema";
 import { inTeams, type TeamIds } from "@/lib/team-filter";
 
 /** Who is listing chats: members who aren't execs or admins never see fund-only chats (those that read the PT sheet). */
@@ -155,6 +155,27 @@ export async function listGeneralChats(teamId: TeamIds, viewer: ChatViewer, limi
     .from(chats)
     .leftJoin(profiles, eq(profiles.id, chats.createdBy))
     .where(and(inTeams(chats.teamId, teamId), isNull(chats.holdingId), sql`${questions} > 0`, visibleTo(viewer)))
+    .orderBy(desc(chats.updatedAt))
+    .limit(limit);
+  return rows.map((r) => ({ ...r, questions: Number(r.questions) }));
+}
+
+export type RecentHoldingChat = { c: typeof chats.$inferSelect; authorName: string | null; questions: number; ticker: string; teamSlug: string };
+
+/**
+ * Chats pinned to holdings across the given teams, newest first, for the Research sidebar. Like the general list,
+ * chats that never got a question are left out.
+ */
+export async function listRecentHoldingChats(teamId: TeamIds, viewer: ChatViewer, limit = 60): Promise<RecentHoldingChat[]> {
+  if (Array.isArray(teamId) && teamId.length === 0) return [];
+  const questions = sql<number>`(select count(*) from chat_messages m where m.chat_id = ${chats.id} and m.role = 'user')`;
+  const rows = await db
+    .select({ c: chats, authorName: profiles.fullName, questions, ticker: holdings.ticker, teamSlug: teams.slug })
+    .from(chats)
+    .innerJoin(holdings, eq(holdings.id, chats.holdingId))
+    .innerJoin(teams, eq(teams.id, chats.teamId))
+    .leftJoin(profiles, eq(profiles.id, chats.createdBy))
+    .where(and(inTeams(chats.teamId, teamId), sql`${questions} > 0`, visibleTo(viewer)))
     .orderBy(desc(chats.updatedAt))
     .limit(limit);
   return rows.map((r) => ({ ...r, questions: Number(r.questions) }));

@@ -1,20 +1,100 @@
 "use client";
 
+import { Maximize2 } from "lucide-react";
+import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PerformanceChart } from "@/components/charts/performance-chart";
+import { ChartTooltip, chartGrid, chartTick, exactDate, signed, tone } from "@/components/charts/primitives";
 
+/** Percent points: `portfolio` and `benchmark` are cumulative returns in percent from the period's base close. */
 export type CumulativeChartPoint = { date: string; portfolio: number; benchmark: number | null };
 
-/** Keep the page-wide period and cash-flow-adjusted return calculation authoritative. */
+const FUND = "var(--series-1)";
+const BENCH = "var(--series-neutral)";
+const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+/** The full interactive chart (scrub, drag-to-compare, observations table). Shown in the Details dialog. */
 export function CumulativeActiveChart({ data, portfolioLabel, benchmarkLabel }: { data: CumulativeChartPoint[]; portfolioLabel: string; benchmarkLabel: string }) {
   if (data.length < 2) return <div className="text-sm text-muted-foreground">No completed trading days in this period.</div>;
-  return <PerformanceChart
-    data={data.map((p) => ({ date: p.date, values: { portfolio: 100 + p.portfolio, benchmark: p.benchmark === null ? null : 100 + p.benchmark } }))}
-    label={`${portfolioLabel} versus ${benchmarkLabel}`}
-    kind="return" ranges={false}
-    series={[
-      { key: "portfolio", label: portfolioLabel, color: "var(--series-1)" },
-      { key: "benchmark", label: benchmarkLabel, color: "var(--muted-foreground)", dashed: true },
-    ]}
-    note="Cumulative return · page period"
-  />;
+  return (
+    <PerformanceChart
+      data={data.map((p) => ({ date: p.date, values: { portfolio: 100 + p.portfolio, benchmark: p.benchmark === null ? null : 100 + p.benchmark } }))}
+      label={`${portfolioLabel} versus ${benchmarkLabel}`}
+      kind="return"
+      ranges={false}
+      series={[
+        { key: "portfolio", label: portfolioLabel, color: FUND },
+        { key: "benchmark", label: benchmarkLabel, color: BENCH },
+      ]}
+      note="Cumulative return · page period"
+    />
+  );
+}
+
+/** Tick labels like the design: "SEP 17" then day numbers, or "SEP 17" throughout when the period spans months. */
+function tickLabels(dates: string[]) {
+  const spansMonths = dates.length > 1 && dates[0].slice(0, 7) !== dates.at(-1)!.slice(0, 7);
+  return (d: string, i?: number) => {
+    const [, m, day] = d.split("-");
+    const full = `${MONTHS[Number(m) - 1]} ${Number(day)}`;
+    return spansMonths || d === dates[0] || i === 0 ? full : String(Number(day));
+  };
+}
+
+/** Compact cumulative-return panel body: thin lines, no dots, mono ticks, hover readout. */
+export function CompactCumulativeChart({ data, portfolioLabel, benchmarkLabel }: { data: CumulativeChartPoint[]; portfolioLabel: string; benchmarkLabel: string }) {
+  if (data.length < 2) return <div className="flex flex-1 items-center text-sm text-muted-foreground">Needs at least two closes in this period.</div>;
+  const label = tickLabels(data.map((d) => d.date));
+  return (
+    <div className="h-full min-h-44 w-full" role="img" aria-label={`Cumulative return, ${portfolioLabel} versus ${benchmarkLabel}`}>
+      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <LineChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 0 }} accessibilityLayer={false}>
+          <CartesianGrid vertical={false} stroke={chartGrid} />
+          <XAxis dataKey="date" tick={chartTick} tickLine={false} axisLine={false} minTickGap={28} interval="preserveStartEnd" tickFormatter={(d: string) => label(d)} dy={6} />
+          <YAxis tick={chartTick} tickLine={false} axisLine={false} width={44} domain={["auto", "auto"]} tickFormatter={(v: number) => `${signed(v, 1)}%`} />
+          <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.35} />
+          <Tooltip
+            cursor={{ stroke: "var(--border)" }}
+            isAnimationActive={false}
+            content={({ active, payload }) => {
+              const p = active ? (payload?.[0]?.payload as CumulativeChartPoint | undefined) : undefined;
+              if (!p) return null;
+              const gap = p.benchmark === null ? null : (p.portfolio - p.benchmark) * 100;
+              return (
+                <ChartTooltip label={exactDate(p.date)}>
+                  <div className="flex justify-between gap-4"><span>{portfolioLabel}</span><span className={tone(p.portfolio)}>{signed(p.portfolio)}%</span></div>
+                  <div className="flex justify-between gap-4"><span>{benchmarkLabel}</span><span className={tone(p.benchmark)}>{p.benchmark === null ? "—" : `${signed(p.benchmark)}%`}</span></div>
+                  {gap !== null && (
+                    <div className="flex justify-between gap-4 border-t pt-1.5 text-muted-foreground"><span>Gap</span><span className={tone(gap)}>{signed(gap, 0)} bp</span></div>
+                  )}
+                </ChartTooltip>
+              );
+            }}
+          />
+          <Line type="linear" dataKey="benchmark" stroke={BENCH} strokeWidth={1.5} dot={false} activeDot={false} connectNulls={false} isAnimationActive={false} />
+          <Line type="linear" dataKey="portfolio" stroke={FUND} strokeWidth={2} dot={false} activeDot={{ r: 3, strokeWidth: 0, fill: FUND }} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** "Details" opens the full interactive chart for the same series. */
+export function CumulativeDetails({ data, portfolioLabel, benchmarkLabel, explain }: { data: CumulativeChartPoint[]; portfolioLabel: string; benchmarkLabel: string; explain: string }) {
+  return (
+    <Dialog>
+      <DialogTrigger render={<Button variant="outline" size="sm" />}>
+        <Maximize2 />
+        Details
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Cumulative return, {portfolioLabel} vs {benchmarkLabel}</DialogTitle>
+          <DialogDescription>{explain}</DialogDescription>
+        </DialogHeader>
+        <CumulativeActiveChart data={data} portfolioLabel={portfolioLabel} benchmarkLabel={benchmarkLabel} />
+      </DialogContent>
+    </Dialog>
+  );
 }

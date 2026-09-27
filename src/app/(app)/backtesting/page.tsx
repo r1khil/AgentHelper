@@ -12,6 +12,11 @@ import { fmtDate } from "@/lib/format";
 import { NY } from "@/lib/providers/calendar";
 import { validDate } from "@/lib/backtesting/engine";
 import { STRESS_WINDOWS } from "@/lib/risk/stress";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { holdings, teams } from "@/db/schema";
+import { BacktestingRedesign } from "@/components/app/backtesting/redesign/backtesting-redesign";
+import { LayoutSwitch } from "@/components/app/backtesting/layout-switch";
 export const metadata: Metadata = { title: "Backtesting" };
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -20,25 +25,30 @@ const BENCHMARKS = new Set(["SPY", "QQQ", "IWM"]);
 export default async function BacktestingPage({ searchParams }: PageProps<"/backtesting">) {
   const user = await requireOnboardedUser();
   const query = await searchParams;
+  // Each member picks the redesign (default) or the classic layout; the shell draws the matching chrome.
+  const classic = user.hoot?.layouts?.backtesting === "classic";
   let snapshot;
   try {
     snapshot = await loadSnapshot(user);
   } catch (error) {
-    return (
+    const message = error instanceof Error ? error.message : "Unable to load current holdings. Please retry.";
+    return classic ? (
       <>
         <PageHeader
           title="Backtesting"
           description="Replay your portfolio with a different set of weights."
+          actions={<LayoutSwitch to="new" />}
         />
-        <EmptyState title="Portfolio weights unavailable">
-          {error instanceof Error
-            ? error.message
-            : "Unable to load current holdings. Please retry."}
-        </EmptyState>
+        <EmptyState title="Portfolio weights unavailable">{message}</EmptyState>
       </>
+    ) : (
+      <EmptyState title="Portfolio weights unavailable" action={<LayoutSwitch to="classic" />}>
+        {message}
+      </EmptyState>
     );
   }
   const end = DateTime.now().setZone(NY).minus({ days: 1 });
+  const teamNames = classic ? Promise.resolve({}) : teamsByTicker(snapshot.positions.map((p) => p.ticker));
 
   // ?scenario=<id> reopens a saved what-if; ?trade=TICKER:-2:cash (from the Risk page) starts one;
   // ?from=&to= (a Risk page stress test, named by ?stress=) fills in the dates.
@@ -92,16 +102,49 @@ export default async function BacktestingPage({ searchParams }: PageProps<"/back
     : user.team && canManageTeam(user, user.team.id)
       ? `/t/${user.team.slug}/attribution`
       : undefined;
+  const key = scenario?.id ?? `${one(query.trade) ?? "saved"}:${one(query.from) ?? ""}:${one(query.to) ?? ""}`;
+  const shared = {
+    snapshot,
+    defaultFrom: end.minus({ months: 3 }).toISODate()!,
+    defaultTo: end.toISODate()!,
+    initial,
+    saveAudience: isFundWide(user) ? "the Fund's execs and admins" : `everyone on ${user.team?.name ?? "your team"}`,
+    realizedHref,
+  };
+  if (classic)
+    return (
+      <BacktestingWorkspace
+        {...shared}
+        key={key}
+        aside={<SavedScenarios items={saved} activeId={scenario?.id} viewerId={user.id} fundWide={isFundWide(user)} />}
+        headerActions={<LayoutSwitch to="new" />}
+      />
+    );
   return (
-    <BacktestingWorkspace
-      key={scenario?.id ?? `${one(query.trade) ?? "saved"}:${one(query.from) ?? ""}:${one(query.to) ?? ""}`}
-      snapshot={snapshot}
-      defaultFrom={end.minus({ months: 3 }).toISODate()!}
-      defaultTo={end.toISODate()!}
-      initial={initial}
-      saveAudience={isFundWide(user) ? "the Fund's execs and admins" : `everyone on ${user.team?.name ?? "your team"}`}
-      aside={<SavedScenarios items={saved} activeId={scenario?.id} viewerId={user.id} fundWide={isFundWide(user)} />}
-      realizedHref={realizedHref}
+    <BacktestingRedesign
+      {...shared}
+      key={key}
+      saved={saved}
+      activeId={scenario?.id}
+      viewerId={user.id}
+      fundWide={isFundWide(user)}
+      teams={await teamNames}
     />
   );
+}
+
+/** Which team covers each ticker ("FIG", or "FIG / Info Tech" when two do), for the weights table. */
+async function teamsByTicker(tickers: string[]): Promise<Record<string, string>> {
+  if (!tickers.length) return {};
+  const rows = await db
+    .select({ ticker: holdings.ticker, team: teams.name })
+    .from(holdings)
+    .innerJoin(teams, eq(teams.id, holdings.teamId))
+    .where(eq(holdings.status, "active"))
+    .orderBy(teams.sortOrder)
+    .catch(() => []);
+  const wanted = new Set(tickers);
+  const out: Record<string, string[]> = {};
+  for (const r of rows) if (wanted.has(r.ticker) && !out[r.ticker]?.includes(r.team)) (out[r.ticker] ??= []).push(r.team);
+  return Object.fromEntries(Object.entries(out).map(([t, names]) => [t, names.join(" / ")]));
 }
