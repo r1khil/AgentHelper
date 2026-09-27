@@ -22,7 +22,7 @@ describe("PT sheet reader stays read-only", () => {
   it("calls only the read endpoints", () => {
     expect(src).not.toMatch(/batchUpdate|values:append|values:update|values:batchUpdate|:clear|batchClear|\/copy|\/permissions|developerMetadata|\/revisions/);
     const urls = [...src.matchAll(/`\$\{(SHEETS_API|DRIVE_FILES)\}([^`]*)`/g)].map((m) => `${m[1]}${m[2]}`);
-    for (const u of urls) expect(u, u).toMatch(/^(SHEETS_API\/\$\{PT_SHEET_FILE_ID\}(\/values:batchGet|\?fields=sheets\.properties\.title)|DRIVE_FILES\/\$\{PT_SHEET_FILE_ID\}\?fields=)/);
+    for (const u of urls) expect(u, u).toMatch(/^(SHEETS_API\/\$\{PT_SHEET_FILE_ID\}(\/values:batchGet|\?fields=sheets\.properties\(title,sheetId\))|DRIVE_FILES\/\$\{PT_SHEET_FILE_ID\}\?fields=)/);
   });
 
   it("requests ranges only through the allowlist", () => {

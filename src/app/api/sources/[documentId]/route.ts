@@ -1,5 +1,5 @@
 import { callParts, getCall } from "@/lib/sell-side/store";
-import { getCurrentUser, canAccessTeam } from "@/lib/auth";
+import { getCurrentUser, canOpenChat } from "@/lib/auth";
 import { effectiveRunStatus, getChat, loadMessages } from "@/lib/chats";
 import { collectSources } from "@/lib/agent/citations";
 import { documentId as sourceDocumentId, externalUrl } from "@/lib/agent/source-resolution";
@@ -16,7 +16,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ documentId: str
   if (!chatId || !/^[\da-f-]{36}$/i.test(chatId)) return Response.json({ error: "Source unavailable." }, { status: 404, headers });
   try {
     const chat = await getChat(chatId);
-    if (!chat || !canAccessTeam(user, chat.teamId)) return Response.json({ error: "Source unavailable." }, { status: 404, headers });
+    if (!chat || !canOpenChat(user, chat)) return Response.json({ error: "Source unavailable." }, { status: 404, headers });
     const sources = collectSources(await loadMessages(chat.id));
     if (![...sources.values()].some((s) => sourceDocumentId(s) === documentId)) {
       // Tool results stream to the browser before the server saves the finished turn.

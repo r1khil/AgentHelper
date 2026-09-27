@@ -11,6 +11,7 @@ import { CHAT_WRITE_UP_ORDER, chatWriteUpPrompt, finishTurnStream, planFinish, U
 import { createTraceSink } from "@/lib/trace/context";
 import type { AgentMetadata, AgentUIMessage } from "@/lib/trace/events";
 import { pageContextFromMessages } from "@/lib/agent/page-context";
+import { usesPtSheet } from "@/lib/agent/pt-sheet-guard";
 import type { CurrentUser } from "@/lib/auth";
 
 export { MAX_STEPS };
@@ -39,7 +40,7 @@ const settledUsage = (p: PromiseLike<LanguageModelUsage> | undefined) => (p ? Pr
  * step and provider call as it happens. They are never persisted and the server branch is unchanged.
  */
 export async function runAgentTurn(opts: {
-  chat: { id: string; teamId: string; holdingId: string | null };
+  chat: { id: string; teamId: string; holdingId: string | null; fundOnly?: boolean };
   user: { id: string; fullName: string; role: string };
   /** The signed-in member, for tools that apply page access rules (attribution, backtests). */
   viewer?: CurrentUser | null;
@@ -59,6 +60,8 @@ export async function runAgentTurn(opts: {
     sources: [...collectSources(messages).values()],
     sink,
     purpose: "chat",
+    chatId: chat.id,
+    sheetInHistory: Boolean(chat.fundOnly) || usesPtSheet(messages),
   });
   const t0 = Date.now();
   sink?.emit({ t: "run.start", chatId: chat.id, modelId: def.modelId, maxSteps: MAX_STEPS });
@@ -184,7 +187,7 @@ export async function runAgentTurn(opts: {
           repaired = true;
         }
       }
-      const metadata: AgentMetadata = { ...(response.metadata as AgentMetadata | undefined), uncited: uncitedFactCount(response), model: def.modelId };
+      const metadata: AgentMetadata = { ...(response.metadata as AgentMetadata | undefined), uncited: uncitedFactCount(response), model: def.answeredBy() };
       if (repaired) metadata.repaired = true;
       if (usage) metadata.usage = traceUsage(usage);
       if (steps) metadata.steps = steps.length;

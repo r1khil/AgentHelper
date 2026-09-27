@@ -17,3 +17,8 @@ export function canManageTeam(user: Pick<Profile, "role" | "teamId">, teamId: st
   if (user.role === "admin" || user.role === "exec") return true;
   return user.role === "lead_analyst" && user.teamId === teamId;
 }
+
+/** A chat is open to its team, except once it has read the price target sheet: then only execs and admins. */
+export function canOpenChat(user: Pick<Profile, "role" | "teamId">, chat: { teamId: string; fundOnly: boolean }) {
+  return canAccessTeam(user, chat.teamId) && (!chat.fundOnly || isFundWide(user));
+}

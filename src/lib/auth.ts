@@ -10,7 +10,7 @@ import { canAccessTeam, isFundWide } from "./roles";
 export type CurrentUser = Profile & { team: Team | null };
 
 // The pure role checks live in ./roles so scripts and tools can use them without Next's request APIs.
-export { canAccessTeam, canManageTeam, isFundWide, transparencyEnabled } from "./roles";
+export { canAccessTeam, canManageTeam, canOpenChat, isFundWide, transparencyEnabled } from "./roles";
 
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createSupabaseServer();

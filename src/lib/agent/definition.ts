@@ -16,6 +16,8 @@ import { fredConfigured } from "@/lib/providers/fred";
 import { makeWikipediaTools } from "./wikipedia-tools";
 import { makePredictionMarketTools } from "./prediction-markets-tools";
 import { makeSandboxTools } from "./sandbox-tools";
+import { makePtSheetTools, ptSheetToolAllowed, type PtSheetState } from "./pt-sheet-tools";
+import { PT_SHEET_MODEL_ID, sheetSafeModel } from "./pt-sheet-guard";
 import type { PageContext } from "./page-context";
 import type { CurrentUser } from "@/lib/auth";
 
@@ -39,11 +41,17 @@ export type AgentContext = {
   viewer?: CurrentUser | null;
   /** Where the member asked from (Hoot attaches it). */
   page?: PageContext | null;
+  /** The saved chat this turn belongs to; the PT sheet tool needs it to make the chat fund-only. */
+  chatId?: string | null;
+  /** The conversation already holds PT sheet data, so every model call stays on the sheet-safe model. */
+  sheetInHistory?: boolean;
 };
 
 export type AgentDefinition = {
   /** The admin's primary model id, for metadata; fallbacks may have answered. */
   modelId: string;
+  /** The model id to record once the turn is over: the sheet-safe model when the PT sheet was in play. */
+  answeredBy: () => string;
   model: LanguageModel;
   instructions: string;
   tools: ToolSet;
@@ -83,14 +91,21 @@ export async function agentModelWithFallback(sink?: TraceSink | null): Promise<{
 }
 
 export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefinition> {
-  const { modelId: primary, model } = await agentModelWithFallback(ctx.sink);
+  const { modelId: primary, model: chain } = await agentModelWithFallback(ctx.sink);
+  // Once the PT sheet is in the conversation (read this turn or earlier), only the sheet-safe model sees it.
+  const sheet: PtSheetState = { read: Boolean(ctx.sheetInHistory) };
+  const sheetTool = ptSheetToolAllowed(ctx);
+  let safe: LanguageModelV4 | undefined;
+  const model: LanguageModel =
+    sheetTool || sheet.read ? sheetSafeModel(chain as unknown as LanguageModelV4, () => (safe ??= chatModel(PT_SHEET_MODEL_ID) as unknown as LanguageModelV4), () => sheet.read) : chain;
   const native = {
-    ...makeTools({ teamId: ctx.teamId, holdingId: ctx.holdingId, userId: ctx.user.id, sources: ctx.sources }),
+    ...makeTools({ teamId: ctx.teamId, holdingId: ctx.holdingId, userId: ctx.user.id, sources: ctx.sources, memoryBlocked: () => sheet.read }),
     ...(ctx.viewer ? makePortfolioTools({ viewer: ctx.viewer, teamId: ctx.teamId }) : {}),
     ...(fredConfigured() ? makeFredTools() : {}),
     ...makeWikipediaTools(),
     ...makePredictionMarketTools(),
     ...(ctx.viewer ? makeSandboxTools({ viewer: ctx.viewer, teamId: ctx.teamId }) : {}),
+    ...(sheetTool && ctx.chatId ? makePtSheetTools({ chatId: ctx.chatId, state: sheet }) : {}),
   };
   // Admin-registered MCP servers add tools under their prefix; a native name always wins.
   const mcp = await loadMcpTools();
@@ -102,11 +117,13 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
     userRole: ctx.user.role,
     purpose: ctx.purpose ?? "chat",
     portfolioTools: Boolean(ctx.viewer),
+    ptSheet: sheetTool,
     page: ctx.page ?? null,
     externalTools: mcp.servers.length ? { servers: mcp.servers, instructions: mcp.instructions, toolNames: Object.keys(mcp.tools) } : undefined,
   });
   return {
     modelId: primary,
+    answeredBy: () => (sheet.read ? PT_SHEET_MODEL_ID : primary),
     model,
     instructions,
     tools,

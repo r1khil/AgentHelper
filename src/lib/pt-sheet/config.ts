@@ -23,7 +23,7 @@ export const PT_SHEET_TABS: PtTabConfig[] = [
     name: "Price Targets",
     headerRow: 1,
     required: ["Ticker", "Current Price", "Cost Basis", "Target Price", "% Off Target"],
-    about: "Per holding: price, cost basis, target price, % off target, return, market cap, beta, purchase date, 52-week range, earnings date, last price target, benchmark and months into the investment horizon.",
+    about: "Per holding: price, cost basis, target price, market cap, beta, purchase date, 52-week range, earnings date, last price target, benchmark and months into the investment horizon. % Off Target is the current price vs the target (negative = below target); % Return is the return since purchase vs cost basis, not the upside to the target.",
   },
   {
     name: "Portfolio Data",

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { loadScope } from "@/lib/teams";
+import { isFundWide } from "@/lib/roles";
 import { effectiveRunStatus, listGeneralChats, listHoldingChatStats } from "@/lib/chats";
 import { listTeamHoldings } from "@/lib/holdings";
 import { listTeamMovements } from "@/lib/movements";
@@ -18,12 +19,13 @@ export default async function AgentIndex({ params }: { params: Promise<{ team: s
   const { team: slug } = await params;
   const scope = await loadScope(slug);
   const { teamIds, teamById } = scope;
+  const viewer = { fundWide: isFundWide(scope.user) };
   const [rows, stats, movements, earnings, general] = await Promise.all([
     listTeamHoldings(teamIds),
-    listHoldingChatStats(teamIds),
+    listHoldingChatStats(teamIds, viewer),
     listTeamMovements(teamIds),
     listTeamEarnings(teamIds),
-    listGeneralChats(teamIds),
+    listGeneralChats(teamIds, viewer),
   ]);
   // Not awaited: the cards render from the database at once and the quotes stream in when Yahoo answers.
   const market: Promise<MarketByTicker> = marketSnapshot(rows.map((r) => r.h.ticker)).then((m) =>

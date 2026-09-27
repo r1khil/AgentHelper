@@ -355,6 +355,8 @@ export const chats = pgTable("chats", {
   /** idle | running | error — whether the agent is still answering the last question. */
   runStatus: text("run_status").notNull().default("idle"),
   runStartedAt: timestamp("run_started_at", { withTimezone: true }),
+  /** Set once Hoot reads the price target sheet in this chat: only execs and admins may list, open or continue it. */
+  fundOnly: boolean("fund_only").notNull().default(false),
   ...timestamps,
 });
 
