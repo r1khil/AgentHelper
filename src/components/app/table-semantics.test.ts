@@ -4,9 +4,11 @@ import { createElement as h, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { TeamsPanel as TodayTeams } from "@/app/(app)/_today/teams-panel";
+import { JobRunsLive } from "./admin/job-runs-live";
 import { ResearchBoards } from "./agent/research-boards";
 import { TeamsPanel as AttributionTeams } from "./attribution/attribution-panels";
 import { HoldingsColumn } from "./attribution/holdings-columns";
+import { DayTable } from "./attribution/sector-breakdown";
 import { SectorsPanel } from "./attribution/sectors-panel";
 import { ActiveBetsPanel, SectorWeightsPanel } from "./exposure/exposure-panels";
 import { HoldingsTable } from "./holdings/holdings-table";
@@ -216,6 +218,39 @@ describe("div grids read as tables", () => {
         }),
       ),
     );
+  });
+});
+
+describe("expandable rows open from the keyboard", () => {
+  // The row still opens on a click anywhere; a real button in its first cell is the keyboard's way in.
+  const expanders = (nodes: Node[]) => nodes.filter((n) => n.tag === "button" && "aria-expanded" in n.attrs);
+
+  it("Attribution's per-day breakdown: a button for each day with positions", () => {
+    const pos = { ticker: "NVDA", weight: 0.05, ret: 0.01, contribution: 0.0005, pnl: 120, priced: "close" as const };
+    const day = (date: string, positions: (typeof pos)[]) => ({ date, wp: 0.3, rp: 0.01, growth: 1, contributionRaw: 0.003, contributionScaled: 0.003, positions, bench: null });
+    for (const hasBench of [true, false]) {
+      const nodes = checkTables(render(h(DayTable, { days: [day("2026-09-24", [pos]), day("2026-09-25", [])], hasBench })));
+      const buttons = expanders(nodes);
+      expect(buttons).toHaveLength(1);
+      expect(buttons[0].attrs["aria-expanded"]).toBe("false");
+      expect(buttons[0].attrs["aria-controls"]).toBeTruthy();
+      expect(buttons[0].attrs["aria-label"]).toMatch(/^Positions on /);
+      expect(role(buttons[0].parent!)).toBe("cell");
+    }
+  });
+
+  it("Admin job runs: a step-log button in transparency mode, for runs with steps", () => {
+    const step = { at: "2026-09-27T12:00:00.000Z", kind: "step" as const, name: "fetch" };
+    const run = (id: string, progress: (typeof step)[]) => ({ id, job: "morning", startedAt: "2026-09-27T12:00:00.000Z", finishedAt: "2026-09-27T12:01:00.000Z", ok: true, summary: {}, current: step, progress });
+    const runs = [run("a", [step]), run("b", [])];
+    const nodes = checkTables(render(h(JobRunsLive, { initial: runs, transparency: true })));
+    const buttons = expanders(nodes);
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].attrs["aria-expanded"]).toBe("false");
+    expect(buttons[0].attrs["aria-controls"]).toBeTruthy();
+    expect(buttons[0].attrs["aria-label"]).toMatch(/^Step log, morning, /);
+    expect(role(buttons[0].parent!)).toBe("cell");
+    expect(expanders(checkTables(render(h(JobRunsLive, { initial: runs, transparency: false }))))).toHaveLength(0);
   });
 });
 

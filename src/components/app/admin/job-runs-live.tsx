@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { ChevronRight, Loader2, TriangleAlert } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { JobRunView } from "@/app/api/admin/job-runs/route";
@@ -76,7 +76,7 @@ export function JobRunsLive({ initial, transparency }: { initial: JobRunView[]; 
   }, [anyRunning, pollUntil]);
 
   return (
-    <Table>
+    <Table aria-label="Job runs">
       <TableHeader>
         <TableRow>
           {transparency && (
@@ -111,10 +111,30 @@ export function JobRunsLive({ initial, transparency }: { initial: JobRunView[]; 
 }
 
 function RunRows({ r, running, isOpen, canOpen, transparency, onToggle }: { r: JobRunView; running: boolean; isOpen: boolean; canOpen: boolean; transparency: boolean; onToggle: () => void }) {
+  const logId = useId();
   return (
     <>
-      <TableRow className={cn(canOpen && "cursor-pointer")} onClick={canOpen ? onToggle : undefined} aria-expanded={canOpen ? isOpen : undefined}>
-        {transparency && <TableCell className="px-2">{canOpen && <ChevronRight className={cn("size-3.5 text-muted-foreground transition-transform", isOpen && "rotate-90")} />}</TableCell>}
+      {/* The whole row opens on a click; the button is the way in from the keyboard and names what it opens. */}
+      <TableRow className={cn(canOpen && "cursor-pointer")} onClick={canOpen ? onToggle : undefined}>
+        {transparency && (
+          <TableCell className="px-2">
+            {canOpen && (
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                aria-controls={logId}
+                aria-label={`Step log, ${r.job}, ${fmtDateTime(r.startedAt)}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggle();
+                }}
+                className="grid size-5 place-items-center rounded-sm text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                <ChevronRight aria-hidden className={cn("size-3.5 transition-transform", isOpen && "rotate-90")} />
+              </button>
+            )}
+          </TableCell>
+        )}
         <TableCell className="font-medium">{r.job}</TableCell>
         <TableCell className="tnum text-muted-foreground">{fmtDateTime(r.startedAt)}</TableCell>
         <TableCell className="max-w-md truncate text-caption text-muted-foreground" title={JSON.stringify(r.summary)}>
@@ -129,7 +149,7 @@ function RunRows({ r, running, isOpen, canOpen, transparency, onToggle }: { r: J
         </TableCell>
       </TableRow>
       {isOpen && r.progress && (
-        <TableRow className="bg-muted/10 hover:bg-muted/10">
+        <TableRow id={logId} className="bg-muted/10 hover:bg-muted/10">
           <TableCell colSpan={5} className="py-2">
             <ol className="grid gap-0.5 text-caption">
               {r.progress.map((e, i) => (

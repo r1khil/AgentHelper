@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { ChevronRight, TriangleAlert } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -155,7 +155,8 @@ function CarinoBlock({ linking }: { linking: AttributionBreakdown["linking"] }) 
   );
 }
 
-function DayTable({ days, hasBench }: { days: SectorDayBreakdown[]; hasBench: boolean }) {
+/** Exported for the table-structure test. */
+export function DayTable({ days, hasBench }: { days: SectorDayBreakdown[]; hasBench: boolean }) {
   const [all, setAll] = useState(false);
   const [openDay, setOpenDay] = useState<string | null>(null);
   const shown = all ? days : days.slice(-DEFAULT_ROWS);
@@ -169,7 +170,7 @@ function DayTable({ days, hasBench }: { days: SectorDayBreakdown[]; hasBench: bo
   return (
     <Block title={`Per day (${days.length})`} explain={EXPLAIN.scaledEffect}>
       <div className="overflow-x-auto rounded-md border">
-        <Table className="text-caption">
+        <Table className="text-caption" aria-label="Per day">
           <TableHeader>
             <TableRow>
               <TableHead className="w-6">
@@ -217,10 +218,28 @@ function DayTable({ days, hasBench }: { days: SectorDayBreakdown[]; hasBench: bo
 function DayRows({ d, flags, open, hasBench, cols, onToggle }: { d: SectorDayBreakdown; flags: string[]; open: boolean; hasBench: boolean; cols: number; onToggle: () => void }) {
   const b = d.bench;
   const canOpen = d.positions.length > 0;
+  const detailId = useId();
   return (
     <>
+      {/* The whole row opens on a click; the button is the way in from the keyboard and names what it opens. */}
       <TableRow className={cn(canOpen && "cursor-pointer")} onClick={canOpen ? onToggle : undefined}>
-        <TableCell className="px-1">{canOpen && <ChevronRight className={cn("size-3 transition-transform", open && "rotate-90")} />}</TableCell>
+        <TableCell className="px-1">
+          {canOpen && (
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls={detailId}
+              aria-label={`Positions on ${fmtDate(d.date)}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle();
+              }}
+              className="grid size-5 place-items-center rounded-sm text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              <ChevronRight aria-hidden className={cn("size-3 transition-transform", open && "rotate-90")} />
+            </button>
+          )}
+        </TableCell>
         <TableCell className="tnum whitespace-nowrap">{fmtDate(d.date)}</TableCell>
         <TableCell className="tnum text-right">{w(d.wp)}</TableCell>
         {hasBench && <TableCell className="tnum text-right">{b ? w(b.wb) : "—"}</TableCell>}
@@ -245,9 +264,9 @@ function DayRows({ d, flags, open, hasBench, cols, onToggle }: { d: SectorDayBre
         </TableCell>
       </TableRow>
       {open && (
-        <TableRow className="bg-muted/20 hover:bg-muted/20">
+        <TableRow id={detailId} className="bg-muted/20 hover:bg-muted/20">
           <TableCell colSpan={cols} className="py-1.5">
-            <table className="ml-6 text-caption">
+            <table className="ml-6 text-caption" aria-label={`Positions on ${fmtDate(d.date)}`}>
               <thead className="text-muted-foreground">
                 <tr>
                   <th scope="col" className="pr-4 text-left font-medium">Holding</th>
