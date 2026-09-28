@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { Activity, ArrowLeftRight, ArrowUp, CalendarDays, CalendarRange, Eye, EyeOff, FileText, Mic, Sparkles, X } from "lucide-react";
+import { Activity, ArrowLeftRight, ArrowUp, CalendarDays, CalendarRange, Eye, EyeOff, FileText, Mic, Sparkles, UserX, X } from "lucide-react";
 import type { HootNudge, NudgeKind } from "@/lib/hoot/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 const KIND_ICON: Record<NudgeKind, React.ComponentType<{ className?: string }>> = {
   movement: Activity,
+  holdings: UserX,
   earnings: CalendarDays,
   sell_side: Mic,
   proposal: FileText,
