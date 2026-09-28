@@ -215,14 +215,14 @@ export function HoldingBoard(props: Props) {
     <div className="flex flex-col gap-3">
       <div className="rounded-[10px] bg-card px-3 py-2.5 shadow-[0_0_0_1px_var(--border)]">
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-[13.5px] font-semibold">{holding.ticker}</span>
-          <span className="min-w-0 flex-1 truncate text-[13px] text-ink-2">{holding.name}</span>
+          <span className="font-mono text-body font-semibold">{holding.ticker}</span>
+          <span className="min-w-0 flex-1 truncate text-body text-ink-2">{holding.name}</span>
         </div>
         <Suspense fallback={<Skeleton className="mt-1.5 h-4 w-32" />}>
           <BoardQuote market={props.market} />
         </Suspense>
         {props.movement && (
-          <div className="mt-1 flex items-center gap-1.5 text-[11.5px] font-medium text-down">
+          <div className="mt-1 flex items-center gap-1.5 text-caption font-medium text-down">
             <span className="size-1.5 shrink-0 rounded-full bg-down" />
             Movement open{props.movement.dueAt ? ` · update due ${fmtDateTime(props.movement.dueAt)}` : ""}
           </div>
@@ -231,7 +231,7 @@ export function HoldingBoard(props: Props) {
       {props.prepCard}
       <ResearchLogCard entries={memories} canManage={canManage} defaultOpen />
       {!props.prepCard && memories.length === 0 && (
-        <p className="text-[12.5px] leading-relaxed text-muted-foreground">No research log yet. After each answer, Hoot notes what it learned about {holding.ticker} here, and builds an evidence pack before the next report.</p>
+        <p className="text-body leading-relaxed text-muted-foreground">No research log yet. After each answer, Hoot notes what it learned about {holding.ticker} here, and builds an evidence pack before the next report.</p>
       )}
     </div>
   );
@@ -293,10 +293,10 @@ export function HoldingBoard(props: Props) {
 
 function BoardQuote({ market }: { market: Promise<BoardMarket> }) {
   const m = use(market);
-  if (m.changePct === undefined) return <div className="mt-1 text-[11.5px] text-muted-foreground">Quote unavailable</div>;
+  if (m.changePct === undefined) return <div className="mt-1 text-caption text-muted-foreground">Quote unavailable</div>;
   const tone = (v: number) => (v > 0.005 ? "text-up" : v < -0.005 ? "text-down" : "text-muted-foreground");
   return (
-    <div className="mt-1 flex flex-wrap items-baseline gap-x-2 font-mono text-xs tabular-nums" title={m.asOf ? `As of ${fmtDateTime(m.asOf)}` : undefined}>
+    <div className="mt-1 flex flex-wrap items-baseline gap-x-2 font-mono text-caption tabular-nums" title={m.asOf ? `As of ${fmtDateTime(m.asOf)}` : undefined}>
       {m.price !== undefined && <span>{fmtMoney(m.price)}</span>}
       <span className={cn("font-medium", tone(m.changePct))}>{fmtPct(m.changePct)}</span>
       {m.relativePp !== undefined && <span className="text-muted-foreground">{fmtBp(ppToBp(m.relativePp))} vs S&amp;P</span>}
@@ -326,7 +326,7 @@ function SideTabs({ tab, setTab, sourceCount, boardCount, sources, board }: { ta
 
 function EmptySources() {
   return (
-    <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+    <p className="text-body leading-relaxed text-muted-foreground">
       Sources appear here as Hoot reads them, numbered the way the answer cites them. Click a card, or a number in the answer, to read the cited passage.
     </p>
   );
@@ -335,8 +335,8 @@ function EmptySources() {
 function BoardIntro({ ticker, again, suggestions, disabled, onPick }: { ticker: string; again: boolean; suggestions: string[]; disabled: boolean; onPick: (s: string) => void }) {
   return (
     <div className="mx-auto flex w-full max-w-[600px] flex-col gap-3 pt-4">
-      <div className="text-[15px] font-semibold">{again ? `New chat about ${ticker}` : `Start a chat about ${ticker}`}</div>
-      <div className="text-[13.5px] leading-relaxed text-muted-foreground">Ask anything about this holding. Sources for each answer appear on the right; the answer cites them by number.</div>
+      <div className="text-emph font-semibold">{again ? `New chat about ${ticker}` : `Start a chat about ${ticker}`}</div>
+      <div className="text-body leading-relaxed text-muted-foreground">Ask anything about this holding. Sources for each answer appear on the right; the answer cites them by number.</div>
       <div className="flex flex-col gap-2">
         {suggestions.map((s) => (
           <button
@@ -344,7 +344,7 @@ function BoardIntro({ ticker, again, suggestions, disabled, onPick }: { ticker: 
             type="button"
             disabled={disabled}
             onClick={() => onPick(s)}
-            className="rounded-[10px] bg-card px-3.5 py-2.5 text-left text-[13.5px] leading-snug shadow-[0_0_0_1px_var(--border)] transition-colors hover:bg-band disabled:opacity-60"
+            className="rounded-[10px] bg-card px-3.5 py-2.5 text-left text-body leading-snug shadow-[0_0_0_1px_var(--border)] transition-colors hover:bg-band disabled:opacity-60"
           >
             {s}
           </button>
@@ -572,10 +572,10 @@ function BoardThread({
                   )}
                   {t.answerText ? (
                     <ResearchSources sources={allSources} numbers={numbers} links={links} chatId={chatId}>
-                      <ResearchAnswer text={t.answerText} className="max-w-[700px] text-[15px] leading-[1.65] [&_p]:my-2.5 [&_p:first-child]:mt-0" />
+                      <ResearchAnswer text={t.answerText} className="max-w-[700px] text-emph leading-[1.65] [&_p]:my-2.5 [&_p:first-child]:mt-0" />
                     </ResearchSources>
                   ) : t.assistant && !turnLive && !catchingUp ? (
-                    <div className="text-[12.5px] text-caution-foreground">Hoot stopped before writing an answer. Its lookups are on the right; ask again to get a written answer.</div>
+                    <div className="text-body text-caution-foreground">Hoot stopped before writing an answer. Its lookups are on the right; ask again to get a written answer.</div>
                   ) : null}
                 </div>
               );
@@ -606,7 +606,7 @@ function BoardThread({
           board={boardTab}
           sources={
             <>
-              <div className="mb-2 text-[11.5px] text-muted-foreground">{sub}</div>
+              <div className="mb-2 text-caption text-muted-foreground">{sub}</div>
               {!active || (sources.length === 0 && !live) ? (
                 <EmptySources />
               ) : (
@@ -626,7 +626,7 @@ function BoardThread({
                     </li>
                   ))}
                   {live && (
-                    <li className="flex items-center gap-2 rounded-[10px] border border-dashed px-3 py-2.5 text-xs text-muted-foreground">
+                    <li className="flex items-center gap-2 rounded-[10px] border border-dashed px-3 py-2.5 text-body text-muted-foreground">
                       <Loader2 className="size-3 shrink-0 animate-spin" />
                       {active ? stepLabel(active) : "Working…"}
                     </li>
@@ -695,29 +695,29 @@ function BoardSourceCard({
       <div className="min-w-0 flex-1">
         {figure ? (
           <div className="flex flex-wrap items-baseline gap-x-2">
-            <span className={cn("font-mono text-[15px] font-medium tracking-[-0.02em] tabular-nums", toneClass)}>{figure.big}</span>
-            <span className="text-[11.5px] text-muted-foreground">{figure.sub}</span>
+            <span className={cn("font-mono text-emph font-medium tracking-[-0.02em] tabular-nums", toneClass)}>{figure.big}</span>
+            <span className="text-caption text-muted-foreground">{figure.sub}</span>
           </div>
         ) : (
-          <div className="text-[13px] leading-[1.35]">{s.title?.trim() || "Untitled source"}</div>
+          <div className="text-body leading-[1.35]">{s.title?.trim() || "Untitled source"}</div>
         )}
-        <div className="mt-0.5 text-[11.5px] text-muted-foreground">{meta}</div>
+        <div className="mt-0.5 text-caption text-muted-foreground">{meta}</div>
         {isOpen && (
           <div onClick={(e) => e.stopPropagation()} className="cursor-auto">
-            <div className="mt-2 text-[11px] text-muted-foreground">
+            <div className="mt-2 text-caption text-muted-foreground">
               {figure ? "Market data" : sourceType(s)} · {row.cited ? `cited ${row.cited}×` : "not cited"}
             </div>
-            <div className="mt-1.5 rounded-lg bg-background px-2.5 py-2 text-[12.5px] leading-relaxed text-foreground/85 shadow-[0_0_0_1px_var(--border)]">
+            <div className="mt-1.5 rounded-lg bg-background px-2.5 py-2 text-body leading-relaxed text-foreground/85 shadow-[0_0_0_1px_var(--border)]">
               {snippet ? (
                 <mark className="rounded-sm bg-caution px-0.5 text-foreground">{snippet}</mark>
               ) : (
                 <span className="text-muted-foreground">No supporting passage was saved for this source. Open it to review the document.</span>
               )}
               {(s.location?.section || s.location?.page) && (
-                <div className="mt-1.5 text-[11px] text-muted-foreground">{[s.location.section, s.location.page ? `Page ${s.location.page}` : null].filter(Boolean).join(" · ")}</div>
+                <div className="mt-1.5 text-caption text-muted-foreground">{[s.location.section, s.location.page ? `Page ${s.location.page}` : null].filter(Boolean).join(" · ")}</div>
               )}
             </div>
-            <div className="mt-2 flex gap-3.5 text-xs text-muted-foreground">
+            <div className="mt-2 flex gap-3.5 text-caption text-muted-foreground">
               {target.kind === "external" ? (
                 <a href={target.href} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground hover:underline">
                   Open source ↗

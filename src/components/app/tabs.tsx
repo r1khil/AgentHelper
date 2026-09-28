@@ -61,7 +61,7 @@ export function tabKeyTarget(key: string, index: number, count: number): number 
 
 const tabClass = (active: boolean) =>
   cn(
-    "flex shrink-0 items-center gap-1.5 rounded-sm text-sm whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset",
+    "flex shrink-0 items-center gap-1.5 rounded-sm text-body whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset",
     active ? "font-semibold text-foreground shadow-[inset_0_-2px_0_var(--foreground)]" : "text-muted-foreground hover:text-foreground",
   );
 

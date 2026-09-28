@@ -57,7 +57,7 @@ export function HoldingsTable({ groups, quotes, grouped = true, empty }: { group
     <section data-tour="holdings-table" className="panel flex flex-col overflow-x-auto overflow-y-hidden">
       <div role="table" aria-label="Holdings" className="flex min-w-[920px] flex-col">
         <div role="rowgroup">
-          <div role="row" className={cn(GRID, "h-9 shrink-0 border-b text-xs text-muted-foreground")}>
+          <div role="row" className={cn(GRID, "h-9 shrink-0 border-b text-body text-muted-foreground")}>
             <span role="columnheader">Ticker</span>
             <span role="columnheader">Company</span>
             <span role="columnheader"><ReadAs text="Last 5 days">5 days</ReadAs></span>
@@ -71,7 +71,7 @@ export function HoldingsTable({ groups, quotes, grouped = true, empty }: { group
         </div>
         {!any && (
           <div role="row">
-            <div role="cell" aria-colspan={COLUMNS} className="px-4 py-3 text-sm text-muted-foreground">{empty ?? "Nothing here."}</div>
+            <div role="cell" aria-colspan={COLUMNS} className="px-4 py-3 text-body text-muted-foreground">{empty ?? "Nothing here."}</div>
           </div>
         )}
         {groups.map((g) => {
@@ -89,14 +89,14 @@ export function HoldingsTable({ groups, quotes, grouped = true, empty }: { group
                       className="flex h-9 w-full items-center gap-2.5 border-b bg-band px-4 text-left transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
                     >
                       {open ? <ChevronDown className="size-3.5 text-muted-foreground" /> : <ChevronRight className="size-3.5 text-muted-foreground" />}
-                      <span className="text-[13.5px] font-semibold">{g.name}</span>
-                      <span className="text-[12.5px] whitespace-nowrap text-muted-foreground">
+                      <span className="text-body font-semibold">{g.name}</span>
+                      <span className="text-body whitespace-nowrap text-muted-foreground">
                         {g.rows.length} holding{g.rows.length === 1 ? "" : "s"}
                         {g.navPct != null && ` · ${fmtPct(g.navPct, 1)} of NAV`}
                       </span>
                       <span className="flex-1" />
                       <span className="sr-only">, day</span>
-                      {quotes ? <Move value={teamDay(g.rows, quotes)} unit="%" digits={2} className="text-[13px] font-medium" /> : <Skeleton className="h-4 w-14" />}
+                      {quotes ? <Move value={teamDay(g.rows, quotes)} unit="%" digits={2} className="text-body font-medium" /> : <Skeleton className="h-4 w-14" />}
                     </button>
                   </div>
                 </div>
@@ -114,10 +114,10 @@ function Row({ r, q, loading }: { r: HoldingListRow; q?: QuoteCells[string]; loa
   const [first, ...rest] = r.flags;
   const shares = r.shares != null ? `${fmtNumber(r.shares, 2)} shares` : "No shares recorded";
   return (
-    <div role="row" className={cn(GRID, "relative h-10 border-b border-row text-sm transition-colors hover:bg-band")}>
+    <div role="row" className={cn(GRID, "relative h-10 border-b border-row text-body transition-colors hover:bg-band")}>
       {/* The ticker link stretches over the whole row; the pills sit above it and keep their own links. */}
       <span role="rowheader">
-        <RowLink cover="stretch" href={r.href} aria-label={tickerName(r.ticker, r.company)} title={`${r.ticker} · ${shares}`} className="font-mono text-[13.5px] font-semibold">
+        <RowLink cover="stretch" href={r.href} aria-label={tickerName(r.ticker, r.company)} title={`${r.ticker} · ${shares}`} className="font-mono text-body font-semibold">
           {r.ticker}
         </RowLink>
       </span>
@@ -125,7 +125,7 @@ function Row({ r, q, loading }: { r: HoldingListRow; q?: QuoteCells[string]; loa
       <span role="cell" className="flex">
         <Sparkline values={r.spark} />
       </span>
-      <span role="cell" className="text-right font-mono text-[13px] tabular-nums" title={`${shares}${r.weightPct != null ? ` · ${fmtPct(r.weightPct)} of NAV` : ""}`}>
+      <span role="cell" className="text-right font-mono text-body tabular-nums" title={`${shares}${r.weightPct != null ? ` · ${fmtPct(r.weightPct)} of NAV` : ""}`}>
         {r.weightPct != null ? fmtPct(r.weightPct, 1) : <span className="text-muted-foreground">—</span>}
       </span>
       {loading ? (
@@ -136,17 +136,17 @@ function Row({ r, q, loading }: { r: HoldingListRow; q?: QuoteCells[string]; loa
         </>
       ) : (
         <>
-          <span role="cell" className="text-right font-mono text-[13px] tabular-nums">{q?.price != null ? fmtMoney(q.price) : <span className="text-muted-foreground">—</span>}</span>
-          <Move role="cell" value={q?.changePct} unit="%" digits={2} align className="text-right text-[13px]" />
-          <Move role="cell" value={ppToBp(q?.relativePp)} unit=" bp" digits={0} align className="text-right text-[13px]" />
+          <span role="cell" className="text-right font-mono text-body tabular-nums">{q?.price != null ? fmtMoney(q.price) : <span className="text-muted-foreground">—</span>}</span>
+          <Move role="cell" value={q?.changePct} unit="%" digits={2} align className="text-right text-body" />
+          <Move role="cell" value={ppToBp(q?.relativePp)} unit=" bp" digits={0} align className="text-right text-body" />
         </>
       )}
-      <span role="cell" className="truncate text-[13px] text-ink-2">{r.nextReport ?? <span className="text-muted-foreground">—</span>}</span>
+      <span role="cell" className="truncate text-body text-ink-2">{r.nextReport ?? <span className="text-muted-foreground">—</span>}</span>
       <span role="cell" className="relative z-[1] flex min-w-0 items-center gap-1.5" title={r.flags.length > 1 ? r.flags.map((f) => f.label).join(" · ") : undefined}>
         {first ? <FlagPill f={first} /> : <span className="text-muted-foreground">—</span>}
         {rest.length > 0 && (
           <>
-            <span aria-hidden className="font-mono text-[11px] text-muted-foreground">+{rest.length}</span>
+            <span aria-hidden className="font-mono text-caption text-muted-foreground">+{rest.length}</span>
             <span className="sr-only">Also: {rest.map((f) => f.label).join(", ")}</span>
           </>
         )}

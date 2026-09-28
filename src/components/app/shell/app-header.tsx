@@ -22,7 +22,7 @@ export function AppHeader({ nav, counts, onOpenCommand }: { nav: NavModel; count
         // The page's own title is its h1; this is its one "where am I / go up" line, above the page's tabs.
         <BackLink href={nav.back.href} label={nav.back.label} />
       ) : (
-        <h1 className="text-[17px] font-semibold tracking-[-0.015em] whitespace-nowrap">{nav.title}</h1>
+        <h1 className="text-title font-semibold tracking-[-0.015em] whitespace-nowrap">{nav.title}</h1>
       )}
       {nav.tabs.length > 0 && (
         <Tabs
@@ -42,8 +42,8 @@ export function AppHeader({ nav, counts, onOpenCommand }: { nav: NavModel; count
         className="flex h-9 w-full max-w-[380px] min-w-56 items-center gap-2.5 rounded-full bg-card pr-2 pl-3.5 text-left shadow-[0_0_0_1px_var(--border)] transition-shadow hover:shadow-[0_0_0_1px_var(--border-strong)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
         <Search className="size-[15px] shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate text-[13.5px] text-muted-foreground">Ask Hoot, or jump to a holding or page</span>
-        <kbd className="rounded-full bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground">{mac ? "⌘K" : "Ctrl K"}</kbd>
+        <span className="min-w-0 flex-1 truncate text-body text-muted-foreground">Ask Hoot, or jump to a holding or page</span>
+        <kbd className="rounded-full bg-muted px-2 py-0.5 font-mono text-caption text-muted-foreground">{mac ? "⌘K" : "Ctrl K"}</kbd>
       </button>
     </header>
   );

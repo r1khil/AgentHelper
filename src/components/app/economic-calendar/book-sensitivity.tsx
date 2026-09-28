@@ -30,7 +30,7 @@ export function BookSensitivity({
   const caption = ctx.exposure ? `Open one for ${ctx.exposure.subject}'s beta. Past co-movement, not a forecast.` : "Which factors each release tends to move.";
   return (
     <section aria-label="Factor-sensitive releases" className="panel shrink-0 px-3.5 pt-3.5 pb-3">
-      <h2 className="text-[14.5px] font-semibold whitespace-nowrap">Factor-sensitive releases</h2>
+      <h2 className="text-emph font-semibold whitespace-nowrap">Factor-sensitive releases</h2>
       {/* One line each; the book's exposure for a release is in that release's details (click the line). */}
       <ul className="mt-1.5 flex flex-col">
         {lines.map((l) => {
@@ -42,7 +42,7 @@ export function BookSensitivity({
                 type="button"
                 onClick={() => onPick(e)}
                 title={l.text}
-                className={cn("block w-full truncate py-1.5 text-left text-[12.5px] leading-[18px] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring", out ? "text-muted-foreground" : "text-foreground")}
+                className={cn("block w-full truncate py-1.5 text-left text-body leading-[18px] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring", out ? "text-muted-foreground" : "text-foreground")}
               >
                 <span className="font-medium">{l.head}</span>
                 {out && <span> · released</span>}
@@ -51,7 +51,7 @@ export function BookSensitivity({
           );
         })}
       </ul>
-      <p className="mt-1 text-[11.5px] leading-4 text-muted-foreground">
+      <p className="mt-1 text-caption leading-4 text-muted-foreground">
         {caption}
         {ctx.href && (
           <>
@@ -72,7 +72,7 @@ export function FactorClause({ context, event }: { context: Promise<CalendarFact
   const line = factorLines([event], ctx.exposure)[0];
   if (!line) return null;
   return (
-    <p className="mt-2.5 text-[12.5px] leading-[18px] text-ink-2">
+    <p className="mt-2.5 text-body leading-[18px] text-ink-2">
       {line.text}
       {ctx.exposure && ctx.basis && (
         <span className="block text-muted-foreground">

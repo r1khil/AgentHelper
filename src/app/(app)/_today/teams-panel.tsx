@@ -60,14 +60,14 @@ export function TeamsPanel({
       <PanelHeader
         title={title}
         aside={
-          <Link href={holdingsHref} className="text-[13px] font-semibold text-foreground hover:underline">
+          <Link href={holdingsHref} className="text-body font-semibold text-foreground hover:underline">
             Holdings →
           </Link>
         }
       />
       <div role="table" aria-label={title} className="flex flex-col">
         <div role="rowgroup">
-          <div role="row" className={cn("grid h-8 shrink-0 items-center gap-3 px-4 text-xs text-muted-foreground", cols)}>
+          <div role="row" className={cn("grid h-8 shrink-0 items-center gap-3 px-4 text-body text-muted-foreground", cols)}>
             <span role="columnheader">Team</span>
             {withBook && (
               <>
@@ -87,7 +87,7 @@ export function TeamsPanel({
             <div key={t.id} role="rowgroup" className="flex flex-col border-t border-row">
               <div
                 role="row"
-                className={cn("group relative grid w-full items-center gap-3 px-4 text-left text-[14px] hover:bg-band has-[button:focus-visible]:bg-band", cols, "h-[52px]")}
+                className={cn("group relative grid w-full items-center gap-3 px-4 text-left text-body hover:bg-band has-[button:focus-visible]:bg-band", cols, "h-[52px]")}
               >
                 <span role="rowheader" className="min-w-0">
                   <button
@@ -97,7 +97,7 @@ export function TeamsPanel({
                     className="flex w-full min-w-0 items-center text-left after:absolute after:inset-0 focus-visible:outline-none"
                   >
                     <span className="truncate font-semibold">{t.name}</span>
-                    <span className="ml-2 shrink-0 text-[12.5px] text-muted-foreground">
+                    <span className="ml-2 shrink-0 text-body text-muted-foreground">
                       {t.holdings.length}
                       <span className="sr-only"> holding{t.holdings.length === 1 ? "" : "s"}</span>
                     </span>
@@ -112,12 +112,12 @@ export function TeamsPanel({
                 </span>
                 {withBook && (
                   <>
-                    <span role="cell" className={cn("text-right font-mono text-[13.5px] font-medium tabular-nums", tone(t.stats?.ret))}>{t.stats ? <Acct value={t.stats.ret * 100} unit="%" /> : "—"}</span>
-                    <span role="cell" className={cn("text-right font-mono text-[13.5px] tabular-nums", tone(c))}>{c === null ? "—" : <Acct value={c} digits={0} unit=" bp" />}</span>
+                    <span role="cell" className={cn("text-right font-mono text-body font-medium tabular-nums", tone(t.stats?.ret))}>{t.stats ? <Acct value={t.stats.ret * 100} unit="%" /> : "—"}</span>
+                    <span role="cell" className={cn("text-right font-mono text-body tabular-nums", tone(c))}>{c === null ? "—" : <Acct value={c} digits={0} unit=" bp" />}</span>
                     <ContributionBar bp={c} scale={scale} />
                   </>
                 )}
-                <span role="cell" className="truncate font-mono text-[12.5px] text-ink-2">
+                <span role="cell" className="truncate font-mono text-body text-ink-2">
                   {t.mover ? `${t.mover.ticker} ${fmtAccounting(t.mover.pct, 2, "%")}` : live || withBook ? "—" : <Skeleton className="h-4 w-24" />}
                 </span>
               </div>
@@ -148,11 +148,11 @@ function ContributionBar({ bp, scale }: { bp: number | null; scale: number }) {
 }
 
 function TeamHoldings({ team, live }: { team: TeamRowData; live: boolean }) {
-  if (team.holdings.length === 0) return <p className="px-4 pb-3 pl-8 text-[13px] text-muted-foreground">No active holdings.</p>;
+  if (team.holdings.length === 0) return <p className="px-4 pb-3 pl-8 text-body text-muted-foreground">No active holdings.</p>;
   return (
     <div className="px-4 pb-3 pl-8">
-      <div role="table" aria-label={`${team.name} holdings`} className="text-[13px]">
-        <div role="row" className={cn(HOLDING_COLS, "h-7 text-xs text-muted-foreground")}>
+      <div role="table" aria-label={`${team.name} holdings`} className="text-body">
+        <div role="row" className={cn(HOLDING_COLS, "h-7 text-body text-muted-foreground")}>
           <span role="columnheader">Holding</span>
           <span role="columnheader" className="text-right">Price</span>
           <span role="columnheader" className="text-right"><ReadAs text="Day change">Day</ReadAs></span>
@@ -186,7 +186,7 @@ function TeamHoldings({ team, live }: { team: TeamRowData; live: boolean }) {
           </div>
         ))}
       </div>
-      <p className="mt-1.5 text-xs text-muted-foreground">Prices are live during market hours.</p>
+      <p className="mt-1.5 text-caption text-muted-foreground">Prices are live during market hours.</p>
     </div>
   );
 }

@@ -109,7 +109,7 @@ export function HootList() {
         aside={<span suppressHydrationWarning>Updated {fmtTime(updatedAt)} · refreshes every 5 min</span>}
       />
       {nudges.length === 0 ? (
-        <p className="flex h-[58px] items-center px-4 text-[14px] text-muted-foreground">Nothing needs you right now. I&rsquo;ll put things here as they come up.</p>
+        <p className="flex h-[58px] items-center px-4 text-body text-muted-foreground">Nothing needs you right now. I&rsquo;ll put things here as they come up.</p>
       ) : (
         <ul className="divide-y divide-row">
           {shown.map((n, i) => {
@@ -121,10 +121,10 @@ export function HootList() {
                   <Icon className="size-[15px]" aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <div className="truncate text-[14.5px] font-semibold">{n.title}</div>
-                  {n.detail && <div className="mt-px truncate text-[12.5px] text-muted-foreground">{n.detail}</div>}
+                  <div className="truncate text-emph font-semibold">{n.title}</div>
+                  {n.detail && <div className="mt-px truncate text-body text-muted-foreground">{n.detail}</div>}
                 </div>
-                <span suppressHydrationWarning className={cn("truncate font-mono text-xs", urgent ? "text-hoot-foreground" : "text-muted-foreground")}>
+                <span suppressHydrationWarning className={cn("truncate font-mono text-caption", urgent ? "text-hoot-foreground" : "text-muted-foreground")}>
                   {nudgeWhen(n)}
                 </span>
                 <Button

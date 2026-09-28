@@ -8,14 +8,14 @@ function shade(c: number) {
 
 /** Correlation matrix of the largest holdings. Each cell's exact value is in its tooltip and accessible label. */
 export function CorrelationHeatmap({ tickers, matrix }: { tickers: string[]; matrix: number[][] }) {
-  if (tickers.length < 2) return <div className="text-sm text-muted-foreground">Needs at least two modeled holdings.</div>;
+  if (tickers.length < 2) return <div className="text-body text-muted-foreground">Needs at least two modeled holdings.</div>;
   const pairs: { a: string; b: string; c: number }[] = [];
   for (let i = 0; i < tickers.length; i++) for (let j = i + 1; j < tickers.length; j++) pairs.push({ a: tickers[i], b: tickers[j], c: matrix[i][j] });
   const high = pairs.filter((p) => p.c >= 0.8).sort((x, y) => y.c - x.c);
   return (
     <div className="grid gap-3">
       <div className="overflow-x-auto">
-        <table className="border-separate border-spacing-0.5 text-[10px]" aria-label="Correlation matrix">
+        <table className="border-separate border-spacing-0.5 text-caption" aria-label="Correlation matrix">
           <thead>
             <tr>
               <td />
@@ -44,7 +44,7 @@ export function CorrelationHeatmap({ tickers, matrix }: { tickers: string[]; mat
           </tbody>
         </table>
       </div>
-      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-2 text-caption text-muted-foreground">
         <span className="inline-flex items-center gap-1"><span className="inline-block size-3 rounded-sm" style={{ background: shade(-0.6) }} />negative</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block size-3 rounded-sm" style={{ background: shade(0.2) }} />low</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block size-3 rounded-sm" style={{ background: shade(0.9) }} />high</span>

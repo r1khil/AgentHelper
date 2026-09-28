@@ -48,9 +48,9 @@ export default async function EarningsDetail({ params, searchParams }: { params:
 
   const header = (label: React.ReactNode, aside?: React.ReactNode) => (
     <div className="flex min-h-11 shrink-0 flex-wrap items-center gap-2 border-b px-4 py-1.5">
-      <h2 className="text-[14.5px] font-semibold">{label}</h2>
+      <h2 className="text-emph font-semibold">{label}</h2>
       <span className="flex-1" />
-      {aside && <div className="flex items-center gap-2 text-[12.5px] text-muted-foreground">{aside}</div>}
+      {aside && <div className="flex items-center gap-2 text-body text-muted-foreground">{aside}</div>}
     </div>
   );
 
@@ -59,11 +59,11 @@ export default async function EarningsDetail({ params, searchParams }: { params:
       {/* The way back up to the Calendar is in the app header (nav.ts backFor), so there's no breadcrumb here. */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Link href={holdingHref(scope.slug, team.slug, h.ticker)} className="font-mono text-[28px] leading-none font-semibold tracking-[-0.02em] hover:underline">
+          <Link href={holdingHref(scope.slug, team.slug, h.ticker)} className="font-mono text-display leading-none font-semibold tracking-[-0.02em] hover:underline">
             {h.ticker}
           </Link>
-          <span className="text-[15px] text-ink-2">{h.companyName}</span>
-          <span className="font-mono text-[13px] text-muted-foreground">
+          <span className="text-emph text-ink-2">{h.companyName}</span>
+          <span className="font-mono text-body text-muted-foreground">
             {e.fiscalPeriod ? `${e.fiscalPeriod} earnings` : "Earnings"} · {fmtDay(e.reportDate)}
             {e.reportHour ? ` ${e.reportHour.toUpperCase()}` : ""}
           </span>
@@ -71,7 +71,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
           <StatusBadge status={e.status} />
         </div>
         {(e.epsEstimate || e.revenueEstimate) && (
-          <div className="flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-muted-foreground">
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-body text-muted-foreground">
             {e.epsEstimate && (
               <span>
                 Consensus EPS <span className="font-mono text-foreground">{fmtCurrency(e.epsEstimate, e.epsCurrency)}</span>
@@ -86,11 +86,11 @@ export default async function EarningsDetail({ params, searchParams }: { params:
         )}
       </div>
 
-      {error && <div className="rounded-[10px] bg-down/10 px-3.5 py-2.5 text-[13px] text-down">{error}</div>}
+      {error && <div className="rounded-[10px] bg-down/10 px-3.5 py-2.5 text-body text-down">{error}</div>}
       {e.prepPack ? (
         <PrepPackCard pack={e.prepPack} actions={rebuild} />
       ) : !reported ? (
-        <Panel className="flex-row flex-wrap items-center justify-between gap-3 px-4 py-3 text-[13px] text-muted-foreground">
+        <Panel className="flex-row flex-wrap items-center justify-between gap-3 px-4 py-3 text-body text-muted-foreground">
           <span className="min-w-0 flex-1">
             {e.prepPackError ? `The agent could not build the evidence pack yet (${e.prepPackError.replace(/^attempt \d+: /, "").slice(0, 140)}).` : "The agent builds a sourced evidence pack (last quarter, guidance on record, consensus, the team's questions, items to watch) a few trading days before the report."}
           </span>
@@ -108,7 +108,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
           )}
           <div className="flex flex-1 flex-col p-4">
             {locked ? (
-              <dl className="space-y-4 text-[14px] leading-[1.55]">
+              <dl className="space-y-4 text-body leading-[1.55]">
                 <Item label="What you expect">{e.expectations}</Item>
                 <Item label="Key questions">{e.keyQuestions}</Item>
                 <Item label="What would change the thesis">{e.thesisChangeCriteria}</Item>
@@ -128,7 +128,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
                     Lock expectations
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Locking preserves your view so you can revisit it honestly afterwards. The agent reads it only to give feedback.</p>
+                <p className="text-body text-muted-foreground">Locking preserves your view so you can revisit it honestly afterwards. The agent reads it only to give feedback.</p>
               </form>
             )}
           </div>
@@ -147,9 +147,9 @@ export default async function EarningsDetail({ params, searchParams }: { params:
           )}
           <div className="flex flex-1 flex-col">
             {!reported ? (
-              <p className="p-4 text-[13.5px] text-muted-foreground">Results can be gathered from {fmtDay(e.reportDate)}. The morning sweep also does this automatically.</p>
+              <p className="p-4 text-body text-muted-foreground">Results can be gathered from {fmtDay(e.reportDate)}. The morning sweep also does this automatically.</p>
             ) : !actuals ? (
-              <p className="p-4 text-[13.5px] text-muted-foreground">Not gathered yet. Click &ldquo;Gather results&rdquo; to pull the 8-K and press release from EDGAR.</p>
+              <p className="p-4 text-body text-muted-foreground">Not gathered yet. Click &ldquo;Gather results&rdquo; to pull the 8-K and press release from EDGAR.</p>
             ) : (
               <>
                 {actuals.rows.length > 0 ? (
@@ -171,13 +171,13 @@ export default async function EarningsDetail({ params, searchParams }: { params:
                           <TableRow key={i}>
                             <TableCell className="pl-4 font-medium">
                               {r.metric}
-                              {r.note ? <span className="block text-xs font-normal text-muted-foreground">{r.note}</span> : null}
+                              {r.note ? <span className="block text-caption font-normal text-muted-foreground">{r.note}</span> : null}
                             </TableCell>
-                            <TableCell className="text-right font-mono text-[12.5px]">{r.actual ?? <Missing />}</TableCell>
-                            <TableCell className="text-right font-mono text-[12.5px]">{r.priorYear ?? <Missing />}</TableCell>
-                            <TableCell className="text-right font-mono text-[12.5px]">{r.priorGuidance ?? <Missing />}</TableCell>
-                            <TableCell className="text-right font-mono text-[12.5px]">{r.estimate ?? <Missing />}</TableCell>
-                            <TableCell className="pr-4 font-mono text-xs">
+                            <TableCell className="text-right font-mono text-body">{r.actual ?? <Missing />}</TableCell>
+                            <TableCell className="text-right font-mono text-body">{r.priorYear ?? <Missing />}</TableCell>
+                            <TableCell className="text-right font-mono text-body">{r.priorGuidance ?? <Missing />}</TableCell>
+                            <TableCell className="text-right font-mono text-body">{r.estimate ?? <Missing />}</TableCell>
+                            <TableCell className="pr-4 font-mono text-body">
                               {src ? (
                                 <a href={src.url} target="_blank" rel="noreferrer" className="hover:underline">
                                   {src.id}
@@ -192,20 +192,20 @@ export default async function EarningsDetail({ params, searchParams }: { params:
                     </TableBody>
                   </Table>
                 ) : (
-                  <p className="px-4 pt-4 text-[13.5px] text-muted-foreground">No figures could be extracted yet.</p>
+                  <p className="px-4 pt-4 text-body text-muted-foreground">No figures could be extracted yet.</p>
                 )}
                 <div className="px-4 pt-3 pb-4">
                   {actuals.missing.length > 0 && (
-                    <ul className="mb-3 list-disc space-y-0.5 pl-5 text-xs text-caution-foreground">
+                    <ul className="mb-3 list-disc space-y-0.5 pl-5 text-body text-caution-foreground">
                       {actuals.missing.map((m, i) => (
                         <li key={i}>{m}</li>
                       ))}
                     </ul>
                   )}
-                  <p className="text-xs text-muted-foreground">Extracted {relativeTime(actuals.extractedAt)} from the sources below. Check every number against the release before relying on it.</p>
+                  <p className="text-body text-muted-foreground">Extracted {relativeTime(actuals.extractedAt)} from the sources below. Check every number against the release before relying on it.</p>
                 </div>
                 {evidence.length > 0 && (
-                  <ul className="border-t border-row text-[13.5px]">
+                  <ul className="border-t border-row text-body">
                     {evidence.map((ev) => (
                       <li key={ev.id} className="flex flex-wrap items-baseline gap-x-2 border-b border-row px-4 py-2 last:border-b-0">
                         {ev.url ? (
@@ -215,7 +215,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
                         ) : (
                           ev.title
                         )}
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-body text-muted-foreground">
                           {ev.publisher}
                           {ev.publishedAt ? <span className="font-mono"> · {fmtDateTime(ev.publishedAt)}</span> : ""}
                         </span>
@@ -281,5 +281,5 @@ function Item({ label, children }: { label: string; children: React.ReactNode })
 }
 
 function Missing() {
-  return <span className="text-xs text-muted-foreground">missing</span>;
+  return <span className="text-body text-muted-foreground">missing</span>;
 }

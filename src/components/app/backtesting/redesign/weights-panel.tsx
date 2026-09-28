@@ -18,7 +18,7 @@ import { ADD_HINT, DATES_HINT } from "../workspace";
 const COLS = "grid grid-cols-[minmax(0,1fr)_72px_92px_70px] gap-2.5";
 const field = "h-[34px] rounded-lg bg-card shadow-[0_0_0_1px_var(--border)] focus-within:shadow-[0_0_0_1px_var(--border-strong)]";
 const miniSelect =
-  "h-7 appearance-none rounded-lg border-0 bg-card pr-5 pl-2 text-[12.5px] shadow-[0_0_0_1px_var(--border)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
+  "h-7 appearance-none rounded-lg border-0 bg-card pr-5 pl-2 text-body shadow-[0_0_0_1px_var(--border)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
 const noSpin = "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 /** A weight change in basis points, e.g. "(100 bp)"; a change under half a basis point reads as unchanged. */
@@ -62,11 +62,11 @@ export function WeightsPanel({
     <form data-tour="bt-weights" onSubmit={bt.run} className="panel flex min-h-0 min-w-0 flex-col overflow-hidden">
       <div className="flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3">
         <div className="flex items-center gap-2.5">
-          <h2 className="flex-1 text-[17px] font-semibold tracking-[-0.015em]">What if the weights were different?</h2>
+          <h2 className="flex-1 text-title font-semibold tracking-[-0.015em]">What if the weights were different?</h2>
           {layoutSwitch}
         </div>
         {(banner || opened.problem) && (
-          <div className="rounded-[10px] bg-band px-3 py-[9px] text-[13px] leading-[1.45] text-ink-2">
+          <div className="rounded-[10px] bg-band px-3 py-[9px] text-body leading-[1.45] text-ink-2">
             {banner && <p>{banner}</p>}
             {opened.problem && <p className="text-down">{opened.problem}</p>}
           </div>
@@ -80,7 +80,7 @@ export function WeightsPanel({
               aria-label="Benchmark"
               value={bt.benchmark}
               onChange={(e) => bt.setBenchmark(e.target.value as Benchmark)}
-              className="h-full w-full appearance-none rounded-lg border-0 bg-transparent pr-8 pl-2.5 text-[13px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="h-full w-full appearance-none rounded-lg border-0 bg-transparent pr-8 pl-2.5 text-body focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               {Object.entries(BENCHMARKS).map(([key, label]) => (
                 <option key={key} value={key} title={label}>
@@ -94,7 +94,7 @@ export function WeightsPanel({
         <QuickTradeRow positions={positions} onApply={bt.quickTrade} disabled={lookupBusy} />
       </div>
 
-      <div className={cn(COLS, "h-[34px] shrink-0 items-center border-y px-4 text-xs text-muted-foreground")} aria-hidden>
+      <div className={cn(COLS, "h-[34px] shrink-0 items-center border-y px-4 text-body text-muted-foreground")} aria-hidden>
         <span>Holding</span>
         <span className="text-right">Today</span>
         <span className="text-right">Scenario</span>
@@ -117,11 +117,11 @@ export function WeightsPanel({
           return (
             <div
               key={p.id}
-              className={cn(COLS, "group h-11 items-center border-b border-row px-4 text-[13.5px] transition-colors", edited ? "bg-caution/45" : "hover:bg-band")}
+              className={cn(COLS, "group h-11 items-center border-b border-row px-4 text-body transition-colors", edited ? "bg-caution/45" : "hover:bg-band")}
             >
               <span className="flex min-w-0 items-center gap-2" title={p.name}>
-                <span className="font-mono text-[13px] font-semibold">{p.kind === "cash" ? "Cash" : p.ticker}</span>
-                <span className="min-w-0 truncate text-xs text-muted-foreground">
+                <span className="font-mono text-body font-semibold">{p.kind === "cash" ? "Cash" : p.ticker}</span>
+                <span className="min-w-0 truncate text-caption text-muted-foreground">
                   {p.kind === "cash" ? "0% return" : p.kind === "scenario" ? "Added to scenario" : (teams[p.ticker] ?? p.name)}
                 </span>
                 {action && (
@@ -137,7 +137,7 @@ export function WeightsPanel({
                   </button>
                 )}
               </span>
-              <span className="text-right font-mono text-[12.5px] text-muted-foreground">{fmtPct(p.weight * 100)}</span>
+              <span className="text-right font-mono text-body text-muted-foreground">{fmtPct(p.weight * 100)}</span>
               <span className="flex justify-end">
                 <input
                   aria-label={`${p.ticker} scenario weight`}
@@ -151,14 +151,14 @@ export function WeightsPanel({
                   onBlur={(e) => bt.settleWeight(p.id, e.target.value)}
                   className={cn(
                     noSpin,
-                    "h-[26px] w-[66px] rounded-[8px] bg-card px-2 text-right font-mono text-[12.5px] outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "h-[26px] w-[66px] rounded-[8px] bg-card px-2 text-right font-mono text-body outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     edited
                       ? "shadow-[0_0_0_1px_color-mix(in_oklch,var(--caution-foreground)_60%,var(--card))]"
                       : "shadow-[0_0_0_1px_var(--border)] hover:shadow-[0_0_0_1px_var(--border-strong)]",
                   )}
                 />
               </span>
-              <span className={cn("text-right font-mono text-[12.5px]", !change ? "text-muted-foreground" : d > 0 ? "text-up" : "text-down")}>
+              <span className={cn("text-right font-mono text-body", !change ? "text-muted-foreground" : d > 0 ? "text-up" : "text-down")}>
                 {change ?? "—"}
               </span>
             </div>
@@ -168,7 +168,7 @@ export function WeightsPanel({
       </div>
 
       <div className="flex shrink-0 items-center gap-2 border-t bg-band-2 px-4 py-3">
-        <span aria-live="polite" className="min-w-0 flex-1 text-[12.5px] text-muted-foreground">
+        <span aria-live="polite" className="min-w-0 flex-1 text-body text-muted-foreground">
           {unchanged} at today&apos;s weights · total{" "}
           <span className={cn("font-mono font-semibold", valid ? "text-foreground" : "text-down")}>
             {Number.isFinite(sum) ? fmtPct(sum) : "—"}
@@ -207,7 +207,7 @@ function DateField({ label, value, min, max, onChange }: { label: string; value:
             // Some browsers only open the picker from a direct gesture; typing still works.
           }
         }}
-        className="h-full min-w-0 flex-1 bg-transparent font-mono text-[12.5px] outline-none [&::-webkit-calendar-picker-indicator]:hidden"
+        className="h-full min-w-0 flex-1 bg-transparent font-mono text-body outline-none [&::-webkit-calendar-picker-indicator]:hidden"
       />
     </label>
   );
@@ -218,7 +218,7 @@ function QuickTradeRow({ positions, onApply, disabled }: { positions: Position[]
   const q = useQuickTrade(positions, onApply);
   return (
     <div data-tour="bt-quick-trade" role="group" aria-label="Quick trade">
-      <div className="flex flex-wrap items-center gap-1 text-[12.5px] whitespace-nowrap text-muted-foreground" title="Quick trade: change one holding by percentage points and offset it automatically">
+      <div className="flex flex-wrap items-center gap-1 text-body whitespace-nowrap text-muted-foreground" title="Quick trade: change one holding by percentage points and offset it automatically">
         <MiniSelect label="Trade direction" value={q.side} onChange={(v) => q.setSide(v as "trim" | "add")}>
           <option value="trim">Trim</option>
           <option value="add">Add to</option>
@@ -246,7 +246,7 @@ function QuickTradeRow({ positions, onApply, disabled }: { positions: Position[]
               q.apply();
             }
           }}
-          className={cn(noSpin, "h-7 w-11 rounded-lg bg-card px-2 text-right font-mono text-[12.5px] text-foreground shadow-[0_0_0_1px_var(--border)] outline-none focus-visible:ring-2 focus-visible:ring-ring")}
+          className={cn(noSpin, "h-7 w-11 rounded-lg bg-card px-2 text-right font-mono text-body text-foreground shadow-[0_0_0_1px_var(--border)] outline-none focus-visible:ring-2 focus-visible:ring-ring")}
         />
         pp {q.side === "trim" ? "into" : "from"}
         <MiniSelect label="Offset" value={q.funding} onChange={q.setFunding}>
@@ -265,7 +265,7 @@ function QuickTradeRow({ positions, onApply, disabled }: { positions: Position[]
         </Button>
       </div>
       {q.error && (
-        <p role="alert" className="mt-1.5 text-[12.5px] text-down">
+        <p role="alert" className="mt-1.5 text-body text-down">
           {q.error}
         </p>
       )}
@@ -302,16 +302,16 @@ function AddCompany({ bt }: { bt: BacktestingState }) {
               void bt.addCompany();
             }
           }}
-          className="h-7 w-24 rounded-lg bg-card px-2.5 font-mono text-[12.5px] uppercase shadow-[0_0_0_1px_var(--border)] outline-none placeholder:normal-case placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-7 w-24 rounded-lg bg-card px-2.5 font-mono text-body uppercase shadow-[0_0_0_1px_var(--border)] outline-none placeholder:normal-case placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
         />
         <Button type="button" variant="outline" size="sm" disabled={bt.lookupBusy} onClick={() => void bt.addCompany()}>
           <Plus />
           {bt.lookupBusy ? "Looking up…" : "Add company"}
         </Button>
       </div>
-      <p className="mt-1.5 text-xs text-muted-foreground">{ADD_HINT}</p>
+      <p className="mt-1.5 text-caption text-muted-foreground">{ADD_HINT}</p>
       {bt.lookupError && (
-        <p role="alert" className="mt-1.5 text-[12.5px] text-down">
+        <p role="alert" className="mt-1.5 text-body text-down">
           {bt.lookupError}
         </p>
       )}

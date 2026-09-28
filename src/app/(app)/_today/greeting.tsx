@@ -30,13 +30,13 @@ export function Greeting({ hello, name, dateLine, lead, askHref, analyst }: { he
         <HootSprite mood="wave" size={84} track />
       </Link>
       <div className="min-w-0">
-        <div className="truncate font-mono text-xs text-muted-foreground">
+        <div className="truncate font-mono text-caption text-muted-foreground">
           <MarketClock initial={dateLine} />
         </div>
-        <h1 className="mt-0.5 text-[28px] leading-tight font-semibold tracking-[-0.025em]">
+        <h1 className="mt-0.5 text-display leading-tight font-semibold tracking-[-0.025em]">
           {hello}, {name}.
         </h1>
-        <p className="mt-0.5 truncate text-[15px] text-ink-2">
+        <p className="mt-0.5 truncate text-emph text-ink-2">
           {lead}
           <ListSentence analyst={analyst} />
         </p>

@@ -31,7 +31,7 @@ export function SectorExposure({ sectors, benchmarkLabel, activeFirst = false, b
   const weightHead = (
     <TableHead key="weight">
       <Explained label="Weight">{RISK_EXPLAIN.sectorWeight}</Explained>
-      {hasBench && <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">Fund · {benchmarkLabel}</span>}
+      {hasBench && <span className="ml-1.5 text-caption font-normal text-muted-foreground">Fund · {benchmarkLabel}</span>}
     </TableHead>
   );
   const activeHead = hasBench && <TableHead key="active" className="text-right"><Explained align="right" label="Active">{RISK_EXPLAIN.activeWeight}</Explained></TableHead>;
@@ -40,12 +40,12 @@ export function SectorExposure({ sectors, benchmarkLabel, activeFirst = false, b
       <div className="grid gap-1">
         <div className="flex items-center gap-2">
           <MagnitudeBar value={s.weight} max={maxWeight} className="h-1.5 w-20" />
-          <span className="w-12 font-mono text-xs">{rpct(s.weight)}</span>
+          <span className="w-12 font-mono text-body">{rpct(s.weight)}</span>
         </div>
         {s.benchWeight !== null && (
           <div className="flex items-center gap-2">
             <MagnitudeBar value={s.benchWeight} max={maxWeight} color="var(--muted-foreground)" className="h-1.5 w-20" />
-            <span className="w-12 font-mono text-xs text-muted-foreground">{rpct(s.benchWeight)}</span>
+            <span className="w-12 font-mono text-body text-muted-foreground">{rpct(s.benchWeight)}</span>
           </div>
         )}
       </div>
@@ -81,20 +81,20 @@ export function SectorExposure({ sectors, benchmarkLabel, activeFirst = false, b
               <TableRow key={s.key}>
                 <TableCell className="font-medium">
                   {s.label}
-                  {etf && <span className="ml-1 text-[11px] font-normal text-muted-foreground">{etf}</span>}
-                  {s.tickers.length > 0 && <div className="max-w-64 truncate text-[11px] font-normal text-muted-foreground" title={s.tickers.join(", ")}>{s.tickers.join(" · ")}</div>}
-                  {note && <div className="max-w-64 text-[11px] font-normal text-muted-foreground italic">{note}</div>}
+                  {etf && <span className="ml-1 text-caption font-normal text-muted-foreground">{etf}</span>}
+                  {s.tickers.length > 0 && <div className="max-w-64 truncate text-caption font-normal text-muted-foreground" title={s.tickers.join(", ")}>{s.tickers.join(" · ")}</div>}
+                  {note && <div className="max-w-64 text-caption font-normal text-muted-foreground italic">{note}</div>}
                 </TableCell>
                 {order(weightCell(s), activeCell(s))}
                 {!hideRisk && (
                   <TableCell>
                     <div className="flex items-center justify-end gap-2.5">
                       <MagnitudeBar value={s.riskShare} max={maxRisk} color={s.riskShare < 0 ? "var(--down)" : "var(--series-1)"} className="h-1.5 w-14" />
-                      <span className="w-12 text-right font-mono text-sm">{rpct(s.riskShare)}</span>
+                      <span className="w-12 text-right font-mono text-body">{rpct(s.riskShare)}</span>
                     </div>
                   </TableCell>
                 )}
-                {!hideRisk && hasBench && <TableCell className="text-right font-mono text-[12.5px]">{rpct(s.activeRiskShare)}</TableCell>}
+                {!hideRisk && hasBench && <TableCell className="text-right font-mono text-body">{rpct(s.activeRiskShare)}</TableCell>}
               </TableRow>
             );
           })}
@@ -104,8 +104,8 @@ export function SectorExposure({ sectors, benchmarkLabel, activeFirst = false, b
             <TableRow>
               <TableCell className="font-medium"><Explained label="Over and under">{RISK_EXPLAIN.overUnder}</Explained></TableCell>
               {order(
-                <TableCell key="weight" className="font-mono text-xs text-muted-foreground">{rpct(sectors.reduce((s, x) => s + x.weight, 0))} · {rpct(sectors.reduce((s, x) => s + (x.benchWeight ?? 0), 0))}</TableCell>,
-                <TableCell key="active" className="text-right text-xs">
+                <TableCell key="weight" className="font-mono text-body text-muted-foreground">{rpct(sectors.reduce((s, x) => s + x.weight, 0))} · {rpct(sectors.reduce((s, x) => s + (x.benchWeight ?? 0), 0))}</TableCell>,
+                <TableCell key="active" className="text-right text-body">
                   <div className="grid justify-end gap-0.5 whitespace-nowrap">
                     <span>overweights <Move value={balance.overweight * 10_000} unit=" bp" digits={0} /></span>
                     <span>underweights <Move value={(balance.underweight ?? 0) * 10_000} unit=" bp" digits={0} /></span>

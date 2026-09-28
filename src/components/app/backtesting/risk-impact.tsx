@@ -74,13 +74,13 @@ export function RiskImpactBody({
   className?: string;
 }) {
   return error ? (
-    <p role="alert" className="text-sm text-destructive">{error}</p>
+    <p role="alert" className="text-body text-destructive">{error}</p>
   ) : !data ? (
-    <p className="text-sm text-muted-foreground">{busy ? "Measuring risk…" : idle}</p>
+    <p className="text-body text-muted-foreground">{busy ? "Measuring risk…" : idle}</p>
   ) : (
     <div className={cn("grid gap-4", className, stale && "opacity-60")}>
       <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
+        <table className="w-full text-body">
           <thead className="bg-muted/60 text-muted-foreground">
             <tr><th scope="col" className="px-3 py-2 text-left font-medium">Measure</th><th scope="col" className={cell}>{names.original}</th><th scope="col" className={cell}>{names.modified}</th><th scope="col" className={cell}>Change</th></tr>
           </thead>
@@ -100,7 +100,7 @@ export function RiskImpactBody({
       </div>
       <div className="grid content-start gap-3">
         <div className="overflow-x-auto rounded-md border">
-          <table className="w-full text-sm">
+          <table className="w-full text-body">
             <thead className="bg-muted/60 text-muted-foreground">
               <tr>
                 <th scope="col" className="px-3 py-2 text-left font-medium">Holding</th>
@@ -121,7 +121,7 @@ export function RiskImpactBody({
         </div>
         {data.sectors.length > 0 && (
           <div className="overflow-x-auto rounded-md border">
-            <table className="w-full text-sm">
+            <table className="w-full text-body">
               <thead className="bg-muted/60 text-muted-foreground">
                 <tr>
                   <th scope="col" className="px-3 py-2 text-left font-medium">Sector</th>
@@ -142,7 +142,7 @@ export function RiskImpactBody({
           </div>
         )}
         {data.notices.map((n) => (
-          <p key={n} className="text-xs text-muted-foreground">{n}</p>
+          <p key={n} className="text-body text-muted-foreground">{n}</p>
         ))}
       </div>
     </div>

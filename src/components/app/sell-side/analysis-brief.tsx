@@ -22,17 +22,17 @@ const VERDICT: Record<CallAnalysis["crossChecks"][number]["assessment"], { label
 function Points({ title, points }: { title: string; points: AnalysisPoint[] }) {
   return (
     <section className="mt-5">
-      <h4 className="text-[13.5px] font-semibold">{title}</h4>
+      <h4 className="text-body font-semibold">{title}</h4>
       {points.length ? (
         <ul className="mt-1">
           {points.map((p, i) => (
-            <li key={i} className="border-b border-row py-2 text-[13.5px] leading-relaxed">
+            <li key={i} className="border-b border-row py-2 text-body leading-relaxed">
               {p.text} {citations(p.sourceIds)}
             </li>
           ))}
         </ul>
       ) : (
-        <p className="mt-1 text-[13px] text-muted-foreground">Not discussed in this call.</p>
+        <p className="mt-1 text-body text-muted-foreground">Not discussed in this call.</p>
       )}
     </section>
   );
@@ -67,16 +67,16 @@ export function AnalysisBrief({ messages, chatId }: { messages: UIMessage[]; cha
       <section aria-label="Call analysis" className="flex min-h-0 flex-1 flex-col">
         {!analysis ? (
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3.5">
-            <h3 className="text-[14.5px] font-semibold">Call brief</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">Evidence for analyst review</p>
+            <h3 className="text-emph font-semibold">Call brief</h3>
+            <p className="mt-0.5 text-caption text-muted-foreground">Evidence for analyst review</p>
             <div className="mt-2">{legacy?.parts.map((p, i) => (p.type === "text" ? <ResearchAnswer key={i} text={p.text} /> : null))}</div>
           </div>
         ) : (
           <>
             <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-2">
               <div className="min-w-0 px-5 py-3.5 lg:border-r">
-                <h3 className="text-[14.5px] font-semibold">What was said</h3>
-                <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-2">
+                <h3 className="text-emph font-semibold">What was said</h3>
+                <p className="mt-1.5 text-body leading-relaxed text-ink-2">
                   {analysis.overview.text} {citations(analysis.overview.sourceIds)}
                 </p>
                 <ul className="mt-1.5">
@@ -89,14 +89,14 @@ export function AnalysisBrief({ messages, chatId }: { messages: UIMessage[]; cha
                             type="button"
                             onClick={() => openTranscriptAt(t)}
                             aria-label={`Open the transcript at ${stamp(t)}`}
-                            className={cn(stampWidth, "h-fit shrink-0 pt-0.5 text-left font-mono text-xs font-medium text-series-1 outline-none hover:underline focus-visible:underline")}
+                            className={cn(stampWidth, "h-fit shrink-0 pt-0.5 text-left font-mono text-body font-medium text-series-1 outline-none hover:underline focus-visible:underline")}
                           >
                             {stamp(t)}
                           </button>
                         ) : (
-                          <span className={cn(stampWidth, "shrink-0 pt-0.5 font-mono text-xs text-muted-foreground")}>—</span>
+                          <span className={cn(stampWidth, "shrink-0 pt-0.5 font-mono text-body text-muted-foreground")}>—</span>
                         )}
-                        <span className="min-w-0 text-[14px] leading-normal">
+                        <span className="min-w-0 text-body leading-normal">
                           {p.text} {citations(p.sourceIds)}
                         </span>
                       </li>
@@ -104,23 +104,23 @@ export function AnalysisBrief({ messages, chatId }: { messages: UIMessage[]; cha
                   })}
                 </ul>
                 <section className="mt-5">
-                  <h4 className="text-[13.5px] font-semibold">Important numbers</h4>
+                  <h4 className="text-body font-semibold">Important numbers</h4>
                   {analysis.numbers.length ? (
                     <ul className="mt-1">
                       {analysis.numbers.map((n, i) => (
                         <li key={i} className="border-b border-row py-2">
                           <div className="flex items-baseline gap-3">
-                            <span className="min-w-0 flex-1 text-[13.5px] font-medium">{n.metric}</span>
-                            <span className="shrink-0 text-right font-mono text-[13px] font-medium">{n.value}</span>
+                            <span className="min-w-0 flex-1 text-body font-medium">{n.metric}</span>
+                            <span className="shrink-0 text-right font-mono text-body font-medium">{n.value}</span>
                           </div>
-                          <p className="mt-0.5 text-[12.5px] leading-[1.45] text-muted-foreground">
+                          <p className="mt-0.5 text-body leading-[1.45] text-muted-foreground">
                             <span className="text-ink-2">{n.period}</span> · {n.context} {citations(n.sourceIds)}
                           </p>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-1 text-[13px] text-muted-foreground">No reliable numbers identified.</p>
+                    <p className="mt-1 text-body text-muted-foreground">No reliable numbers identified.</p>
                   )}
                 </section>
                 <Points title="Positive commentary" points={analysis.positives} />
@@ -130,8 +130,8 @@ export function AnalysisBrief({ messages, chatId }: { messages: UIMessage[]; cha
               </div>
               <div className="min-w-0 border-t px-5 py-3.5 lg:border-t-0">
                 <div className="flex items-baseline gap-2">
-                  <h3 className="flex-1 text-[14.5px] font-semibold">Checked against the team’s files</h3>
-                  <span className="text-xs whitespace-nowrap text-muted-foreground">by Hoot</span>
+                  <h3 className="flex-1 text-emph font-semibold">Checked against the team’s files</h3>
+                  <span className="text-body whitespace-nowrap text-muted-foreground">by Hoot</span>
                 </div>
                 <ul className="mt-1.5">
                   {analysis.crossChecks.map((row, i) => {
@@ -139,31 +139,31 @@ export function AnalysisBrief({ messages, chatId }: { messages: UIMessage[]; cha
                     return (
                       <li key={i} className="border-b border-row py-2.5">
                         <div className="flex items-start gap-2">
-                          <p className="min-w-0 flex-1 text-[14px] leading-snug font-medium">
+                          <p className="min-w-0 flex-1 text-body leading-snug font-medium">
                             {row.claim} {citations(row.callSourceIds)}
                           </p>
                           <Pill tone={verdict.tone} title={`Assessment: ${row.assessment}`}>
                             {verdict.label}
                           </Pill>
                         </div>
-                        <p className="mt-1 text-[12.5px] leading-[1.45] text-muted-foreground">
+                        <p className="mt-1 text-body leading-[1.45] text-muted-foreground">
                           {row.evidence} {citations(row.internalSourceIds)}
                         </p>
-                        <p className="mt-0.5 text-[12.5px] leading-[1.45] text-muted-foreground">
+                        <p className="mt-0.5 text-body leading-[1.45] text-muted-foreground">
                           <span className="font-medium text-ink-2">Follow-up:</span> {row.followUp}
                         </p>
                       </li>
                     );
                   })}
                 </ul>
-                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                <p className="mt-3 text-caption leading-relaxed text-muted-foreground">
                   <span className="font-medium text-ink-2">Coverage.</span> {analysis.coverage}
                 </p>
               </div>
             </div>
             {analysis.questions.length > 0 && (
               <div className="flex max-h-[34%] shrink-0 flex-wrap items-center gap-x-3 gap-y-2 overflow-y-auto border-t bg-band-2 px-5 pt-3 pb-3.5">
-                <h3 className="text-[13.5px] font-semibold whitespace-nowrap">Questions Hoot would ask next</h3>
+                <h3 className="text-body font-semibold whitespace-nowrap">Questions Hoot would ask next</h3>
                 {analysis.questions.map((q, i) => (
                   <span key={i} className="inline-flex max-w-full items-center">
                     {canAsk ? (
@@ -171,12 +171,12 @@ export function AnalysisBrief({ messages, chatId }: { messages: UIMessage[]; cha
                         type="button"
                         onClick={() => ask(q.text)}
                         title="Ask Hoot in this call’s saved chat"
-                        className="min-h-7 rounded-full bg-hoot px-3 py-1 text-left text-[12.5px] leading-snug font-medium text-hoot-foreground transition-opacity outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"
+                        className="min-h-7 rounded-full bg-hoot px-3 py-1 text-left text-body leading-snug font-medium text-hoot-foreground transition-opacity outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         {q.text}
                       </button>
                     ) : (
-                      <span className="min-h-7 rounded-full bg-hoot px-3 py-1 text-[12.5px] leading-snug font-medium text-hoot-foreground">{q.text}</span>
+                      <span className="min-h-7 rounded-full bg-hoot px-3 py-1 text-body leading-snug font-medium text-hoot-foreground">{q.text}</span>
                     )}
                     {citations(q.sourceIds)}
                   </span>

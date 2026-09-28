@@ -24,11 +24,11 @@ export function Diagnostics({ summary, children }: { summary: React.ReactNode; c
   return (
     <details ref={ref} id="diagnostics" className="group scroll-mt-20">
       <summary className="flex cursor-pointer list-none items-baseline gap-3 px-4 py-3 select-none hover:text-foreground [&::-webkit-details-marker]:hidden">
-        <h2 className="text-[14.5px] font-semibold">
+        <h2 className="text-emph font-semibold">
           <span className="mr-1.5 inline-block text-muted-foreground transition-transform group-open:rotate-90">›</span>
           Diagnostics
         </h2>
-        <span className="min-w-0 truncate text-[12.5px] text-muted-foreground">{summary}</span>
+        <span className="min-w-0 truncate text-body text-muted-foreground">{summary}</span>
       </summary>
       <div className="grid gap-6 pt-2">{children}</div>
     </details>

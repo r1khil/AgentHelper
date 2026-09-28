@@ -33,7 +33,7 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
   return (
     <section className={cn("panel min-w-0 px-4 py-3.5", className)} aria-label={`${ticker} versus S&P 500`}>
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
-        <h2 className="text-[14.5px] font-semibold whitespace-nowrap">Price vs S&amp;P 500</h2>
+        <h2 className="text-emph font-semibold whitespace-nowrap">Price vs S&amp;P 500</h2>
         {!detailed && last && (
           <>
             <LegendItem color={HOLDING} label={ticker} value={last.returns.holding} />
@@ -41,7 +41,7 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
           </>
         )}
         <span className="flex-1" />
-        <button type="button" onClick={() => setDetailed((d) => !d)} className="text-xs text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring" aria-pressed={detailed}>
+        <button type="button" onClick={() => setDetailed((d) => !d)} className="text-body text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring" aria-pressed={detailed}>
           {detailed ? "Simple view" : "Compare dates"}
         </button>
         {!detailed && options.length > 1 && (
@@ -61,7 +61,7 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
           />
         </div>
       ) : points.length < 2 ? (
-        <p className="py-16 text-center text-sm text-muted-foreground" role="status">
+        <p className="py-16 text-center text-body text-muted-foreground" role="status">
           No overlapping price history is available for this comparison yet.
         </p>
       ) : (
@@ -117,7 +117,7 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
 
 function LegendItem({ color, label, value }: { color: string; label: string; value: number | null | undefined }) {
   return (
-    <span className="flex items-center gap-1.5 text-xs whitespace-nowrap text-ink-2">
+    <span className="flex items-center gap-1.5 text-body whitespace-nowrap text-ink-2">
       <span className="size-2 rounded-full" style={{ background: color }} />
       {label}
       <span className="font-mono">{fmtPct(value, 1)}</span>

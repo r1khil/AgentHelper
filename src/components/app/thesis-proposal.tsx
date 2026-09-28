@@ -9,7 +9,7 @@ export function ThesisProposal({ proposal }: { proposal: HoldingProposal }) {
   const link = proposal.sourceFileId ? `https://drive.google.com/file/d/${proposal.sourceFileId}/view` : null;
   return (
     <div className="rounded-[10px] bg-band p-3 shadow-[0_0_0_1px_var(--border)]">
-      <p className="text-xs leading-relaxed text-muted-foreground">
+      <p className="text-body leading-relaxed text-muted-foreground">
         <Pill tone="caution" className="mr-1.5 align-middle">Proposed</Pill>
         Extracted by the app from{" "}
         {link ? (
@@ -33,7 +33,7 @@ export function ThesisProposal({ proposal }: { proposal: HoldingProposal }) {
           </Button>
         </div>
       </form>
-      {proposal.rationale && <p className="mt-2 text-xs text-muted-foreground">{proposal.rationale}</p>}
+      {proposal.rationale && <p className="mt-2 text-caption text-muted-foreground">{proposal.rationale}</p>}
     </div>
   );
 }

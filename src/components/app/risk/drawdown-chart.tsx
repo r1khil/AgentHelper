@@ -8,7 +8,7 @@ export type DrawdownPoint = { date: string; fund: number; market: number };
 
 /** Underwater chart: the Fund's and the S&P 500's decline from their running peaks, in percent. */
 export function DrawdownChart({ data, fundLabel }: { data: DrawdownPoint[]; fundLabel: string }) {
-  if (data.length < 2) return <div className="text-sm text-muted-foreground">Needs at least two trading days.</div>;
+  if (data.length < 2) return <div className="text-body text-muted-foreground">Needs at least two trading days.</div>;
   const min = Math.min(...data.flatMap((d) => [d.fund, d.market]), -1);
   return (
     <div className="h-52 w-full" role="img" aria-label={`${fundLabel} and S&P 500 drawdown from peak`}>

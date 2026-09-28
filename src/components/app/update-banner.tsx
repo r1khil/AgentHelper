@@ -42,7 +42,7 @@ export function UpdateBanner({ buildId }: { buildId: string }) {
   return (
     <div
       role="status"
-      className="sticky top-0 z-50 flex items-center justify-center gap-3 border-b bg-primary px-4 py-2 text-sm text-primary-foreground"
+      className="sticky top-0 z-50 flex items-center justify-center gap-3 border-b bg-primary px-4 py-2 text-body text-primary-foreground"
     >
       <span>Update available — please refresh to get the latest version.</span>
       <Button size="sm" variant="secondary" onClick={() => window.location.reload()}>

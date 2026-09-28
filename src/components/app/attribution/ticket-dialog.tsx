@@ -82,17 +82,17 @@ export function TicketDialog({ emailTo }: { emailTo?: string }) {
           multiple
           accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           onChange={(e) => onFiles(e.target.files)}
-          className="text-sm file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-2.5 file:py-1 file:text-sm file:font-medium"
+          className="text-body file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-2.5 file:py-1 file:text-body file:font-medium"
           aria-label="Trade tickets"
         />
 
-        {checking && <p className="text-sm text-muted-foreground">Reading {files.length} ticket{files.length === 1 ? "" : "s"}…</p>}
+        {checking && <p className="text-body text-muted-foreground">Reading {files.length} ticket{files.length === 1 ? "" : "s"}…</p>}
 
         {preview && !checking && (
-          <div className="grid gap-4 text-sm">
+          <div className="grid gap-4 text-body">
             <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted text-xs text-muted-foreground">
+              <table className="w-full text-body">
+                <thead className="bg-muted text-body text-muted-foreground">
                   <tr>
                     <th scope="col" className="px-3 py-1.5 text-left font-medium">Ticket</th>
                     <th scope="col" className="px-3 py-1.5 text-left font-medium">Date</th>
@@ -107,10 +107,10 @@ export function TicketDialog({ emailTo }: { emailTo?: string }) {
                     <tr key={i} className={`border-t align-top ${r.skip ? "text-muted-foreground" : ""}`}>
                       <td className="px-3 py-1.5">
                         <div className="font-medium">{r.ticket ? r.ticket.ticker : r.file}</div>
-                        {r.ticket && <div className="max-w-64 truncate text-xs text-muted-foreground">{r.ticket.name}</div>}
-                        {r.errors.map((m, j) => <div key={`e${j}`} className="mt-0.5 max-w-sm text-xs text-destructive">{m}</div>)}
-                        {r.skip && <div className="mt-0.5 max-w-sm text-xs text-muted-foreground">Skipped. {r.skip}</div>}
-                        {r.warnings.map((m, j) => <div key={`w${j}`} className="mt-0.5 max-w-sm text-xs text-amber-700 dark:text-amber-400">{m}</div>)}
+                        {r.ticket && <div className="max-w-64 truncate text-caption text-muted-foreground">{r.ticket.name}</div>}
+                        {r.errors.map((m, j) => <div key={`e${j}`} className="mt-0.5 max-w-sm text-caption text-destructive">{m}</div>)}
+                        {r.skip && <div className="mt-0.5 max-w-sm text-caption text-muted-foreground">Skipped. {r.skip}</div>}
+                        {r.warnings.map((m, j) => <div key={`w${j}`} className="mt-0.5 max-w-sm text-caption text-amber-700 dark:text-amber-400">{m}</div>)}
                       </td>
                       {r.ticket ? (
                         <>

@@ -40,9 +40,9 @@ export function HoldingsToolbar({ basePath, active, counts, aside }: { basePath:
 
 /** "S&P 500 0.59% Friday · market closed". */
 export function MarketLine({ changePct, day, closed, error }: { changePct?: number; day?: string; closed?: boolean; error?: string }) {
-  if (changePct == null) return <span className="text-[13px] whitespace-nowrap text-muted-foreground">{error ?? "S&P 500 quote unavailable"}</span>;
+  if (changePct == null) return <span className="text-body whitespace-nowrap text-muted-foreground">{error ?? "S&P 500 quote unavailable"}</span>;
   return (
-    <span className="text-[13px] whitespace-nowrap text-muted-foreground">
+    <span className="text-body whitespace-nowrap text-muted-foreground">
       S&amp;P 500{" "}
       <span className={cn("font-mono", changePct > 0.005 ? "text-up" : changePct < -0.005 ? "text-down" : "")}>
         {fmtPct(changePct)}

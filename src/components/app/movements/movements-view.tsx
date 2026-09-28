@@ -33,7 +33,7 @@ export function MovementsView({ items, selected }: { items: MovementListItem[]; 
       {selected ? (
         <MovementDetail d={selected} list={list("rounded-none shadow-none max-h-[min(70dvh,640px)]")} items={items} />
       ) : (
-        <div className="flex min-h-64 items-center justify-center rounded-[14px] border border-dashed text-sm text-muted-foreground">Select a movement to see its evidence and write-up.</div>
+        <div className="flex min-h-64 items-center justify-center rounded-[14px] border border-dashed text-body text-muted-foreground">Select a movement to see its evidence and write-up.</div>
       )}
     </div>
   );
@@ -45,13 +45,13 @@ function MovementList({ items, selectedId, className }: { items: MovementListIte
     <Panel data-tour="movements-list" className={className}>
       <div className="shrink-0 border-b px-4 py-3.5">
         <div className="flex items-baseline gap-2">
-          <h2 className="text-[14.5px] font-semibold">Movements</h2>
+          <h2 className="text-emph font-semibold">Movements</h2>
           <span className="flex-1" />
-          <span className="font-mono text-[11px] text-muted-foreground">
+          <span className="font-mono text-caption text-muted-foreground">
             {open} open · {items.length - open} completed
           </span>
         </div>
-        <p className="mt-0.5 text-[12.5px] leading-[1.45] text-muted-foreground">
+        <p className="mt-0.5 text-body leading-[1.45] text-muted-foreground">
           Opened when a holding&apos;s daily return differs from the S&amp;P 500&apos;s by {fmtBp(MOVEMENT_THRESHOLD_PP * 100)} or more. Due noon the next trading day. Checked nightly after the close.
         </p>
       </div>
@@ -70,18 +70,18 @@ function MovementList({ items, selectedId, className }: { items: MovementListIte
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <span className="w-11 shrink-0 font-mono text-[13px] font-semibold">{i.ticker}</span>
+                  <span className="w-11 shrink-0 font-mono text-body font-semibold">{i.ticker}</span>
                   {i.dataQuality ? (
-                    <span className="truncate text-[12.5px] text-caution-foreground" title={i.dataQuality}>
+                    <span className="truncate text-body text-caution-foreground" title={i.dataQuality}>
                       Data problem
                     </span>
                   ) : (
-                    <Move value={ppToBp(i.relativePp)} unit=" bp" digits={0} className="text-[13px]" />
+                    <Move value={ppToBp(i.relativePp)} unit=" bp" digits={0} className="text-body" />
                   )}
                   <span className="flex-1" />
                   <Pill tone={pill.tone}>{pill.label}</Pill>
                 </div>
-                <div className="mt-[3px] truncate text-xs text-muted-foreground">
+                <div className="mt-[3px] truncate text-caption text-muted-foreground">
                   {sessionShort(i.sessionDate)}
                   {i.teamName && ` · ${i.teamName}`}
                   {i.completedByName && ` · by ${i.completedByName}`}
@@ -110,15 +110,15 @@ function MovementDetail({ d, list, items }: { d: MovementDetailData; list: React
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <Link href={d.holdingHref} className="font-mono text-2xl font-semibold hover:underline">
+              <Link href={d.holdingHref} className="font-mono text-display font-semibold hover:underline">
                 {d.ticker}
               </Link>
-              <span className="text-[15px] text-ink-2">
+              <span className="text-emph text-ink-2">
                 {sessionLong(d.sessionDate)}
                 <span className="text-muted-foreground"> · {d.companyName}</span>
               </span>
               {!d.dataQuality && (
-                <span className="flex flex-wrap gap-x-4 gap-y-1 text-[13.5px] text-ink-2" title={`Official closes · Yahoo Finance. Rule: relative move of ${fmtBp(MOVEMENT_THRESHOLD_PP * 100)} or more.`}>
+                <span className="flex flex-wrap gap-x-4 gap-y-1 text-body text-ink-2" title={`Official closes · Yahoo Finance. Rule: relative move of ${fmtBp(MOVEMENT_THRESHOLD_PP * 100)} or more.`}>
                   <span>
                     {d.ticker} <Move value={d.holdingReturnPct} unit="%" digits={2} />
                   </span>
@@ -132,7 +132,7 @@ function MovementDetail({ d, list, items }: { d: MovementDetailData; list: React
               )}
             </div>
             {d.dataQuality && (
-              <p className="mt-1 text-[13.5px] text-caution-foreground">
+              <p className="mt-1 text-body text-caution-foreground">
                 Data quality problem: {d.dataQuality}. No calculation was made; resolve the data issue and re-run the close check.
               </p>
             )}
@@ -186,8 +186,8 @@ function MetaStrip({ d }: { d: MovementDetailData }) {
     <div className="panel flex shrink-0 overflow-visible">
       {cells.map((c, i) => (
         <div key={c.k} className={cn("px-4 py-2", i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
-          <div className="text-[11.5px] text-muted-foreground">{c.k}</div>
-          <div className="text-[13.5px] font-semibold whitespace-nowrap">{c.v}</div>
+          <div className="text-caption text-muted-foreground">{c.k}</div>
+          <div className="text-body font-semibold whitespace-nowrap">{c.v}</div>
         </div>
       ))}
     </div>

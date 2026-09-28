@@ -81,7 +81,7 @@ export default async function AgentIndex({ params }: { params: Promise<{ team: s
         {rows.length === 0 ? (
           <Panel className="flex-1">
             <PanelHeader title="By holding" />
-            <p className="px-4 py-4 text-[13px] leading-relaxed text-muted-foreground">
+            <p className="px-4 py-4 text-body leading-relaxed text-muted-foreground">
               No holdings yet. Add the tickers {scope.kind === "fund" ? "each team covers on its" : "this team covers on the"} Holdings page. Each one gets its own research here.
             </p>
           </Panel>

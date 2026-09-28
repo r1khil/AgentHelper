@@ -93,12 +93,12 @@ export function MembersPanel({ members, invitations, teams, canMutate, meId, act
   return (
     <Panel>
       <div className="flex h-12 shrink-0 items-center gap-2.5 border-b px-4">
-        <h2 className="text-[14.5px] font-semibold">Members</h2>
-        <span className="font-mono text-xs text-muted-foreground">{members.length}</span>
+        <h2 className="text-emph font-semibold">Members</h2>
+        <span className="font-mono text-body text-muted-foreground">{members.length}</span>
         <span className="flex-1" />
         <label className="flex h-8 w-[220px] items-center gap-1.5 rounded-full bg-card px-3 shadow-[0_0_0_1px_var(--border)] focus-within:shadow-[0_0_0_1px_var(--border-strong)]">
           <Search className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a member" aria-label="Find a member" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a member" aria-label="Find a member" className="min-w-0 flex-1 bg-transparent text-body outline-none placeholder:text-muted-foreground" />
           {q && (
             <button type="button" onClick={() => setQ("")} aria-label="Clear search" className="text-muted-foreground hover:text-foreground">
               <X className="size-3.5" />
@@ -112,7 +112,7 @@ export function MembersPanel({ members, invitations, teams, canMutate, meId, act
           </Button>
         )}
       </div>
-      <div className={cn(GRID, "h-[34px] shrink-0 border-b px-4 text-xs text-muted-foreground")}>
+      <div className={cn(GRID, "h-[34px] shrink-0 border-b px-4 text-body text-muted-foreground")}>
         <span>Name</span>
         <span>Team</span>
         <span>Role</span>
@@ -124,12 +124,12 @@ export function MembersPanel({ members, invitations, teams, canMutate, meId, act
           const last = activityKnown ? lastActiveLabel(m.lastActive, nowDt) : { text: "—", stale: false };
           const fundWide = m.role === "exec" || m.role === "admin";
           return (
-            <div key={m.id} className={cn(GRID, "min-h-11 border-b border-row px-4 text-[13.5px] hover:bg-band")}>
+            <div key={m.id} className={cn(GRID, "min-h-11 border-b border-row px-4 text-body hover:bg-band")}>
               <span className="flex min-w-0 items-center gap-2.5">
-                <span className={cn("grid size-[26px] shrink-0 place-items-center rounded-full text-[10.5px] font-semibold", fundWide ? "bg-avatar text-cream-foreground" : "bg-muted text-ink-2")}>{initials(m.fullName)}</span>
+                <span className={cn("grid size-[26px] shrink-0 place-items-center rounded-full text-caption font-semibold", fundWide ? "bg-avatar text-cream-foreground" : "bg-muted text-ink-2")}>{initials(m.fullName)}</span>
                 <span className="shrink-0 font-medium">{m.fullName}</span>
-                {m.id === meId && <span className="shrink-0 text-xs text-muted-foreground">(you)</span>}
-                <span className="min-w-0 truncate text-xs text-muted-foreground" title={m.kind === "password" ? `Username account: ${m.username}` : `Google sign-in: ${m.email}`}>
+                {m.id === meId && <span className="shrink-0 text-body text-muted-foreground">(you)</span>}
+                <span className="min-w-0 truncate text-caption text-muted-foreground" title={m.kind === "password" ? `Username account: ${m.username}` : `Google sign-in: ${m.email}`}>
                   {m.kind === "password" ? `username ${m.username ?? ""}` : m.email}
                 </span>
                 {!m.onboarded && <Pill tone="caution">Setup pending</Pill>}
@@ -138,7 +138,7 @@ export function MembersPanel({ members, invitations, teams, canMutate, meId, act
               <span>
                 <Pill tone={roleTone(m.role)}>{ROLE_LABELS[m.role]}</Pill>
               </span>
-              <span className={cn("text-[12.5px]", last.stale ? "text-hoot-foreground" : "text-muted-foreground")} title={m.lastActive ? `Last signed in or active ${fmtDateTime(m.lastActive)}` : undefined}>
+              <span className={cn("text-body", last.stale ? "text-hoot-foreground" : "text-muted-foreground")} title={m.lastActive ? `Last signed in or active ${fmtDateTime(m.lastActive)}` : undefined}>
                 {last.text}
               </span>
               {canMutate ? (
@@ -176,9 +176,9 @@ export function MembersPanel({ members, invitations, teams, canMutate, meId, act
         })}
         {shownInvites.length > 0 && (
           <>
-            <div className="flex h-9 shrink-0 items-center gap-2 border-b border-row bg-band px-4 text-[12.5px]">
+            <div className="flex h-9 shrink-0 items-center gap-2 border-b border-row bg-band px-4 text-body">
               <span className="font-semibold">Pending invitations</span>
-              <span className="font-mono text-[11px] text-muted-foreground">{shownInvites.length}</span>
+              <span className="font-mono text-caption text-muted-foreground">{shownInvites.length}</span>
               <span className="text-muted-foreground">· not yet signed in</span>
             </div>
             {shownInvites.map((i) => (
@@ -186,7 +186,7 @@ export function MembersPanel({ members, invitations, teams, canMutate, meId, act
             ))}
           </>
         )}
-        {shown.length === 0 && shownInvites.length === 0 && <p className="p-4 text-[13px] text-muted-foreground">Nobody matches &ldquo;{q}&rdquo;.</p>}
+        {shown.length === 0 && shownInvites.length === 0 && <p className="p-4 text-body text-muted-foreground">Nobody matches &ldquo;{q}&rdquo;.</p>}
       </div>
 
       {canMutate && <InviteDialog open={invite} onOpenChange={setInvite} teams={teams} />}
@@ -268,17 +268,17 @@ export function MembersPanel({ members, invitations, teams, canMutate, meId, act
 function InvitationRowView({ i, canMutate }: { i: InvitationRow; canMutate: boolean }) {
   const revokeRef = useRef<HTMLFormElement>(null);
   return (
-    <div className={cn(GRID, "min-h-11 border-b border-row px-4 text-[13.5px] hover:bg-band")}>
+    <div className={cn(GRID, "min-h-11 border-b border-row px-4 text-body hover:bg-band")}>
       <span className="flex min-w-0 items-center gap-2.5">
-        <span className="grid size-[26px] shrink-0 place-items-center rounded-full text-[10.5px] font-semibold text-muted-foreground shadow-[inset_0_0_0_1px_var(--border)]">{initials(i.fullName ?? i.email)}</span>
+        <span className="grid size-[26px] shrink-0 place-items-center rounded-full text-caption font-semibold text-muted-foreground shadow-[inset_0_0_0_1px_var(--border)]">{initials(i.fullName ?? i.email)}</span>
         <span className="shrink-0 font-medium">{i.fullName ?? i.email}</span>
-        <span className="min-w-0 truncate text-xs text-muted-foreground">{i.email}</span>
+        <span className="min-w-0 truncate text-caption text-muted-foreground">{i.email}</span>
       </span>
       <span className="truncate text-ink-2">{i.teamName ?? "Whole fund"}</span>
       <span>
         <Pill tone={roleTone(i.role)}>{ROLE_LABELS[i.role]}</Pill>
       </span>
-      <span className="text-[12.5px] text-muted-foreground">Invited {fmtDay(i.createdAt)}</span>
+      <span className="text-body text-muted-foreground">Invited {fmtDay(i.createdAt)}</span>
       {canMutate ? (
         <>
           <DropdownMenu>

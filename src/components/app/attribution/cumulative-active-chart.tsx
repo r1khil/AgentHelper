@@ -16,7 +16,7 @@ const BENCH = "var(--series-neutral)";
 
 /** The full interactive chart (scrub, drag-to-compare, observations table). Shown in the Details dialog. */
 export function CumulativeActiveChart({ data, portfolioLabel, benchmarkLabel }: { data: CumulativeChartPoint[]; portfolioLabel: string; benchmarkLabel: string }) {
-  if (data.length < 2) return <div className="text-sm text-muted-foreground">No completed trading days in this period.</div>;
+  if (data.length < 2) return <div className="text-body text-muted-foreground">No completed trading days in this period.</div>;
   return (
     <PerformanceChart
       data={data.map((p) => ({ date: p.date, values: { portfolio: 100 + p.portfolio, benchmark: p.benchmark === null ? null : 100 + p.benchmark } }))}
@@ -40,7 +40,7 @@ function tickLabels(dates: string[]) {
 
 /** Compact cumulative-return panel body: thin lines, no dots, mono ticks, hover readout. */
 export function CompactCumulativeChart({ data, portfolioLabel, benchmarkLabel }: { data: CumulativeChartPoint[]; portfolioLabel: string; benchmarkLabel: string }) {
-  if (data.length < 2) return <div className="flex flex-1 items-center text-sm text-muted-foreground">Needs at least two closes in this period.</div>;
+  if (data.length < 2) return <div className="flex flex-1 items-center text-body text-muted-foreground">Needs at least two closes in this period.</div>;
   const label = tickLabels(data.map((d) => d.date));
   return (
     <div className="h-full min-h-44 w-full" role="img" aria-label={`Cumulative return, ${portfolioLabel} versus ${benchmarkLabel}`}>

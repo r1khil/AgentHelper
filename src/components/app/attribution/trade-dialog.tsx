@@ -56,7 +56,7 @@ export function TradeDialog({ today, positions }: { today: string; positions: { 
           <div className="grid gap-1.5">
             <Label htmlFor="trade-ticker">Ticker</Label>
             <Input id="trade-ticker" name="ticker" placeholder="NVDA" autoCapitalize="characters" value={ticker} onChange={(e) => setTicker(e.target.value)} required />
-            <p className="tnum text-xs text-muted-foreground">{held ? `Fund holds ${fmtNumber(held.shares)} shares` : ticker ? "Not currently held" : " "}</p>
+            <p className="tnum text-body text-muted-foreground">{held ? `Fund holds ${fmtNumber(held.shares)} shares` : ticker ? "Not currently held" : " "}</p>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="grid gap-1.5">

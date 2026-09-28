@@ -35,8 +35,8 @@ const title = (c: Coefficient) => `β ${formatBeta(c.beta, 4)}, standard error $
 function BetaCell({ c, className }: { c: Coefficient; className?: string }) {
   return (
     <TableCell className={cn("tnum text-right", className)} title={title(c)}>
-      <div className={cn("text-sm", c.significant ? "font-medium" : "text-muted-foreground/60")}>{beta(c)}</div>
-      <div className={cn("text-[11px]", c.significant ? "text-muted-foreground" : "text-muted-foreground/50")}>{tText(c)}</div>
+      <div className={cn("text-body", c.significant ? "font-medium" : "text-muted-foreground/60")}>{beta(c)}</div>
+      <div className={cn("text-caption", c.significant ? "text-muted-foreground" : "text-muted-foreground/50")}>{tText(c)}</div>
     </TableCell>
   );
 }
@@ -50,7 +50,7 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
   if (!isFactorReport(f)) {
     return (
       <ExposureSection id={id} title="Factor and macro sensitivities" explain={RISK_EXPLAIN.factors}>
-        <Card className="p-4 text-sm text-muted-foreground">{f.reason}</Card>
+        <Card className="p-4 text-body text-muted-foreground">{f.reason}</Card>
       </ExposureSection>
     );
   }
@@ -76,12 +76,12 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
       explain={RISK_EXPLAIN.factors}
       aside={`${f.sample.n} trading days to ${fmtDate(f.sample.to)} · greyed: |t| < ${T_STAT_THRESHOLD}`}
     >
-      <Card className="mb-3 gap-2 p-4 text-sm">
+      <Card className="mb-3 gap-2 p-4 text-body">
         {read.clear.length > 0 ? (
           <ul className="grid gap-1">
             {read.clear.map((x) => (
               <li key={x.key}>
-                <span className="font-medium">{x.label}</span> <span className="font-mono text-xs text-muted-foreground">β {formatBeta(x.beta, 2)}</span> · {x.text}
+                <span className="font-medium">{x.label}</span> <span className="font-mono text-body text-muted-foreground">β {formatBeta(x.beta, 2)}</span> · {x.text}
               </li>
             ))}
           </ul>
@@ -123,8 +123,8 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
               <TableRow key={x.key}>
                 <TableCell>
                   <span className="font-medium">{x.label}</span>
-                  <div className="text-[11px] text-muted-foreground sm:hidden" title={x.definition}>{x.short ? `${x.long} − ${x.short}` : x.long}</div>
-                  <div className="hidden text-[11px] whitespace-normal text-muted-foreground sm:block">{x.definition}</div>
+                  <div className="text-caption text-muted-foreground sm:hidden" title={x.definition}>{x.short ? `${x.long} − ${x.short}` : x.long}</div>
+                  <div className="hidden text-caption whitespace-normal text-muted-foreground sm:block">{x.definition}</div>
                 </TableCell>
                 <BetaCell c={f.fund.betas[x.key]} />
                 {f.benchmark ? <BetaCell c={f.benchmark.betas[x.key]} /> : <TableCell className="text-right text-muted-foreground">—</TableCell>}
@@ -134,15 +134,15 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
           </TableBody>
           <TableFooter>
             <TableRow>
-              <TableCell className="text-xs font-medium"><Explained label="R²">{RISK_EXPLAIN.factorR2}</Explained></TableCell>
-              <TableCell className="text-right font-mono text-[12.5px]">{fixed(f.fund.r2, 2)}</TableCell>
-              <TableCell className="text-right font-mono text-[12.5px]">{f.benchmark ? fixed(f.benchmark.r2, 2) : "—"}</TableCell>
-              <TableCell className="text-right font-mono text-[12.5px]">{f.active ? fixed(f.active.r2, 2) : "—"}</TableCell>
+              <TableCell className="text-body font-medium"><Explained label="R²">{RISK_EXPLAIN.factorR2}</Explained></TableCell>
+              <TableCell className="text-right font-mono text-body">{fixed(f.fund.r2, 2)}</TableCell>
+              <TableCell className="text-right font-mono text-body">{f.benchmark ? fixed(f.benchmark.r2, 2) : "—"}</TableCell>
+              <TableCell className="text-right font-mono text-body">{f.active ? fixed(f.active.r2, 2) : "—"}</TableCell>
             </TableRow>
           </TableFooter>
         </Table>
       </Card>
-      <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 px-1 text-xs text-muted-foreground">
+      <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 px-1 text-caption text-muted-foreground">
         <Explained label="t-stat under each beta">{RISK_EXPLAIN.factorT}</Explained>
         <span>
           · {f.sample.n} days, {fmtDate(f.sample.from)} to {fmtDate(f.sample.to)}
@@ -154,7 +154,7 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
       {transparency ? (
         <FactorWorking f={f} downloads={downloads} fund={fund} />
       ) : (
-        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted-foreground">
           <span>Download:</span>
           {downloads}
         </p>
@@ -167,12 +167,12 @@ function HoldingBetas({ f }: { f: FactorReport }) {
   const rows = [...f.holdings].sort((a, b) => b.weight - a.weight);
   return (
     <details className="mt-2 rounded-[14px] bg-card shadow-[0_0_0_1px_var(--border)]">
-      <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium text-muted-foreground select-none hover:text-foreground">
+      <summary className="cursor-pointer px-4 py-2.5 text-body font-medium text-muted-foreground select-none hover:text-foreground">
         Each holding&apos;s betas ({rows.length})
       </summary>
       <div className="border-t">
-        <p className="px-4 pt-2 text-xs text-muted-foreground">{RISK_EXPLAIN.factorHoldings}</p>
-        <Table className="text-xs">
+        <p className="px-4 pt-2 text-body text-muted-foreground">{RISK_EXPLAIN.factorHoldings}</p>
+        <Table className="text-body">
           <TableHeader>
             <TableRow>
               <TableHead>Holding</TableHead>
@@ -187,7 +187,7 @@ function HoldingBetas({ f }: { f: FactorReport }) {
                 <TableCell>
                   <span className="font-mono font-semibold">{h.ticker}</span>
                   {h.source !== "own" && (
-                    <span className="ml-1.5 rounded border px-1 py-px text-[10px] text-muted-foreground" title={h.source === "proxy" ? `Too little price history; modeled with ${h.proxy}` : "No price history or sector; treated as riskless"}>
+                    <span className="ml-1.5 rounded border px-1 py-px text-caption text-muted-foreground" title={h.source === "proxy" ? `Too little price history; modeled with ${h.proxy}` : "No price history or sector; treated as riskless"}>
                       {h.source === "proxy" ? `via ${h.proxy}` : "not modeled"}
                     </span>
                   )}

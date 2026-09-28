@@ -60,24 +60,24 @@ export function ReleaseStatus({ event: e, now, today, isNext }: { event: Economi
   const actual = shownActual(e, now);
   const until = e.timestamp ? untilText(Date.parse(e.timestamp) - now) : "";
   if (isNext)
-    return <span className="inline-flex h-[22px] items-center rounded-full bg-primary px-[9px] font-mono text-[11.5px] font-medium whitespace-nowrap text-primary-foreground">Next · {until}</span>;
+    return <span className="inline-flex h-[22px] items-center rounded-full bg-primary px-[9px] font-mono text-caption font-medium whitespace-nowrap text-primary-foreground">Next · {until}</span>;
   if (actual !== null) {
     const s = surprise(actual, e.estimate);
     if (s?.dir === "above" || s?.dir === "below")
       return (
-        <span className={cn("inline-flex items-center gap-1 font-mono text-[12px] font-medium whitespace-nowrap", s.dir === "above" ? "text-above" : "text-below")}>
+        <span className={cn("inline-flex items-center gap-1 font-mono text-body font-medium whitespace-nowrap", s.dir === "above" ? "text-above" : "text-below")}>
           <svg viewBox="0 0 8 8" className="size-2" aria-hidden="true">
             <path d={s.dir === "above" ? "M4 1 7.5 6.5h-7z" : "M4 7 .5 1.5h7z"} fill="currentColor" />
           </svg>
           {s.text}
         </span>
       );
-    if (s?.dir === "inline") return <span className="text-[12.5px] font-medium text-ink-2">In line</span>;
-    return <span className="text-[12.5px] text-muted-foreground">Released</span>;
+    if (s?.dir === "inline") return <span className="text-body font-medium text-ink-2">In line</span>;
+    return <span className="text-body text-muted-foreground">Released</span>;
   }
-  if (e.date === today && isUpcoming(e, now)) return <span className="font-mono text-[12px] text-muted-foreground">{until}</span>;
-  if (e.date === today && e.timestamp && !isUpcoming(e, now) && (e.estimate || e.previous)) return <span className="text-[12.5px] text-muted-foreground">Awaiting</span>;
-  if (e.importance === 3) return <span className="text-[12.5px] font-medium text-foreground">High impact</span>;
+  if (e.date === today && isUpcoming(e, now)) return <span className="font-mono text-body text-muted-foreground">{until}</span>;
+  if (e.date === today && e.timestamp && !isUpcoming(e, now) && (e.estimate || e.previous)) return <span className="text-body text-muted-foreground">Awaiting</span>;
+  if (e.importance === 3) return <span className="text-body font-medium text-foreground">High impact</span>;
   return null;
 }
 
@@ -176,8 +176,8 @@ export function ReleaseDetails({
           <dl className="grid grid-cols-3 gap-x-5 gap-y-2.5 xl:grid-cols-5">
             {fields.map(([k, v]) => (
               <div key={k} className="flex min-w-0 flex-col gap-0.5">
-                <dt className="label-mono text-[10.5px] text-muted-foreground">{k}</dt>
-                <dd className="text-[12.5px] leading-[18px] break-words">{v}</dd>
+                <dt className="label-mono text-caption text-muted-foreground">{k}</dt>
+                <dd className="text-body leading-[18px] break-words">{v}</dd>
               </div>
             ))}
           </dl>
@@ -193,7 +193,7 @@ export function ReleaseDetails({
 export function NowLine({ now }: { now: number }) {
   return (
     <div className="flex h-6 items-center gap-2.5 px-5" aria-hidden="true">
-      <span className="rounded-full bg-primary px-2 font-mono text-[10.5px] leading-[18px] font-medium text-primary-foreground">NOW {DateTime.fromMillis(now, { zone: NY }).toFormat("H:mm")}</span>
+      <span className="rounded-full bg-primary px-2 font-mono text-caption leading-[18px] font-medium text-primary-foreground">NOW {DateTime.fromMillis(now, { zone: NY }).toFormat("H:mm")}</span>
       <span className="h-px flex-1 bg-foreground/60" />
     </div>
   );

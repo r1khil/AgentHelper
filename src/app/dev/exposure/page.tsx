@@ -21,7 +21,7 @@ export default async function Preview({ searchParams }: PageProps<"/dev/exposure
   const transparency = one(query.transparency) !== "0";
   return (
     <main className="flex min-h-dvh flex-col p-6">
-      <p className="mb-4 rounded-[10px] border border-dashed p-3 text-sm">
+      <p className="mb-4 rounded-[10px] border border-dashed p-3 text-body">
         Local browser QA · synthetic prices and holdings · no live portfolio data · add ?scope=team for the team view, ?transparency=0 to hide the working, ?lookthrough=none for no ETF lists. CHRL, GOLF, ECHO and NOVR stand in as ETFs (full list, top 10 only, partial and stale, no list).
       </p>
       <ExposureView

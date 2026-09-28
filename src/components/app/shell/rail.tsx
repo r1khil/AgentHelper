@@ -49,7 +49,7 @@ export function Rail({
       <Link
         href="/"
         aria-label="The Owl's Nest, Today"
-        className="grid size-10 shrink-0 place-items-center rounded-xl bg-cream text-sm font-bold tracking-[-0.04em] text-rail focus-visible:ring-2 focus-visible:ring-cream/60 focus-visible:ring-offset-2 focus-visible:ring-offset-rail focus-visible:outline-none"
+        className="grid size-10 shrink-0 place-items-center rounded-xl bg-cream text-body font-bold tracking-[-0.04em] text-rail focus-visible:ring-2 focus-visible:ring-cream/60 focus-visible:ring-offset-2 focus-visible:ring-offset-rail focus-visible:outline-none"
       >
         ON
       </Link>
@@ -101,7 +101,7 @@ function RailLink({ item }: { item: RailItem }) {
       >
         <Icon className="size-[18px]" />
       </span>
-      <span className={cn("text-[11px] leading-none", item.active ? "font-semibold text-cream" : "font-medium text-rail-foreground group-hover:text-cream")}>
+      <span className={cn("text-caption leading-none", item.active ? "font-semibold text-cream" : "font-medium text-rail-foreground group-hover:text-cream")}>
         {item.label}
       </span>
     </Link>

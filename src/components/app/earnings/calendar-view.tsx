@@ -232,8 +232,8 @@ export function CalendarView(props: CalendarViewProps) {
           marks={dayKinds(events, matches(monthEcon).filter(keep), query.show)}
         />
         <Panel className="shrink-0 px-3.5 pt-3.5 pb-3.5">
-          <h2 className="text-[14.5px] font-semibold">Show</h2>
-          <ul className="mt-2.5 flex flex-col gap-2.5 text-[13.5px]">
+          <h2 className="text-emph font-semibold">Show</h2>
+          <ul className="mt-2.5 flex flex-col gap-2.5 text-body">
             {SHOW.map((s) => {
               const on = show.has(s.kind);
               return (
@@ -242,7 +242,7 @@ export function CalendarView(props: CalendarViewProps) {
                     <span className={cn("grid size-4 shrink-0 place-items-center rounded-[5px]", on ? "bg-primary text-primary-foreground" : "shadow-[inset_0_0_0_1.5px_var(--border-strong)]")}>{on && <Check className="size-[11px]" strokeWidth={3} />}</span>
                     <span className="size-2 shrink-0 rounded-full" style={{ background: s.dot }} />
                     <span className="flex-1">{s.label}</span>
-                    <span className="font-mono text-xs text-muted-foreground" title={`${loaded[s.kind] ? plural(counts[s.kind], s.one) : "Loading releases"} ${periodText}`}>
+                    <span className="font-mono text-body text-muted-foreground" title={`${loaded[s.kind] ? plural(counts[s.kind], s.one) : "Loading releases"} ${periodText}`}>
                       {loaded[s.kind] ? counts[s.kind] : "…"}
                     </span>
                   </Link>
@@ -258,7 +258,7 @@ export function CalendarView(props: CalendarViewProps) {
                       <label className="flex h-8 items-center gap-2 rounded-lg bg-card px-2.5 text-muted-foreground shadow-[0_0_0_1px_var(--border)] focus-within:ring-2 focus-within:ring-ring">
                         <Search className="size-3.5 shrink-0" />
                         <span className="sr-only">Find a release</span>
-                        <input type="search" placeholder="Find a release or speaker" value={search} onChange={(e) => setSearch(e.target.value)} className="h-full min-w-0 flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground" />
+                        <input type="search" placeholder="Find a release or speaker" value={search} onChange={(e) => setSearch(e.target.value)} className="h-full min-w-0 flex-1 bg-transparent text-body text-foreground outline-none placeholder:text-muted-foreground" />
                       </label>
                     </div>
                   )}
@@ -267,13 +267,13 @@ export function CalendarView(props: CalendarViewProps) {
             })}
           </ul>
           {hidden.length > 0 && (
-            <p className="mt-2.5 text-[12px] leading-[17px] text-muted-foreground">
+            <p className="mt-2.5 text-caption leading-[17px] text-muted-foreground">
               Nothing is left out: {hidden.map((h) => plural(h.count, SHOW.find((s) => s.kind === h.kind)!.one)).join(" and ")} {periodText} {hidden.length === 1 && hidden[0].count === 1 ? "is" : "are"} a tick away.
             </p>
           )}
           {props.canScope && <ScopeControl query={query} href={href} base={base} industries={props.industries} defaultShow={defaultShow} />}
           {props.notices.length > 0 && (
-            <ul className="mt-3 flex flex-col gap-1.5 border-t border-row pt-2.5 text-[12px] leading-[17px] text-muted-foreground">
+            <ul className="mt-3 flex flex-col gap-1.5 border-t border-row pt-2.5 text-caption leading-[17px] text-muted-foreground">
               {props.notices.map((n, i) => (
                 <li key={i}>{n}</li>
               ))}
@@ -286,26 +286,26 @@ export function CalendarView(props: CalendarViewProps) {
           </Suspense>
         )}
         <Panel className="min-h-[220px] flex-1 px-3.5 pt-3.5 pb-3.5">
-          <h2 className="text-[14.5px] font-semibold">Expectations this week</h2>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">They lock when each report lands.</p>
+          <h2 className="text-emph font-semibold">Expectations this week</h2>
+          <p className="mt-0.5 text-body text-muted-foreground">They lock when each report lands.</p>
           <ul className="mt-2.5 flex flex-col">
             {expectations.map((ev) => {
               const st = EXPECTATIONS[ev.expectations ?? "not_started"];
               return (
                 <li key={ev.earningsId} className="border-t border-row">
-                  <RowLink href={reportHref(ev.teamSlug, ev.earningsId)} className="-mx-1.5 flex h-10 items-center gap-2.5 rounded-lg px-1.5 text-[13.5px] hover:bg-band">
-                    <span className="w-11 shrink-0 font-mono text-[13px] font-semibold">{ev.ticker}</span>
+                  <RowLink href={reportHref(ev.teamSlug, ev.earningsId)} className="-mx-1.5 flex h-10 items-center gap-2.5 rounded-lg px-1.5 text-body hover:bg-band">
+                    <span className="w-11 shrink-0 font-mono text-body font-semibold">{ev.ticker}</span>
                     <span className="min-w-0 flex-1 truncate text-ink-2">{ev.teamName ?? ev.name}</span>
                     <Pill tone={st.tone}>{st.pill}</Pill>
                   </RowLink>
                 </li>
               );
             })}
-            {expectations.length === 0 && <li className="border-t border-row py-2.5 text-[13px] text-muted-foreground">No Fund holdings report this week.</li>}
+            {expectations.length === 0 && <li className="border-t border-row py-2.5 text-body text-muted-foreground">No Fund holdings report this week.</li>}
           </ul>
           <div className="flex-1" />
           <div className="mt-3 flex flex-col gap-1">
-            <p className="text-[12px] leading-[18px] text-muted-foreground">
+            <p className="text-body leading-[18px] text-muted-foreground">
               {coverage?.status === "partial" ? <>Economic coverage is partial: {coverage.message}</> : coverage ? coverage.message : "Economic coverage is partial: public agency feeds only."}
             </p>
             <FeedStatus feed={primary.feed} error={primary.error} loading={primary.loading} onRetry={retry} />
@@ -315,8 +315,8 @@ export function CalendarView(props: CalendarViewProps) {
 
       <Panel data-tour="calendar-week" className="min-h-[520px]">
         <div className="flex h-14 shrink-0 items-center gap-3 border-b px-5">
-          <h2 className="text-[17px] font-semibold tracking-[-0.015em] whitespace-nowrap">{title}</h2>
-          <span className="truncate text-[13px] text-muted-foreground">{meta.join(" · ")}</span>
+          <h2 className="text-title font-semibold tracking-[-0.015em] whitespace-nowrap">{title}</h2>
+          <span className="truncate text-body text-muted-foreground">{meta.join(" · ")}</span>
           <span className="flex-1" />
           <Segmented label="Layout" segments={CALENDAR_LAYOUTS.map((l) => ({ key: l, label: LAYOUT_LABELS[l], href: href({ layout: l }), active: query.layout === l }))} />
         </div>
@@ -374,9 +374,9 @@ function MiniMonth({
   return (
     <Panel className="shrink-0 px-3.5 pt-3.5 pb-2.5">
       <div className="flex items-center gap-1">
-        <h2 className="flex-1 text-[14.5px] font-semibold">{mini.label}</h2>
+        <h2 className="flex-1 text-emph font-semibold">{mini.label}</h2>
         {todayHref && (
-          <Link href={todayHref} scroll={false} className="mr-1.5 text-[12.5px] text-muted-foreground hover:text-foreground">
+          <Link href={todayHref} scroll={false} className="mr-1.5 text-body text-muted-foreground hover:text-foreground">
             Today
           </Link>
         )}
@@ -387,7 +387,7 @@ function MiniMonth({
           <ChevronRight className="size-4" />
         </Link>
       </div>
-      <div className="mt-2.5 grid grid-cols-7 gap-y-0.5 text-center font-mono text-[11.5px]">
+      <div className="mt-2.5 grid grid-cols-7 gap-y-0.5 text-center font-mono text-caption">
         {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
           <span key={i} className="pb-1.5 text-muted-foreground">
             {d}
@@ -449,7 +449,7 @@ function ScopeControl({
   return (
     <div className="mt-3 flex flex-col gap-2 border-t border-row pt-3">
       <div className="flex items-center gap-2.5">
-        <span className="flex-1 text-[13px] whitespace-nowrap text-ink-2">Scope</span>
+        <span className="flex-1 text-body whitespace-nowrap text-ink-2">Scope</span>
         <Segmented label="Scope" segments={CALENDAR_VIEWS.map((v) => ({ key: v, label: VIEW_LABELS[v], href: href({ scope: v }), active: query.scope === v, title: v === "fund" ? "Every Fund holding and bellwether" : v === "sector" ? "This team's holdings and its sectors" : "One industry in this team's sectors" }))} />
       </div>
       {query.scope === "industry" && (
@@ -459,7 +459,7 @@ function ScopeControl({
           <input type="hidden" name="month" value={query.month} />
           {query.day && <input type="hidden" name="day" value={query.day} />}
           {query.show.join() !== defaultShow.join() && <input type="hidden" name="show" value={query.show.length ? CALENDAR_KINDS.filter((k) => query.show.includes(k)).join(",") : "none"} />}
-          <NativeSelect name="industry" defaultValue={query.industry ?? ""} aria-label="Industry" className="h-8 min-w-0 flex-1 text-[13px]">
+          <NativeSelect name="industry" defaultValue={query.industry ?? ""} aria-label="Industry" className="h-8 min-w-0 flex-1 text-body">
             <option value="">Choose an industry</option>
             {industries.map((i) => (
               <option key={i} value={i}>
@@ -484,7 +484,7 @@ function Dot({ color }: { color: string }) {
 function Row({ item, rowProps: r, wide = false }: { item: Item; rowProps: RowProps; wide?: boolean }) {
   const k = KIND[item.type];
   const kind = (
-    <span className="inline-flex min-w-0 items-center gap-1.5 text-[12.5px] text-ink-2">
+    <span className="inline-flex min-w-0 items-center gap-1.5 text-body text-ink-2">
       <Dot color={k.dot} />
       <span className="truncate">{k.label}</span>
     </span>
@@ -499,26 +499,26 @@ function Row({ item, rowProps: r, wide = false }: { item: Item; rowProps: RowPro
     const st = ev.kind === "holding" ? (ev.status === "upcoming" || !ev.status ? EXPECTATIONS[ev.expectations ?? "not_started"] : null) : null;
     const body = (
       <>
-        <span className="font-mono text-[12.5px] text-muted-foreground" title={ev.reportHour ? HOUR_LABEL[ev.reportHour] : "Time not announced"}>
+        <span className="font-mono text-body text-muted-foreground" title={ev.reportHour ? HOUR_LABEL[ev.reportHour] : "Time not announced"}>
           {ev.reportHour ? ev.reportHour.toUpperCase() : "—"}
         </span>
         {kind}
         <span className="min-w-0 truncate">
-          <span className="font-mono text-[13px] font-semibold">{ev.ticker}</span>
+          <span className="font-mono text-body font-semibold">{ev.ticker}</span>
           <span className="ml-2 text-muted-foreground">{sub.filter(Boolean).join(" · ")}</span>
         </span>
-        <span className="truncate font-mono text-[12.5px] text-ink-2">EPS est. {fmtCurrency(ev.epsEstimate, ev.epsCurrency)}</span>
-        <span className={cn("truncate text-[12.5px] font-medium", st ? st.text : ev.status === "reviewed" ? "text-good-foreground" : "text-muted-foreground")}>
+        <span className="truncate font-mono text-body text-ink-2">EPS est. {fmtCurrency(ev.epsEstimate, ev.epsCurrency)}</span>
+        <span className={cn("truncate text-body font-medium", st ? st.text : ev.status === "reviewed" ? "text-good-foreground" : "text-muted-foreground")}>
           {st ? st.row : ev.status === "reported" ? "Reported · reflection due" : ev.status === "reviewed" ? "Reviewed" : ""}
         </span>
       </>
     );
     return linkable ? (
-      <RowLink href={r.reportHref(ev.teamSlug, ev.earningsId)} className={cn(ROW_GRID, "h-9 text-[13.5px] hover:bg-band")}>
+      <RowLink href={r.reportHref(ev.teamSlug, ev.earningsId)} className={cn(ROW_GRID, "h-9 text-body hover:bg-band")}>
         {body}
       </RowLink>
     ) : (
-      <div className={cn(ROW_GRID, "h-9 text-[13.5px]")}>{body}</div>
+      <div className={cn(ROW_GRID, "h-9 text-body")}>{body}</div>
     );
   }
   const e = item.e;
@@ -533,9 +533,9 @@ function Row({ item, rowProps: r, wide = false }: { item: Item; rowProps: RowPro
         aria-expanded={open}
         aria-controls={`${id}-details`}
         onClick={() => r.onRow(e.id)}
-        className={cn(ROW_GRID, "h-9 w-full text-left text-[13.5px] outline-none hover:bg-band focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset", (open || isNext) && "bg-band")}
+        className={cn(ROW_GRID, "h-9 w-full text-left text-body outline-none hover:bg-band focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset", (open || isNext) && "bg-band")}
       >
-        <span className="truncate font-mono text-[12.5px] text-muted-foreground" title={e.timestamp ? fmtTime(e.timestamp) : e.time}>
+        <span className="truncate font-mono text-body text-muted-foreground" title={e.timestamp ? fmtTime(e.timestamp) : e.time}>
           {releaseClock(e)}
         </span>
         {kind}
@@ -543,7 +543,7 @@ function Row({ item, rowProps: r, wide = false }: { item: Item; rowProps: RowPro
           <span className={cn("font-semibold", (e.importance ?? 0) < 2 && "font-medium text-ink-2")}>{e.name}</span>
           {sub && <span className="ml-2 text-muted-foreground">{sub}</span>}
         </span>
-        <span className="truncate font-mono text-[12.5px] text-ink-2">{releaseFigures(e, r.now)}</span>
+        <span className="truncate font-mono text-body text-ink-2">{releaseFigures(e, r.now)}</span>
         <span className="flex min-w-0">
           <ReleaseStatus event={e} now={r.now} today={r.today} isNext={isNext} />
         </span>
@@ -576,12 +576,12 @@ function WeekLayout({ week, items, rowProps }: { week: string[]; items: Item[]; 
         return (
           <section key={day} aria-label={fmtDay(day)} className={cn("flex flex-col border-b border-border pb-2 last:border-b-0", rows.length ? "flex-1" : "flex-none")}>
             <div className="flex items-baseline gap-2 px-5 pt-2.5 pb-1">
-              <span className={cn("font-mono text-[12.5px] font-semibold", day < today && "text-muted-foreground")}>{monoDay(day)}</span>
-              {day === today && <Pill tone="ink" className="h-[18px] px-[7px] text-[11px]">Today</Pill>}
-              {note && <span className="text-[12.5px] whitespace-nowrap text-muted-foreground">{note}</span>}
+              <span className={cn("font-mono text-body font-semibold", day < today && "text-muted-foreground")}>{monoDay(day)}</span>
+              {day === today && <Pill tone="ink" className="h-[18px] px-[7px] text-caption">Today</Pill>}
+              {note && <span className="text-body whitespace-nowrap text-muted-foreground">{note}</span>}
             </div>
             {rows.length === 0 ? (
-              <div className="flex items-center gap-2.5 px-5 text-[13.5px] text-ink-2">
+              <div className="flex items-center gap-2.5 px-5 text-body text-ink-2">
                 {day === firstEmpty ? (
                   <>
                     <HootOnPage />
@@ -634,7 +634,7 @@ function MonthLayout({
     <div className="flex flex-1 flex-col">
       <div className="grid shrink-0 grid-cols-5 border-b border-row">
         {["MON", "TUE", "WED", "THU", "FRI"].map((d) => (
-          <div key={d} className="px-3 py-2 font-mono text-[11px] tracking-[0.06em] text-muted-foreground">
+          <div key={d} className="px-3 py-2 font-mono text-caption tracking-[0.06em] text-muted-foreground">
             {d}
           </div>
         ))}
@@ -652,11 +652,11 @@ function MonthLayout({
             return (
               <div key={day.date} className={cn("flex min-w-0 flex-col gap-1 px-2.5 py-2", i > 0 && "shadow-[inset_1px_0_0_var(--row)]", week.includes(day.date) && "bg-band", !day.inMonth && "opacity-45")}>
                 <div className="flex items-center gap-1.5">
-                  <Link href={dayHref(day.date)} scroll={false} aria-label={`Week of ${day.date}`} className={cn("grid size-6 place-items-center rounded-full font-mono text-[12px] hover:bg-muted", day.date === today && "bg-primary text-primary-foreground hover:bg-primary/90", !day.trading && day.date !== today && "text-muted-foreground")}>
+                  <Link href={dayHref(day.date)} scroll={false} aria-label={`Week of ${day.date}`} className={cn("grid size-6 place-items-center rounded-full font-mono text-caption hover:bg-muted", day.date === today && "bg-primary text-primary-foreground hover:bg-primary/90", !day.trading && day.date !== today && "text-muted-foreground")}>
                     {Number(day.date.slice(8))}
                   </Link>
                   {note && (
-                    <span className="truncate text-[11px] text-muted-foreground" title={note}>
+                    <span className="truncate text-caption text-muted-foreground" title={note}>
                       {note.split(" · ")[0]}
                     </span>
                   )}
@@ -666,22 +666,22 @@ function MonthLayout({
                   const inner = (
                     <>
                       <Dot color={KIND[it.type].dot} />
-                      <span className={cn("truncate", it.type !== "economic" && "font-mono text-[11.5px] font-medium")}>{label(it)}</span>
+                      <span className={cn("truncate", it.type !== "economic" && "font-mono text-caption font-medium")}>{label(it)}</span>
                     </>
                   );
                   const title = it.type === "economic" ? `${it.e.name}${it.e.timestamp ? ` · ${releaseClock(it.e)} ET` : ""}` : `${it.ev.name}${it.ev.teamName ? ` · ${it.ev.teamName}` : it.ev.etf ? ` · ${it.ev.etf} constituent` : ""}`;
                   return linkable && it.type === "holding" ? (
-                    <Link key={it.key} href={reportHref(it.ev.teamSlug, it.ev.earningsId)} title={title} className="flex min-w-0 items-center gap-1.5 text-[12px] hover:underline">
+                    <Link key={it.key} href={reportHref(it.ev.teamSlug, it.ev.earningsId)} title={title} className="flex min-w-0 items-center gap-1.5 text-body hover:underline">
                       {inner}
                     </Link>
                   ) : (
-                    <span key={it.key} title={title} className="flex min-w-0 items-center gap-1.5 text-[12px] text-ink-2">
+                    <span key={it.key} title={title} className="flex min-w-0 items-center gap-1.5 text-body text-ink-2">
                       {inner}
                     </span>
                   );
                 })}
                 {more > 0 && (
-                  <Link href={dayHref(day.date)} scroll={false} className="text-[11.5px] text-muted-foreground hover:text-foreground hover:underline">
+                  <Link href={dayHref(day.date)} scroll={false} className="text-caption text-muted-foreground hover:text-foreground hover:underline">
                     +{more} more
                   </Link>
                 )}
@@ -700,12 +700,12 @@ function ListLayout({ items, rowProps, reports, showTeam, today }: { items: Item
   const past = reports.filter((r) => !(r.status === "upcoming" && r.reportDate >= today));
   return (
     <div className="flex flex-col">
-      {days.length === 0 && <p className="px-5 py-6 text-[13.5px] text-muted-foreground">Nothing on the calendar this month.</p>}
+      {days.length === 0 && <p className="px-5 py-6 text-body text-muted-foreground">Nothing on the calendar this month.</p>}
       {days.map((day) => (
         <section key={day} aria-label={fmtDay(day)} className="border-b border-border pb-2">
           <div className="flex items-baseline gap-2 px-5 pt-2.5 pb-1">
-            <span className={cn("font-mono text-[12.5px] font-semibold", day < today && "text-muted-foreground")}>{monoDay(day)}</span>
-            {marketDayNote(day) && <span className="text-[12.5px] text-muted-foreground">{marketDayNote(day)}</span>}
+            <span className={cn("font-mono text-body font-semibold", day < today && "text-muted-foreground")}>{monoDay(day)}</span>
+            {marketDayNote(day) && <span className="text-body text-muted-foreground">{marketDayNote(day)}</span>}
           </div>
           {items
             .filter((it) => it.date === day)
@@ -724,11 +724,11 @@ function ReportTable({ title, rows, showTeam, reportHref }: { title: string; row
   return (
     <section aria-label={title} className="border-b border-border last:border-b-0">
       <div className="flex items-baseline gap-2 px-5 pt-4 pb-2">
-        <h3 className="text-[14.5px] font-semibold">{title}</h3>
-        <span className="font-mono text-[11px] text-muted-foreground">{rows.length}</span>
+        <h3 className="text-emph font-semibold">{title}</h3>
+        <span className="font-mono text-caption text-muted-foreground">{rows.length}</span>
       </div>
       {rows.length === 0 ? (
-        <p className="px-5 pb-4 text-[13.5px] text-muted-foreground">Nothing scheduled.</p>
+        <p className="px-5 pb-4 text-body text-muted-foreground">Nothing scheduled.</p>
       ) : (
         <Table aria-label={title}>
           <TableHeader>
@@ -757,12 +757,12 @@ function ReportTable({ title, rows, showTeam, reportHref }: { title: string; row
                   )}
                 </TableCell>
                 {showTeam && <TableCell className="text-ink-2">{r.teamName}</TableCell>}
-                <TableCell className="font-mono text-[12.5px]">
+                <TableCell className="font-mono text-body">
                   {fmtDay(r.reportDate)}
                   {r.reportHour ? <span className="ml-1.5 text-muted-foreground">{r.reportHour.toUpperCase()}</span> : null}
                 </TableCell>
                 <TableCell className="text-ink-2">{r.dateStatus ?? "—"}</TableCell>
-                <TableCell className="text-right font-mono text-[12.5px]">{fmtCurrency(r.epsEstimate, r.epsCurrency)}</TableCell>
+                <TableCell className="text-right font-mono text-body">{fmtCurrency(r.epsEstimate, r.epsCurrency)}</TableCell>
                 <TableCell>
                   <Pill tone={EXPECTATIONS[r.expectations].tone}>{EXPECTATIONS[r.expectations].pill}</Pill>
                 </TableCell>

@@ -16,7 +16,7 @@ export default async function Preview({ searchParams }: PageProps<"/dev/backtest
   if (!previewEnabled()) notFound();
   const { layout } = await searchParams;
   const notice = (
-    <p className="mb-4 rounded border border-dashed p-3 text-sm">
+    <p className="mb-4 rounded border border-dashed p-3 text-body">
       Local browser QA · synthetic prices and holdings · no live portfolio data
     </p>
   );

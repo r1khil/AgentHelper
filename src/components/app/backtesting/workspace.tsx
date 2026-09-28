@@ -62,17 +62,17 @@ export function BacktestingWorkspace({
       />
       {aside}
       {(initial?.banner || opened.problem) && (
-        <Card className="mb-5 gap-1 border-dashed p-4 text-sm">
+        <Card className="mb-5 gap-1 border-dashed p-4 text-body">
           {initial?.banner && <p>{initial.banner}</p>}
           {opened.problem && <p className="text-destructive">{opened.problem}</p>}
         </Card>
       )}
-      <Card className="mb-5 gap-3 p-4 text-sm">
+      <Card className="mb-5 gap-3 p-4 text-body">
         <div className="font-medium">{snapshot.scope}</div>
         <p className="text-muted-foreground">
           <ScopeNote snapshot={snapshot} />
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           {METHOD_LINE}
         </p>
       </Card>
@@ -80,7 +80,7 @@ export function BacktestingWorkspace({
         <Card className="mb-5 gap-4 p-4">
           <SectionTitle>Replay settings</SectionTitle>
           <div className="grid gap-4 sm:grid-cols-3">
-            <label className="space-y-2 text-sm">
+            <label className="space-y-2 text-body">
               Start date
               <Input
                 aria-label="Start date"
@@ -91,7 +91,7 @@ export function BacktestingWorkspace({
                 onChange={(e) => bt.setFrom(e.target.value)}
               />
             </label>
-            <label className="space-y-2 text-sm">
+            <label className="space-y-2 text-body">
               End date
               <Input
                 aria-label="End date"
@@ -103,7 +103,7 @@ export function BacktestingWorkspace({
                 onChange={(e) => bt.setTo(e.target.value)}
               />
             </label>
-            <label className="space-y-2 text-sm">
+            <label className="space-y-2 text-body">
               Benchmark
               <select
                 aria-label="Benchmark"
@@ -111,7 +111,7 @@ export function BacktestingWorkspace({
                 onChange={(e) =>
                   bt.setBenchmark(e.target.value as keyof typeof BENCHMARKS)
                 }
-                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                className="h-9 w-full rounded-md border bg-background px-3 text-body"
               >
                 {Object.entries(BENCHMARKS).map(([key, label]) => (
                   <option key={key} value={key}>
@@ -121,18 +121,18 @@ export function BacktestingWorkspace({
               </select>
             </label>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-body text-muted-foreground">
             {DATES_HINT}
           </p>
           <details open className="group">
-            <summary className="cursor-pointer text-sm font-medium">
+            <summary className="cursor-pointer text-body font-medium">
               Portfolio weights{" "}
               <span className="text-muted-foreground">
                 · edit the modified copy
               </span>
             </summary>
             <div className="mt-3 flex flex-wrap items-end gap-2">
-              <label className="space-y-1 text-sm">
+              <label className="space-y-1 text-body">
                 Add company by ticker
                 <Input
                   className="w-44 uppercase"
@@ -153,14 +153,14 @@ export function BacktestingWorkspace({
               <Button type="button" variant="outline" disabled={lookupBusy} onClick={() => void bt.addCompany()}>
                 {lookupBusy ? "Looking up…" : "Add company"}
               </Button>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-body text-muted-foreground">
                 {ADD_HINT}
               </p>
             </div>
-            {bt.lookupError && <p role="alert" className="mt-2 text-sm text-destructive">{bt.lookupError}</p>}
+            {bt.lookupError && <p role="alert" className="mt-2 text-body text-destructive">{bt.lookupError}</p>}
             <QuickTrade positions={positions} onApply={bt.quickTrade} disabled={lookupBusy} />
             <div className="mt-3 max-h-80 overflow-auto rounded-md border">
-              <table className="w-full text-sm">
+              <table className="w-full text-body">
                 <caption className="sr-only">
                   Current and modified portfolio weights
                 </caption>
@@ -178,7 +178,7 @@ export function BacktestingWorkspace({
                     <tr key={p.id} className="border-t">
                       <th scope="row" className="px-3 py-2 text-left font-medium">
                         {p.ticker}
-                        <span className="mt-1 block max-w-60 truncate text-xs font-normal text-muted-foreground">
+                        <span className="mt-1 block max-w-60 truncate text-caption font-normal text-muted-foreground">
                           {p.name}{p.kind === "scenario" ? " · Added to scenario" : ""}
                         </span>
                       </th>
@@ -238,7 +238,7 @@ export function BacktestingWorkspace({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div
               aria-live="polite"
-              className={cn("text-sm tnum", !valid && "text-destructive")}
+              className={cn("text-body tnum", !valid && "text-destructive")}
             >
               Modified total:{" "}
               {Number.isFinite(sum) ? fmtPct(sum) : "—"}
@@ -263,14 +263,14 @@ export function BacktestingWorkspace({
       <div
         role="status"
         aria-live="polite"
-        className="mb-4 text-sm text-muted-foreground"
+        className="mb-4 text-body text-muted-foreground"
       >
         {runStatus({ busy, dirty, completed })}
       </div>
       {error && (
         <Card
           role="alert"
-          className="mb-5 border-destructive/40 p-4 text-sm text-destructive"
+          className="mb-5 border-destructive/40 p-4 text-body text-destructive"
         >
           {error}
         </Card>
@@ -414,23 +414,23 @@ const Results = memo(function Results({
   ];
   return (
     <div className="space-y-6">
-      <Card className="p-4 text-sm">
+      <Card className="p-4 text-body">
         <h2 className="font-medium">Hypothetical replay, not this portfolio’s realized return</h2>
         <p className="text-muted-foreground">
           <ReplayNote result={result} realizedHref={realizedHref} />
         </p>
       </Card>
       {result.cashSubstitutions.length > 0 && (
-        <Card className="p-4 text-sm text-muted-foreground">
+        <Card className="p-4 text-body text-muted-foreground">
           <CashNote result={result} />
         </Card>
       )}
       <div className="grid gap-3 sm:grid-cols-3">
         {summary.map(({ label, value, diff }) => (
           <Card key={label} className="gap-1 p-4">
-            <span className="text-xs text-muted-foreground">{label}</span>
+            <span className="text-body text-muted-foreground">{label}</span>
             <strong
-              className={cn("text-2xl font-semibold tnum", tone(value))}
+              className={cn("text-display font-semibold tnum", tone(value))}
             >
               {diff ? bp(value) : pct(value)}
             </strong>
@@ -469,7 +469,7 @@ const Results = memo(function Results({
         </SectionTitle>
         <Contributors result={result} period={period} />
       </Card>
-      <details className="rounded-lg border p-4 text-sm text-muted-foreground">
+      <details className="rounded-lg border p-4 text-body text-muted-foreground">
         <summary className="cursor-pointer font-medium text-foreground">
           Calculation notes
         </summary>
@@ -505,7 +505,7 @@ export function DailyDifferences({
   return (
     <>
       <Frame title={<>Daily differences · {modeLabel[mode]}</>}>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-sm">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-body">
             <label className="flex items-center gap-2">
               Color by
               <select
@@ -521,7 +521,7 @@ export function DailyDifferences({
                 ))}
               </select>
             </label>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-body text-muted-foreground">
               {mode === "delta"
                 ? `Green: ${names.modified.toLowerCase()} ahead that day · red: ${names.original.toLowerCase()} ahead`
                 : `Green: ahead of ${result.benchmark} that day · red: behind ${result.benchmark}`}{" "}
@@ -537,10 +537,10 @@ export function DailyDifferences({
               const offset = (first.getUTCDay() + 6) % 7;
               return (
                 <div key={month}>
-                  <h3 className="mb-2 text-sm font-medium">
+                  <h3 className="mb-2 text-body font-medium">
                     {fmtMonth(`${month}-01`)}
                   </h3>
-                  <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                  <div className="grid grid-cols-7 gap-1 text-center text-body">
                     {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
                       <span key={i} className="pb-1 text-muted-foreground">
                         {d}
@@ -573,7 +573,7 @@ export function DailyDifferences({
                           aria-pressed={day === date}
                           onClick={() => setDate(day)}
                           className={cn(
-                            "min-h-8 rounded border border-transparent text-xs text-foreground focus-visible:outline-2 focus-visible:outline-ring",
+                            "min-h-8 rounded border border-transparent text-body text-foreground focus-visible:outline-2 focus-visible:outline-ring",
                             day === date &&
                               "ring-2 ring-foreground ring-offset-1 ring-offset-background",
                           )}
@@ -593,14 +593,14 @@ export function DailyDifferences({
               );
             })}
           </div>
-          <p className="mt-4 text-xs text-muted-foreground">
+          <p className="mt-4 text-caption text-muted-foreground">
             Select a trading day for contributions. Blank sessions are not
             assigned a zero return.
           </p>
       </Frame>
       <Frame title={<>Day detail · {date}</>} ariaLabel="Selected day details">
           <div className="overflow-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-body">
               <thead>
                 <tr>
                   <th scope="col" className={head}>Return</th>
@@ -632,8 +632,8 @@ export function DailyDifferences({
             </table>
           </div>
           <div className="overflow-auto">
-            <table className="w-full text-sm">
-              <caption className="py-3 text-left text-xs text-muted-foreground">
+            <table className="w-full text-body">
+              <caption className="py-3 text-left text-body text-muted-foreground">
                 Holding contributions to daily portfolio return, in percentage
                 points.
               </caption>
@@ -718,7 +718,7 @@ export function Summary({ result, period, names = SERIES }: { result: BacktestRe
   ];
   return (
     <div className="overflow-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-body">
         <thead>
           <tr>
             <th scope="col" className={head}>Metric</th>
@@ -773,7 +773,7 @@ export function Contributors({ result, period, names = SERIES }: { result: Backt
       .slice(0, 5);
   return (
     <>
-      <label className="mb-4 flex items-center gap-2 text-sm">
+      <label className="mb-4 flex items-center gap-2 text-body">
         Rank by
         <select
           aria-label="Contribution ranking"
@@ -792,10 +792,10 @@ export function Contributors({ result, period, names = SERIES }: { result: Backt
           ["Top detractors", detractors],
         ].map(([label, rows]) => (
           <div key={String(label)} className="rounded-md bg-muted/40 p-3">
-            <h3 className="mb-2 text-sm font-medium">{String(label)}</h3>
+            <h3 className="mb-2 text-body font-medium">{String(label)}</h3>
             {(rows as typeof leaders).length ? (
               (rows as typeof leaders).map((c) => (
-                <div key={c.id} className="flex justify-between py-1 text-sm">
+                <div key={c.id} className="flex justify-between py-1 text-body">
                   <span>{c.ticker}</span>
                   <span className={cn("tnum", tone(c[sort]))}>
                     {bp(c[sort])}
@@ -803,7 +803,7 @@ export function Contributors({ result, period, names = SERIES }: { result: Backt
                 </div>
               ))
             ) : (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-body text-muted-foreground">
                 None in this period.
               </p>
             )}
@@ -811,7 +811,7 @@ export function Contributors({ result, period, names = SERIES }: { result: Backt
         ))}
       </div>
       <div className="max-h-96 overflow-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-body">
           <thead>
             <tr>
               <th scope="col" className={head}>Holding</th>

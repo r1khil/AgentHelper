@@ -64,14 +64,14 @@ export function ImportDialog() {
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-3">
-          <input ref={input} type="file" accept=".csv,text/csv" onChange={(e) => onFile(e.target.files?.[0])} className="text-sm file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-2.5 file:py-1 file:text-sm file:font-medium" aria-label="CSV file" />
-          <a href={`data:text/csv;charset=utf-8,${encodeURIComponent(IMPORT_TEMPLATE)}`} download="owl-fund-ledger-template.csv" className="text-sm underline underline-offset-2">Download template</a>
+          <input ref={input} type="file" accept=".csv,text/csv" onChange={(e) => onFile(e.target.files?.[0])} className="text-body file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-2.5 file:py-1 file:text-body file:font-medium" aria-label="CSV file" />
+          <a href={`data:text/csv;charset=utf-8,${encodeURIComponent(IMPORT_TEMPLATE)}`} download="owl-fund-ledger-template.csv" className="text-body underline underline-offset-2">Download template</a>
         </div>
 
-        {checking && <p className="text-sm text-muted-foreground">Checking {fileName}…</p>}
+        {checking && <p className="text-body text-muted-foreground">Checking {fileName}…</p>}
 
         {preview && !checking && (
-          <div className="grid gap-4 text-sm">
+          <div className="grid gap-4 text-body">
             <div className="rounded-lg border p-3">
               <div className="font-medium">
                 {preview.trades} trades and {preview.cashFlows} cash entries
@@ -148,8 +148,8 @@ export function ImportDialog() {
 export function PositionChanges({ rows, afterLabel }: { rows: Ready["positionChanges"]; afterLabel: string }) {
   return (
     <div className="max-h-48 overflow-y-auto rounded-lg border">
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 bg-muted text-xs text-muted-foreground">
+      <table className="w-full text-body">
+        <thead className="sticky top-0 bg-muted text-body text-muted-foreground">
           <tr><th scope="col" className="px-3 py-1.5 text-left font-medium">Ticker</th><th scope="col" className="px-3 py-1.5 text-right font-medium">Now</th><th scope="col" className="px-3 py-1.5 text-right font-medium">{afterLabel}</th></tr>
         </thead>
         <tbody>

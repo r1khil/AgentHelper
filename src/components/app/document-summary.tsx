@@ -30,15 +30,15 @@ function Row({ label, items }: { label: string; items: string[] }) {
  */
 export function DocumentSummary({ summary, summarizedAt }: Props) {
   if (!summary || isFailedSummary(summary)) return null;
-  if (isEmptySummary(summary)) return summary.evidenceNote ? <p className="mt-1 text-xs text-muted-foreground">{summary.evidenceNote}</p> : null;
+  if (isEmptySummary(summary)) return summary.evidenceNote ? <p className="mt-1 text-caption text-muted-foreground">{summary.evidenceNote}</p> : null;
   const headline = [summary.docDate ? `Dated ${summary.docDate}` : null, summary.rating ? `Rating ${summary.rating}` : null, summary.priceTarget ? `PT ${summary.priceTarget}` : null].filter(Boolean).join(" · ");
   return (
-    <details className="mt-1 text-xs">
+    <details className="mt-1 text-caption">
       <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
         {summary.oneLine || "Summary"}
         {headline ? <span className="ml-2 font-mono tnum">{headline}</span> : null}
       </summary>
-      <dl className="mt-2 space-y-2 rounded-[10px] bg-band p-3 text-sm shadow-[0_0_0_1px_var(--border)]">
+      <dl className="mt-2 space-y-2 rounded-[10px] bg-band p-3 text-body shadow-[0_0_0_1px_var(--border)]">
         {summary.thesis && (
           <div>
             <dt className="label-mono text-muted-foreground">Thesis as written</dt>
@@ -48,8 +48,8 @@ export function DocumentSummary({ summary, summarizedAt }: Props) {
         <Row label="Key numbers" items={summary.keyNumbers} />
         <Row label="Catalysts" items={summary.catalysts} />
         <Row label="Risks" items={summary.risks} />
-        {summary.evidenceNote && <p className="text-xs text-muted-foreground">{summary.evidenceNote}</p>}
-        <p className="text-[11px] text-muted-foreground">
+        {summary.evidenceNote && <p className="text-body text-muted-foreground">{summary.evidenceNote}</p>}
+        <p className="text-caption text-muted-foreground">
           Extracted by the app
           {summarizedAt ? ` · ${relativeTime(summarizedAt)}` : ""}. Check the document before relying on a figure.
         </p>

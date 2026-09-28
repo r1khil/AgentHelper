@@ -39,9 +39,9 @@ export function ContributorsTable({ rows, teams, showTeam = true }: { rows: Hold
                   </div>
                 </TableCell>
                 <TableCell className="max-w-44 truncate text-muted-foreground">{showTeam ? (team?.name ?? "—") : h.sector ? SECTOR_LABELS[h.sector] : "Unclassified"}</TableCell>
-                <TableCell className="text-right font-mono text-[12.5px]">{fmtPct(pct(h.avgWeight), 1)}</TableCell>
-                <TableCell className="text-right text-[12.5px]"><Move value={pct(h.ret)} unit="%" digits={2} /></TableCell>
-                <TableCell className="pr-4 text-right text-[12.5px]"><Move value={bps(h.contribution)} unit=" bp" digits={1} /></TableCell>
+                <TableCell className="text-right font-mono text-body">{fmtPct(pct(h.avgWeight), 1)}</TableCell>
+                <TableCell className="text-right text-body"><Move value={pct(h.ret)} unit="%" digits={2} /></TableCell>
+                <TableCell className="pr-4 text-right text-body"><Move value={bps(h.contribution)} unit=" bp" digits={1} /></TableCell>
               </TableRow>
             );
           })}

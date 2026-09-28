@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 export function SectionHead({ children, aside, className }: { children: React.ReactNode; aside?: React.ReactNode; className?: string }) {
   return (
     <div className={cn("mb-2.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1", className)}>
-      <h2 className="text-[14.5px] font-semibold">{children}</h2>
-      {aside && <div className="text-[12.5px] text-muted-foreground">{aside}</div>}
+      <h2 className="text-emph font-semibold">{children}</h2>
+      {aside && <div className="text-body text-muted-foreground">{aside}</div>}
     </div>
   );
 }

@@ -67,7 +67,7 @@ export function StressTests({
     <section id={id} aria-label={label} className="scroll-mt-4">
       <SectionHead aside={<Explained label="Today's positions, buy-and-hold" align="right">{RISK_EXPLAIN.stressTests}</Explained>}>{title}</SectionHead>
       <Card className="gap-0 overflow-hidden p-0">
-        <div className={cn(GRID, "hidden border-b px-4 py-2 pl-10 text-xs font-medium text-muted-foreground md:grid")}>
+        <div className={cn(GRID, "hidden border-b px-4 py-2 pl-10 text-body font-medium text-muted-foreground md:grid")}>
           <span>Window</span>
           {HEAD.map((h, i) => (
             <span key={h.label} className={i < 5 || i === 6 ? "text-right" : undefined}>
@@ -75,7 +75,7 @@ export function StressTests({
             </span>
           ))}
         </div>
-        <div className="flex flex-wrap gap-x-3 gap-y-1 border-b px-4 py-2 text-[11px] text-muted-foreground md:hidden">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 border-b px-4 py-2 text-caption text-muted-foreground md:hidden">
           {HEAD.map((h) => (
             <Explained key={h.label} label={h.label}>{h.explain}</Explained>
           ))}
@@ -84,13 +84,13 @@ export function StressTests({
           r.status === "ok" ? (
             <StressRow key={r.key} r={r} fundLabel={fundLabel} scopeLabel={scopeLabel} benchmarkLabel={benchmarkLabel} transparency={transparency} backtesting={backtesting} />
           ) : (
-            <div key={r.key} className="border-b px-4 py-3 text-sm last:border-b-0">
+            <div key={r.key} className="border-b px-4 py-3 text-body last:border-b-0">
               <span className="font-medium">{r.label}</span> <span className="text-muted-foreground">· {fmtDate(r.from)} – {fmtDate(r.to)} · {r.reason}</span>
             </div>
           ),
         )}
       </Card>
-      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted-foreground">
         <span>Replays, not forecasts: they show how today&apos;s book would have moved through each episode.</span>
         {exportQuery !== null && (
           <>
@@ -104,27 +104,27 @@ export function StressTests({
 }
 
 function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, backtesting }: { r: StressOk; fundLabel: string; scopeLabel: string; benchmarkLabel: string; transparency: boolean; backtesting: boolean }) {
-  const small = "text-[11px] text-muted-foreground md:hidden";
+  const small = "text-caption text-muted-foreground md:hidden";
   const stoodIn = r.holdings.filter((h) => h.proxied);
   return (
     <details id={stressAnchor(r.key)} className="group scroll-mt-4 border-b border-row last:border-b-0">
       <summary className="cursor-pointer list-none px-4 py-3 hover:bg-band [&::-webkit-details-marker]:hidden">
         <div className="flex items-start gap-2">
           <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden />
-          <div className={cn(GRID, "tnum min-w-0 flex-1 text-sm")}>
+          <div className={cn(GRID, "tnum min-w-0 flex-1 text-body")}>
             <div className="col-span-3 min-w-0 md:col-span-1">
               <div className="font-medium">{r.label}</div>
-              <div className="font-mono text-[11px] text-muted-foreground">{stressDates(r.start, r.end)}</div>
+              <div className="font-mono text-caption text-muted-foreground">{stressDates(r.start, r.end)}</div>
             </div>
             <div className="text-right">
-              <div className={cn("font-mono text-base font-semibold md:text-[12.5px]", tone(r.fund))}>{rpct(r.fund)}</div>
+              <div className={cn("font-mono text-emph font-semibold md:text-body", tone(r.fund))}>{rpct(r.fund)}</div>
               <div className={small}>{fundLabel}</div>
             </div>
             <Figure label="S&P 500" value={rpct(r.market)} className={tone(r.market)} />
             <Figure label="Sector bench." value={rpct(r.benchmark)} className={tone(r.benchmark)} />
             <Figure label="Active" value={rbp(r.active)} className={tone(r.active)} />
             <Figure label={`On ${scopeLabel}`} value={rusd(r.dollars)} className={cn("font-medium", tone(r.dollars))} />
-            <div className="col-span-4 min-w-0 text-xs md:col-span-1">
+            <div className="col-span-4 min-w-0 text-body md:col-span-1">
               <span className="text-muted-foreground md:hidden">Worst: </span>
               {r.worst.map((h, i) => (
                 <span key={h.ticker}>
@@ -135,7 +135,7 @@ function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, bac
                 </span>
               ))}
             </div>
-            <div className="col-span-4 text-xs text-muted-foreground md:col-span-1 md:text-right">
+            <div className="col-span-4 text-body text-muted-foreground md:col-span-1 md:text-right">
               <span className="md:hidden">Stood in: </span>
               {r.proxied ? <span className="text-foreground">{r.proxied}</span> : "none"}
             </div>
@@ -144,11 +144,11 @@ function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, bac
       </summary>
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4 border-t border-dashed bg-muted/20 px-4 py-4 md:pl-10">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           {r.note} Bought at the {fmtDate(r.start)} close, valued at the {fmtDate(r.end)} close ({r.sessions} sessions){r.cashWeight > 0 ? `, with ${rpct(r.cashWeight)} in cash at 0%` : ""}. Impact on today&apos;s {scopeLabel}: <b className={cn("tnum", tone(r.dollars))}>{rusdFull(r.dollars)}</b>.
         </p>
         {stoodIn.length > 0 && (
-          <p className="text-xs">
+          <p className="text-body">
             <span className="font-medium">Stood in: </span>
             {stoodIn.map((h, i) => (
               <span key={h.ticker}>
@@ -169,7 +169,7 @@ function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, bac
         </div>
         {transparency && <StressWorking r={r} />}
         {backtesting && (
-          <div className="text-xs">
+          <div className="text-body">
             <Link href={backtestHref(r)} className="font-medium underline underline-offset-2 hover:text-foreground">
               Open in Backtesting →
             </Link>
@@ -184,8 +184,8 @@ function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, bac
 function Figure({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
     <div className="md:text-right">
-      <div className={cn("font-mono text-[12.5px] whitespace-nowrap", className)}>{value}</div>
-      <div className="text-[11px] text-muted-foreground md:hidden">{label}</div>
+      <div className={cn("font-mono text-body whitespace-nowrap", className)}>{value}</div>
+      <div className="text-caption text-muted-foreground md:hidden">{label}</div>
     </div>
   );
 }
@@ -193,7 +193,7 @@ function Figure({ label, value, className }: { label: string; value: string; cla
 function ContributionTable({ r }: { r: StressOk }) {
   return (
     <div className="max-h-80 overflow-auto rounded-md border bg-background">
-      <table className="tnum w-full text-xs whitespace-nowrap">
+      <table className="tnum w-full text-body whitespace-nowrap">
         <thead className="sticky top-0 bg-background text-muted-foreground">
           <tr className="border-b">
             <th scope="col" className="px-2 py-1.5 text-left font-medium">Holding</th>
@@ -210,7 +210,7 @@ function ContributionTable({ r }: { r: StressOk }) {
             <tr key={h.ticker} className="border-b border-border/50">
               <td className="px-2 py-1">
                 <span className="font-mono font-semibold">{h.ticker}</span>
-                {h.proxied && <span className="ml-1.5 rounded border px-1 py-px text-[10px] text-muted-foreground" title={h.proxyReason ?? undefined}>via {h.series}</span>}
+                {h.proxied && <span className="ml-1.5 rounded border px-1 py-px text-caption text-muted-foreground" title={h.proxyReason ?? undefined}>via {h.series}</span>}
               </td>
               <td className="px-2 py-1 text-right">{rpct(h.weight)}</td>
               <td className={cn("px-2 py-1 text-right", tone(h.ret))}>{rpct(h.ret)}</td>

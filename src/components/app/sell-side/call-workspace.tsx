@@ -416,10 +416,10 @@ export function CallWorkspace({
           {header && (
             <div className="flex flex-wrap items-start gap-3">
               <div className="min-w-0 flex-1">
-                <h2 className="text-[19px] leading-tight font-semibold tracking-[-0.015em]">
+                <h2 className="text-title leading-tight font-semibold tracking-[-0.015em]">
                   <span className="font-mono">{header.ticker}</span> · {header.title}
                 </h2>
-                <p className="mt-1 text-[13px] text-muted-foreground">{meta}</p>
+                <p className="mt-1 text-body text-muted-foreground">{meta}</p>
               </div>
               {chat && (
                 <Button variant="outline" onClick={() => openChat()}>
@@ -430,14 +430,14 @@ export function CallWorkspace({
             </div>
           )}
           {!configured && (
-            <p className="mt-3 rounded-[10px] bg-caution px-3 py-2 text-[13px] text-caution-foreground">
+            <p className="mt-3 rounded-[10px] bg-caution px-3 py-2 text-body text-caution-foreground">
               Analysis is temporarily unavailable. Your audio can still be recorded and saved. Contact your workspace administrator.
             </p>
           )}
           {bars.length > 0 && <Timeline bars={bars} markers={markers} total={total} onJump={openTranscriptAt} />}
           {!data ? (
             error ? (
-              <p role="status" className="mt-3.5 text-[13.5px] text-muted-foreground">
+              <p role="status" className="mt-3.5 text-body text-muted-foreground">
                 {error}
               </p>
             ) : (
@@ -448,7 +448,7 @@ export function CallWorkspace({
               <section aria-label="Recording and processing" className="mt-3.5 space-y-3 rounded-[10px] bg-band px-4 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-[14.5px] font-semibold">
+                    <h3 className="text-emph font-semibold">
                       {recording
                         ? paused
                           ? "Recording paused"
@@ -457,7 +457,7 @@ export function CallWorkspace({
                           ? "Call saved"
                           : (callStatusLabel[data.call.status] ?? "Call recording")}
                     </h3>
-                    <p className="text-[13px] text-muted-foreground">
+                    <p className="text-body text-muted-foreground">
                       <span className="font-mono">{recording ? clock(elapsed) : clock(callLength(parts))}</span> ·{" "}
                       {pending ? `${pending} audio sections waiting to save` : parts.length ? "Audio saved securely" : "Ready when you are"}
                     </p>
@@ -473,18 +473,18 @@ export function CallWorkspace({
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                         <div className="h-full rounded-full bg-caution-foreground" style={{ width: `${Math.round((progressDone / expected) * 100)}%` }} />
                       </div>
-                      <span className="font-mono text-xs text-caution-foreground">{Math.round((progressDone / expected) * 100)}%</span>
+                      <span className="font-mono text-body text-caution-foreground">{Math.round((progressDone / expected) * 100)}%</span>
                     </div>
                   )}
                 </div>
                 {data.call.status === "recording" && !recording && (
-                  <label className="flex items-center gap-2 text-[13px]">
+                  <label className="flex items-center gap-2 text-body">
                     <input type="checkbox" checked={tabAudio} onChange={(e) => setTabAudio(e.target.checked)} disabled={busy} />
                     Include browser tab audio with microphone
                   </label>
                 )}
                 {data.call.status === "recording" && (
-                  <p className="text-xs leading-relaxed text-muted-foreground">
+                  <p className="text-body leading-relaxed text-muted-foreground">
                     {tabAudio
                       ? "Choose the call’s browser tab and enable Share tab audio."
                       : "Microphone mode captures what your microphone hears. Use speakerphone for the other participants."}{" "}
@@ -534,7 +534,7 @@ export function CallWorkspace({
                     </Button>
                   )}
                 </div>
-                <p role="status" className="text-[13px] empty:hidden">
+                <p role="status" className="text-body empty:hidden">
                   {data.call.status === "ready"
                     ? "Transcript and analysis saved. The brief, transcript and saved chat are in the tabs below."
                     : analyzing
@@ -548,7 +548,7 @@ export function CallWorkspace({
                             : ""}
                 </p>
                 {(error || data.call.error) && (
-                  <p role="alert" className="text-[13px] text-down">
+                  <p role="alert" className="text-body text-down">
                     {error || (transcriptReady || analysisFailed ? ANALYSIS_ERROR : TRANSCRIPT_ERROR)}
                   </p>
                 )}
@@ -569,7 +569,7 @@ export function CallWorkspace({
           aria-labelledby={`${callId}-tab-brief`}
           className={cn(tab === "brief" ? "flex" : "hidden", "min-h-0 flex-1 flex-col")}
         >
-          {children || <p className="px-5 py-4 text-[13.5px] text-muted-foreground">{briefNote}</p>}
+          {children || <p className="px-5 py-4 text-body text-muted-foreground">{briefNote}</p>}
         </div>
         <div
           role="tabpanel"
@@ -580,18 +580,18 @@ export function CallWorkspace({
           {segments.length > 0 ? (
             <section className="px-5 py-3.5" aria-label="Call transcript">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-[14.5px] font-semibold">
+                <h3 className="text-emph font-semibold">
                   Transcript · <span className="font-mono">{segments.length}</span> passages
                 </h3>
                 <input
-                  className="h-8 w-64 max-w-full rounded-lg border bg-card px-3 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+                  className="h-8 w-64 max-w-full rounded-lg border bg-card px-3 text-body outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
                   aria-label="Search transcript"
                   placeholder="Search transcript…"
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                 />
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-caption text-muted-foreground">
                 Searchable, timestamped evidence for this call and future team research. Speaker attribution is shown only when available.
               </p>
               <div ref={transcriptRef} className="mt-2">
@@ -604,18 +604,18 @@ export function CallWorkspace({
                       highlight?.index === i && "bg-band",
                     )}
                   >
-                    <span className="pt-0.5 font-mono text-xs font-medium text-series-1">{stamp(s.start)}</span>
+                    <span className="pt-0.5 font-mono text-body font-medium text-series-1">{stamp(s.start)}</span>
                     <div className="min-w-0">
-                      {s.speaker && <p className="text-xs font-medium text-muted-foreground">{s.speaker}</p>}
-                      <p className="text-[14px] leading-relaxed whitespace-pre-wrap">{s.text}</p>
+                      {s.speaker && <p className="text-body font-medium text-muted-foreground">{s.speaker}</p>}
+                      <p className="text-body leading-relaxed whitespace-pre-wrap">{s.text}</p>
                     </div>
                   </div>
                 ))}
-                {!filtered.length && <p className="py-3 text-[13px] text-muted-foreground">No passage matches “{filter}”.</p>}
+                {!filtered.length && <p className="py-3 text-body text-muted-foreground">No passage matches “{filter}”.</p>}
               </div>
             </section>
           ) : (
-            <p className="px-5 py-4 text-[13.5px] text-muted-foreground">The transcript appears here once the audio is transcribed.</p>
+            <p className="px-5 py-4 text-body text-muted-foreground">The transcript appears here once the audio is transcribed.</p>
           )}
         </div>
         {chat && chatOpened && (
@@ -639,7 +639,7 @@ export function CallWorkspace({
  */
 function LoadingCall({ timeline, recorder }: { timeline: boolean; recorder: boolean }) {
   const status = (
-    <p role="status" className={cn("text-[13px] text-muted-foreground", !timeline && !recorder && "sr-only")}>
+    <p role="status" className={cn("text-body text-muted-foreground", !timeline && !recorder && "sr-only")}>
       Loading saved call…
     </p>
   );

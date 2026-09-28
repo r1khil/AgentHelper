@@ -88,12 +88,12 @@ export function JobsPanel({ canMutate, last, weekly }: JobsPanelProps) {
           return (
             <div key={j.key} className="flex min-h-14 items-center gap-3 border-b border-row px-4 py-2 last:border-b-0">
               <div className="min-w-0 flex-1" title={j.detail}>
-                <div className="text-[13.5px] font-semibold">{j.name}</div>
-                <div className="line-clamp-2 text-xs text-muted-foreground">{j.when}</div>
+                <div className="text-body font-semibold">{j.name}</div>
+                <div className="line-clamp-2 text-caption text-muted-foreground">{j.when}</div>
               </div>
               <div className="shrink-0 text-right" title={r ? summarizeJob(r.summary) || undefined : undefined}>
-                <div className={cn("text-[12.5px] font-medium", TONE[st.tone])}>{st.text}</div>
-                {r && <div className="font-mono text-[11px] text-muted-foreground">{stamp(r.startedAt)}</div>}
+                <div className={cn("text-body font-medium", TONE[st.tone])}>{st.text}</div>
+                {r && <div className="font-mono text-caption text-muted-foreground">{stamp(r.startedAt)}</div>}
               </div>
               {canMutate && (
                 <div className="flex shrink-0 items-center gap-1">
@@ -128,7 +128,7 @@ export function JobsPanel({ canMutate, last, weekly }: JobsPanelProps) {
                 <Field label="Session date" htmlFor="job-date">
                   <Input id="job-date" name="date" type="date" className="w-44" />
                 </Field>
-                <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                <label className="flex items-center gap-2 text-body text-muted-foreground">
                   <input type="checkbox" name="force" className="size-3.5" /> Re-run even if this session already completed
                 </label>
                 <DialogFooter>
@@ -147,7 +147,7 @@ export function JobsPanel({ canMutate, last, weekly }: JobsPanelProps) {
                 <Field label="Session date" htmlFor="brief-date">
                   <Input id="brief-date" name="date" type="date" className="w-44" />
                 </Field>
-                <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                <label className="flex items-center gap-2 text-body text-muted-foreground">
                   <input type="checkbox" name="everyone" className="size-3.5" /> Email everyone on the list, not just me
                 </label>
                 <DialogFooter>
@@ -178,7 +178,7 @@ export function JobsPanel({ canMutate, last, weekly }: JobsPanelProps) {
                     Save
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Now going to {weekly.to}. A test account (*.owlfund.local) alone pauses it.</p>
+                <p className="text-body text-muted-foreground">Now going to {weekly.to}. A test account (*.owlfund.local) alone pauses it.</p>
               </form>
             </>
           )}

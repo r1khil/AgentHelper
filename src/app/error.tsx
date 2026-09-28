@@ -6,8 +6,8 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
   return (
     <main className="flex min-h-screen items-center justify-center p-6 text-center">
       <div>
-        <div className="text-sm font-medium">Something went wrong</div>
-        <p className="mt-1 max-w-md text-sm text-muted-foreground">{error.message}</p>
+        <div className="text-body font-medium">Something went wrong</div>
+        <p className="mt-1 max-w-md text-body text-muted-foreground">{error.message}</p>
         <Button className="mt-4" variant="outline" onClick={() => retry()}>
           Try again
         </Button>

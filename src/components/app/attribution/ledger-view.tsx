@@ -27,7 +27,7 @@ type FlowRow = typeof cashFlows.$inferSelect;
 type SecurityRow = typeof securities.$inferSelect;
 export type WeightSet = { asOf: string; source: string | null; weights: Partial<Record<GicsSector, number>> };
 
-const num = "text-right font-mono text-[12.5px]";
+const num = "text-right font-mono text-body";
 const voided = "text-muted-foreground line-through";
 
 /** Trades, cash, benchmark weights and security classification behind the attribution pages. */
@@ -65,8 +65,8 @@ export function LedgerView({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5">
       <div className="flex shrink-0 flex-wrap items-center gap-3">
-        <h1 className="text-[17px] font-semibold tracking-[-0.015em]">Ledger</h1>
-        <span className="text-[13px] text-muted-foreground">Trades, cash and benchmark inputs behind the attribution pages.</span>
+        <h1 className="text-title font-semibold tracking-[-0.015em]">Ledger</h1>
+        <span className="text-body text-muted-foreground">Trades, cash and benchmark inputs behind the attribution pages.</span>
       </div>
 
       {summary && (
@@ -135,7 +135,7 @@ export function LedgerView({
                       <TableBody>
                         {tradeRows.map((t) => (
                           <TableRow key={t.id} className={t.voidedAt ? voided : undefined}>
-                            <TableCell className="pl-4 font-mono text-[12.5px] whitespace-nowrap">{fmtDate(t.tradeDate)}</TableCell>
+                            <TableCell className="pl-4 font-mono text-body whitespace-nowrap">{fmtDate(t.tradeDate)}</TableCell>
                             <TableCell className="font-mono font-semibold">{t.ticker}</TableCell>
                             <TableCell>
                               {t.kind === "opening" ? (
@@ -195,7 +195,7 @@ export function LedgerView({
                           const inflow = f.kind === "deposit" || f.kind === "interest";
                           return (
                             <TableRow key={f.id} className={f.voidedAt ? voided : undefined}>
-                              <TableCell className="pl-4 font-mono text-[12.5px] whitespace-nowrap">{fmtDate(f.flowDate)}</TableCell>
+                              <TableCell className="pl-4 font-mono text-body whitespace-nowrap">{fmtDate(f.flowDate)}</TableCell>
                               <TableCell>{CASH_LABELS[f.kind]}</TableCell>
                               <TableCell className={cn(num, !f.voidedAt && (inflow ? "text-up" : "text-down"))}>{fmtUsd(inflow ? Number(f.amount) : -Number(f.amount))}</TableCell>
                               <TableCell className="max-w-72 truncate text-muted-foreground">{f.note}</TableCell>
@@ -247,7 +247,7 @@ export function LedgerView({
                       <TableBody>
                         {weightSets.map((set) => (
                           <TableRow key={set.asOf}>
-                            <TableCell className="pl-4 font-mono text-[12.5px] whitespace-nowrap">{fmtDate(set.asOf)}</TableCell>
+                            <TableCell className="pl-4 font-mono text-body whitespace-nowrap">{fmtDate(set.asOf)}</TableCell>
                             {GICS_SECTORS.map((s) => <TableCell key={s} className={num}>{fmtAccounting(set.weights[s] ?? 0, 1)}</TableCell>)}
                             <TableCell className="max-w-48 truncate text-muted-foreground">{set.source}</TableCell>
                             <TableCell className="pr-4 text-right">

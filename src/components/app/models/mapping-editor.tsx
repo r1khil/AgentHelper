@@ -165,7 +165,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
     }
   }
 
-  if (!sheet) return <div className="panel p-4 text-sm text-muted-foreground">This workbook has no readable sheets.</div>;
+  if (!sheet) return <div className="panel p-4 text-body text-muted-foreground">This workbook has no readable sheets.</div>;
 
   return (
     <section className="panel overflow-hidden">
@@ -180,12 +180,12 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
           }}
           items={workbook.sheets.map((s, i) => ({ key: String(i), label: s.name, active: i === sheetIdx }))}
         />
-        <span className="ml-auto py-2 text-[12.5px] text-muted-foreground">Click a row to map it. Shaded cells hold formulas and are never written.</span>
+        <span className="ml-auto py-2 text-body text-muted-foreground">Click a row to map it. Shaded cells hold formulas and are never written.</span>
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="max-h-[520px] overflow-auto border-b lg:border-r lg:border-b-0">
-          <table className="w-max min-w-full border-collapse font-mono text-[11.5px]">
+          <table className="w-max min-w-full border-collapse font-mono text-caption">
             <thead className="sticky top-0 z-10 bg-band">
               <tr>
                 <th scope="col" className="w-8 border-r border-b px-1 py-1 text-right text-muted-foreground">#</th>
@@ -212,7 +212,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
           </table>
         </div>
 
-        <div className="space-y-4 p-4 text-sm">
+        <div className="space-y-4 p-4 text-body">
           {row === null ? (
             <p className="text-muted-foreground">Select the row of a line item you want Hoot to fill (for example Revenue). You enter its first period by hand; Hoot checks the other periods against that number.</p>
           ) : (
@@ -220,21 +220,21 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
               <div className="grid gap-1.5">
                 <Label>Line item in the model</Label>
                 <Input value={label} onChange={(e) => setLabel(e.target.value)} />
-                <p className="text-xs text-muted-foreground">{sheet.name}!row {row} · {numericCols.length} mappable column{numericCols.length === 1 ? "" : "s"}{formulaCols.length ? ` · ${formulaCols.length} formula column${formulaCols.length === 1 ? "" : "s"} skipped` : ""}</p>
+                <p className="text-body text-muted-foreground">{sheet.name}!row {row} · {numericCols.length} mappable column{numericCols.length === 1 ? "" : "s"}{formulaCols.length ? ` · ${formulaCols.length} formula column${formulaCols.length === 1 ? "" : "s"} skipped` : ""}</p>
               </div>
 
               <div className="grid gap-1.5">
                 <Label>Period end per column</Label>
                 {numericCols.length === 0 ? (
-                  <p className="text-xs text-warning-foreground">No mappable columns: this row has no typed numbers and no period headers above it. Pick a row with input cells, or add a header row with period labels.</p>
+                  <p className="text-body text-warning-foreground">No mappable columns: this row has no typed numbers and no period headers above it. Pick a row with input cells, or add a header row with period labels.</p>
                 ) : (
                   <div className="grid gap-1">
                     {numericCols.map((c) => (
                       <div key={c} className="flex items-center gap-2">
                         <input type="radio" name="anchor" checked={anchor === c} onChange={() => setAnchor(c)} disabled={typeof grid.get(`${c}${row}`)?.v !== "number"} title="The period you entered by hand" />
-                        <span className="tnum w-7 text-xs font-medium">{c}</span>
-                        <span className="tnum w-24 truncate text-right text-xs text-muted-foreground">{typeof grid.get(`${c}${row}`)?.v === "number" ? fmtNumber(grid.get(`${c}${row}`)!.v as number, 2) : "empty"}</span>
-                        <Input type="date" value={periods[c] ?? ""} onChange={(e) => setPeriods({ ...periods, [c]: e.target.value })} className="h-7 w-40 text-xs" list={`ends-${c}`} />
+                        <span className="tnum w-7 text-body font-medium">{c}</span>
+                        <span className="tnum w-24 truncate text-right text-caption text-muted-foreground">{typeof grid.get(`${c}${row}`)?.v === "number" ? fmtNumber(grid.get(`${c}${row}`)!.v as number, 2) : "empty"}</span>
+                        <Input type="date" value={periods[c] ?? ""} onChange={(e) => setPeriods({ ...periods, [c]: e.target.value })} className="h-7 w-40 text-body" list={`ends-${c}`} />
                         <datalist id={`ends-${c}`}>
                           {reportedEnds.map((d) => (
                             <option key={d} value={d} />
@@ -242,7 +242,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
                         </datalist>
                       </div>
                     ))}
-                    <p className="text-xs text-muted-foreground">Pick the column holding the number you typed by hand. Dates were guessed from headers; fix any that are wrong. Leave a date empty to skip a column.</p>
+                    <p className="text-body text-muted-foreground">Pick the column holding the number you typed by hand. Dates were guessed from headers; fix any that are wrong. Leave a date empty to skip a column.</p>
                   </div>
                 )}
               </div>
@@ -261,14 +261,14 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
                 </div>
                 {suggestions && (
                   <div className="rounded-lg border p-2">
-                    <div className="mb-1 text-xs font-medium">Facts matching {fmtNumber(grid.get(`${anchor}${row}`)?.v as number)} for {periods[anchor]}:</div>
+                    <div className="mb-1 text-body font-medium">Facts matching {fmtNumber(grid.get(`${anchor}${row}`)?.v as number)} for {periods[anchor]}:</div>
                     {suggestions.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No reported fact matches at ×1, ×1k, ×1M, or ×1B. Check the period end or the number.</p>
+                      <p className="text-body text-muted-foreground">No reported fact matches at ×1, ×1k, ×1M, or ×1B. Check the period end or the number.</p>
                     ) : (
                       <ul className="space-y-1">
                         {suggestions.map((s) => (
                           <li key={`${s.concept}-${s.unit}-${s.scale}`}>
-                            <button type="button" className="w-full rounded px-1.5 py-1 text-left text-xs hover:bg-muted" onClick={() => { chooseConcept({ concept: s.concept, label: s.label, units: [s.unit], count: 0 }); setUnit(s.unit); setScale(s.scale); setPeriodType(s.periodKind === "annual" ? "annual" : "quarterly"); }}>
+                            <button type="button" className="w-full rounded px-1.5 py-1 text-left text-body hover:bg-muted" onClick={() => { chooseConcept({ concept: s.concept, label: s.label, units: [s.unit], count: 0 }); setUnit(s.unit); setScale(s.scale); setPeriodType(s.periodKind === "annual" ? "annual" : "quarterly"); }}>
                               <span className="font-medium">{s.label}</span> <code className="text-muted-foreground">{s.concept}</code> · {s.unit} · model in {SCALES.find((x) => x.v === s.scale)?.label ?? s.scale} · {s.periodKind}{s.exact ? " · exact" : ""}
                             </button>
                           </li>
@@ -281,7 +281,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
                   <ul className="max-h-40 space-y-0.5 overflow-auto rounded-lg border p-1">
                     {hits.map((h) => (
                       <li key={h.concept}>
-                        <button type="button" className="w-full rounded px-1.5 py-1 text-left text-xs hover:bg-muted" onClick={() => chooseConcept(h)}>
+                        <button type="button" className="w-full rounded px-1.5 py-1 text-left text-body hover:bg-muted" onClick={() => chooseConcept(h)}>
                           <span className="font-medium">{h.label}</span> <code className="text-muted-foreground">{h.concept}</code> · {h.units.join("/")} · {h.count} facts
                         </button>
                       </li>
@@ -289,7 +289,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
                   </ul>
                 )}
                 {concept && (
-                  <div className="flex items-center justify-between rounded-lg border bg-band px-2 py-1.5 text-xs">
+                  <div className="flex items-center justify-between rounded-lg border bg-band px-2 py-1.5 text-body">
                     <span><span className="font-medium">{concept.label}</span> <code className="text-muted-foreground">{concept.concept}</code></span>
                     <button type="button" className="text-muted-foreground hover:underline" onClick={() => setConcept(null)}>change</button>
                   </div>

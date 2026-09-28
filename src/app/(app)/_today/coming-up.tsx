@@ -17,23 +17,23 @@ export function ComingUp({ items, today, moreCount, lastDate, calendarHref }: { 
                 +{moreCount} more through {longDate(lastDate)}
               </span>
             )}
-            <Link href={calendarHref} className="text-[13px] font-semibold text-foreground hover:underline">
+            <Link href={calendarHref} className="text-body font-semibold text-foreground hover:underline">
               Calendar →
             </Link>
           </>
         }
       />
       {items.length === 0 ? (
-        <p className="px-[18px] py-3.5 text-[13.5px] text-muted-foreground">No earnings dates yet. They refresh every morning for each holding.</p>
+        <p className="px-[18px] py-3.5 text-body text-muted-foreground">No earnings dates yet. They refresh every morning for each holding.</p>
       ) : (
         <ul className="flex flex-col pb-1">
           {items.map((i) => (
-            <li key={`${i.date}-${i.text}`} className="grid h-[38px] grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-2.5 px-[18px] text-[13.5px]">
-              <span className="font-mono text-[12.5px] font-semibold">{agendaDate(i.date)}</span>
+            <li key={`${i.date}-${i.text}`} className="grid h-[38px] grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-2.5 px-[18px] text-body">
+              <span className="font-mono text-body font-semibold">{agendaDate(i.date)}</span>
               <span className="truncate" title={i.text}>
                 {i.text}
               </span>
-              <span className="text-xs whitespace-nowrap text-muted-foreground">{daysAway(today, i.date)}</span>
+              <span className="text-body whitespace-nowrap text-muted-foreground">{daysAway(today, i.date)}</span>
             </li>
           ))}
         </ul>

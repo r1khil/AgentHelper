@@ -34,8 +34,8 @@ export async function TodayView({ user, myTeams }: { user: CurrentUser; myTeams:
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-5">
         <header>
-          <div className="font-mono text-xs text-muted-foreground">{marketLine(now)}</div>
-          <h1 className="mt-0.5 text-[28px] leading-tight font-semibold tracking-[-0.025em]">
+          <div className="font-mono text-body text-muted-foreground">{marketLine(now)}</div>
+          <h1 className="mt-0.5 text-display leading-tight font-semibold tracking-[-0.025em]">
             {greetingWord(now)}, {firstName}.
           </h1>
         </header>

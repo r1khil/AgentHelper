@@ -45,12 +45,12 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
 
   return (
     <div className="space-y-6">
-      <ol className="flex items-center gap-2 text-xs" aria-label="Setup steps">
+      <ol className="flex items-center gap-2 text-body" aria-label="Setup steps">
         {ONBOARDING_STEPS.map((s, i) => (
           <li key={s.id} className="flex items-center gap-2" aria-current={i === step ? "step" : undefined}>
             <span
               className={cn(
-                "grid size-5 place-items-center rounded-full text-[11px] font-semibold",
+                "grid size-5 place-items-center rounded-full text-caption font-semibold",
                 i < step ? "bg-primary/15 text-primary" : i === step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
               )}
             >
@@ -67,8 +67,8 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
           <div className="flex items-center gap-4">
             <HootHero size={112} className="shrink-0" />
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">Welcome to The Owl&apos;s Nest</h1>
-              <p className="mt-1 text-sm text-muted-foreground">A quick setup before you reach the workspace. It takes about a minute. I&apos;m Hoot, and I&apos;ll be at the bottom of the menu if you need me.</p>
+              <h1 className="text-title font-semibold tracking-tight">Welcome to The Owl&apos;s Nest</h1>
+              <p className="mt-1 text-body text-muted-foreground">A quick setup before you reach the workspace. It takes about a minute. I&apos;m Hoot, and I&apos;ll be at the bottom of the menu if you need me.</p>
             </div>
           </div>
           <Card>
@@ -78,13 +78,13 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
               <Fact label="Sign-in">{user.signIn}</Fact>
             </CardContent>
             {!user.teamName && (
-              <CardContent className="text-xs text-muted-foreground">A Fund admin assigns you to a sector team. Until then you can finish setup and wait on Today.</CardContent>
+              <CardContent className="text-body text-muted-foreground">A Fund admin assigns you to a sector team. Until then you can finish setup and wait on Today.</CardContent>
             )}
           </Card>
           <div className="grid gap-1.5">
             <Label htmlFor="ob-name">Your name</Label>
             <Input id="ob-name" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" maxLength={120} autoFocus />
-            <p className="text-xs text-muted-foreground">How you appear to your team on holdings, movements, and notes.</p>
+            <p className="text-body text-muted-foreground">How you appear to your team on holdings, movements, and notes.</p>
           </div>
           <div className="flex justify-end">
             <Button type="button" onClick={() => setStep(1)} disabled={!nameOk}>
@@ -97,8 +97,8 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
       {current.id === "tour" && (
         <section className="space-y-5">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">How the workspace works</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Four things you will use most.</p>
+            <h1 className="text-title font-semibold tracking-tight">How the workspace works</h1>
+            <p className="mt-1 text-body text-muted-foreground">Four things you will use most.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {TOUR_CARDS.map((c) => {
@@ -132,15 +132,15 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
           <input type="hidden" name="fullName" value={fullName} />
           <input type="hidden" name="acknowledged" value={acknowledged ? "on" : ""} />
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">The learning boundary</h1>
-            <p className="mt-1 text-sm text-muted-foreground">One rule shapes every feature.</p>
+            <h1 className="text-title font-semibold tracking-tight">The learning boundary</h1>
+            <p className="mt-1 text-body text-muted-foreground">One rule shapes every feature.</p>
           </div>
-          <blockquote className="rounded-lg border-l-4 border-primary bg-background px-4 py-3 text-sm leading-relaxed ring-1 ring-foreground/10">
+          <blockquote className="rounded-lg border-l-4 border-primary bg-background px-4 py-3 text-body leading-relaxed ring-1 ring-foreground/10">
             {LEARNING_BOUNDARY}
           </blockquote>
           <div>
-            <div className="mb-2 text-sm font-semibold">How Hoot helps</div>
-            <ul className="space-y-1.5 text-sm text-muted-foreground">
+            <div className="mb-2 text-body font-semibold">How Hoot helps</div>
+            <ul className="space-y-1.5 text-body text-muted-foreground">
               {BOUNDARY_IMPLICATIONS.map((line) => (
                 <li key={line} className="flex gap-2">
                   <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-primary/60" />
@@ -149,7 +149,7 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
               ))}
             </ul>
           </div>
-          <Label htmlFor="ob-ack" className="flex items-start gap-3 rounded-lg border bg-background p-3 text-sm font-normal leading-snug">
+          <Label htmlFor="ob-ack" className="flex items-start gap-3 rounded-lg border bg-background p-3 text-body font-normal leading-snug">
             <Checkbox id="ob-ack" checked={acknowledged} onCheckedChange={(c) => setAcknowledged(c === true)} className="mt-0.5" />
             <span>I understand: Hoot gathers the evidence, and I write the interpretation.</span>
           </Label>
@@ -170,8 +170,8 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <div className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{label}</div>
-      <div className="truncate text-sm font-medium">{children}</div>
+      <div className="text-caption font-semibold tracking-wide text-muted-foreground uppercase">{label}</div>
+      <div className="truncate text-body font-medium">{children}</div>
     </div>
   );
 }

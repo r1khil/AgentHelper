@@ -43,10 +43,10 @@ export function ChangelogView({ entries, isAdmin, status, now }: ChangelogViewPr
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
       <Panel>
         <div className="flex h-12 shrink-0 items-center gap-2.5 border-b px-5">
-          <h2 className="flex-1 truncate text-[14.5px] font-semibold">Every change merged into the app, newest first</h2>
-          <span className="truncate text-[12.5px] text-muted-foreground">{status}</span>
+          <h2 className="flex-1 truncate text-emph font-semibold">Every change merged into the app, newest first</h2>
+          <span className="truncate text-body text-muted-foreground">{status}</span>
           <form action={refreshChangelog}>
-            <Button type="submit" variant="outline" className="h-[30px] px-3 text-[12.5px]">
+            <Button type="submit" variant="outline" className="h-[30px] px-3 text-body">
               <RefreshCw data-icon="inline-start" className="size-[13px]" />
               Refresh
             </Button>
@@ -63,36 +63,36 @@ export function ChangelogView({ entries, isAdmin, status, now }: ChangelogViewPr
             {entries.map((e) => (
               <li key={e.prNumber} className="grid min-h-[76px] flex-1 grid-cols-[96px_minmax(0,1fr)_auto] items-center gap-4 border-b border-row px-5 py-3 last:border-b-0">
                 <div className="min-w-0">
-                  <time dateTime={e.mergedAt} title={fmtDate(e.mergedAt)} className="block font-mono text-xs text-muted-foreground">
+                  <time dateTime={e.mergedAt} title={fmtDate(e.mergedAt)} className="block font-mono text-caption text-muted-foreground">
                     {fmtDay(e.mergedAt)}
                   </time>
-                  <div className="mt-0.5 truncate text-[11.5px] text-muted-foreground" title={`Merged by ${e.author}`}>
+                  <div className="mt-0.5 truncate text-caption text-muted-foreground" title={`Merged by ${e.author}`}>
                     {e.author}
                   </div>
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-[15px] font-semibold">{e.headline}</h3>
+                    <h3 className="text-emph font-semibold">{e.headline}</h3>
                     {e.fallback && isAdmin && (
                       <Pill tone="caution" title="The summary model was unavailable; the pull request's title stands in until a retry">
                         Summary not generated
                       </Pill>
                     )}
                   </div>
-                  <p className="mt-0.5 text-[13px] leading-[1.45] text-ink-2">{e.summary}</p>
+                  <p className="mt-0.5 text-body leading-[1.45] text-ink-2">{e.summary}</p>
                 </div>
                 <div className="flex items-center gap-2.5 justify-self-end">
                   {isAdmin ? (
-                    <a href={e.url} target="_blank" rel="noreferrer" className="font-mono text-[11.5px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+                    <a href={e.url} target="_blank" rel="noreferrer" className="font-mono text-caption text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
                       #{e.prNumber}
                     </a>
                   ) : (
-                    <span className="font-mono text-[11.5px] text-muted-foreground">#{e.prNumber}</span>
+                    <span className="font-mono text-caption text-muted-foreground">#{e.prNumber}</span>
                   )}
                   {isAdmin && (
                     <form action={regenerateEntry}>
                       <input type="hidden" name="prNumber" value={e.prNumber} />
-                      <button type="submit" className="rounded-full px-1 text-xs font-medium text-ink-2 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+                      <button type="submit" className="rounded-full px-1 text-caption font-medium text-ink-2 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
                         Regenerate
                       </button>
                     </form>
@@ -109,18 +109,18 @@ export function ChangelogView({ entries, isAdmin, status, now }: ChangelogViewPr
           <div className="label-mono text-rail-foreground">{today.toFormat("MMMM")}</div>
           <div className="mt-2.5 grid grid-cols-2 gap-3.5">
             <div>
-              <div className="figure text-[28px]">{thisMonth}</div>
-              <div className="text-[12.5px] text-rail-foreground">{thisMonth === 1 ? "change" : "changes"} merged</div>
+              <div className="figure text-display">{thisMonth}</div>
+              <div className="text-body text-rail-foreground">{thisMonth === 1 ? "change" : "changes"} merged</div>
             </div>
             <div>
-              <div className="figure text-[28px]">{lastWeek}</div>
-              <div className="text-[12.5px] text-rail-foreground">in the last 7 days</div>
+              <div className="figure text-display">{lastWeek}</div>
+              <div className="text-body text-rail-foreground">in the last 7 days</div>
             </div>
           </div>
         </section>
         <Panel className="min-h-0 flex-1 gap-3 px-[18px] py-4">
-          <h2 className="text-[14.5px] font-semibold">How this page is written</h2>
-          <p className="text-[13.5px] leading-[1.55] text-ink-2">
+          <h2 className="text-emph font-semibold">How this page is written</h2>
+          <p className="text-body leading-[1.55] text-ink-2">
             Each pull request gets a one-line headline and a short summary for readers who don&apos;t code, written once and stored. Admins can regenerate one that came out wrong.
           </p>
           <dl className="flex flex-col border-t border-row">
@@ -134,9 +134,9 @@ export function ChangelogView({ entries, isAdmin, status, now }: ChangelogViewPr
               ["GitHub checked", "every 15 min"],
               ["Shown to", "execs, admins"],
             ].map(([k, v]) => (
-              <div key={String(k)} className="flex h-9 items-center justify-between gap-3 border-b border-row text-[13px]">
+              <div key={String(k)} className="flex h-9 items-center justify-between gap-3 border-b border-row text-body">
                 <dt className="text-muted-foreground">{k}</dt>
-                <dd className="truncate font-mono text-xs">{v}</dd>
+                <dd className="truncate font-mono text-caption">{v}</dd>
               </div>
             ))}
           </dl>

@@ -383,13 +383,13 @@ export function HootCompanion({ onAsk, suppressed = false, dock = null }: { onAs
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           className={cn(
-            "hoot-arrive pointer-events-auto w-64 max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-3 pr-8 text-sm text-popover-foreground shadow-lg",
+            "hoot-arrive pointer-events-auto w-64 max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-3 pr-8 text-body text-popover-foreground shadow-lg",
             // Docked, he speaks from beside the menu, over the page's bottom-left corner, for a few seconds at most.
             dock ? "absolute bottom-1 left-full z-10 ml-3" : "relative mx-2",
           )}
         >
           <div className="leading-snug font-medium">{bubble.title}</div>
-          {bubble.detail && <div className="mt-1 text-xs leading-snug text-muted-foreground">{bubble.detail}</div>}
+          {bubble.detail && <div className="mt-1 text-caption leading-snug text-muted-foreground">{bubble.detail}</div>}
           {bubble.kind !== "tip" && (
             <Link
               href={bubble.href}
@@ -397,7 +397,7 @@ export function HootCompanion({ onAsk, suppressed = false, dock = null }: { onAs
                 if (DISMISS_ON_OPEN.has(bubble.kind)) persistDismiss(bubble.id);
                 setBubble(null);
               }}
-              className="mt-2 inline-block text-xs font-medium text-primary underline-offset-2 hover:underline"
+              className="mt-2 inline-block text-caption font-medium text-primary underline-offset-2 hover:underline"
             >
               Show me
             </Link>
@@ -502,7 +502,7 @@ export function HootCompanion({ onAsk, suppressed = false, dock = null }: { onAs
             </span>
           </span>
           {mood === "sleepy" && (
-            <span aria-hidden className={cn("hoot-zzz absolute -top-1 right-1 text-[11px] font-semibold", dock === "rail" ? "text-rail-foreground" : "text-muted-foreground")}>
+            <span aria-hidden className={cn("hoot-zzz absolute -top-1 right-1 text-caption font-semibold", dock === "rail" ? "text-rail-foreground" : "text-muted-foreground")}>
               z
             </span>
           )}
@@ -510,7 +510,7 @@ export function HootCompanion({ onAsk, suppressed = false, dock = null }: { onAs
             <span
               aria-hidden
               className={cn(
-                "absolute top-0.5 right-0.5 grid size-4.5 place-items-center rounded-full bg-down text-[10px] font-semibold text-white ring-2",
+                "absolute top-0.5 right-0.5 grid size-4.5 place-items-center rounded-full bg-down text-caption font-semibold text-white ring-2",
                 dock === "rail" ? "ring-rail" : dock === "sidebar" ? "ring-sidebar" : "ring-background",
               )}
             >

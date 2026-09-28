@@ -15,16 +15,16 @@ export function ThesisPanel({ holdingId, thesis, meta, flash, proposal }: { hold
   return (
     <section className="panel-plain shrink-0 px-4 py-2">
       <div className="flex items-baseline gap-2">
-        <h2 className="text-[14.5px] font-semibold">Thesis</h2>
-        {meta && <span className="text-[12.5px] whitespace-nowrap text-muted-foreground">{meta}</span>}
+        <h2 className="text-emph font-semibold">Thesis</h2>
+        {meta && <span className="text-body whitespace-nowrap text-muted-foreground">{meta}</span>}
         <span className="flex-1" />
         {!editing && (
-          <button type="button" onClick={() => setEditing(true)} className="text-[13px] font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-ring">
+          <button type="button" onClick={() => setEditing(true)} className="text-body font-semibold hover:underline focus-visible:outline-2 focus-visible:outline-ring">
             {text ? "Edit" : "Write"}
           </button>
         )}
       </div>
-      {flash && <p className="mt-2 text-sm text-destructive">{flash}</p>}
+      {flash && <p className="mt-2 text-body text-destructive">{flash}</p>}
       {proposal && <div className="mt-3">{proposal}</div>}
       {editing ? (
         <form
@@ -46,9 +46,9 @@ export function ThesisPanel({ holdingId, thesis, meta, flash, proposal }: { hold
           </div>
         </form>
       ) : text ? (
-        <p className="mt-2 text-[14.5px] leading-[1.55] text-pretty whitespace-pre-wrap">{text}</p>
+        <p className="mt-2 text-emph leading-[1.55] text-pretty whitespace-pre-wrap">{text}</p>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">No thesis written yet. Write why the team owns it; Hoot checks movement updates and earnings reflections against it.</p>
+        <p className="mt-2 text-body text-muted-foreground">No thesis written yet. Write why the team owns it; Hoot checks movement updates and earnings reflections against it.</p>
       )}
     </section>
   );

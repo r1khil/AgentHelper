@@ -89,7 +89,7 @@ export function ExceptionDecide({ id, canApprove, children }: { id: string; canA
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<button type="button" className="rounded-md px-1 text-[13px] font-semibold whitespace-nowrap hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" />}>
+      <PopoverTrigger render={<button type="button" className="rounded-md px-1 text-body font-semibold whitespace-nowrap hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" />}>
         Decide
       </PopoverTrigger>
       <PopoverContent align="end" className="w-96">

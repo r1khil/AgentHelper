@@ -83,15 +83,15 @@ export function AskHoot({ teamSlug, configured, hint, className }: { teamSlug: s
             }
           }}
           placeholder={configured ? "Ask Hoot anything: the portfolio, a sector, an upcoming report…" : "Hoot isn't set up yet: an admin needs to turn it on"}
-          className="field-sizing-content max-h-40 min-h-11 w-full resize-none bg-transparent text-sm leading-[22px] outline-none placeholder:text-muted-foreground disabled:opacity-60"
+          className="field-sizing-content max-h-40 min-h-11 w-full resize-none bg-transparent text-body leading-[22px] outline-none placeholder:text-muted-foreground disabled:opacity-60"
         />
         <div className="flex items-center gap-2">
-          <span className="min-w-0 truncate text-xs text-muted-foreground">{asking ? "Opening a chat…" : hint}</span>
+          <span className="min-w-0 truncate text-caption text-muted-foreground">{asking ? "Opening a chat…" : hint}</span>
           <span className="flex-1" />
           <SendButton disabled={!text.trim() || asking || !configured} label="Ask" />
         </div>
       </ComposerBox>
-      {error && <div className="mt-1.5 text-xs text-destructive">{error}</div>}
+      {error && <div className="mt-1.5 text-caption text-destructive">{error}</div>}
     </form>
   );
 }

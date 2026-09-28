@@ -117,10 +117,10 @@ function RunRows({ r, running, isOpen, canOpen, transparency, onToggle }: { r: J
         {transparency && <TableCell className="px-2">{canOpen && <ChevronRight className={cn("size-3.5 text-muted-foreground transition-transform", isOpen && "rotate-90")} />}</TableCell>}
         <TableCell className="font-medium">{r.job}</TableCell>
         <TableCell className="tnum text-muted-foreground">{fmtDateTime(r.startedAt)}</TableCell>
-        <TableCell className="max-w-md truncate text-xs text-muted-foreground" title={JSON.stringify(r.summary)}>
+        <TableCell className="max-w-md truncate text-caption text-muted-foreground" title={JSON.stringify(r.summary)}>
           {running ? "running" : r.ok ? "ok" : "failed"} · {summarizeJob(r.summary)}
         </TableCell>
-        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+        <TableCell className="whitespace-nowrap text-body text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             {running && <Loader2 className="size-3 animate-spin" />}
             {r.current?.kind === "error" && <TriangleAlert className="size-3 text-destructive" />}
@@ -131,7 +131,7 @@ function RunRows({ r, running, isOpen, canOpen, transparency, onToggle }: { r: J
       {isOpen && r.progress && (
         <TableRow className="bg-muted/10 hover:bg-muted/10">
           <TableCell colSpan={5} className="py-2">
-            <ol className="grid gap-0.5 text-[11px]">
+            <ol className="grid gap-0.5 text-caption">
               {r.progress.map((e, i) => (
                 <li key={i} className={cn("flex items-start gap-2", e.kind === "warn" && "text-warning-foreground", e.kind === "error" && "text-destructive")}>
                   <span className="tnum w-20 shrink-0 text-muted-foreground">{e.at.slice(11, 19)}</span>

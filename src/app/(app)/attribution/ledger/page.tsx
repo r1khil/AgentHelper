@@ -44,7 +44,7 @@ export default async function LedgerPage({ searchParams }: PageProps<"/attributi
       tab={tab}
       summary={last ? { navEnd: last.navEnd, cashEnd: last.cashEnd, positions: positions.length, date: last.date } : null}
       sheetCheck={
-        <Suspense fallback={<p className="text-xs text-muted-foreground">Checking the ledger against the PT sheet…</p>}>
+        <Suspense fallback={<p className="text-body text-muted-foreground">Checking the ledger against the PT sheet…</p>}>
           <SheetCheck positions={recordedShares(tradeRows)} />
         </Suspense>
       }

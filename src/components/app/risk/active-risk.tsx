@@ -39,8 +39,8 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
   if (!a) {
     return (
       <section id={ACTIVE_RISK_ANCHOR} aria-label="Where the active risk comes from" className="scroll-mt-4">
-        <h2 className="mb-2.5 text-[14.5px] font-semibold">{title}</h2>
-        <Card className="p-4 text-sm text-muted-foreground">Tracking error needs benchmark sector weights, so active risk can&apos;t be split yet.</Card>
+        <h2 className="mb-2.5 text-emph font-semibold">{title}</h2>
+        <Card className="p-4 text-body text-muted-foreground">Tracking error needs benchmark sector weights, so active risk can&apos;t be split yet.</Card>
       </section>
     );
   }
@@ -55,7 +55,7 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
   return (
     <section id={ACTIVE_RISK_ANCHOR} aria-label="Where the active risk comes from" className="scroll-mt-4">
       <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[14.5px] font-semibold">{title}</h2>
+        <h2 className="text-emph font-semibold">{title}</h2>
         {a.holdings.length > TOP && (
           <Segmented
             label="Active risk view"
@@ -66,11 +66,11 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
           />
         )}
       </div>
-      <p className="mb-1 text-[13px] text-ink-2">
+      <p className="mb-1 text-body text-ink-2">
         Tracking error {rpct(a.trackingError, 2)} vs {benchmarkLabel}. Holdings long, the benchmark&apos;s sector ETFs short; the rows add to 100%.
       </p>
       {a.sentences.length > 0 && (
-        <ul className="mb-3 grid gap-0.5 text-sm">
+        <ul className="mb-3 grid gap-0.5 text-body">
           {a.sentences.map((s) => <li key={s}>{s}</li>)}
         </ul>
       )}
@@ -92,20 +92,20 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
               <TableRow className="text-muted-foreground">
                 <TableCell>
                   <Link href={`${basePath}${q}&all=1#${ACTIVE_RISK_ANCHOR}`} className="font-medium hover:underline">{rest.length} smaller holdings</Link>
-                  <div className="max-w-24 truncate text-[11px] sm:max-w-44" title={rest.map((h) => h.ticker).join(", ")}>{rest.map((h) => h.ticker).join(" · ")}</div>
+                  <div className="max-w-24 truncate text-caption sm:max-w-44" title={rest.map((h) => h.ticker).join(", ")}>{rest.map((h) => h.ticker).join(" · ")}</div>
                 </TableCell>
                 <TableCell>
                   <Bars weight={rest.reduce((s, h) => s + h.weight, 0)} share={rest.reduce((s, h) => s + h.share, 0)} max={max} aggregate />
                 </TableCell>
-                <TableCell className="text-right font-mono text-[12.5px]">{rpct(rest.reduce((s, h) => s + h.teContribution, 0), 2)}</TableCell>
-                <TableCell className="text-right text-xs">per holding in All</TableCell>
+                <TableCell className="text-right font-mono text-body">{rpct(rest.reduce((s, h) => s + h.teContribution, 0), 2)}</TableCell>
+                <TableCell className="text-right text-body">per holding in All</TableCell>
               </TableRow>
             )}
             <TableRow className="bg-muted/30">
               <TableCell className="align-top">
                 <span className="font-medium"><Explained label="Benchmark side">{RISK_EXPLAIN.benchmarkSide}</Explained></span>
-                <div className="max-w-32 text-[11px] whitespace-normal text-muted-foreground sm:max-w-none">Sector ETFs at benchmark weights, held short</div>
-                <details className="mt-1 text-[11px]">
+                <div className="max-w-32 text-caption whitespace-normal text-muted-foreground sm:max-w-none">Sector ETFs at benchmark weights, held short</div>
+                <details className="mt-1 text-caption">
                   <summary className="cursor-pointer text-muted-foreground select-none hover:text-foreground">By ETF ({a.benchmark.legs.length})</summary>
                   <table className="tnum mt-1">
                     <thead className="text-muted-foreground">
@@ -127,15 +127,15 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
               <TableCell className="align-top">
                 <Bars weight={a.benchmark.weight} share={a.benchmark.share} max={max} aggregate />
               </TableCell>
-              <TableCell className="text-right font-mono align-top text-sm">{rpct(a.benchmark.teContribution, 2)}</TableCell>
-              <TableCell className="text-right align-top text-xs text-muted-foreground">—</TableCell>
+              <TableCell className="text-right font-mono align-top text-body">{rpct(a.benchmark.teContribution, 2)}</TableCell>
+              <TableCell className="text-right align-top text-body text-muted-foreground">—</TableCell>
             </TableRow>
           </TableBody>
           <TableFooter>
             <TableRow>
               <TableCell className="font-medium">Total</TableCell>
-              <TableCell className="font-mono text-xs">{rpct(a.total)} of active risk</TableCell>
-              <TableCell className="text-right font-mono text-[12.5px] font-medium">{rpct(a.trackingError, 2)}</TableCell>
+              <TableCell className="font-mono text-body">{rpct(a.total)} of active risk</TableCell>
+              <TableCell className="text-right font-mono text-body font-medium">{rpct(a.trackingError, 2)}</TableCell>
               <TableCell />
             </TableRow>
           </TableFooter>
@@ -149,9 +149,9 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
 function Bars({ weight, share, max, aggregate }: { weight: number; share: number; max: number; aggregate?: boolean }) {
   if (aggregate) {
     return (
-      <div className="grid gap-1 text-xs">
-        <div className="flex items-center gap-2" title="Share of value"><span className="w-24 text-[11px] text-muted-foreground">weight</span><span className="tnum w-14 text-muted-foreground">{weight < 0 ? rpct(weight) : rpct(weight)}</span></div>
-        <div className="flex items-center gap-2" title="Share of active risk"><span className="w-24 text-[11px] text-muted-foreground">active risk</span><span className="tnum w-14 font-medium">{rpct(share)}</span></div>
+      <div className="grid gap-1 text-body">
+        <div className="flex items-center gap-2" title="Share of value"><span className="w-24 text-caption text-muted-foreground">weight</span><span className="tnum w-14 text-muted-foreground">{weight < 0 ? rpct(weight) : rpct(weight)}</span></div>
+        <div className="flex items-center gap-2" title="Share of active risk"><span className="w-24 text-caption text-muted-foreground">active risk</span><span className="tnum w-14 font-medium">{rpct(share)}</span></div>
       </div>
     );
   }
@@ -159,11 +159,11 @@ function Bars({ weight, share, max, aggregate }: { weight: number; share: number
     <div className="grid gap-1">
       <div className="flex items-center gap-2" title="Share of value">
         <MagnitudeBar value={weight} max={max} color="var(--muted-foreground)" className="h-1.5 w-24" />
-        <span className="w-14 font-mono text-xs text-muted-foreground">{rpct(weight)}</span>
+        <span className="w-14 font-mono text-body text-muted-foreground">{rpct(weight)}</span>
       </div>
       <div className="flex items-center gap-2" title="Share of active risk">
         <MagnitudeBar value={share} max={max} color={share < 0 ? "var(--down)" : "var(--series-1)"} className="h-1.5 w-24" />
-        <span className="w-14 font-mono text-xs font-medium">{rpct(share)}</span>
+        <span className="w-14 font-mono text-body font-medium">{rpct(share)}</span>
       </div>
     </div>
   );
@@ -176,16 +176,16 @@ function HoldingRow({ h, max, teams }: { h: ActiveRiskRow; max: number; teams: T
       <TableCell>
         {team ? <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} aria-label={tickerName(h.ticker, h.name)} className="font-mono font-semibold hover:underline">{h.ticker}</RowLink> : <span className="font-mono font-semibold">{h.ticker}</span>}
         {h.source !== "own" && (
-          <span className="ml-1.5 rounded border px-1 py-px text-[10px] text-muted-foreground" title={h.source === "proxy" ? `Too little price history; modeled with ${h.proxy}` : "No price history or sector; treated as riskless"}>
+          <span className="ml-1.5 rounded border px-1 py-px text-caption text-muted-foreground" title={h.source === "proxy" ? `Too little price history; modeled with ${h.proxy}` : "No price history or sector; treated as riskless"}>
             {h.source === "proxy" ? `via ${h.proxy}` : "not modeled"}
             <span className="sr-only">: {h.source === "proxy" ? `too little price history; modeled with ${h.proxy}` : "no price history or sector; treated as riskless"}</span>
           </span>
         )}
-        <div className="max-w-24 truncate text-[11px] text-muted-foreground sm:max-w-44">{team?.name ?? h.name}</div>
+        <div className="max-w-24 truncate text-caption text-muted-foreground sm:max-w-44">{team?.name ?? h.name}</div>
       </TableCell>
       <TableCell><Bars weight={h.weight} share={h.share} max={max} /></TableCell>
-      <TableCell className="text-right font-mono text-[12.5px]">{rpct(h.teContribution, 2)}</TableCell>
-      <TableCell className="text-right font-mono text-[12.5px]">{marginalBp(h.marginalTe)}</TableCell>
+      <TableCell className="text-right font-mono text-body">{rpct(h.teContribution, 2)}</TableCell>
+      <TableCell className="text-right font-mono text-body">{marginalBp(h.marginalTe)}</TableCell>
     </TableRow>
   );
 }

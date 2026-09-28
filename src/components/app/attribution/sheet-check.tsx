@@ -29,7 +29,7 @@ export async function SheetCheck({ positions }: { positions: { ticker: string; s
         <PanelHeader title="Check against the PT sheet">
           <Pill tone="caution">Unavailable</Pill>
         </PanelHeader>
-        <p className="px-4 py-3 text-[13px] text-muted-foreground">
+        <p className="px-4 py-3 text-body text-muted-foreground">
           Couldn&apos;t check the ledger against the PT sheet: {e instanceof DriveNotConnected ? e.message : e instanceof Error ? e.message : String(e)}
         </p>
       </Panel>
@@ -50,7 +50,7 @@ export async function SheetCheck({ positions }: { positions: { ticker: string; s
       >
         {problem ? <Pill tone="caution">Can&apos;t read</Pill> : issues.length === 0 ? <Pill tone="good">Matches</Pill> : <Pill tone="caution">{issues.length === 1 ? "1 differs" : `${issues.length} differ`}</Pill>}
       </PanelHeader>
-      <div className="text-[13px] leading-relaxed">
+      <div className="text-body leading-relaxed">
         {problem ? (
           <p className="px-4 py-3 text-destructive">{problem}</p>
         ) : issues.length === 0 ? (
@@ -85,12 +85,12 @@ export async function SheetCheck({ positions }: { positions: { ticker: string; s
                 {issues.map((c) => (
                   <TableRow key={c.ticker}>
                     <TableCell className="pl-4 font-mono font-semibold">{c.ticker}</TableCell>
-                    <TableCell className="text-right font-mono text-[12.5px]">
+                    <TableCell className="text-right font-mono text-body">
                       {fmtNumber(c.sheet)}
-                      {c.ref && <span className="ml-1 text-xs text-muted-foreground">({c.ref})</span>}
+                      {c.ref && <span className="ml-1 text-body text-muted-foreground">({c.ref})</span>}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-[12.5px]">{fmtNumber(c.ledger)}</TableCell>
-                    <TableCell className="text-right font-mono text-[12.5px]">{fmtNumber(c.diff)}</TableCell>
+                    <TableCell className="text-right font-mono text-body">{fmtNumber(c.ledger)}</TableCell>
+                    <TableCell className="text-right font-mono text-body">{fmtNumber(c.diff)}</TableCell>
                     <TableCell className="pr-4 whitespace-normal text-muted-foreground">{meaning(c)}</TableCell>
                   </TableRow>
                 ))}

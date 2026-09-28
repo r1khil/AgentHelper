@@ -60,7 +60,7 @@ export function MovementWorkspace({
         <PanelHeader title="Team update" aside={status} />
         {completed ? (
           <>
-            <p className="min-h-0 flex-1 overflow-y-auto px-4 py-3.5 text-[14.5px] leading-[1.6] whitespace-pre-wrap">{d.updateText}</p>
+            <p className="min-h-0 flex-1 overflow-y-auto px-4 py-3.5 text-emph leading-[1.6] whitespace-pre-wrap">{d.updateText}</p>
             <PanelFooter>
               <form action={reopenMovement}>
                 <input type="hidden" name="id" value={d.id} />
@@ -81,7 +81,7 @@ export function MovementWorkspace({
               onFocus={() => (visited.current = true)}
               aria-label="Your update"
               placeholder={"What happened, what the evidence supports, what remains unexplained, and what it means for the thesis.\n\nCite the sources you relied on."}
-              className="min-h-40 flex-1 resize-none rounded-none border-0 bg-transparent px-4 py-3 text-[14.5px] leading-[1.6] field-sizing-fixed focus-visible:ring-0 md:text-[14.5px]"
+              className="min-h-40 flex-1 resize-none rounded-none border-0 bg-transparent px-4 py-3 text-emph leading-[1.6] field-sizing-fixed focus-visible:ring-0 md:text-emph"
             />
             <PanelFooter className="flex-wrap gap-2">
               {d.agentConfigured && (
@@ -100,7 +100,7 @@ export function MovementWorkspace({
               <Button type="submit" formAction={completeMovement}>
                 Mark complete
               </Button>
-              <span className="min-w-0 flex-1 basis-64 text-xs">Completing records your name and time. Email the Fund separately; this keeps the record.</span>
+              <span className="min-w-0 flex-1 basis-64 text-body">Completing records your name and time. Email the Fund separately; this keeps the record.</span>
             </PanelFooter>
           </form>
         )}
@@ -170,27 +170,27 @@ function EvidencePanel({ d, evidence, gathered, onCite, className }: Side & { cl
         }
       />
       {d.evidenceStatus === "pending" && evidence.length === 0 ? (
-        <p className="flex-1 px-4 py-3 text-[13.5px] text-muted-foreground">Evidence is still being gathered. Refresh in a moment.</p>
+        <p className="flex-1 px-4 py-3 text-body text-muted-foreground">Evidence is still being gathered. Refresh in a moment.</p>
       ) : evidence.length === 0 ? (
-        <p className="flex-1 px-4 py-3 text-[13.5px] text-muted-foreground">Nothing found in the window. That is a finding too: say so in the update.</p>
+        <p className="flex-1 px-4 py-3 text-body text-muted-foreground">Nothing found in the window. That is a finding too: say so in the update.</p>
       ) : (
         <ol className="min-h-0 flex-1 overflow-y-auto">
           {evidence.map((e) => {
             const open = expanded.has(e.id);
             return (
               <li key={e.id} className="flex gap-2.5 border-b border-row py-2 pr-2 pl-4">
-                <span className="mt-px grid h-[18px] min-w-[22px] shrink-0 place-items-center rounded-full bg-hoot px-1 font-mono text-[10.5px] font-medium text-hoot-foreground">{e.n}</span>
+                <span className="mt-px grid h-[18px] min-w-[22px] shrink-0 place-items-center rounded-full bg-hoot px-1 font-mono text-caption font-medium text-hoot-foreground">{e.n}</span>
                 <div className="min-w-0 flex-1">
                   <button
                     type="button"
                     onClick={() => toggle(e.id)}
                     aria-expanded={open}
                     title={open ? "Show less" : e.title}
-                    className={cn("block w-full rounded-sm pr-2 text-left text-[13.5px] leading-[1.45] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none", !open && "truncate")}
+                    className={cn("block w-full rounded-sm pr-2 text-left text-body leading-[1.45] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none", !open && "truncate")}
                   >
                     {e.title}
                   </button>
-                  <div className="flex min-h-6 items-center gap-1 text-xs text-muted-foreground">
+                  <div className="flex min-h-6 items-center gap-1 text-body text-muted-foreground">
                     <span className={cn("min-w-0", !open && "truncate")}>{e.meta}</span>
                     {e.failed && <span className="shrink-0 text-down">lookup failed</span>}
                     <span className="flex-1" />

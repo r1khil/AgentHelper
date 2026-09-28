@@ -83,7 +83,7 @@ export function ResearchBoards({ holdings, market, showTeam }: { holdings: Holdi
   return (
     <Panel className="min-h-[420px] flex-1 lg:min-h-0" aria-label="By holding">
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-2.5">
-        <h2 className="text-[14.5px] font-semibold whitespace-nowrap">By holding</h2>
+        <h2 className="text-emph font-semibold whitespace-nowrap">By holding</h2>
         {counts.attention > 0 && (
           <CountChip hot>{counts.attention}</CountChip>
         )}
@@ -99,7 +99,7 @@ export function ResearchBoards({ holdings, market, showTeam }: { holdings: Holdi
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as Sort)}
-            className="h-8 rounded-full bg-card px-2.5 text-[13px] text-foreground shadow-[0_0_0_1px_var(--border)] outline-none focus-visible:shadow-[0_0_0_1px_var(--ring)]"
+            className="h-8 rounded-full bg-card px-2.5 text-body text-foreground shadow-[0_0_0_1px_var(--border)] outline-none focus-visible:shadow-[0_0_0_1px_var(--ring)]"
           >
             <option value="attention">Sort: needs attention</option>
             <option value="recent">Sort: latest research</option>
@@ -114,14 +114,14 @@ export function ResearchBoards({ holdings, market, showTeam }: { holdings: Holdi
             onChange={(e) => setQ(e.target.value)}
             placeholder="Filter holdings…"
             aria-label="Filter holdings"
-            className="min-w-0 flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
+            className="min-w-0 flex-1 bg-transparent text-body text-foreground outline-none placeholder:text-muted-foreground"
           />
         </label>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
         <div role="table" aria-label="By holding" className="min-w-[620px] xl:min-w-0">
-        <div role="row" className={cn(ROW, "sticky top-0 z-[1] h-9 border-b bg-band text-xs text-muted-foreground")}>
+        <div role="row" className={cn(ROW, "sticky top-0 z-[1] h-9 border-b bg-band text-body text-muted-foreground")}>
           <span role="columnheader" aria-sort={sort === "ticker" ? "ascending" : undefined}>Holding</span>
           <span role="columnheader" className="text-right">
             <ReadAs text="Day change and versus S&P 500">Day · vs S&amp;P</ReadAs>
@@ -134,7 +134,7 @@ export function ResearchBoards({ holdings, market, showTeam }: { holdings: Holdi
         </div>
         {holdings.length === 0 ? null : shown.length === 0 ? (
           <div role="row">
-            <p role="cell" className="px-4 py-6 text-[13px] text-muted-foreground">
+            <p role="cell" className="px-4 py-6 text-body text-muted-foreground">
               {f ? `No holdings match “${q.trim()}”` : "No holdings"}
               {filter !== "all" ? ` under ${FILTER_LABEL[filter]}.` : "."}
             </p>
@@ -192,16 +192,16 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
             href={h.href}
             aria-label={tickerName(h.ticker, h.name)}
             title={`${h.name} · ${has ? `Open ${h.ticker} research` : `Start researching ${h.ticker}`}`}
-            className="font-mono text-[13px] font-semibold focus-visible:after:ring-0"
+            className="font-mono text-body font-semibold focus-visible:after:ring-0"
           >
             {h.ticker}
           </RowLink>
           {/* Already in the link's name. */}
-          <span aria-hidden className="min-w-0 truncate text-[13.5px] text-ink-2">
+          <span aria-hidden className="min-w-0 truncate text-body text-ink-2">
             {h.name}
           </span>
         </div>
-        {who && <div className="mt-px truncate text-xs text-muted-foreground">{who}</div>}
+        {who && <div className="mt-px truncate text-caption text-muted-foreground">{who}</div>}
       </div>
 
       <div role="cell" className="text-right">
@@ -210,26 +210,26 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
         </Suspense>
       </div>
 
-      <div role="cell" className="min-w-0 text-[13px]">
+      <div role="cell" className="min-w-0 text-body">
         {h.earnings ? (
           <>
-            <div className="font-mono text-[12.5px]">{fmtDay(h.earnings.reportDate)}</div>
-            <div className="truncate text-xs text-muted-foreground">
+            <div className="font-mono text-body">{fmtDay(h.earnings.reportDate)}</div>
+            <div className="truncate text-caption text-muted-foreground">
               {inDays(daysUntil(h.earnings.reportDate, now))} · {h.earnings.dateStatus}
             </div>
             {/* Under 1280px the Expectations column folds in here. */}
-            <div className={cn("truncate text-xs xl:hidden", h.earnings.hasExpectations ? "text-good-foreground" : flags.expectationsDue ? "text-caution-foreground" : "text-muted-foreground")}>
+            <div className={cn("truncate text-caption xl:hidden", h.earnings.hasExpectations ? "text-good-foreground" : flags.expectationsDue ? "text-caution-foreground" : "text-muted-foreground")}>
               {h.earnings.hasExpectations ? "Expectations recorded" : "No expectations yet"}
             </div>
           </>
         ) : (
-          <span className="text-xs text-muted-foreground">Not scheduled</span>
+          <span className="text-body text-muted-foreground">Not scheduled</span>
         )}
       </div>
 
       <div role="cell" className="hidden xl:block">
         {!h.earnings ? (
-          <span className="text-xs text-muted-foreground">—</span>
+          <span className="text-body text-muted-foreground">—</span>
         ) : h.earnings.hasExpectations ? (
           <Pill tone="good">Recorded</Pill>
         ) : (
@@ -237,16 +237,16 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
         )}
       </div>
 
-      <div role="cell" className="min-w-0 text-[13px]">
+      <div role="cell" className="min-w-0 text-body">
         {has ? (
           <>
             <div className="truncate">
-              <span className="font-mono text-[12.5px]">{h.sources}</span> source{h.sources === 1 ? "" : "s"} · <span className="font-mono text-[12.5px]">{h.chats}</span> chat{h.chats === 1 ? "" : "s"}
+              <span className="font-mono text-body">{h.sources}</span> source{h.sources === 1 ? "" : "s"} · <span className="font-mono text-body">{h.chats}</span> chat{h.chats === 1 ? "" : "s"}
             </div>
-            <div className="truncate text-xs text-muted-foreground">Last {relativeTime(h.lastActivity)}</div>
+            <div className="truncate text-caption text-muted-foreground">Last {relativeTime(h.lastActivity)}</div>
           </>
         ) : (
-          <span className="text-xs text-muted-foreground">No research yet</span>
+          <span className="text-body text-muted-foreground">No research yet</span>
         )}
       </div>
 
@@ -268,7 +268,7 @@ function inDays(d: number) {
 
 function StatusCell({ h, flags }: { h: HoldingCardData; flags: ReturnType<typeof attention> }) {
   const running = h.running && (
-    <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" title={`${h.running.authorName ?? "Someone"} is asking: ${h.running.title}`}>
+    <div className="mt-1 flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground" title={`${h.running.authorName ?? "Someone"} is asking: ${h.running.title}`}>
       <Loader2 className="size-3 shrink-0 animate-spin" aria-label="Answering" />
       <span className="truncate">
         {h.running.authorName ?? "Someone"} is asking: {h.running.title}
@@ -286,7 +286,7 @@ function StatusCell({ h, flags }: { h: HoldingCardData; flags: ReturnType<typeof
     return (
       <div className="min-w-0">
         {pill}
-        <div className="mt-1 truncate text-xs text-muted-foreground" title={due}>
+        <div className="mt-1 truncate text-caption text-muted-foreground" title={due}>
           {due}
         </div>
         {running}
@@ -294,7 +294,7 @@ function StatusCell({ h, flags }: { h: HoldingCardData; flags: ReturnType<typeof
     );
   }
   if (flags.expectationsDue) pill = <Pill tone="caution">Expectations due</Pill>;
-  if (!pill && !running) return <span className="text-xs text-muted-foreground">—</span>;
+  if (!pill && !running) return <span className="text-body text-muted-foreground">—</span>;
   return (
     <div className="min-w-0">
       {pill}
@@ -305,12 +305,12 @@ function StatusCell({ h, flags }: { h: HoldingCardData; flags: ReturnType<typeof
 
 function QuoteCell({ ticker, market, alert }: { ticker: string; market: Promise<MarketByTicker>; alert: boolean }) {
   const m = use(market)[ticker];
-  if (!m || m.changePct === undefined) return <span className="text-right text-xs text-muted-foreground">No quote</span>;
+  if (!m || m.changePct === undefined) return <span className="text-right text-body text-muted-foreground">No quote</span>;
   const tone = m.changePct > 0.005 ? "text-up" : m.changePct < -0.005 ? "text-down" : "text-muted-foreground";
   return (
     <div className="text-right font-mono tabular-nums" title={m.relativePp !== undefined ? `${fmtBp(ppToBp(m.relativePp))} vs S&P 500` : undefined}>
-      <div className={cn("text-[13px] font-medium", tone)}>{fmtPct(m.changePct)}</div>
-      {m.relativePp !== undefined && <div className={cn("text-[11.5px]", alert ? "text-down" : "text-muted-foreground")}>{fmtBp(ppToBp(m.relativePp))}</div>}
+      <div className={cn("text-body font-medium", tone)}>{fmtPct(m.changePct)}</div>
+      {m.relativePp !== undefined && <div className={cn("text-caption", alert ? "text-down" : "text-muted-foreground")}>{fmtBp(ppToBp(m.relativePp))}</div>}
     </div>
   );
 }
