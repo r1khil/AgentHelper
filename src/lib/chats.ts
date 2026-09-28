@@ -4,11 +4,17 @@ import type { UIMessage } from "ai";
 import { db } from "@/db/client";
 import { chatMessages, chats, holdings, profiles, teams } from "@/db/schema";
 import { inTeams, type TeamIds } from "@/lib/team-filter";
+import { LEGACY_CALL_PROMPT } from "@/lib/agent/hidden-prompt";
 
 /** Who is listing chats: members who aren't execs or admins never see fund-only chats (those that read the PT sheet). */
 export type ChatViewer = { fundWide: boolean };
 
 const visibleTo = (viewer: ChatViewer): SQL | undefined => (viewer.fundWide ? undefined : eq(chats.fundOnly, false));
+
+/** Questions a member asked: user messages less a job's hidden prompt (the SQL twin of `isMemberQuestion`). */
+const questionCount = sql<number>`(select count(*) from chat_messages m where m.chat_id = ${chats.id} and m.role = 'user'
+  and m.metadata->'hiddenPrompt' is null and coalesce(m.parts->0->>'text', '') !~ ${LEGACY_CALL_PROMPT})`;
+const hasMessages = sql`exists (select 1 from chat_messages m where m.chat_id = ${chats.id})`;
 
 /** Mark a chat fund-only. Called by Hoot's PT sheet tool before it returns anything; it never goes back. */
 export async function markChatFundOnly(chatId: string) {
@@ -128,11 +134,7 @@ export type HoldingChat = { c: typeof chats.$inferSelect; authorName: string | n
 /** Every chat pinned to one holding, newest first, with how many questions each holds. */
 export async function listHoldingChats(holdingId: string, viewer: ChatViewer): Promise<HoldingChat[]> {
   const rows = await db
-    .select({
-      c: chats,
-      authorName: profiles.fullName,
-      questions: sql<number>`(select count(*) from chat_messages m where m.chat_id = ${chats.id} and m.role = 'user')`,
-    })
+    .select({ c: chats, authorName: profiles.fullName, questions: questionCount })
     .from(chats)
     .leftJoin(profiles, eq(profiles.id, chats.createdBy))
     .where(and(eq(chats.holdingId, holdingId), visibleTo(viewer)))
@@ -145,16 +147,15 @@ export type GeneralChat = { c: typeof chats.$inferSelect; authorName: string | n
 
 /**
  * Hoot conversations that aren't about one holding (asked from attribution, backtesting, Today…), newest first.
- * Chats that never got a question are left out: Hoot creates the chat before the first message is sent.
+ * Empty chats are left out: Hoot creates the chat before the first message is sent. A call brief counts, question or not.
  */
 export async function listGeneralChats(teamId: TeamIds, viewer: ChatViewer, limit = 50): Promise<GeneralChat[]> {
   if (Array.isArray(teamId) && teamId.length === 0) return [];
-  const questions = sql<number>`(select count(*) from chat_messages m where m.chat_id = ${chats.id} and m.role = 'user')`;
   const rows = await db
-    .select({ c: chats, authorName: profiles.fullName, questions })
+    .select({ c: chats, authorName: profiles.fullName, questions: questionCount })
     .from(chats)
     .leftJoin(profiles, eq(profiles.id, chats.createdBy))
-    .where(and(inTeams(chats.teamId, teamId), isNull(chats.holdingId), sql`${questions} > 0`, visibleTo(viewer)))
+    .where(and(inTeams(chats.teamId, teamId), isNull(chats.holdingId), hasMessages, visibleTo(viewer)))
     .orderBy(desc(chats.updatedAt))
     .limit(limit);
   return rows.map((r) => ({ ...r, questions: Number(r.questions) }));
@@ -164,18 +165,17 @@ export type RecentHoldingChat = { c: typeof chats.$inferSelect; authorName: stri
 
 /**
  * Chats pinned to holdings across the given teams, newest first, for the Research sidebar. Like the general list,
- * chats that never got a question are left out.
+ * empty chats are left out.
  */
 export async function listRecentHoldingChats(teamId: TeamIds, viewer: ChatViewer, limit = 60): Promise<RecentHoldingChat[]> {
   if (Array.isArray(teamId) && teamId.length === 0) return [];
-  const questions = sql<number>`(select count(*) from chat_messages m where m.chat_id = ${chats.id} and m.role = 'user')`;
   const rows = await db
-    .select({ c: chats, authorName: profiles.fullName, questions, ticker: holdings.ticker, teamSlug: teams.slug })
+    .select({ c: chats, authorName: profiles.fullName, questions: questionCount, ticker: holdings.ticker, teamSlug: teams.slug })
     .from(chats)
     .innerJoin(holdings, eq(holdings.id, chats.holdingId))
     .innerJoin(teams, eq(teams.id, chats.teamId))
     .leftJoin(profiles, eq(profiles.id, chats.createdBy))
-    .where(and(inTeams(chats.teamId, teamId), sql`${questions} > 0`, visibleTo(viewer)))
+    .where(and(inTeams(chats.teamId, teamId), hasMessages, visibleTo(viewer)))
     .orderBy(desc(chats.updatedAt))
     .limit(limit);
   return rows.map((r) => ({ ...r, questions: Number(r.questions) }));

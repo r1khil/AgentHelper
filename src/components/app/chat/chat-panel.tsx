@@ -5,12 +5,13 @@ import type { UIMessage } from "ai";
 import { TraceHeader } from "./trace-panel";
 import { ResearchAnswer, ResearchSources, useSourceViewer } from "./research-answer";
 import { useResearchChat } from "./use-research-chat";
-import { ActivityRow, Composer, SourceListCard, SourcesHeading, ThinkingRow, ThreadHeader, ThreadNote, UserBubble } from "./thread-parts";
+import { ActivityRow, Composer, PromptLabel, SourceListCard, SourcesHeading, ThinkingRow, ThreadHeader, ThreadNote, UserBubble } from "./thread-parts";
 import { clearHootQuestion, peekHootQuestion } from "@/components/app/hoot/handoff";
 import { HootHero } from "@/components/app/hoot/hoot-hero";
 import { HootOnPage } from "@/components/app/hoot/presence";
 import { CenterColumn, ListColumn, ResearchGrid, SideColumn } from "@/components/app/agent/research-columns";
 import { collectSources } from "@/lib/agent/citations";
+import { hiddenPromptLabel, isMemberQuestion } from "@/lib/agent/hidden-prompt";
 import { pageContextFromMessages, pageContextLabel, parsePageContext } from "@/lib/agent/page-context";
 import { splitAssistantParts } from "@/lib/agent/turn";
 import type { RunStatus } from "@/lib/chats";
@@ -175,8 +176,8 @@ export function ChatWorkspace({
   actions?: ReactNode;
 }) {
   const chat = useGeneralChat(props);
-  const questions = chat.messages.filter((m) => m.role === "user").length;
-  const first = chat.messages.find((m) => m.role === "user");
+  const questions = chat.messages.filter(isMemberQuestion).length;
+  const first = chat.messages.find(isMemberQuestion);
   const firstText = first?.parts.map((p) => (p.type === "text" ? p.text : "")).join(" ").replace(/\s+/g, " ").trim();
   const shown = title === "New chat" ? firstText?.slice(0, 80) || "New conversation" : title;
   const meta = [team, author, `${questions} question${questions === 1 ? "" : "s"}`].filter(Boolean).join(" · ");
@@ -228,6 +229,8 @@ function Message({ message, live, trace, now }: { message: UIMessage; live: bool
   const meta = (message.metadata ?? {}) as { uncited?: number; page?: unknown };
 
   if (message.role === "user") {
+    const label = hiddenPromptLabel(message);
+    if (label) return <PromptLabel>{label}</PromptLabel>;
     return (
       <UserBubble page={parsePageContext(meta.page)}>
         {message.parts.map((p, i) => (p.type === "text" ? <p key={i}>{p.text}</p> : null))}

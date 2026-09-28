@@ -2,6 +2,7 @@ import type { UIMessage } from "ai";
 import type { Source } from "@/lib/providers/types";
 import { CITATION_RE, resolveCitedId } from "./citations";
 import { enrichLegacySource } from "./source-resolution";
+import { hiddenPromptLabel } from "./hidden-prompt";
 import { isToolPart, splitAssistantParts, summarizeActivity, type Part } from "./turn";
 
 /** One question and, once it exists, the assistant message that answers it. */
@@ -9,6 +10,8 @@ export type Turn = {
   /** The user message id; stable before and after the answer arrives. */
   id: string;
   question: string;
+  /** Set when a job asked (a call brief): shown in place of the question, which is its hidden prompt. */
+  label?: string;
   assistant?: UIMessage;
   answerText: string;
   activity: Part[];
@@ -18,11 +21,14 @@ export function pairTurns(messages: UIMessage[]): Turn[] {
   const turns: Turn[] = [];
   for (const m of messages) {
     if (m.role === "user") {
-      const question = m.parts
-        .map((p) => (p.type === "text" ? p.text : ""))
-        .join("")
-        .trim();
-      turns.push({ id: m.id, question, answerText: "", activity: [] });
+      const label = hiddenPromptLabel(m) ?? undefined;
+      const question = label
+        ? ""
+        : m.parts
+            .map((p) => (p.type === "text" ? p.text : ""))
+            .join("")
+            .trim();
+      turns.push({ id: m.id, question, label, answerText: "", activity: [] });
     } else if (m.role === "assistant" && turns.length > 0) {
       const t = turns[turns.length - 1];
       const { activity, answer } = splitAssistantParts(m.parts);
