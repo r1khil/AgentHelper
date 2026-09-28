@@ -1,4 +1,3 @@
-import { ScopedLink } from "@/components/app/shell/scope-context";
 import { Panel, PanelHeader } from "@/components/app/panel";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
 import type { Exposure } from "@/lib/risk/exposure";
@@ -10,6 +9,7 @@ import { InfoTip } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "../risk/explainers";
 import { rpct } from "../risk/format";
 import type { TeamNames } from "../risk/holdings-risk-table";
+import { RowLink } from "@/components/app/row-link";
 
 /** Active weight in percentage points without the unit, e.g. "+3.4", as in the sector and bets columns. */
 const activePp = (v: number | null) => (v === null ? "—" : `${v * 100 > 0.05 ? "+" : ""}${(v * 100).toFixed(1)}`);
@@ -90,9 +90,9 @@ export function ActiveBetsPanel({ report: r, x, lookthrough, teams, benchShort, 
           const n = names.get(b.key);
           const note = team?.name ?? (n?.sector ? SECTOR_LABELS[n.sector] : b.name);
           return (
-            <div key={b.key} className={cn(COLS, "min-h-10 flex-1 border-b border-row text-[13.5px] last:border-b-0")} title={`${b.key} · ${b.name}`}>
+            <div key={b.key} className={cn(COLS, "relative min-h-10 flex-1 border-b border-row text-[13.5px] last:border-b-0")} title={`${b.key} · ${b.name}`}>
               {team ? (
-                <ScopedLink owner={team.slug} path={`/h/${encodeURIComponent(b.key)}`} className="truncate font-mono text-[13px] font-semibold hover:underline">{b.key}</ScopedLink>
+                <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(b.key)}`} className="truncate font-mono text-[13px] font-semibold hover:underline">{b.key}</RowLink>
               ) : (
                 <span className="truncate font-mono text-[13px] font-semibold">{b.key}</span>
               )}

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { DateTime } from "luxon";
 import { CalendarRange } from "lucide-react";
 import { buildWeeklyNow } from "@/lib/actions/weekly";
@@ -9,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { WeeklyPack } from "./weekly-pack";
 import { whenBuilt } from "./when";
 import type { PackListItem, WeeklyPackProps } from "./types";
+import { RowLink } from "@/components/app/row-link";
 
 const NY = "America/New_York";
 const short = (iso: string) => DateTime.fromISO(iso, { zone: NY }).toFormat("LLL d");
@@ -69,7 +69,7 @@ export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyView
                   ? `Built ${whenBuilt(p.builtAt, p.weekEnding)}`
                   : "Not built yet";
             return (
-              <Link
+              <RowLink
                 key={p.weekEnding}
                 href={`/weekly/${p.weekEnding}`}
                 aria-current={on ? "page" : undefined}
@@ -83,7 +83,7 @@ export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyView
                   <div className="mt-px truncate text-xs text-muted-foreground">{meta}</div>
                 </div>
                 {sent ? <Pill>Sent</Pill> : emailed ? <Pill title="The Sunday email went out; the pack is still an open draft">Emailed</Pill> : <Pill tone="hoot">Draft</Pill>}
-              </Link>
+              </RowLink>
             );
           })}
         </div>

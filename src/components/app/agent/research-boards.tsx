@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { Suspense, use, useMemo, useState } from "react";
 import { ChevronRight, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fixed, fmtDate, fmtDateTime, relativeTime } from "@/lib/format";
 import { CountChip, Panel, Pill, Segmented } from "@/components/app/panel";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RowLink } from "@/components/app/row-link";
 
 export type HoldingCardData = {
   id: string;
@@ -187,7 +187,7 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
   const has = h.chats > 0;
   const who = [h.ownerName, showTeam ? h.teamName : null].filter(Boolean).join(" · ");
   return (
-    <Link href={h.href} className={cn(ROW, "group min-h-[54px] py-2 transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")} title={has ? `Open ${h.ticker}'s research board` : `Start researching ${h.ticker}`}>
+    <RowLink href={h.href} className={cn(ROW, "group min-h-[54px] py-2 transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")} title={has ? `Open ${h.ticker}'s research board` : `Start researching ${h.ticker}`}>
       <div className="min-w-0">
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-[13px] font-semibold">{h.ticker}</span>
@@ -245,7 +245,7 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
       <StatusCell h={h} flags={flags} />
 
       <ChevronRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
-    </Link>
+    </RowLink>
   );
 }
 

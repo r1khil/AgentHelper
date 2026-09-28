@@ -1,4 +1,3 @@
-import { ScopedLink } from "@/components/app/shell/scope-context";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { HoldingRow } from "@/lib/attribution/attribution";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
@@ -6,6 +5,7 @@ import { Move } from "../move";
 import { EXPLAIN } from "./explainers";
 import { bps, fmtWeight, pct } from "./format";
 import { Tip } from "./info-tip";
+import { RowLink } from "@/components/app/row-link";
 
 export type TeamLookup = Map<string, { name: string; slug: string }>;
 
@@ -30,7 +30,7 @@ export function ContributorsTable({ rows, teams, showTeam = true }: { rows: Hold
               <TableRow key={h.ticker}>
                 <TableCell className="pl-4">
                   <div className="flex min-w-0 items-baseline gap-2">
-                    {team ? <ScopedLink owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} className="font-mono font-semibold hover:underline">{h.ticker}</ScopedLink> : <span className="font-mono font-semibold">{h.ticker}</span>}
+                    {team ? <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} className="font-mono font-semibold hover:underline">{h.ticker}</RowLink> : <span className="font-mono font-semibold">{h.ticker}</span>}
                     <span className="max-w-64 truncate text-ink-2">{h.name}</span>
                   </div>
                 </TableCell>

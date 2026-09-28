@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { fmtDate, relativeTime } from "@/lib/format";
 import { PanelHeader, Pill } from "@/components/app/panel";
 import { Button } from "@/components/ui/button";
+import { RowLink } from "@/components/app/row-link";
 
 const ROW = "flex items-center gap-3 border-b border-row px-4 last:border-b-0";
 
@@ -39,7 +40,7 @@ export function ResearchTab({ ticker, chats, boardHref }: { ticker: string; chat
         <ul className="min-h-0 flex-1">
           {chats.map((c) => (
             <li key={c.id} className="border-b border-row last:border-b-0">
-              <Link href={c.href} className="flex h-[52px] items-center gap-3 px-4 transition-colors hover:bg-band">
+              <RowLink href={c.href} className="flex h-[52px] items-center gap-3 px-4 transition-colors hover:bg-band">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{c.title}</span>
                   <span className="block truncate text-xs text-muted-foreground">
@@ -48,7 +49,7 @@ export function ResearchTab({ ticker, chats, boardHref }: { ticker: string; chat
                 </span>
                 {c.running && <Pill tone="hoot">Answering…</Pill>}
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">{relativeTime(c.updatedAt)}</span>
-              </Link>
+              </RowLink>
             </li>
           ))}
         </ul>
@@ -138,7 +139,7 @@ export function DocumentsTab({
             <ul>
               {models.map((m) => (
                 <li key={m.id} className="border-b border-row last:border-b-0">
-                  <Link href={m.href} className="flex h-11 items-center gap-3 px-4 transition-colors hover:bg-band">
+                  <RowLink href={m.href} className="flex h-11 items-center gap-3 px-4 transition-colors hover:bg-band">
                     <Tag>v{m.version}</Tag>
                     <span className="min-w-0 flex-1 truncate text-sm">{m.fileName}</span>
                     {m.pending > 0 && <Pill>{m.pending} to review</Pill>}
@@ -146,7 +147,7 @@ export function DocumentsTab({
                       {m.uploader ? `${m.uploader} · ` : ""}
                       <span className="font-mono">{fmtDate(m.createdAt)}</span>
                     </span>
-                  </Link>
+                  </RowLink>
                 </li>
               ))}
             </ul>
@@ -259,7 +260,7 @@ export function EarningsTab({ rows, calendarHref }: { rows: EarningsRow[]; calen
             <span>Status</span>
           </div>
           {rows.map((r) => (
-            <Link key={r.id} href={r.href} className="grid h-10 grid-cols-[120px_minmax(0,1fr)_110px_120px_150px_90px] items-center gap-3 border-b border-row px-4 text-sm transition-colors last:border-b-0 hover:bg-band">
+            <RowLink key={r.id} href={r.href} className="grid h-10 grid-cols-[120px_minmax(0,1fr)_110px_120px_150px_90px] items-center gap-3 border-b border-row px-4 text-sm transition-colors last:border-b-0 hover:bg-band">
               <span className="font-mono text-[13px]">{fmtDate(r.date)}</span>
               <span className="truncate text-ink-2">{r.when || "—"}</span>
               <span className="truncate font-mono text-[13px] text-ink-2">{r.period ?? "—"}</span>
@@ -276,7 +277,7 @@ export function EarningsTab({ rows, calendarHref }: { rows: EarningsRow[]; calen
                 )}
               </span>
               <span className="text-[13px] text-muted-foreground">{STATUS[r.status]}</span>
-            </Link>
+            </RowLink>
           ))}
         </div>
       )}

@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Panel, PanelHeader } from "@/components/app/panel";
 import type { ListStatus } from "./timeline";
+import { RowLink } from "@/components/app/row-link";
 
 export type SavedCallRow = { id: string; href: string; ticker: string; title: string; meta: string; status: ListStatus };
 
@@ -45,7 +45,7 @@ export function SellSideLayout({
                   const selected = c.id === selectedId;
                   return (
                     <li key={c.id}>
-                      <Link
+                      <RowLink
                         href={c.href}
                         aria-current={selected ? "page" : undefined}
                         className={cn(
@@ -59,7 +59,7 @@ export function SellSideLayout({
                           <span className={cn("shrink-0 text-xs font-medium", TONE[c.status.tone])}>{c.status.label}</span>
                         </span>
                         <span className="mt-0.5 block truncate text-xs text-muted-foreground">{c.meta}</span>
-                      </Link>
+                      </RowLink>
                     </li>
                   );
                 })}

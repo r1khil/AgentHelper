@@ -15,6 +15,7 @@ import { Tip } from "./info-tip";
 import { INTERACTION_CLASS } from "./interaction-toggle";
 import { PeriodSelector } from "./period-selector";
 import { SectorEffectsList, type SectorEffectPoint } from "./sector-effects-list";
+import { RowLink } from "@/components/app/row-link";
 
 const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** "Sep 17", with the year only when it isn't the same as `other`'s. */
@@ -195,9 +196,9 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
         );
         const cls = cn("grid max-h-16 min-h-10 flex-1 items-center gap-2.5 border-b border-row px-4 text-[13.5px]", TEAM_COLS);
         return team ? (
-          <Link key={t.teamId} href={`/t/${team.slug}/attribution${query}`} className={cn(cls, "transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")}>
+          <RowLink key={t.teamId} href={`/t/${team.slug}/attribution${query}`} className={cn(cls, "transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")}>
             {cells}
-          </Link>
+          </RowLink>
         ) : (
           <div key="none" className={cls}>{cells}</div>
         );

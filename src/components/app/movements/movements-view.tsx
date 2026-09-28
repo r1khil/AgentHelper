@@ -12,6 +12,7 @@ import { MovementWorkspace, type EvidenceRow } from "./workspace";
 import { citationFor } from "./cite";
 import { KIND_LABEL, dueLabel, gatheredAt, movementPill, overdueLabel, sessionLong, sessionShort, sessionShortDateTime, wordCount } from "./format";
 import type { MovementDetailData, MovementEvidence, MovementListItem } from "./types";
+import { RowLink } from "@/components/app/row-link";
 
 /**
  * Movements as master–detail, filling the window: the list on the left, the selected movement on the right with
@@ -61,7 +62,7 @@ function MovementList({ items, selectedId, className }: { items: MovementListIte
           const on = i.id === selectedId;
           return (
             <li key={i.id}>
-              <Link
+              <RowLink
                 href={i.href}
                 aria-current={on ? "page" : undefined}
                 className={cn(
@@ -85,7 +86,7 @@ function MovementList({ items, selectedId, className }: { items: MovementListIte
                   {sessionShort(i.sessionDate)} · {i.ownerName ?? <span className="text-caution-foreground">Unassigned</span>}
                   {i.teamName && ` · ${i.teamName}`}
                 </div>
-              </Link>
+              </RowLink>
             </li>
           );
         })}
