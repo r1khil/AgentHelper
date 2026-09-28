@@ -124,6 +124,23 @@ export async function getEarningsDate(symbol: string): Promise<EarningsDate | nu
   });
 }
 
+/**
+ * Five-minute closes for one session (regular hours only), as UTC ISO times. Cached five minutes while the session can
+ * still move and a day once it is over, in the shared cache so every viewer of the Daily page reuses one fetch.
+ */
+export async function getIntradayBars(symbol: string, session: string, over: boolean): Promise<{ t: string; close: number }[]> {
+  const open = DateTime.fromISO(session, { zone: NY }).set({ hour: 9, minute: 30 });
+  return cached(`yahoo:intraday:5m:${symbol}:${session}:${over ? "final" : "live"}`, over ? 60 * 60 * 24 : 60 * 5, async () => {
+    const res = await spaced(HOST, GAP_MS, () =>
+      retry(() => yf().chart(symbol, { period1: open.toJSDate(), period2: open.set({ hour: 16, minute: 30 }).toJSDate(), interval: "5m", includePrePost: false })),
+    );
+    return (res.quotes ?? [])
+      .filter((q) => q.close !== null && q.close !== undefined && DateTime.fromJSDate(q.date).setZone(NY).toISODate() === session)
+      // A bar is stamped at its start; its close is the price five minutes later.
+      .map((q) => ({ t: new Date(Math.min(q.date.getTime() + 5 * 60_000, Date.now())).toISOString(), close: q.close as number }));
+  });
+}
+
 export type BarsRange = {
   bars: { date: string; close: number }[];
   dividends: { date: string; amount: number }[];

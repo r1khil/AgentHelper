@@ -5,12 +5,13 @@ import { getSectorProfile, lookupCompany } from "@/lib/providers/yahoo";
 import { pickCompanyName } from "@/lib/company-name";
 import type { Db } from "@/lib/prices";
 import { FACTOR_ETFS } from "@/lib/risk/factor-symbols";
-import type { AttributionSeries } from "./attribution";
-import { buildBenchmarkDays } from "./benchmark";
 import { STRESS_HISTORY_FROM } from "@/lib/risk/stress";
-import { adjustForSplits, buildPortfolioDays, latestPositions } from "./ledger";
-import { BENCHMARK_REFERENCE, INDEX_REFERENCE, benchmarkSymbols, defaultSector, type GicsSector } from "./sectors";
-import type { BenchmarkQuality, BenchmarkWeightSet, CashFlow, DateSeries, LedgerQuality, Split, Trade } from "./types";
+import { latestPositions } from "./ledger";
+import { buildSeries, type LoadedSeries, type SeriesInputs } from "./series";
+
+export { buildSeries, type LoadedSeries, type SeriesInputs };
+import { benchmarkSymbols, defaultSector, type GicsSector } from "./sectors";
+import type { BenchmarkWeightSet, CashFlow, DateSeries, Split, Trade } from "./types";
 
 /** Days of closes kept before inception so first-day returns have a prior close. */
 export const HISTORY_MARGIN_DAYS = 10;
@@ -18,23 +19,6 @@ export const HISTORY_MARGIN_DAYS = 10;
 export const RISK_HISTORY_DAYS = 760;
 /** 13-week Treasury bill yield, the Risk page's risk-free rate. */
 export const RISK_FREE_SYMBOL = "^IRX";
-
-export type LoadedSeries = {
-  series: AttributionSeries;
-  /** First ledger date; null when nothing has been recorded. */
-  inception: string | null;
-  /** Last valuation day; null until prices are loaded. */
-  latest: string | null;
-  weightSets: BenchmarkWeightSet[];
-  /** Reference index total return by date, for the methodology footnote. */
-  reference: Map<string, number>;
-  referenceDividends: Map<string, number>;
-  /** S&P 500 index closes by date, for the headline comparison. */
-  index: Map<string, number>;
-  quality: { ledger: LedgerQuality; benchmark: BenchmarkQuality };
-  /** The raw inputs the series was built from (references, not copies), for data lineage. */
-  inputs: { prices: DateSeries; dividends: DateSeries; splits: Split[]; days: string[] };
-};
 
 function put(series: DateSeries, ticker: string, date: string, value: number) {
   let m = series.get(ticker);
@@ -68,8 +52,7 @@ export function priceHistoryFrom(inception: string, today = DateTime.now().toISO
   return [risk, historyFrom(inception), STRESS_HISTORY_FROM].sort()[0];
 }
 
-/** Everything the attribution engine needs, replayed from inception. Period-independent. */
-export async function loadSeries(db: Db, overrides?: { trades?: Trade[]; cashFlows?: CashFlow[] }): Promise<LoadedSeries> {
+export async function readSeriesInputs(db: Db, overrides?: { trades?: Trade[]; cashFlows?: CashFlow[] }): Promise<SeriesInputs> {
   const ledger = await loadLedger(db);
   const tradeList = overrides?.trades ?? ledger.trades;
   const flowList = overrides?.cashFlows ?? ledger.cashFlows;
@@ -82,20 +65,8 @@ export async function loadSeries(db: Db, overrides?: { trades?: Trade[]; cashFlo
     set.weights[w.sector] = Number(w.weightPct);
     byAsOf.set(w.asOf, set);
   }
-  const weightSets = [...byAsOf.values()];
-
-  const empty: LoadedSeries = {
-    series: { portfolio: [], benchmark: [], meta: new Map() },
-    inception,
-    latest: null,
-    weightSets,
-    reference: new Map(),
-    referenceDividends: new Map(),
-    index: new Map(),
-    quality: { ledger: { stale: [], unpriced: [], oversold: [] }, benchmark: { beforeFirstWeights: false, staleEtf: [] } },
-    inputs: { prices: new Map(), dividends: new Map(), splits: [], days: [] },
-  };
-  if (!inception) return empty;
+  const base = { trades: tradeList, cashFlows: flowList, inception, weightSets: [...byAsOf.values()] };
+  if (!inception) return { ...base, prices: new Map(), dividends: new Map(), splits: [], meta: new Map() };
 
   const symbols = [...new Set([...tradeList.map((t) => t.ticker), ...benchmarkSymbols()])];
   const from = historyFrom(inception);
@@ -116,30 +87,16 @@ export async function loadSeries(db: Db, overrides?: { trades?: Trade[]; cashFlo
     if (e.kind === "dividend" && e.amount) put(dividends, e.ticker, e.exDate, Number(e.amount));
     if (e.kind === "split" && e.ratio) splits.push({ ticker: e.ticker, date: e.exDate, ratio: Number(e.ratio) });
   }
-
-  // A valuation day is one the reference index closed on.
-  const reference = prices.get(BENCHMARK_REFERENCE) ?? new Map<string, number>();
-  const daySet = new Set([...reference.keys()].filter((d) => d >= inception));
-  // A what-if replay (validating an edit) must see ledger dates that have no close yet.
-  if (overrides) for (const d of [...tradeList.map((t) => t.date), ...flowList.map((f) => f.date)]) daySet.add(d);
-  const days = [...daySet].sort();
-  if (!days.length) return { ...empty, reference, inputs: { prices, dividends, splits, days } };
-
-  const portfolio = buildPortfolioDays({ trades: adjustForSplits(tradeList, splits), cashFlows: flowList, prices, dividends, days });
-  const benchmark = buildBenchmarkDays(weightSets, prices, dividends, days);
   const meta = new Map(securityRows.map((s) => [s.ticker, { ticker: s.ticker, name: s.name, sector: s.sector, teamId: s.teamId }]));
+  return { ...base, prices, dividends, splits, meta };
+}
 
-  return {
-    series: { portfolio: portfolio.days, benchmark: benchmark.days, meta },
-    inception,
-    latest: days.at(-1)!,
-    weightSets,
-    reference,
-    referenceDividends: dividends.get(BENCHMARK_REFERENCE) ?? new Map(),
-    index: prices.get(INDEX_REFERENCE) ?? new Map(),
-    quality: { ledger: portfolio.quality, benchmark: benchmark.quality },
-    inputs: { prices, dividends, splits, days },
-  };
+/** Everything the attribution engine needs, replayed from inception. Period-independent. */
+export async function loadSeries(db: Db, overrides?: { trades?: Trade[]; cashFlows?: CashFlow[] }): Promise<LoadedSeries> {
+  const raw = await readSeriesInputs(db, overrides);
+  // A what-if replay (validating an edit) must see ledger dates that have no close yet.
+  const extraDays = overrides ? [...raw.trades.map((t) => t.date), ...raw.cashFlows.map((f) => f.date)] : [];
+  return buildSeries(raw, { extraDays });
 }
 
 /** Symbols the price job maintains: everything ever traded, the benchmark ETFs, the risk-free rate and the factor ETFs. */

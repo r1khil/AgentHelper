@@ -12,9 +12,9 @@ export function scopeSlugFromPath(pathname: string): string | null {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
-/** The fund's own book pages (Attribution, Risk, Exposure and the ledger) live outside /t/ and are always the fund. */
+/** The fund's own book pages (Attribution, Daily, Risk, Exposure and the ledger) live outside /t/ and are always the fund. */
 export function isFundBookPath(pathname: string): boolean {
-  return /^\/(attribution|risk|exposure)(\/|$)/.test(pathname);
+  return /^\/(attribution|daily|risk|exposure)(\/|$)/.test(pathname);
 }
 
 /** Whether this member can view `slug`: the fund for execs and admins, or one of their teams. */

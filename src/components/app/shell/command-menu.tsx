@@ -275,7 +275,7 @@ function ItemRow({ item }: { item: Item }) {
 function PageIcon({ label }: { label: string }) {
   const cls = "size-4 shrink-0 text-muted-foreground";
   if (/calendar|earnings/i.test(label)) return <CalendarDays className={cls} />;
-  if (/attribution|risk|exposure|backtesting|ledger/i.test(label)) return <ChartColumn className={cls} />;
+  if (/attribution|daily|risk|exposure|backtesting|ledger/i.test(label)) return <ChartColumn className={cls} />;
   return <ArrowRight className={cls} />;
 }
 

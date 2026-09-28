@@ -81,6 +81,7 @@ describe("pathScope", () => {
   });
   it("treats the fund's book pages as the fund, for execs and admins", () => {
     expect(isFundBookPath("/attribution/ledger")).toBe(true);
+    expect(isFundBookPath("/daily")).toBe(true);
     expect(isFundBookPath("/riskier")).toBe(false);
     expect(pathScope("/risk", teams, true)).toBe("fund");
     expect(pathScope("/risk", teams, false)).toBeNull();

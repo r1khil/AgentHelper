@@ -17,6 +17,8 @@ describe("sectionFor", () => {
     expect(sectionFor("/t/fund/economic-calendar")).toBe("calendar");
     expect(sectionFor("/attribution/ledger")).toBe("portfolio");
     expect(sectionFor("/t/tech/risk")).toBe("portfolio");
+    expect(sectionFor("/daily")).toBe("portfolio");
+    expect(sectionFor("/t/tech/daily")).toBe("portfolio");
     expect(sectionFor("/backtesting")).toBe("portfolio");
     expect(sectionFor("/weekly/2026-09-25")).toBe("manage");
     expect(sectionFor("/admin/pt-sheet")).toBe("manage");
@@ -85,8 +87,14 @@ describe("navModel", () => {
 
   it("keeps team book pages under the team", () => {
     const nav = navModel({ pathname: "/t/tech/risk", scope: { slug: "tech" }, fundWide: true, seesBook: true });
-    expect(nav.tabs.map((t) => t.href)).toEqual(["/t/tech/attribution", "/t/tech/risk", "/t/tech/exposure", "/backtesting"]);
+    expect(nav.tabs.map((t) => t.href)).toEqual(["/t/tech/attribution", "/t/tech/daily", "/t/tech/risk", "/t/tech/exposure", "/backtesting"]);
     expect(nav.tabs.find((t) => t.active)?.key).toBe("risk");
+  });
+
+  it("puts Daily next to Attribution and marks it active", () => {
+    const nav = navModel({ pathname: "/daily", ...exec });
+    expect(nav.tabs.map((t) => t.key)).toEqual(["attribution", "daily", "risk", "exposure", "backtesting"]);
+    expect(nav.tabs.find((t) => t.active)?.key).toBe("daily");
   });
 
   it("shows a general chat under Research › Chats", () => {
@@ -112,6 +120,6 @@ describe("navModel", () => {
 describe("destinations", () => {
   it("names pages the way Hoot's commands do", () => {
     const names = destinations(exec).map((d) => d.hoot).filter(Boolean);
-    expect(names).toEqual(expect.arrayContaining(["Today", "Holdings", "Research", "Sell-side calls", "Models", "Movements", "Earnings", "Economic calendar", "Attribution", "Risk", "Exposure", "Backtesting", "Weekly update", "Changelog", "Admin"]));
+    expect(names).toEqual(expect.arrayContaining(["Today", "Holdings", "Research", "Sell-side calls", "Models", "Movements", "Earnings", "Economic calendar", "Attribution", "Daily performance", "Risk", "Exposure", "Backtesting", "Weekly update", "Changelog", "Admin"]));
   });
 });

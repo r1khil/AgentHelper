@@ -40,7 +40,7 @@ const TITLES: Record<RailKey, string> = {
 export function sectionFor(pathname: string): RailKey | null {
   if (pathname === "/") return "today";
   if (/^\/hoot(\/|$)/.test(pathname)) return "research";
-  if (/^\/(attribution|risk|exposure|backtesting)(\/|$)/.test(pathname)) return "portfolio";
+  if (/^\/(attribution|daily|risk|exposure|backtesting)(\/|$)/.test(pathname)) return "portfolio";
   if (/^\/(weekly|changelog|admin)(\/|$)/.test(pathname)) return "manage";
   const m = pathname.match(/^\/t\/[^/]+(?:\/([^/]+))?/);
   if (!m) return null;
@@ -57,6 +57,7 @@ export function sectionFor(pathname: string): RailKey | null {
     case "economic-calendar":
       return "calendar";
     case "attribution":
+    case "daily":
     case "risk":
     case "exposure":
       return "portfolio";
@@ -99,6 +100,7 @@ export function navModel({ pathname, scope, fundWide, seesBook }: NavInput): Nav
       if (seesBook && bookBase !== null) {
         list.push(
           { key: "attribution", label: "Attribution", href: `${bookBase}/attribution` },
+          { key: "daily", label: "Daily", href: `${bookBase}/daily` },
           { key: "risk", label: "Risk", href: `${bookBase}/risk` },
           { key: "exposure", label: "Exposure", href: `${bookBase}/exposure` },
         );
@@ -166,6 +168,7 @@ export function destinations({ scope, fundWide, seesBook }: Omit<NavInput, "path
   if (book) {
     out.push(
       { label: "Attribution", hoot: "Attribution", href: `${bookBase}/attribution`, hint: "Where the return came from", keywords: "portfolio performance" },
+      { label: "Daily performance", hoot: "Daily performance", href: `${bookBase}/daily`, hint: "Today's return and attribution, live", keywords: "today intraday live daily delta pt sheet" },
       { label: "Risk", hoot: "Risk", href: `${bookBase}/risk`, hint: "Volatility, tracking error, stress tests", keywords: "var beta stress" },
       { label: "Exposure", hoot: "Exposure", href: `${bookBase}/exposure`, hint: "Sector weights and factor tilts", keywords: "sectors factors etf" },
     );
