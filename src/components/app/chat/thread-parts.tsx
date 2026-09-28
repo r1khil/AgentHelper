@@ -233,6 +233,11 @@ export function UserBubble({ children, page }: { children: ReactNode; page?: Pag
   );
 }
 
+/** Where a job, not a member, asked (a call brief): a quiet label in place of the question bubble. */
+export function PromptLabel({ children }: { children: ReactNode }) {
+  return <div className="text-[12px] font-medium text-muted-foreground">{children}</div>;
+}
+
 /** The conversation's header row: ticker, title and meta on the left, actions (Trace, etc.) on the right. */
 export function ThreadHeader({ ticker, title, meta, children }: { ticker?: string; title: string; meta?: ReactNode; children?: ReactNode }) {
   return (
