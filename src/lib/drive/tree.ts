@@ -127,6 +127,29 @@ export function matchHolding(folderName: string, holdings: HoldingRef[], preferT
   return ids.size === 1 ? candidates[0] : null;
 }
 
+/** Every all-caps "(TICKER)" in a name: "Amazon.com, Inc. (AMZN)_Valuation Workbook (14-Oct-2025).xlsx" → ["AMZN"]. */
+export function namedTickers(name: string): string[] {
+  return [...name.matchAll(/\(([A-Z][A-Z0-9.\-]{0,9})\)/g)].map((m) => m[1]);
+}
+
+/**
+ * The holding an item's own name points at when it contradicts the company folder it sits in. The Fund files things
+ * as "Company (TICKER)_Document", so an Amazon workbook kept in Meta's "Old Models" folder belongs to AMZN, not META.
+ * Only an explicit all-caps "(TICKER)" that resolves to a different holding counts: a name that also carries the
+ * folder's own ticker, or whose parentheses match no holding ("(FINAL)", an unheld peer), keeps the folder's answer.
+ */
+export function namedHoldingOverride(name: string, folderTicker: string | null, holdings: HoldingRef[], preferTeamId?: string | null): HoldingRef | null {
+  if (!folderTicker) return null;
+  const named = namedTickers(name);
+  if (!named.length || named.some((t) => tickerMatches(t, folderTicker))) return null;
+  let candidates = holdings.filter((h) => named.some((t) => tickerMatches(t, h.ticker)));
+  if (candidates.length > 1 && preferTeamId) {
+    const preferred = candidates.filter((h) => h.teamId === preferTeamId);
+    if (preferred.length) candidates = preferred;
+  }
+  return new Set(candidates.map((c) => c.id)).size === 1 ? candidates[0] : null;
+}
+
 const XLSX_MIMES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel.sheet.macroEnabled.12",
@@ -145,7 +168,9 @@ export function inferKind(name: string, mimeType: string): DriveDocKind {
  * Walk each item's ancestor chain from the root down. The depth-1 folder names the team (sector); the first folder at
  * any depth that resolves to a holding assigns the ticker to everything beneath it. Folders that carry a "(TICKER)"
  * but match no active holding keep the ticker so the files surface as soon as the holding is added, and are reported
- * as unmatched. Structural folders (sub-sectors, "Current Holdings", semesters) are simply passed through.
+ * as unmatched. Structural folders (sub-sectors, "Current Holdings", semesters) are simply passed through. Below a
+ * company folder, a file or folder whose own name carries another holding's "(TICKER)" goes to that holding instead
+ * (see namedHoldingOverride).
  */
 export function classifyTree(rootId: string, items: DriveItem[], holdings: HoldingRef[], teams: TeamRef[]): { items: ClassifiedItem[]; unmatched: string[] } {
   const pathed = buildPaths(rootId, items);
@@ -161,7 +186,13 @@ export function classifyTree(rootId: string, items: DriveItem[], holdings: Holdi
     let ticker = parentInfo?.ticker ?? null;
     let holdingId = parentInfo?.holdingId ?? null;
 
-    if (!holdingId) {
+    if (holdingId) {
+      const named = namedHoldingOverride(p.name, ticker, holdings, teamId);
+      if (named) {
+        holdingId = named.id;
+        ticker = named.ticker;
+      }
+    } else {
       const team = p.depth === 1 ? matchTeam(p.name, teams) : null;
       if (team) teamId = team.id;
       else {
@@ -186,11 +217,12 @@ export function classifyTree(rootId: string, items: DriveItem[], holdings: Holdi
 
   const out: ClassifiedItem[] = pathed.map((p) => {
     const info = p.isFolder ? folderInfo.get(p.id) : p.parentId && p.parentId !== rootId ? folderInfo.get(p.parentId) : undefined;
+    const named = p.isFolder ? null : namedHoldingOverride(p.name, info?.ticker ?? null, holdings, info?.teamId);
     return {
       ...p,
       teamId: info?.teamId ?? null,
-      ticker: info?.ticker ?? null,
-      holdingId: info?.holdingId ?? null,
+      ticker: named?.ticker ?? info?.ticker ?? null,
+      holdingId: named?.id ?? info?.holdingId ?? null,
       kind: p.isFolder ? null : inferKind(p.name, p.mimeType),
     };
   });

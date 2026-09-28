@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { DateTime } from "luxon";
 import { RefreshCw } from "lucide-react";
-import { refreshChangelog, regenerateEntry } from "@/lib/actions/changelog";
+import { refreshChangelog } from "@/lib/actions/changelog";
 import { EmptyState } from "@/components/app/empty-state";
 import { Panel, Pill } from "@/components/app/panel";
 import { Button } from "@/components/ui/button";
+import { EntryMenu } from "./entry-menu";
 import { ReplayTourLink } from "./replay-tour-link";
 import { fmtDate, fmtDay } from "@/lib/format";
 
@@ -61,9 +62,9 @@ export function ChangelogView({ entries, isAdmin, status, now }: ChangelogViewPr
         ) : (
           <ol className="flex flex-1 flex-col">
             {entries.map((e) => (
-              <li key={e.prNumber} className="grid min-h-[76px] flex-1 grid-cols-[96px_minmax(0,1fr)_auto] items-center gap-4 border-b border-row px-5 py-3 last:border-b-0">
+              <li key={e.prNumber} className="grid grid-cols-[96px_minmax(0,1fr)_auto] items-start gap-4 border-b border-row px-5 py-3.5 last:border-b-0">
                 <div className="min-w-0">
-                  <time dateTime={e.mergedAt} title={fmtDate(e.mergedAt)} className="block font-mono text-caption text-muted-foreground">
+                  <time dateTime={e.mergedAt} title={fmtDate(e.mergedAt)} className="block pt-0.5 font-mono text-caption text-muted-foreground">
                     {fmtDay(e.mergedAt)}
                   </time>
                   <div className="mt-0.5 truncate text-caption text-muted-foreground" title={`Merged by ${e.author}`}>
@@ -81,7 +82,7 @@ export function ChangelogView({ entries, isAdmin, status, now }: ChangelogViewPr
                   </div>
                   <p className="mt-0.5 text-body leading-[1.45] text-ink-2">{e.summary}</p>
                 </div>
-                <div className="flex items-center gap-2.5 justify-self-end">
+                <div className="-mt-0.5 flex items-center gap-1.5 justify-self-end">
                   {isAdmin ? (
                     <a href={e.url} target="_blank" rel="noreferrer" className="font-mono text-caption text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
                       #{e.prNumber}
@@ -89,14 +90,7 @@ export function ChangelogView({ entries, isAdmin, status, now }: ChangelogViewPr
                   ) : (
                     <span className="font-mono text-caption text-muted-foreground">#{e.prNumber}</span>
                   )}
-                  {isAdmin && (
-                    <form action={regenerateEntry}>
-                      <input type="hidden" name="prNumber" value={e.prNumber} />
-                      <button type="submit" className="rounded-full px-1 text-caption font-medium text-ink-2 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
-                        Regenerate
-                      </button>
-                    </form>
-                  )}
+                  {isAdmin && <EntryMenu prNumber={e.prNumber} headline={e.headline} />}
                 </div>
               </li>
             ))}

@@ -34,6 +34,19 @@ export async function upsertDriveDocuments(files: DriveDocInput[]) {
       .update(driveFiles)
       .set({ documentId: sql`${driveFiles.id}` })
       .where(inArray(driveFiles.id, slice.map((f) => f.id)));
+    // Chunks carry the holding and ticker for filtered search. A file that moved to another holding without being
+    // edited is not re-embedded, so bring its chunks along here; rows that already agree are not touched.
+    await db
+      .update(documentChunks)
+      .set({ holdingId: sql`${documents.holdingId}`, ticker: sql`${documents.ticker}` })
+      .from(documents)
+      .where(
+        and(
+          eq(documentChunks.documentId, documents.id),
+          inArray(documents.id, slice.map((f) => f.id)),
+          sql`(${documentChunks.holdingId} is distinct from ${documents.holdingId} or ${documentChunks.ticker} is distinct from ${documents.ticker})`,
+        ),
+      );
   }
 }
 

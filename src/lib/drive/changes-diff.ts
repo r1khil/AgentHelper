@@ -1,5 +1,5 @@
 import type { DriveChange } from "./changes";
-import { FOLDER_MIME, SHORTCUT_MIME, inferKind, matchHolding, matchTeam, parenthesizedTicker, type DriveDocKind, type HoldingRef, type TeamRef } from "./tree";
+import { FOLDER_MIME, SHORTCUT_MIME, inferKind, matchHolding, matchTeam, namedHoldingOverride, parenthesizedTicker, type DriveDocKind, type HoldingRef, type TeamRef } from "./tree";
 
 /** What the incremental sync knows about an indexed row. Pure module. */
 export type IndexedRow = {
@@ -90,9 +90,14 @@ export function applyChanges(p: { rootId: string; changes: DriveChange[]; existi
 
     let holdingId = parentRow?.holdingId ?? null;
     let ticker = parentRow?.ticker ?? null;
-    if (isFolder && !holdingId) {
+    const teamId = matchTeam(path.split("/")[0], p.teams)?.id ?? null;
+    // Same rule as the full crawl: a name carrying another holding's "(TICKER)" overrides the company folder.
+    const named = (!isFolder || holdingId) && namedHoldingOverride(file.name, ticker, p.holdings, teamId);
+    if (named) {
+      holdingId = named.id;
+      ticker = named.ticker;
+    } else if (isFolder && !holdingId) {
       const depth = path.split("/").length;
-      const teamId = matchTeam(path.split("/")[0], p.teams)?.id ?? null;
       if (depth > 1 || !matchTeam(file.name, p.teams)) {
         const h = matchHolding(file.name, p.holdings, teamId);
         if (h) {
