@@ -8,11 +8,11 @@ import type { RiskReport } from "@/lib/risk/model";
 import { cn } from "@/lib/utils";
 import { InfoTip } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "../risk/explainers";
-import { rpct } from "../risk/format";
+import { rnum, rpct } from "../risk/format";
 import type { TeamNames } from "../risk/holdings-risk-table";
 
-/** Active weight in percentage points without the unit, e.g. "+3.4", as in the sector and bets columns. */
-const activePp = (v: number | null) => (v === null ? "—" : `${v * 100 > 0.05 ? "+" : ""}${(v * 100).toFixed(1)}`);
+/** Active weight in basis points without the unit, e.g. "340" or "(125)"; the column or panel header names the unit. */
+const activeBp = (v: number | null) => rnum(v === null ? null : v * 10_000, 0);
 const tone = (v: number | null) => (v === null || Math.abs(v) < 5e-4 ? "text-muted-foreground" : v > 0 ? "text-up" : "text-down");
 
 /** Paired bars per sector: the portfolio (ink, 8px) over the benchmark (6px), with the active weight on the right. */
@@ -36,7 +36,7 @@ export function SectorWeightsPanel({ x, benchShort, className }: { x: Exposure; 
         <span>Sector</span>
         <span />
         <span className="flex items-center justify-end gap-1">
-          Active
+          Active, bp
           <InfoTip label="active weight">{RISK_EXPLAIN.activeWeight}</InfoTip>
         </span>
       </div>
@@ -51,7 +51,7 @@ export function SectorWeightsPanel({ x, benchShort, className }: { x: Exposure; 
             <div className="h-2 rounded-[2px] bg-foreground" style={{ width: w(s.weight) }} />
             {s.benchWeight !== null && <div className="h-1.5 rounded-[2px] bg-bench-bar" style={{ width: w(s.benchWeight) }} />}
           </div>
-          <span className={cn("text-right font-mono text-[12.5px] font-semibold", tone(s.active))}>{activePp(s.active)}</span>
+          <span className={cn("text-right font-mono text-[12.5px] font-semibold", tone(s.active))}>{activeBp(s.active)}</span>
         </div>
       ))}
     </Panel>
@@ -83,7 +83,7 @@ export function ActiveBetsPanel({ report: r, x, lookthrough, teams, benchShort, 
     const rows = lt.report.active.rows.slice(0, 6);
     return (
       <Panel id="stock-active" className={cn("scroll-mt-4", className)}>
-        {header(`vs ${lt.benchmarkLabel === "SPY" ? "S&P 500" : (lt.benchmarkLabel ?? benchShort)} weight`)}
+        {header(`vs ${lt.benchmarkLabel === "SPY" ? "S&P 500" : (lt.benchmarkLabel ?? benchShort)} weight, bp`)}
         {rows.map((b) => {
           const h = held.get(b.key);
           const team = h?.teamId ? teams.get(h.teamId) : undefined;
@@ -99,7 +99,7 @@ export function ActiveBetsPanel({ report: r, x, lookthrough, teams, benchShort, 
               <span className="truncate text-ink-2">{note}</span>
               <span className="text-right font-mono text-[12.5px]">{rpct(b.fund)}</span>
               <span className="text-right font-mono text-[12.5px] text-muted-foreground">{rpct(b.benchmark)}</span>
-              <span className={cn("text-right font-mono text-[12.5px] font-semibold", tone(b.active))}>{activePp(b.active)}</span>
+              <span className={cn("text-right font-mono text-[12.5px] font-semibold", tone(b.active))}>{activeBp(b.active)}</span>
             </div>
           );
         })}
@@ -111,14 +111,14 @@ export function ActiveBetsPanel({ report: r, x, lookthrough, teams, benchShort, 
   const bets = x.sectors.filter((s) => s.key !== "cash" && s.active !== null).sort((a, b) => Math.abs(b.active!) - Math.abs(a.active!)).slice(0, 6);
   return (
     <Panel id="stock-active" className={cn("scroll-mt-4", className)}>
-      {header(`by sector · vs ${benchShort} weight`)}
+      {header(`by sector · vs ${benchShort} weight, bp`)}
       {bets.map((s) => (
         <div key={s.key} className={cn(COLS, "min-h-10 border-b border-row text-[13.5px] last:border-b-0")} title={s.tickers.join(", ")}>
           <span className="truncate font-mono text-[13px] font-semibold">{s.etf ?? "—"}</span>
           <span className="truncate text-ink-2">{s.label}</span>
           <span className="text-right font-mono text-[12.5px]">{rpct(s.weight)}</span>
           <span className="text-right font-mono text-[12.5px] text-muted-foreground">{rpct(s.benchWeight)}</span>
-          <span className={cn("text-right font-mono text-[12.5px] font-semibold", tone(s.active))}>{activePp(s.active)}</span>
+          <span className={cn("text-right font-mono text-[12.5px] font-semibold", tone(s.active))}>{activeBp(s.active)}</span>
         </div>
       ))}
       {!bets.length && <div className="px-4 py-3 text-[13px] text-muted-foreground">Add S&amp;P 500 sector weights to compare against the benchmark.</div>}
@@ -159,7 +159,7 @@ export function FactorTiltsPanel({ report: r, className }: { report: RiskReport;
           <div
             key={x.key}
             className="grid h-9 shrink-0 grid-cols-[110px_minmax(0,1fr)_52px] items-center gap-3 border-b border-row px-4 text-[13.5px] last:border-b-0"
-            title={`${x.definition} · β ${formatBeta(b, 3, { signed: true })}, t ${x.c.t.toFixed(1)}${x.c.significant ? "" : " (not statistically clear)"}`}
+            title={`${x.definition} · β ${formatBeta(b, 3)}, t ${formatBeta(x.c.t, 1)}${x.c.significant ? "" : " (not statistically clear)"}`}
           >
             <span className="truncate">{x.label}</span>
             <div className="relative h-2.5 rounded-[3px] bg-muted" aria-hidden>
@@ -169,7 +169,7 @@ export function FactorTiltsPanel({ report: r, className }: { report: RiskReport;
                 style={{ left: b < 0 ? `${50 - half}%` : "50%", width: `${half}%`, background: "color-mix(in oklch, var(--series-1) 80%, transparent)", opacity: x.c.significant ? 1 : 0.4 }}
               />
             </div>
-            <span className={cn("text-right font-mono text-[12.5px]", !x.c.significant && "text-muted-foreground")}>{formatBeta(b, 2, { signed: true })}</span>
+            <span className={cn("text-right font-mono text-[12.5px]", !x.c.significant && "text-muted-foreground")}>{formatBeta(b, 2)}</span>
           </div>
         );
       })}

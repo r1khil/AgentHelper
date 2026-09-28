@@ -9,7 +9,7 @@ import { gatherResults, lockChecklist, markReviewed, rebuildPrepPack, requestEar
 import { canManageTeam } from "@/lib/auth";
 import { PrepPackCard } from "@/components/app/agent/prep-pack-card";
 import { agentConfigured } from "@/lib/agent/model";
-import { fmtCurrency, fmtDate, fmtDateTime, relativeTime } from "@/lib/format";
+import { fmtCurrency, fmtDateTime, fmtDay, relativeTime } from "@/lib/format";
 import { todayNY } from "@/lib/providers/calendar";
 import { Panel, Pill } from "@/components/app/panel";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -39,7 +39,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
   const rebuild = canManage && !reported && agentConfigured() ? (
     <form action={rebuildPrepPack}>
       <input type="hidden" name="id" value={e.id} />
-      <Button type="submit" size="sm" variant="outline" title="Gather the evidence again with the agent (one model run)">
+      <Button type="submit" size="sm" variant="outline" title="Have Hoot gather the evidence again (one model run)">
         <RefreshCw />
         {e.prepPack ? "Rebuild" : "Build prep pack"}
       </Button>
@@ -64,7 +64,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
           </Link>
           <span className="text-[15px] text-ink-2">{h.companyName}</span>
           <span className="font-mono text-[13px] text-muted-foreground">
-            {e.fiscalPeriod ? `${e.fiscalPeriod} earnings` : "Earnings"} · {fmtDate(e.reportDate)}
+            {e.fiscalPeriod ? `${e.fiscalPeriod} earnings` : "Earnings"} · {fmtDay(e.reportDate)}
             {e.reportHour ? ` ${e.reportHour.toUpperCase()}` : ""}
           </span>
           <Pill tone={e.dateStatus === "estimated" ? "caution" : "neutral"}>{e.dateStatus} date</Pill>
@@ -147,7 +147,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
           )}
           <div className="flex flex-1 flex-col">
             {!reported ? (
-              <p className="p-4 text-[13.5px] text-muted-foreground">Results can be gathered from {fmtDate(e.reportDate)}. The morning sweep also does this automatically.</p>
+              <p className="p-4 text-[13.5px] text-muted-foreground">Results can be gathered from {fmtDay(e.reportDate)}. The morning sweep also does this automatically.</p>
             ) : !actuals ? (
               <p className="p-4 text-[13.5px] text-muted-foreground">Not gathered yet. Click &ldquo;Gather results&rdquo; to pull the 8-K and press release from EDGAR.</p>
             ) : (

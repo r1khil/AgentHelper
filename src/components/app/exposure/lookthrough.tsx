@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Segmented } from "@/components/app/panel";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtDay } from "@/lib/format";
 import { SOURCE_LABELS } from "@/lib/lookthrough/parse";
 import { describeExposure, type ActiveName, type EtfCoverage, type LookthroughReport, type NameExposure } from "@/lib/risk/lookthrough";
 import { STALE_AFTER_DAYS, type LookthroughState } from "@/lib/risk/lookthrough-report";
@@ -10,9 +10,8 @@ import type { LookbackKey } from "@/lib/risk/model";
 import { cn } from "@/lib/utils";
 import { DivergingBar, MagnitudeBar } from "../attribution/bars";
 import { Explained } from "../attribution/info-tip";
-import { rpp } from "../risk/active-risk";
 import { RISK_EXPLAIN } from "../risk/explainers";
-import { rpct } from "../risk/format";
+import { rnum, rpct } from "../risk/format";
 import { Source, Step, Working } from "../risk/working";
 import type { SectorBet } from "@/lib/risk/exposure";
 import { Move } from "../move";
@@ -56,8 +55,6 @@ export function SectorViewToggle({ basePath, lookback, throughEtfs, available, e
   );
 }
 
-const pp = (v: number) => rpp(v * 100, 1);
-const shortDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 /**
  * The look-through sections for the Exposure page: coverage per ETF, combined exposure per company, and stock-level
@@ -110,7 +107,7 @@ export function LookthroughSections({ state, scope, transparency, download, sect
               {lt.active.largestBet && (
                 <>
                   Largest bet by company: <span className="font-mono font-semibold text-foreground">{lt.active.largestBet.key}</span>{" "}
-                  <Move value={lt.active.largestBet.active * 100} unit=" pp" digits={1} /> ({rpct(lt.active.largestBet.fund)} vs {rpct(lt.active.largestBet.benchmark)}).{" "}
+                  <Move value={lt.active.largestBet.active * 10_000} unit=" bp" digits={0} /> ({rpct(lt.active.largestBet.fund)} vs {rpct(lt.active.largestBet.benchmark)}).{" "}
                 </>
               )}
               <Explained label="Active Share">{RISK_EXPLAIN.activeShare}</Explained> {rpct(lt.active.activeShare)} vs {state.benchmarkLabel}&apos;s {lt.active.rows.filter((r) => r.benchmark > 0).length} companies; {rpct(lt.active.overlapWithBenchmark)} of the portfolio is in index names.
@@ -166,7 +163,7 @@ function EtfCoverageTable({ etfs, stale }: { etfs: EtfCoverage[]; stale: string[
                   {/* On a phone the as-of column is hidden, so the date and source sit under the ETF. */}
                   {e.asOf && e.source && (
                     <div className={cn("text-[11px] text-muted-foreground sm:hidden", isStale && "font-medium text-caution-foreground")}>
-                      {shortDate(e.asOf)} · {SOURCE_LABELS[e.source]}{isStale && " · stale"}
+                      {fmtDay(e.asOf)} · {SOURCE_LABELS[e.source]}{isStale && " · stale"}
                     </div>
                   )}
                 </TableCell>
@@ -180,7 +177,7 @@ function EtfCoverageTable({ etfs, stale }: { etfs: EtfCoverage[]; stale: string[
                 <TableCell className="hidden text-xs sm:table-cell">
                   {e.asOf && e.source ? (
                     <>
-                      <span className={cn(isStale && "font-medium text-caution-foreground")}>{shortDate(e.asOf)}{isStale && " · stale"}</span>
+                      <span className={cn(isStale && "font-medium text-caution-foreground")}>{fmtDay(e.asOf)}{isStale && " · stale"}</span>
                       <div className="text-[11px] text-muted-foreground">{SOURCE_LABELS[e.source]}</div>
                     </>
                   ) : (
@@ -305,7 +302,7 @@ function StockActiveTables({ rows, benchmarkLabel }: { rows: ActiveName[]; bench
           <TableRow>
             <TableHead>{title}</TableHead>
             <TableHead className="text-right">Portfolio · {benchmarkLabel}</TableHead>
-            <TableHead className="text-right">Active</TableHead>
+            <TableHead className="text-right">Active, bp</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -321,7 +318,7 @@ function StockActiveTables({ rows, benchmarkLabel }: { rows: ActiveName[]; bench
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
                   <DivergingBar value={r.active} max={max} className="hidden w-12 sm:flex" />
-                  <span className="w-14 text-right font-mono text-xs sm:w-16">{pp(r.active)}</span>
+                  <span className="w-14 text-right font-mono text-xs sm:w-16">{rnum(r.active * 10_000, 0)}</span>
                 </div>
               </TableCell>
             </TableRow>

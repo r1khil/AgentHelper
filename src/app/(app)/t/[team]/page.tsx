@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DateTime } from "luxon";
-import { loadScope } from "@/lib/teams";
+import { getTeamBySlug, loadScope } from "@/lib/teams";
 import { holdingHref, scopeFor } from "@/lib/scope";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { listHoldingSignals, listRecentCloses, listTeamHoldings } from "@/lib/holdings";
@@ -12,11 +12,15 @@ import { AddHoldingDialog } from "@/components/app/add-holding-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HoldingsTable, type HoldingGroup, type HoldingListRow, type QuoteCells } from "@/components/app/holdings/holdings-table";
 import { HoldingsToolbar, MarketLine, parseHoldingFilter, type HoldingFilter } from "@/components/app/holdings/holdings-toolbar";
-import { attentionFlags, reportsWithin, shortDate } from "@/components/app/holdings/attention";
+import { attentionFlags, reportsWithin } from "@/components/app/holdings/attention";
+import { fmtDayMonth } from "@/lib/format";
 
 export async function generateMetadata({ params }: { params: Promise<{ team: string }> }): Promise<Metadata> {
-  const { team } = await params;
-  return { title: team === FUND_SCOPE_SLUG ? "Fund holdings" : team };
+  const { team: slug } = await params;
+  if (slug === FUND_SCOPE_SLUG) return { title: "Fund holdings" };
+  // The team's name, not its URL slug ("Consumer holdings", not "consumer"). The page itself checks access.
+  const team = await getTeamBySlug(slug);
+  return { title: team ? `${team.name} holdings` : "Holdings" };
 }
 
 export default async function TeamHoldingsPage({ params, searchParams }: { params: Promise<{ team: string }>; searchParams: Promise<{ filter?: string | string[] }> }) {
@@ -48,7 +52,7 @@ export default async function TeamHoldingsPage({ params, searchParams }: { param
       weightPct: h.weightPct == null ? null : Number(h.weightPct),
       shares: h.shares == null ? null : Number(h.shares),
       spark: closes.get(h.ticker) ?? [],
-      nextReport: next ? `${shortDate(next.reportDate)}${next.estimated ? " est." : ""}` : null,
+      nextReport: next ? `${fmtDayMonth(next.reportDate)}${next.estimated ? " est." : ""}` : null,
       flags: attentionFlags(
         { openMovement: s?.openMovement ?? null, nextReport: next, modelUpdates: s?.modelUpdates ?? 0, thesisProposed: s?.thesisProposed ?? false },
         // Flags link within the scope in view, like the row itself.

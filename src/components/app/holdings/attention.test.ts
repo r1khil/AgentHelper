@@ -1,5 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { attentionFlags, expectationsDue, reportsWithin } from "./attention";
+
+// Dates this year print without the year ("Tue 22 Sep"); pin the clock so these stay 2026's.
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-28T12:00:00Z"));
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 const ctx = { teamSlug: "tech", ticker: "NVDA", today: "2026-09-28", now: Date.parse("2026-09-28T15:00:00Z") };
 const none = { openMovement: null, nextReport: null, modelUpdates: 0, thesisProposed: false };
@@ -17,7 +26,7 @@ describe("attentionFlags", () => {
 
   it("flags expectations only for an unlocked report within two weeks", () => {
     const soon = { id: "e1", reportDate: "2026-10-06", reportHour: "bmo", locked: false };
-    expect(attentionFlags({ ...none, nextReport: soon }, ctx)).toEqual([{ tone: "caution", label: "Expectations due Oct 5", href: "/t/tech/earnings/e1" }]);
+    expect(attentionFlags({ ...none, nextReport: soon }, ctx)).toEqual([{ tone: "caution", label: "Expectations due Mon 5 Oct", href: "/t/tech/earnings/e1" }]);
     expect(attentionFlags({ ...none, nextReport: { ...soon, locked: true } }, ctx)).toEqual([]);
     expect(attentionFlags({ ...none, nextReport: { ...soon, reportDate: "2026-11-18" } }, ctx)).toEqual([]);
   });

@@ -7,10 +7,9 @@ import { applyLedgerImport, previewLedgerImport, type ImportPreview } from "@/li
 import { IMPORT_TEMPLATE } from "@/lib/attribution/csv";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { fmtDate, fmtMoney } from "@/lib/format";
+import { fmtDate, fmtNumber, fmtUsd } from "@/lib/format";
 
 type Ready = Extract<ImportPreview, { ok: true }>;
-const shares = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 4 });
 
 export function ImportDialog() {
   const [open, setOpen] = useState(false);
@@ -83,7 +82,7 @@ export function ImportDialog() {
                 {preview.newTickers.length > 0 && <li>New tickers: {preview.newTickers.join(", ")}. Sector and team are set automatically where possible.</li>}
                 {preview.errors.length === 0 && preview.trades + preview.cashFlows > 0 && (
                   <li>
-                    After import: {preview.positionsAfter} positions{preview.cashAfter !== null && `, cash $${fmtMoney(preview.cashAfter)}`}.
+                    After import: {preview.positionsAfter} positions{preview.cashAfter !== null && `, cash ${fmtUsd(preview.cashAfter)}`}.
                   </li>
                 )}
               </ul>
@@ -157,8 +156,8 @@ export function PositionChanges({ rows, afterLabel }: { rows: Ready["positionCha
           {rows.map((r) => (
             <tr key={r.ticker} className="border-t">
               <td className="px-3 py-1 font-medium">{r.ticker}</td>
-              <td className="tnum px-3 py-1 text-right">{shares(r.now)}</td>
-              <td className="tnum px-3 py-1 text-right">{shares(r.after)}</td>
+              <td className="tnum px-3 py-1 text-right">{fmtNumber(r.now)}</td>
+              <td className="tnum px-3 py-1 text-right">{fmtNumber(r.after)}</td>
             </tr>
           ))}
         </tbody>

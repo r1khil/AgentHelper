@@ -1,4 +1,5 @@
 import type { Position } from "./engine";
+import { fmtPct } from "@/lib/format";
 
 /** Where the money for an add comes from, or where the proceeds of a trim go. */
 export type Funding = { kind: "cash" } | { kind: "pro_rata" } | { kind: "ticker"; ticker: string };
@@ -23,27 +24,27 @@ export function applyTrade(positions: Position[], weights: Record<string, number
   const current = weights[target.id] ?? 0;
   const next = Math.min(1, Math.max(0, current + trade.changePp / 100));
   const delta = next - current;
-  if (Math.abs(delta) < EPS) throw new Error(`${target.ticker} is already at ${(current * 100).toFixed(2)}%.`);
+  if (Math.abs(delta) < EPS) throw new Error(`${target.ticker} is already at ${fmtPct(current * 100)}.`);
 
   const out = { ...weights, [target.id]: next };
   if (trade.funding.kind === "cash") {
     const cash = positions.find((p) => p.kind === "cash");
     if (!cash) throw new Error("This portfolio has no cash line.");
     const left = (out[cash.id] ?? 0) - delta;
-    if (left < -EPS) throw new Error(`Only ${((out[cash.id] ?? 0) * 100).toFixed(2)}% cash is available. Fund the rest pro rata or from a holding.`);
+    if (left < -EPS) throw new Error(`Only ${fmtPct((out[cash.id] ?? 0) * 100)} cash is available. Fund the rest pro rata or from a holding.`);
     out[cash.id] = Math.max(0, left);
   } else if (trade.funding.kind === "ticker") {
     const f = trade.funding;
     const source = positions.find((p) => p.ticker.toUpperCase() === f.ticker.toUpperCase());
     if (!source || source.id === target.id) throw new Error("Choose a different holding to fund the trade.");
     const left = (out[source.id] ?? 0) - delta;
-    if (left < -EPS) throw new Error(`${source.ticker} has only ${((out[source.id] ?? 0) * 100).toFixed(2)}% to sell.`);
+    if (left < -EPS) throw new Error(`${source.ticker} has only ${fmtPct((out[source.id] ?? 0) * 100)} to sell.`);
     out[source.id] = Math.max(0, left);
   } else {
     const others = positions.filter((p) => p.id !== target.id && p.kind !== "cash" && (out[p.id] ?? 0) > EPS);
     const pool = others.reduce((s, p) => s + out[p.id], 0);
     if (pool <= EPS) throw new Error("There are no other holdings to spread the trade across.");
-    if (delta > pool + EPS) throw new Error(`The other holdings total only ${(pool * 100).toFixed(2)}%.`);
+    if (delta > pool + EPS) throw new Error(`The other holdings total only ${fmtPct(pool * 100)}.`);
     for (const p of others) out[p.id] = Math.max(0, out[p.id] - (delta * out[p.id]) / pool);
   }
   return out;

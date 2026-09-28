@@ -146,13 +146,13 @@ describe("labels", () => {
   });
   it("formats the week across months and years", () => {
     expect(rangeLabel({ from: "2026-09-21", to: "2026-09-27" })).toBe(
-      "Sep 21 – 27, 2026",
+      "21 Sep 2026 – 27 Sep 2026",
     );
     expect(rangeLabel({ from: "2026-09-28", to: "2026-10-04" })).toBe(
-      "Sep 28 – Oct 4, 2026",
+      "28 Sep 2026 – 4 Oct 2026",
     );
     expect(rangeLabel({ from: "2026-12-28", to: "2027-01-03" })).toBe(
-      "Dec 28, 2026 – Jan 3, 2027",
+      "28 Dec 2026 – 3 Jan 2027",
     );
   });
 });

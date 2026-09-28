@@ -1,4 +1,5 @@
 import { addNote, deleteNote } from "@/lib/actions/holdings";
+import { fmtDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { CountChip } from "@/components/app/panel";
 import { Button } from "@/components/ui/button";
@@ -7,8 +8,9 @@ import { QuickNote } from "./quick-note";
 
 export type NoteItem = { id: string; body: string; authorName: string | null; createdAt: Date; canDelete: boolean };
 
+/** "Mon 28 Sep" (the app's day format), for note and feed metadata. */
 export function monthDay(d: Date) {
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" });
+  return fmtDay(d);
 }
 
 function initials(name: string | null) {

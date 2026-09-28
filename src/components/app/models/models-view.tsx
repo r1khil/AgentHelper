@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Download, FileDown } from "lucide-react";
 import { approveAllProposed, deleteMapping, generateProposals, writeApproved } from "@/lib/actions/models";
+import { fmtDate, fmtDay, fmtNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { CountChip, Panel, PanelFooter, PanelHeader } from "@/components/app/panel";
 import { Button } from "@/components/ui/button";
@@ -448,7 +449,7 @@ function MappingsPanel({ d }: { d: ModelDetailData }) {
                   </TableCell>
                   <TableCell className="font-mono text-[11.5px]">{mm.concept}</TableCell>
                   <TableCell className="text-xs">
-                    {mm.unit} · ÷{mm.scale.toLocaleString()}
+                    {mm.unit} · ÷{fmtNumber(mm.scale)}
                     {mm.sign === -1 ? " · sign flipped" : ""} · {mm.periodType}
                   </TableCell>
                   <TableCell className="font-mono text-[11.5px]">
@@ -488,14 +489,11 @@ function Banner({ tone, children }: { tone: "good" | "error"; children: React.Re
 
 // ---- small formatters ----
 
-function shortDate(d: Date) {
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" });
-}
+const shortDate = (d: Date) => fmtDay(d);
 
-function periodLabel(d: string) {
-  return new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
-}
+/** A fiscal period end, always with its year. */
+const periodLabel = (d: string) => fmtDate(d);
 
 function fmtValue(v: number | null) {
-  return v === null ? "—" : v.toLocaleString("en-US", { maximumFractionDigits: 4 });
+  return fmtNumber(v);
 }

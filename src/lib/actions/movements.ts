@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { holdings, movements, teams } from "@/db/schema";
 import { requireTeamAccess } from "@/lib/auth";
+import { fmtBp, fmtPct, ppToBp } from "@/lib/format";
 import { gatherMovementEvidence } from "@/lib/jobs/evidence";
 
 async function load(movementId: string) {
@@ -56,7 +57,7 @@ export async function requestMovementFeedback(fd: FormData) {
   const { reasoningFeedback } = await import("@/lib/agent/feedback");
   const evidence = await listEvidence(r.m.id);
   const evidenceText = [
-    `Session ${r.m.sessionDate}: ${r.h.ticker} ${r.m.holdingReturnPct}% vs S&P ${r.m.spxReturnPct}% (relative ${r.m.relativeMovePp} pp).`,
+    `Session ${r.m.sessionDate}: ${r.h.ticker} ${fmtPct(r.m.holdingReturnPct)} vs S&P ${fmtPct(r.m.spxReturnPct)} (relative ${fmtBp(ppToBp(r.m.relativeMovePp))}).`,
     ...evidence.map((e) => `- [${e.kind}] ${e.title}${e.publishedAt ? ` (${e.publishedAt.toISOString().slice(0, 10)})` : ""}${e.url ? ` ${e.url}` : ""}`),
   ].join("\n");
   const feedback = await reasoningFeedback({ kind: "movement", ticker: r.h.ticker, studentText: text, thesis: r.h.thesis, evidence: evidenceText });

@@ -63,6 +63,6 @@ describe("trimSummary", () => {
 
 describe("mergeDayLabel", () => {
   it("files a late-night UTC merge under the New York day", () => {
-    expect(mergeDayLabel(new Date("2026-09-20T02:30:00Z"))).toBe("September 19, 2026");
+    expect(mergeDayLabel(new Date("2026-09-20T02:30:00Z"))).toBe("19 Sep 2026");
   });
 });

@@ -5,14 +5,14 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PerformanceChart } from "@/components/charts/performance-chart";
-import { ChartTooltip, chartGrid, chartTick, exactDate, signed, tone } from "@/components/charts/primitives";
+import { ChartTooltip, chartGrid, chartTick, exactDate, tickDate, tone } from "@/components/charts/primitives";
+import { fmtBp, fmtPct } from "@/lib/format";
 
 /** Percent points: `portfolio` and `benchmark` are cumulative returns in percent from the period's base close. */
 export type CumulativeChartPoint = { date: string; portfolio: number; benchmark: number | null };
 
 const FUND = "var(--series-1)";
 const BENCH = "var(--series-neutral)";
-const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
 /** The full interactive chart (scrub, drag-to-compare, observations table). Shown in the Details dialog. */
 export function CumulativeActiveChart({ data, portfolioLabel, benchmarkLabel }: { data: CumulativeChartPoint[]; portfolioLabel: string; benchmarkLabel: string }) {
@@ -32,14 +32,10 @@ export function CumulativeActiveChart({ data, portfolioLabel, benchmarkLabel }: 
   );
 }
 
-/** Tick labels like the design: "SEP 17" then day numbers, or "SEP 17" throughout when the period spans months. */
+/** Tick labels: "17 Sep" then day numbers, or "17 Sep" throughout when the period spans months. */
 function tickLabels(dates: string[]) {
   const spansMonths = dates.length > 1 && dates[0].slice(0, 7) !== dates.at(-1)!.slice(0, 7);
-  return (d: string, i?: number) => {
-    const [, m, day] = d.split("-");
-    const full = `${MONTHS[Number(m) - 1]} ${Number(day)}`;
-    return spansMonths || d === dates[0] || i === 0 ? full : String(Number(day));
-  };
+  return (d: string, i?: number) => (spansMonths || d === dates[0] || i === 0 ? tickDate(d) : String(Number(d.slice(8, 10))));
 }
 
 /** Compact cumulative-return panel body: thin lines, no dots, mono ticks, hover readout. */
@@ -52,7 +48,7 @@ export function CompactCumulativeChart({ data, portfolioLabel, benchmarkLabel }:
         <LineChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 0 }} accessibilityLayer={false}>
           <CartesianGrid vertical={false} stroke={chartGrid} />
           <XAxis dataKey="date" tick={chartTick} tickLine={false} axisLine={false} minTickGap={28} interval="preserveStartEnd" tickFormatter={(d: string) => label(d)} dy={6} />
-          <YAxis tick={chartTick} tickLine={false} axisLine={false} width={44} domain={["auto", "auto"]} tickFormatter={(v: number) => `${signed(v, 1)}%`} />
+          <YAxis tick={chartTick} tickLine={false} axisLine={false} width={44} domain={["auto", "auto"]} tickFormatter={(v: number) => fmtPct(v, 1)} />
           <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.35} />
           <Tooltip
             cursor={{ stroke: "var(--border)" }}
@@ -63,10 +59,10 @@ export function CompactCumulativeChart({ data, portfolioLabel, benchmarkLabel }:
               const gap = p.benchmark === null ? null : (p.portfolio - p.benchmark) * 100;
               return (
                 <ChartTooltip label={exactDate(p.date)}>
-                  <div className="flex justify-between gap-4"><span>{portfolioLabel}</span><span className={tone(p.portfolio)}>{signed(p.portfolio)}%</span></div>
-                  <div className="flex justify-between gap-4"><span>{benchmarkLabel}</span><span className={tone(p.benchmark)}>{p.benchmark === null ? "—" : `${signed(p.benchmark)}%`}</span></div>
+                  <div className="flex justify-between gap-4"><span>{portfolioLabel}</span><span className={tone(p.portfolio)}>{fmtPct(p.portfolio)}</span></div>
+                  <div className="flex justify-between gap-4"><span>{benchmarkLabel}</span><span className={tone(p.benchmark)}>{fmtPct(p.benchmark)}</span></div>
                   {gap !== null && (
-                    <div className="flex justify-between gap-4 border-t pt-1.5 text-muted-foreground"><span>Gap</span><span className={tone(gap)}>{signed(gap, 0)} bp</span></div>
+                    <div className="flex justify-between gap-4 border-t pt-1.5 text-muted-foreground"><span>Gap</span><span className={tone(gap)}>{fmtBp(gap)}</span></div>
                   )}
                 </ChartTooltip>
               );

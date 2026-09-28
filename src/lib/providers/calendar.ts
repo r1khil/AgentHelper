@@ -41,8 +41,3 @@ export function movementDueAt(sessionDate: string) {
   return DateTime.fromISO(next, { zone: NY }).set({ hour: 12, minute: 0, second: 0, millisecond: 0 }).toJSDate();
 }
 
-export function formatNY(d: Date | string | null | undefined, fmt = "MMM d, h:mm a") {
-  if (!d) return "";
-  const dt = typeof d === "string" ? DateTime.fromISO(d) : DateTime.fromJSDate(d);
-  return dt.setZone(NY).toFormat(fmt);
-}

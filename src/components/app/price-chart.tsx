@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PerformanceChart } from "@/components/charts/performance-chart";
-import { ChartTooltip, RangeControlGroup, chartTick, exactDate, percent, rangeControlClass, tone } from "@/components/charts/primitives";
+import { ChartTooltip, RangeControlGroup, chartTick, exactDate, rangeControlClass, tone } from "@/components/charts/primitives";
+import { fmtAccounting, fmtPct } from "@/lib/format";
 import { availableRanges, normalizeObservations, performance, selectRange, type Observation, type TimeRange } from "@/lib/charts/series";
 import { cn } from "@/lib/utils";
 
@@ -98,13 +99,13 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
                       <div className="flex justify-between gap-4">
                         <span>{ticker}</span>
                         <span>
-                          {p.price != null ? `${p.price.toFixed(2)}${currency ? ` ${currency}` : ""} · ` : ""}
-                          <span className={tone(p.holding ?? null)}>{p.holding == null ? "—" : percent(p.holding)}</span>
+                          {p.price != null ? `${fmtAccounting(p.price, 2, currency ? ` ${currency}` : "")} · ` : ""}
+                          <span className={tone(p.holding ?? null)}>{fmtPct(p.holding)}</span>
                         </span>
                       </div>
                       <div className="flex justify-between gap-4">
                         <span>S&amp;P 500</span>
-                        <span className={tone(p.benchmark ?? null)}>{p.benchmark == null ? "—" : percent(p.benchmark)}</span>
+                        <span className={tone(p.benchmark ?? null)}>{fmtPct(p.benchmark)}</span>
                       </div>
                     </ChartTooltip>
                   );
@@ -125,7 +126,7 @@ function LegendItem({ color, label, value }: { color: string; label: string; val
     <span className="flex items-center gap-1.5 text-xs whitespace-nowrap text-ink-2">
       <span className="size-2 rounded-full" style={{ background: color }} />
       {label}
-      <span className="font-mono">{value == null ? "—" : `${value > 0 ? "+" : ""}${value.toFixed(1)}%`}</span>
+      <span className="font-mono">{fmtPct(value, 1)}</span>
     </span>
   );
 }

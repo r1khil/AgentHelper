@@ -1,4 +1,5 @@
 import { NOT_A_TICKET, UNREADABLE_DOCX, type TicketRead, type TradeTicket } from "@/lib/attribution/ticket";
+import { fmtCurrency, fmtDate, fmtNumber } from "@/lib/format";
 
 /** An attachment on an OpenMail `message.received` event. */
 export type InboundAttachment = { filename: string; contentType?: string; sizeBytes?: number; url?: string; parsedText?: string; extractionMethod?: string };
@@ -35,17 +36,14 @@ export function ticketTextInBody(body: string | undefined): string | null {
   return labels.length >= 2 ? text : null;
 }
 
-const money = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 4 });
-const shares = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 6 });
 
 function niceDate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  return fmtDate(iso);
 }
 
-/** "Bought 83 SYK (Stryker Corp) at $280.13 on Sep 18, 2026". */
+/** "Bought 83 SYK (Stryker Corp) at $280.13 on 18 Sep 2026". */
 export function describeTrade(t: TradeTicket): string {
-  return `${t.side === "buy" ? "Bought" : "Sold"} ${shares(t.shares)} ${t.ticker}${t.name ? ` (${t.name})` : ""} at ${money(t.price)} on ${niceDate(t.date)}`;
+  return `${t.side === "buy" ? "Bought" : "Sold"} ${fmtNumber(t.shares, 6)} ${t.ticker}${t.name ? ` (${t.name})` : ""} at ${fmtCurrency(t.price, "USD", { maxDigits: 4 })} on ${niceDate(t.date)}`;
 }
 
 /** What happened to an email's tickets: recorded (with any warnings), skipped, unreadable, or the import's error. */

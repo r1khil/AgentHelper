@@ -11,7 +11,7 @@ import { ActiveRiskSection } from "./active-risk";
 import { CorrelationHeatmap } from "./correlation-heatmap";
 import { DrawdownChart } from "./drawdown-chart";
 import { RISK_EXPLAIN } from "./explainers";
-import { rnum, rpct, rsigned, rusd } from "./format";
+import { rnum, rpct, rusd } from "./format";
 import { HoldingsRiskTable, type TeamNames } from "./holdings-risk-table";
 import { OpenDetailsOnHash } from "./open-on-hash";
 import { RiskSources } from "./risk-sources";
@@ -139,7 +139,7 @@ export function RiskView({
               },
               {
                 label: <Label explain={WORST_DAY}>{`Worst day, ${lookbackShort(r.lookback)}`}</Label>,
-                value: worst ? rsigned(worst.ret) : "—",
+                value: worst ? rpct(worst.ret) : "—",
                 tone: worst && worst.ret < 0 ? "down" : null,
                 note: worst ? fmtDate(worst.date) : "no days in the window",
               },
@@ -162,7 +162,7 @@ export function RiskView({
             <StatStrip
               cells={[
                 { label: <Label explain={RISK_EXPLAIN.es}>Expected shortfall</Label>, value: rusd(p.var.esDollars), note: `${rpct(p.var.es, 2)} · avg of worst 5% of days` },
-                { label: <Label explain={RISK_EXPLAIN.stress}>If the S&amp;P 500 fell 10%</Label>, value: rusd(p.stress.dollars), tone: p.stress.dollars < 0 ? "down" : null, note: `${rsigned(p.stress.move)} · beta-implied` },
+                { label: <Label explain={RISK_EXPLAIN.stress}>If the S&amp;P 500 fell 10%</Label>, value: rusd(p.stress.dollars), tone: p.stress.dollars < 0 ? "down" : null, note: `${rpct(p.stress.move)} · beta-implied` },
                 { label: <Label explain={RISK_EXPLAIN.effectiveN}>Effective positions</Label>, value: rnum(p.effectiveN, 1), note: `of ${r.holdings.length} holdings` },
                 { label: <Label explain={RISK_EXPLAIN.top5}>Top 5 weight</Label>, value: rpct(p.top5), note: r.scope === "fund" ? "of NAV" : "of the team's holdings" },
                 { label: <Label explain={RISK_EXPLAIN.cash}>Cash</Label>, value: r.scope === "fund" ? rpct(r.cash.weight) : "—", note: r.scope === "fund" ? rusd(r.cash.value) : "Cash is held at Fund level" },
@@ -232,7 +232,7 @@ export function RiskView({
                   </p>
                 )}
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
-                  <Realized label="Return" explain="Compounded daily NAV return over the window, net of deposits and withdrawals." value={rsigned(realized.totalReturn, 2)} />
+                  <Realized label="Return" explain="Compounded daily NAV return over the window, net of deposits and withdrawals." value={rpct(realized.totalReturn, 2)} />
                   <Realized label="Volatility" explain={RISK_EXPLAIN.vol} value={rpct(realized.vol)} />
                   <Realized label="Beta" explain={RISK_EXPLAIN.beta} value={rnum(realized.beta)} />
                   <Realized label="Tracking error" explain={RISK_EXPLAIN.trackingError} value={rpct(realized.trackingError)} />

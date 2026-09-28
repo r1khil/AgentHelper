@@ -1,7 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Source } from "@/lib/providers/types";
 import type { AttributionSummary } from "@/lib/attribution/summary";
 import { briefAlertEmail, briefEmail, chooseAnalysis, cleanBrief, numberCitations, researchView, sourcesFooter, type AnalysisRun } from "./daily-brief-format";
+
+// Dates this year print without the year ("Tue 22 Sep"); pin the clock so these stay 2026's.
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-28T12:00:00Z"));
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 const src = (id: string, title: string): Source => ({ id, title, publisher: "Reuters", url: `https://example.com/${id}`, retrievedAt: "2026-09-22T21:05:00Z", publishedAt: "2026-09-22T14:00:00Z" });
 
@@ -31,19 +40,19 @@ describe("numberCitations", () => {
 describe("briefEmail", () => {
   it("falls back to the numbers when the analysis failed", () => {
     const { subject, body } = briefEmail({ sessionDate: "2026-09-22", facts: "Fund return: +0.4%", analysis: null, sources: [], failure: "model timed out", appUrl: "https://x.app/" });
-    expect(subject).toBe("Owl Fund Daily Attribution Analysis (22-Sep-2026)");
-    expect(body).toMatch(/^Hi all,\n\nMy analysis of Tuesday, September 22 didn't finish \(model timed out\)/);
+    expect(subject).toBe("Owl Fund Daily Attribution Analysis (22 Sep 2026)");
+    expect(body).toMatch(/^Hi all,\n\nMy analysis of Tue 22 Sep didn't finish \(model timed out\)/);
     expect(body).toContain("https://x.app/attribution");
     expect(body.endsWith("Best,\nHoot")).toBe(true);
   });
 
   it("opens with the analysis and signs off as Hoot", () => {
     const { body } = briefEmail({ sessionDate: "2026-09-22", facts: "Fund return: +0.4%", analysis: "The fund beat the S&P 500.", sources: [] });
-    expect(body).toBe("Hi all,\n\nHere's what drove the fund on Tuesday, September 22.\n\nThe fund beat the S&P 500.\n\nThe numbers, close to close:\n\nFund return: +0.4%\n\nFeel free to reply with any questions.\n\nBest,\nHoot");
+    expect(body).toBe("Hi all,\n\nHere's what drove the fund on Tue 22 Sep.\n\nThe fund beat the S&P 500.\n\nThe numbers, close to close:\n\nFund return: +0.4%\n\nFeel free to reply with any questions.\n\nBest,\nHoot");
   });
 
   it("lists sources in the footer", () => {
-    expect(sourcesFooter([src("news-a", "KRE falls")])).toBe("Sources:\n[1] KRE falls (Reuters, 2026-09-22) https://example.com/news-a");
+    expect(sourcesFooter([src("news-a", "KRE falls")])).toBe("Sources:\n[1] KRE falls (Reuters, 22 Sep 2026) https://example.com/news-a");
   });
 });
 
@@ -125,11 +134,11 @@ describe("researchView", () => {
 describe("briefAlertEmail", () => {
   it("says the brief is late, why, and how to send it by hand", () => {
     const { subject, body } = briefAlertEmail({ sessionDate: "2026-09-24", final: false, error: "OpenMail: 502 Application failed to respond", appUrl: "https://x.app/" });
-    expect(subject).toBe("Daily attribution email not sent (24-Sep-2026)");
-    expect(body).toContain("The daily attribution email for Thursday, September 24 hasn't gone out yet. I'll keep trying every 15 minutes until midnight New York time.");
+    expect(subject).toBe("Daily attribution email not sent (24 Sep 2026)");
+    expect(body).toContain("The daily attribution email for Thu 24 Sep hasn't gone out yet. I'll keep trying every 15 minutes until midnight New York time.");
     expect(body).toContain("What went wrong: OpenMail: 502 Application failed to respond");
     expect(body).toContain("https://x.app/admin");
-    expect(body).toContain("to 2026-09-24");
+    expect(body).toContain("to 24 Sep 2026");
   });
 
   it("says when the evening's retries ran out", () => {

@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Search, Sparkles } from "lucide-react";
+import { fmtNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { CellInfo, WorkbookInfo } from "@/lib/excel/read";
 import { parsePeriodLabel } from "@/lib/models/periods";
@@ -195,7 +196,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
                     const cell = grid.get(`${c}${r}`);
                     return (
                       <td key={c} className={cn("tnum max-w-40 truncate border-r border-b px-1.5 py-0.5", cell?.isFormula && "bg-muted/70 text-muted-foreground", typeof cell?.v === "number" && "text-right")} title={cell?.f ? `=${cell.f}` : undefined}>
-                        {cell ? (typeof cell.v === "number" ? cell.v.toLocaleString("en-US", { maximumFractionDigits: 4 }) : String(cell.v ?? "")) : ""}
+                        {cell ? (typeof cell.v === "number" ? fmtNumber(cell.v) : String(cell.v ?? "")) : ""}
                       </td>
                     );
                   })}
@@ -226,7 +227,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
                       <div key={c} className="flex items-center gap-2">
                         <input type="radio" name="anchor" checked={anchor === c} onChange={() => setAnchor(c)} disabled={typeof grid.get(`${c}${row}`)?.v !== "number"} title="The period you entered by hand" />
                         <span className="tnum w-7 text-xs font-medium">{c}</span>
-                        <span className="tnum w-24 truncate text-right text-xs text-muted-foreground">{typeof grid.get(`${c}${row}`)?.v === "number" ? (grid.get(`${c}${row}`)!.v as number).toLocaleString("en-US", { maximumFractionDigits: 2 }) : "empty"}</span>
+                        <span className="tnum w-24 truncate text-right text-xs text-muted-foreground">{typeof grid.get(`${c}${row}`)?.v === "number" ? fmtNumber(grid.get(`${c}${row}`)!.v as number, 2) : "empty"}</span>
                         <Input type="date" value={periods[c] ?? ""} onChange={(e) => setPeriods({ ...periods, [c]: e.target.value })} className="h-7 w-40 text-xs" list={`ends-${c}`} />
                         <datalist id={`ends-${c}`}>
                           {reportedEnds.map((d) => (
@@ -254,7 +255,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
                 </div>
                 {suggestions && (
                   <div className="rounded-lg border p-2">
-                    <div className="mb-1 text-xs font-medium">Facts matching {(grid.get(`${anchor}${row}`)?.v as number)?.toLocaleString()} for {periods[anchor]}:</div>
+                    <div className="mb-1 text-xs font-medium">Facts matching {fmtNumber(grid.get(`${anchor}${row}`)?.v as number)} for {periods[anchor]}:</div>
                     {suggestions.length === 0 ? (
                       <p className="text-xs text-muted-foreground">No reported fact matches at ×1, ×1k, ×1M, or ×1B. Check the period end or the number.</p>
                     ) : (

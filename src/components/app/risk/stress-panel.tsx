@@ -4,7 +4,7 @@ import { STRESS_WINDOWS, type StressOk, type StressResult } from "@/lib/risk/str
 import { cn } from "@/lib/utils";
 import { InfoTip } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "./explainers";
-import { rsigned } from "./format";
+import { rbp, rpct } from "./format";
 
 const COLS = "grid grid-cols-[minmax(0,1fr)_140px_76px_76px_70px] items-center gap-3 px-4";
 const tone = (v: number | null) => (v === null || Math.abs(v) < 5e-5 ? "text-muted-foreground" : v > 0 ? "text-up" : "text-down");
@@ -16,11 +16,6 @@ export const STRESS_DETAIL = { id: "stress-detail", label: "Stress test detail",
 export const stressAnchor = (key: string) => `stress-${key}`;
 export const backtestHref = (r: StressOk) => `/backtesting?${new URLSearchParams({ from: r.backtestFrom, to: r.end, stress: r.key })}`;
 
-const pp = (v: number) => {
-  const x = v * 100;
-  return `${x > 0.05 ? "+" : ""}${x.toFixed(1)} pp`;
-};
-
 function Head() {
   return (
     <div className={cn(COLS, "h-8 shrink-0 text-xs text-muted-foreground")}>
@@ -28,7 +23,7 @@ function Head() {
       <span>Dates</span>
       <span className="text-right">Fund</span>
       <span className="text-right">S&amp;P 500</span>
-      <span className="text-right" title="Fund return minus the S&P 500's, in percentage points">Diff</span>
+      <span className="text-right" title="Fund return minus the S&P 500's, in basis points">Diff</span>
     </div>
   );
 }
@@ -60,9 +55,9 @@ export function StressPanel({ results, fundLabel, className }: { results: Stress
               {r.label}
             </a>
             <span className="truncate font-mono text-[11.5px] text-muted-foreground">{stressDates(r.start, r.end)}</span>
-            <span className={cn("text-right font-mono text-[12.5px]", tone(r.fund))} title={fundLabel}>{rsigned(r.fund)}</span>
-            <span className="text-right font-mono text-[12.5px] text-muted-foreground">{rsigned(r.market)}</span>
-            <span className={cn("text-right font-mono text-[12.5px] font-semibold", tone(r.fund - r.market))}>{pp(r.fund - r.market)}</span>
+            <span className={cn("text-right font-mono text-[12.5px]", tone(r.fund))} title={fundLabel}>{rpct(r.fund)}</span>
+            <span className="text-right font-mono text-[12.5px] text-muted-foreground">{rpct(r.market)}</span>
+            <span className={cn("text-right font-mono text-[12.5px] font-semibold", tone(r.fund - r.market))}>{rbp(r.fund - r.market)}</span>
           </div>
         ) : (
           <div key={r.key} className={cn(COLS, "min-h-11 border-t border-row text-[13.5px]")}>

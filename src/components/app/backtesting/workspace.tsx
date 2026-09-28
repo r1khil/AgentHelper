@@ -11,6 +11,7 @@ import {
   type BacktestResult,
   type Metrics,
 } from "@/lib/backtesting/engine";
+import { fmtAccounting, fmtBp, fmtMonth, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { QuickTrade } from "./quick-trade";
@@ -20,15 +21,11 @@ import { useBacktesting, type BacktestingOptions } from "./use-backtesting";
 
 export type { InitialScenario } from "./use-backtesting";
 
-export const pct = (v: number | null) =>
-  v === null ? "—" : `${(v * 100).toFixed(2)}%`;
+export const pct = (v: number | null) => fmtPct(v === null ? null : v * 100);
 // Round half away from zero to the displayed 0.01, so ties are symmetric and -0 never shows as "+0.00".
 export const shown = (v: number) => (Math.sign(v) * Math.round(Math.abs(v) * 10000)) / 10000 || 0;
-export const pp = (v: number | null) => {
-  if (v === null) return "—";
-  const rounded = shown(v) * 100;
-  return `${rounded > 0 ? "+" : ""}${rounded.toFixed(2)} pp`;
-};
+/** A difference, active return or contribution in basis points, from the displayed (rounded) fraction. */
+export const bp = (v: number | null) => fmtBp(v === null ? null : shown(v) * 10_000);
 /** One name per series, used by every card, chart, select and table. */
 const SERIES = { original: "Current replay", modified: "Modified replay" } as const;
 export const tone = (v: number) =>
@@ -206,7 +203,7 @@ export function BacktestingWorkspace({
                           tone(scenarioWeights[p.id] - p.weight),
                         )}
                       >
-                        {weights[p.id]?.trim() === "" ? "—" : pp(scenarioWeights[p.id] - p.weight)}
+                        {weights[p.id]?.trim() === "" ? "—" : bp(scenarioWeights[p.id] - p.weight)}
                       </td>
                       <td className={cell}>
                         {p.kind === "scenario" ? (
@@ -230,8 +227,8 @@ export function BacktestingWorkspace({
                   <tr>
                     <th className="px-3 py-2.5 text-left">Total</th>
                     <td className={cell}>100.00%</td>
-                    <td className={cell}>{Number.isFinite(sum) ? `${sum.toFixed(2)}%` : "—"}</td>
-                    <td className={cell}>{Number.isFinite(sum) ? pp(sum / 100 - 1) : "—"}</td>
+                    <td className={cell}>{Number.isFinite(sum) ? fmtPct(sum) : "—"}</td>
+                    <td className={cell}>{Number.isFinite(sum) ? bp(sum / 100 - 1) : "—"}</td>
                     <td className={cell} />
                   </tr>
                 </tfoot>
@@ -244,8 +241,8 @@ export function BacktestingWorkspace({
               className={cn("text-sm tnum", !valid && "text-destructive")}
             >
               Modified total:{" "}
-              {Number.isFinite(sum) ? sum.toFixed(2) : "—"}
-              %{!valid && " · must total 100%"}
+              {Number.isFinite(sum) ? fmtPct(sum) : "—"}
+              {!valid && " · must total 100%"}
             </div>
             <div className="flex gap-2">
               <Button
@@ -294,8 +291,8 @@ export function ScopeNote({ snapshot }: { snapshot: BacktestingOptions["snapshot
   return (
     <>
       {snapshot.sleeve
-        ? `This team’s holdings total ${snapshot.savedWeightTotal.toFixed(2)}% of the Fund; the replay rescales them to 100% of this portfolio, with no cash.`
-        : `Invested holdings total ${snapshot.savedWeightTotal.toFixed(2)}%; uninvested cash is ${((snapshot.positions.find((p) => p.kind === "cash")?.weight ?? 0) * 100).toFixed(2)}%. Cash earns 0% by default.`}{" "}
+        ? `This team’s holdings total ${fmtPct(snapshot.savedWeightTotal)} of the Fund; the replay rescales them to 100% of this portfolio, with no cash.`
+        : `Invested holdings total ${fmtPct(snapshot.savedWeightTotal)}; uninvested cash is ${fmtPct((snapshot.positions.find((p) => p.kind === "cash")?.weight ?? 0) * 100)}. Cash earns 0% by default.`}{" "}
       No weights are redistributed. Added or dropped companies affect only the modified copy and never update your
       saved portfolio. Results are a hypothetical replay of these weights, not realized performance.
     </>
@@ -435,7 +432,7 @@ const Results = memo(function Results({
             <strong
               className={cn("text-2xl font-semibold tnum", tone(value))}
             >
-              {diff ? pp(value) : pct(value)}
+              {diff ? bp(value) : pct(value)}
             </strong>
           </Card>
         ))}
@@ -528,7 +525,7 @@ export function DailyDifferences({
               {mode === "delta"
                 ? `Green: ${names.modified.toLowerCase()} ahead that day · red: ${names.original.toLowerCase()} ahead`
                 : `Green: ahead of ${result.benchmark} that day · red: behind ${result.benchmark}`}{" "}
-              · neutral: equal · darker: larger (up to 1 pp). Daily colors do not show the full-period result.
+              · neutral: equal · darker: larger (up to 100 bp). Daily colors do not show the full-period result.
             </span>
           </div>
           <div className="grid max-h-[36rem] gap-6 overflow-auto sm:grid-cols-2 xl:grid-cols-3">
@@ -541,11 +538,7 @@ export function DailyDifferences({
               return (
                 <div key={month}>
                   <h3 className="mb-2 text-sm font-medium">
-                    {first.toLocaleDateString("en-US", {
-                      month: "long",
-                      year: "numeric",
-                      timeZone: "UTC",
-                    })}
+                    {fmtMonth(`${month}-01`)}
                   </h3>
                   <div className="grid grid-cols-7 gap-1 text-center text-xs">
                     {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
@@ -570,7 +563,7 @@ export function DailyDifferences({
                           </span>
                         );
                       const value = row[mode];
-                      const label = `${day}: ${modeLabel[mode]} ${pp(value)}`;
+                      const label = `${day}: ${modeLabel[mode]} ${bp(value)}`;
                       return (
                         <button
                           type="button"
@@ -621,19 +614,19 @@ export function DailyDifferences({
                   <th className={head}>Portfolio</th>
                   <td className={cell}>{pct(selected.original)}</td>
                   <td className={cell}>{pct(selected.modified)}</td>
-                  <td className={cell}>{pp(selected.delta)}</td>
+                  <td className={cell}>{bp(selected.delta)}</td>
                 </tr>
                 <tr className="border-t">
                   <th className={head}>Benchmark · {result.benchmark}</th>
                   <td className={cell}>{pct(selected.benchmark)}</td>
                   <td className={cell}>{pct(selected.benchmark)}</td>
-                  <td className={cell}>{pp(0)}</td>
+                  <td className={cell}>{bp(0)}</td>
                 </tr>
                 <tr className="border-t">
                   <th className={head}>Difference vs {result.benchmark}</th>
-                  <td className={cell}>{pp(selected.originalActive)}</td>
-                  <td className={cell}>{pp(selected.modifiedActive)}</td>
-                  <td className={cell}>{pp(selected.delta)}</td>
+                  <td className={cell}>{bp(selected.originalActive)}</td>
+                  <td className={cell}>{bp(selected.modifiedActive)}</td>
+                  <td className={cell}>{bp(selected.delta)}</td>
                 </tr>
               </tbody>
             </table>
@@ -658,9 +651,9 @@ export function DailyDifferences({
                   <tr key={c.id} className="border-t">
                     <th className={head}>{c.ticker}</th>
                     <td className={cell}>{pct(c.return)}</td>
-                    <td className={cell}>{pp(c.original)}</td>
-                    <td className={cell}>{pp(c.modified)}</td>
-                    <td className={cn(cell, tone(c.delta))}>{pp(c.delta)}</td>
+                    <td className={cell}>{bp(c.original)}</td>
+                    <td className={cell}>{bp(c.modified)}</td>
+                    <td className={cn(cell, tone(c.delta))}>{bp(c.delta)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -697,7 +690,7 @@ export function CalculationNotes({ className }: { className?: string }) {
         portfolio’s value at the start of that day. They reconcile to each
         compounded portfolio return; their differences reconcile to the
         weight-change delta. The difference vs the benchmark is portfolio minus
-        benchmark return, in percentage points; daily differences are not
+        benchmark return, in basis points; daily differences are not
         compounded separately. Period differences are taken from the returns as
         displayed (rounded to 0.01%), so the figures on screen add up.
       </p>
@@ -751,17 +744,17 @@ export function Summary({ result, period, names = SERIES }: { result: BacktestRe
                   </td>
                 ))}
                 <td className={cell}>
-                  {kind === "count" ? `${d! >= 0 ? "+" : ""}${d}` : pp(d)}
+                  {kind === "count" ? fmtAccounting(d, 0) : bp(d)}
                 </td>
               </tr>
             );
           })}
           <tr className="border-t">
             <th className={head}>Difference vs {result.benchmark}</th>
-            <td className={cell}>{pp(period.currentActive)}</td>
-            <td className={cell}>{pp(period.modifiedActive)}</td>
-            <td className={cell}>{pp(0)}</td>
-            <td className={cell}>{pp(period.delta)}</td>
+            <td className={cell}>{bp(period.currentActive)}</td>
+            <td className={cell}>{bp(period.modifiedActive)}</td>
+            <td className={cell}>{bp(0)}</td>
+            <td className={cell}>{bp(period.delta)}</td>
           </tr>
         </tbody>
       </table>
@@ -805,7 +798,7 @@ export function Contributors({ result, period, names = SERIES }: { result: Backt
                 <div key={c.id} className="flex justify-between py-1 text-sm">
                   <span>{c.ticker}</span>
                   <span className={cn("tnum", tone(c[sort]))}>
-                    {pp(c[sort])}
+                    {bp(c[sort])}
                   </span>
                 </div>
               ))
@@ -831,18 +824,18 @@ export function Contributors({ result, period, names = SERIES }: { result: Backt
             {sorted.map((c) => (
               <tr key={c.id} className="border-t">
                 <th className={head}>{c.ticker}</th>
-                <td className={cell}>{pp(c.original)}</td>
-                <td className={cell}>{pp(c.modified)}</td>
-                <td className={cn(cell, tone(c.delta))}>{pp(c.delta)}</td>
+                <td className={cell}>{bp(c.original)}</td>
+                <td className={cell}>{bp(c.modified)}</td>
+                <td className={cn(cell, tone(c.delta))}>{bp(c.delta)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="border-t font-medium">
               <th className={head}>Total</th>
-              <td className={cell}>{pp(period.current)}</td>
-              <td className={cell}>{pp(period.modified)}</td>
-              <td className={cell}>{pp(period.delta)}</td>
+              <td className={cell}>{bp(period.current)}</td>
+              <td className={cell}>{bp(period.modified)}</td>
+              <td className={cell}>{bp(period.delta)}</td>
             </tr>
           </tfoot>
         </table>

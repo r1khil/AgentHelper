@@ -1,5 +1,5 @@
 import { earningsHref, holdingHref, modelHref, movementHref, scopedHref, sellSideHref } from "@/lib/scope";
-import { dueStamp } from "@/lib/today";
+import { fmtDateTime } from "@/lib/format";
 import type { HootNudge } from "./types";
 
 // Plain rows, so the ranking is testable without a database. The loader in nudges.ts fills these.
@@ -53,11 +53,11 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
       out.push({ id: `movement:${m.id}:overdue`, kind: "movement", priority: 1, mood: "concerned", href, at, title: `Your team's ${m.ticker} write-up is overdue`, detail: "Anyone on the team can write it. A short update on why it moved, with sources, is enough." });
     } else if (left < 48 * HOUR) {
       const hours = Math.max(1, Math.round(left / HOUR));
-      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 2, mood: "alert", href, at, title: `Your team's ${m.ticker} write-up is due in ${hours}h`, detail: "I can pull the filings and news from that session. Open it and ask the agent." });
+      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 2, mood: "alert", href, at, title: `Your team's ${m.ticker} write-up is due in ${hours}h`, detail: "I can pull the filings and news from that session. Open it and ask me." });
     } else {
       // Due after a weekend or holiday: still owed, just not pressing yet.
       const day = m.dueAt.toLocaleDateString("en-US", { weekday: "long", timeZone: "America/New_York" });
-      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `Your team's ${m.ticker} write-up is due ${day}`, detail: "I can pull the filings and news from that session. Open it and ask the agent." });
+      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `Your team's ${m.ticker} write-up is due ${day}`, detail: "I can pull the filings and news from that session. Open it and ask me." });
     }
   }
 
@@ -69,7 +69,7 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
       out.push({ id: `movement:${m.id}:team:overdue`, kind: "movement", priority: 3, mood: "concerned", href, at, title: `${m.ticker} write-up is overdue`, detail: `${m.teamName} hasn't finished it yet. Check in with the team.` });
     } else {
       // Not late yet: worth knowing about, not worth a speech bubble.
-      out.push({ id: `movement:${m.id}:team:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `${m.ticker} write-up is due ${dueStamp(at)}`, detail: `${m.teamName} is on it.` });
+      out.push({ id: `movement:${m.id}:team:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `${m.ticker} write-up is due ${fmtDateTime(at, i.now)}`, detail: `${m.teamName} is on it.` });
     }
   }
 

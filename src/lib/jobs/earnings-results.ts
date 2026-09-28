@@ -7,6 +7,7 @@ import { earnings, evidenceItems, holdings } from "@/db/schema";
 import { conceptFacts, filingUrlForFact, getCompanyFacts, getFilingText, listFilingDocuments, listFilings } from "@/lib/providers/edgar";
 import { agentConfigured, chatModel, agentModelId } from "@/lib/agent/model";
 import type { Actuals } from "@/lib/earnings";
+import { fmtNumber } from "@/lib/format";
 
 const CONCEPTS: { label: string; concepts: string[]; unit: string }[] = [
   { label: "Revenue", concepts: ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet"], unit: "USD" },
@@ -65,7 +66,7 @@ export async function gatherEarningsResults(earningsId: string) {
       const sid = `xbrl-${concept}`;
       sources.push({ id: sid, title: `${h.ticker} ${recent.form} XBRL ${concept} (${recent.fy} ${recent.fp})`, url });
       xbrlLines.push(`${c.label} (${concept}): ${recent.val} for ${recent.start}..${recent.end}; prior-year ${prior ? prior.val : "n/a"} [src:${sid}]`);
-      items.push({ earningsId, kind: "financial", title: `${c.label}: ${recent.val.toLocaleString()} (${recent.fp} ${recent.fy}, ${recent.form})`, url, publisher: "SEC EDGAR XBRL", publishedAt: new Date(`${recent.filed}T12:00:00Z`), payload: { concept, value: recent.val, priorYear: prior?.val ?? null, start: recent.start, end: recent.end } });
+      items.push({ earningsId, kind: "financial", title: `${c.label}: ${fmtNumber(recent.val)} (${recent.fp} ${recent.fy}, ${recent.form})`, url, publisher: "SEC EDGAR XBRL", publishedAt: new Date(`${recent.filed}T12:00:00Z`), payload: { concept, value: recent.val, priorYear: prior?.val ?? null, start: recent.start, end: recent.end } });
     }
   } catch {
     xbrlLines = [];

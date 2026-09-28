@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { Panel, Pill } from "@/components/app/panel";
 import { Button } from "@/components/ui/button";
 import { ReplayTourLink } from "./replay-tour-link";
+import { fmtDate, fmtDay } from "@/lib/format";
 
 const NY = "America/New_York";
 
@@ -62,8 +63,8 @@ export function ChangelogView({ entries, isAdmin, status, now }: ChangelogViewPr
             {entries.map((e) => (
               <li key={e.prNumber} className="grid min-h-[76px] flex-1 grid-cols-[96px_minmax(0,1fr)_auto] items-center gap-4 border-b border-row px-5 py-3 last:border-b-0">
                 <div className="min-w-0">
-                  <time dateTime={e.mergedAt} title={day(e.mergedAt).toFormat("cccc, MMMM d, yyyy")} className="block font-mono text-xs text-muted-foreground">
-                    {day(e.mergedAt).toFormat("LLL d").toUpperCase()}
+                  <time dateTime={e.mergedAt} title={fmtDate(e.mergedAt)} className="block font-mono text-xs text-muted-foreground">
+                    {fmtDay(e.mergedAt)}
                   </time>
                   <div className="mt-0.5 truncate text-[11.5px] text-muted-foreground" title={`Merged by ${e.author}`}>
                     {e.author}

@@ -1,3 +1,4 @@
+import { fmtCurrency, fmtPct } from "@/lib/format";
 import { AGENDA_LABELS, AGENDA_SECTIONS, type AgendaItem, type Performer, type WeeklyAgenda, type WeeklyFigures, type WeeklyPerformers } from "./types";
 import { deriveRelative } from "./figures";
 import { packTitle } from "./weeks";
@@ -10,20 +11,14 @@ export function normalizeWeekday(raw: string): string | null {
   return WEEKDAYS.find((d) => d.toLowerCase() === v || d.toLowerCase().slice(0, 3) === v) ?? null;
 }
 
-/** The deck's own percentage style: one decimal, negatives in parentheses. */
+/** The deck's percentage style, which is the app's accounting style at one decimal: "(3.1%)". */
 export function fmtDeckPct(n: number | null | undefined): string {
-  if (n === null || n === undefined || !Number.isFinite(n)) return "—";
-  // Round the magnitude, so -3.05 and 3.05 land on the same digits rather than straddling zero.
-  const magnitude = Math.round(Math.abs(n) * 10) / 10;
-  const body = `${magnitude.toFixed(1)}%`;
-  return n < 0 && magnitude > 0 ? `(${body})` : body;
+  return fmtPct(n, 1);
 }
 
-/** The deck's AUM style: thousands of dollars, one decimal, e.g. "$4,646.9k". */
+/** The deck's AUM style: thousands of dollars, one decimal, e.g. "$4,646.9k"; a loss in parentheses. */
 export function fmtAumK(n: number | null | undefined): string {
-  if (n === null || n === undefined || !Number.isFinite(n)) return "—";
-  const body = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  return n < 0 && body !== "0.0" ? `($${body}k)` : `$${body}k`;
+  return fmtCurrency(n, "USD", { digits: 1, suffix: "k" });
 }
 
 /** Kept as written when a name arrives in capitals. */

@@ -324,8 +324,8 @@ describe("describeFactorBeta", () => {
   });
 
   it("says there is no clear exposure when the beta isn't significant, rather than describing a position", () => {
-    expect(describeFactorBeta("rates", 0.055, { t: 1.6 })).toBe("No clear rates exposure (β +0.06, t +1.6; not statistically significant)");
-    expect(describeFactorBeta("value", -0.12, { t: -1.4 })).toBe("No clear value/growth exposure (β −0.12, t −1.4; not statistically significant)");
+    expect(describeFactorBeta("rates", 0.055, { t: 1.6 })).toBe("No clear rates exposure (β 0.06, t 1.6; not statistically significant)");
+    expect(describeFactorBeta("value", -0.12, { t: -1.4 })).toBe("No clear value/growth exposure (β (0.12), t (1.4); not statistically significant)");
     expect(describeFactorBeta("rates", 0.055, { t: 1.6 })).not.toMatch(/long|short|duration/);
     expect(describeFactorBeta("oil", 0.003)).toBe("Essentially no oil exposure (β 0.00)");
     expect(describeFactorBeta("oil", 0.003, { t: 2.5 })).toBe("Essentially no oil exposure (β 0.00)");
@@ -341,11 +341,11 @@ describe("describeFactorBeta", () => {
     for (const f of FACTORS) for (const b of [-0.5, 0.5]) expect(describeFactorBeta(f.key, b)).not.toMatch(/\b(buy|sell|hedge|should|consider|reduce|add)\b/i);
   });
 
-  it("formats betas with a true minus sign", () => {
-    expect(formatBeta(-0.12)).toBe("−0.12");
+  it("formats betas in accounting style", () => {
+    expect(formatBeta(-0.12)).toBe("(0.12)");
     expect(formatBeta(0.004)).toBe("0.00");
     expect(formatBeta(-0.001)).toBe("0.00");
-    expect(formatBeta(0.055, 2, { signed: true })).toBe("+0.06");
-    expect(formatBeta(0.001, 2, { signed: true })).toBe("0.00");
+    expect(formatBeta(0.055, 2)).toBe("0.06");
+    expect(formatBeta(Number.NaN)).toBe("—");
   });
 });

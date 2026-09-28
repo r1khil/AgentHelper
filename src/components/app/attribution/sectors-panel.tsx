@@ -4,10 +4,10 @@ import { Fragment, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import type { SectorRow } from "@/lib/attribution/attribution";
 import { ETF_BY_SECTOR, bucketLabel, type BucketKey } from "@/lib/attribution/sectors";
-import { fixed } from "@/lib/format";
+import { fixed, fmtAccounting, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { EXPLAIN } from "./explainers";
-import { BPS_NOTE, fmtBpsShort, fmtSigned, fmtWeight } from "./format";
+import { BPS_NOTE, bps, pct } from "./format";
 import { Tip } from "./info-tip";
 import { INTERACTION_CLASS, InteractionSwitch } from "./interaction-toggle";
 import { SectorBreakdownPanel, type BreakdownQuery } from "./sector-breakdown";
@@ -16,19 +16,15 @@ const WITH_BENCH = "grid-cols-[minmax(0,1fr)_68px_68px_74px_74px_56px]";
 const NO_BENCH = "grid-cols-[minmax(0,1fr)_68px_74px_84px]";
 const upDown = (n: number) => (n > 0 ? "text-up" : n < 0 ? "text-down" : "text-muted-foreground");
 
-const ret = (v: number | null) => (v === null ? "—" : fmtSigned(v));
+const ret = (v: number | null) => fmtPct(pct(v));
 /** Basis points at one decimal, for the expanded detail. */
-const bp1 = (v: number) => {
-  const n = v * 10_000;
-  const s = fixed(n, 1);
-  return `${n > 0 && Number(s) !== 0 ? "+" : ""}${s}`;
-};
+const bp1 = (v: number) => fmtAccounting(bps(v), 1);
 
 function Figure({ label, explain, value, tone, className }: { label: string; explain?: string; value: string; tone?: number; className?: string }) {
   return (
     <div className={cn("min-w-0", className)}>
       <div className="text-[11.5px] text-muted-foreground">{explain ? <Tip label={label}>{explain}</Tip> : label}</div>
-      <div className={cn("mt-0.5 font-mono text-[13px] font-medium", tone === undefined ? "text-foreground" : upDown(Number(tone.toFixed(1))))}>{value}</div>
+      <div className={cn("mt-0.5 font-mono text-[13px] font-medium", tone === undefined ? "text-foreground" : upDown(Number(fixed(tone, 1))))}>{value}</div>
     </div>
   );
 }
@@ -99,11 +95,11 @@ export function SectorsPanel({ rows, hasBench, own = "Fund", breakdownQuery, cla
                 aria-hidden
               />
               <span className="truncate">{bucketLabel(r.key)}</span>
-              <span className={num}>{fmtWeight(r.avgPortfolioWeight)}</span>
-              {hasBench && <span className={cn(num, "text-muted-foreground")}>{r.key === "cash" || r.key === "unclassified" ? "—" : fmtWeight(r.avgBenchmarkWeight)}</span>}
+              <span className={num}>{fmtPct(pct(r.avgPortfolioWeight), 1)}</span>
+              {hasBench && <span className={cn(num, "text-muted-foreground")}>{r.key === "cash" || r.key === "unclassified" ? "—" : fmtPct(pct(r.avgBenchmarkWeight), 1)}</span>}
               <span className={num}>{ret(r.portfolioReturn)}</span>
               {hasBench && <span className={cn(num, "text-muted-foreground")}>{ret(r.benchmarkReturn)}</span>}
-              <span className={cn(num, "font-semibold", upDown(bpShown))}>{fmtBpsShort(figure)}</span>
+              <span className={cn(num, "font-semibold", upDown(bpShown))}>{fmtAccounting(bps(figure), 0)}</span>
             </button>
             {isOpen && <SectorDetail row={r} hasBench={hasBench} breakdownQuery={breakdownQuery} />}
           </Fragment>

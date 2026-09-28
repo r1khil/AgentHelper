@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import { dailyCloses, trades } from "@/db/schema";
 import { beforeOpening, parseTicket, recordable, ticketsToCsv, UNREADABLE_DOCX, type TicketRead, type TradeTicket } from "./ticket";
 import { importLedger, type ImportResult } from "./import";
+import { fmtCurrency, fmtPct, fmtUsd } from "@/lib/format";
 
 /** Trade tickets from the Ledger page's upload and from emails to Hoot share these checks and the import. */
 
@@ -38,8 +39,8 @@ export async function checkPrices(reads: TicketRead[]): Promise<TicketRead[]> {
     if (!r.ticket || r.skip || !close) return r;
     const gap = r.ticket.price / close - 1;
     if (Math.abs(gap) <= PRICE_TOLERANCE) return r;
-    const pct = `${(Math.abs(gap) * 100).toFixed(1)}% ${gap > 0 ? "above" : "below"}`;
-    return { ...r, priceGap: gap, warnings: [...r.warnings, `$${r.ticket.price} is ${pct} that day's close of $${close.toFixed(2)}. Check it is the price the trade filled at.`] };
+    const pct = `${fmtPct(Math.abs(gap) * 100, 1)} ${gap > 0 ? "above" : "below"}`;
+    return { ...r, priceGap: gap, warnings: [...r.warnings, `${fmtCurrency(r.ticket.price, "USD", { maxDigits: 4 })} is ${pct} that day's close of ${fmtUsd(close)}. Check it is the price the trade filled at.`] };
   });
 }
 

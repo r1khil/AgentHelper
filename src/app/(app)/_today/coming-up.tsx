@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { agendaDate, daysAway, longDate, monthDay } from "@/lib/today";
+import { agendaDate, daysAway, longDate } from "@/lib/today";
 import { Panel, PanelHeader } from "@/components/app/panel";
 import type { AgendaItem } from "./types";
 
@@ -14,7 +14,7 @@ export function ComingUp({ items, today, moreCount, lastDate, calendarHref }: { 
           <>
             {moreCount > 0 && lastDate && (
               <span title={`${moreCount} more ${moreCount === 1 ? "report" : "reports"} through ${longDate(lastDate)}. Dates marked est. are not confirmed.`}>
-                +{moreCount} more through {monthDay(lastDate)}
+                +{moreCount} more through {longDate(lastDate)}
               </span>
             )}
             <Link href={calendarHref} className="text-[13px] font-semibold text-foreground hover:underline">
