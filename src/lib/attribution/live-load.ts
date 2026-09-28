@@ -39,7 +39,8 @@ export async function loadLiveSnapshot(scope: LiveScope, now = new Date()): Prom
 
 /** The session so far in five-minute steps, ending on the snapshot's own figures while it is still moving. */
 export async function loadLivePath(snapshot: LiveSnapshot): Promise<PathPoint[]> {
-  const over = snapshot.status === "final" || snapshot.phase !== "open";
+  // Only stored closes mean the day's bars are settled; until then they are cached five minutes.
+  const over = snapshot.status === "final";
   const symbols = [...new Set([...snapshot.legs.portfolio, ...snapshot.legs.benchmark].map((l) => l.symbol))];
   const bars = Object.fromEntries(
     await Promise.all(

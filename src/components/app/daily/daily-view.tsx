@@ -104,12 +104,13 @@ export function DailyView({ initial, scope, teams: teamList }: { initial: LiveSn
       if (document.visibilityState !== "visible") return;
       const now = Date.now();
       const since = now - lastSnap.current;
+      // Every minute while the market is open, whatever the last answer was: at the bell (or while Yahoo is down) it can
+      // still be the previous session until today's first quotes arrive.
       const due =
-        (snap.status === "live" && since >= REFRESH_MS - 1000) ||
-        (snap.status === "provisional" && since >= PROVISIONAL_MS - 1000) ||
-        (snap.status === "final" && snap.phase !== "open" && now >= Date.parse(snap.opensAt) && since >= REFRESH_MS - 1000);
+        ((snap.phase === "open" || now >= Date.parse(snap.opensAt)) && since >= REFRESH_MS - 1000) ||
+        (snap.status === "provisional" && since >= PROVISIONAL_MS - 1000);
       if (due) void loadSnap();
-      if (snap.status === "live" && now - lastPath.current >= PATH_MS - 1000) void loadPath();
+      if (snap.phase === "open" && now - lastPath.current >= PATH_MS - 1000) void loadPath();
     };
     const timer = window.setInterval(tick, 15_000);
     document.addEventListener("visibilitychange", tick);
