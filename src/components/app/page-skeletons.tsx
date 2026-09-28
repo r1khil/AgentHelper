@@ -144,10 +144,9 @@ export function HoldingSkeleton() {
     <SkeletonPage className="flex min-h-0 flex-1 flex-col gap-4 md:-mt-1">
       <div className="flex shrink-0 flex-wrap items-end gap-3">
         <div className="min-w-0">
-          <TextBone className="text-[12.5px]" w="w-32" />
-          <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <TextBone className="font-mono text-[28px] leading-tight" w="w-20" />
-            <TextBone className="text-base" w="w-40" />
+            <TextBone className="text-base" w="w-56" />
             <TextBone className="ml-2 font-mono text-lg" w="w-16" />
           </div>
         </div>
@@ -451,7 +450,6 @@ export function EarningsReportSkeleton() {
   return (
     <SkeletonPage className="flex min-h-0 flex-1 flex-col gap-5">
       <div className="flex flex-col gap-3">
-        <TextBone className="text-[13px]" w="w-40" />
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <TextBone className="font-mono text-[28px] leading-none" w="w-20" />
           <TextBone className="text-[15px]" w="w-40" />

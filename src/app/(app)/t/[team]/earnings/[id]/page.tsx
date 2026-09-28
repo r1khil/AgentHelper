@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Lock, RefreshCw } from "lucide-react";
+import { Lock, RefreshCw } from "lucide-react";
 import { itemTeam, loadScope } from "@/lib/teams";
 import { holdingHref } from "@/lib/scope";
 import { getEarnings, listEarningsEvidence, type Actuals } from "@/lib/earnings";
@@ -56,22 +56,15 @@ export default async function EarningsDetail({ params, searchParams }: { params:
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5">
+      {/* The way back up to the Calendar is in the app header (nav.ts backFor), so there's no breadcrumb here. */}
       <div className="flex flex-col gap-3">
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-          <Link href={`/t/${scope.slug}/earnings`} className="inline-flex items-center gap-1 hover:text-foreground">
-            <ArrowLeft className="size-3.5" />
-            Calendar
-          </Link>
-          <span aria-hidden="true">/</span>
-          <span className="text-foreground">{h.ticker} earnings</span>
-        </nav>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Link href={holdingHref(scope.slug, team.slug, h.ticker)} className="font-mono text-[28px] leading-none font-semibold tracking-[-0.02em] hover:underline">
             {h.ticker}
           </Link>
           <span className="text-[15px] text-ink-2">{h.companyName}</span>
           <span className="font-mono text-[13px] text-muted-foreground">
-            {e.fiscalPeriod ?? "Earnings"} · {fmtDay(e.reportDate)}
+            {e.fiscalPeriod ? `${e.fiscalPeriod} earnings` : "Earnings"} · {fmtDay(e.reportDate)}
             {e.reportHour ? ` ${e.reportHour.toUpperCase()}` : ""}
           </span>
           <Pill tone={e.dateStatus === "estimated" ? "caution" : "neutral"}>{e.dateStatus} date</Pill>

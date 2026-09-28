@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtCurrency, ppToBp } from "@/lib/format";
 import { Move } from "@/components/app/move";
@@ -7,16 +6,20 @@ import { CountChip, Pill } from "@/components/app/panel";
 
 export type HeaderQuote = { price: number; currency?: string; changePct?: number; relativePp?: number; when: string } | { error: string };
 
-/** Breadcrumb, then the ticker, company, price and moves inline, with the page's actions on the right. */
+/**
+ * The ticker, company and team, price and moves inline, with the page's actions on the right. The way back up to
+ * Holdings is in the app header (nav.ts backFor), so there's no breadcrumb here.
+ */
 export function HoldingHeader({
-  crumbs,
+  team,
   ticker,
   company,
   exited,
   quote,
   actions,
 }: {
-  crumbs: { label: string; href?: string }[];
+  /** The holding's team, which the fund scope doesn't otherwise show. */
+  team: string;
   ticker: string;
   company: string;
   exited?: boolean;
@@ -26,23 +29,12 @@ export function HoldingHeader({
   return (
     <div className="flex shrink-0 flex-wrap items-end gap-3">
       <div className="min-w-0">
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-[12.5px] text-muted-foreground">
-          {crumbs.map((c, i) => (
-            <span key={i} className="flex items-center gap-1">
-              {i > 0 && <ChevronRight className="size-3" />}
-              {c.href ? (
-                <Link href={c.href} className="hover:text-foreground">
-                  {c.label}
-                </Link>
-              ) : (
-                c.label
-              )}
-            </span>
-          ))}
-        </nav>
-        <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h1 className="font-mono text-[28px] leading-tight font-semibold tracking-[-0.02em]">{ticker}</h1>
-          <span className="text-base whitespace-nowrap text-ink-2">{company}</span>
+          <span className="text-base whitespace-nowrap text-ink-2">
+            {company}
+            <span className="text-muted-foreground"> · {team}</span>
+          </span>
           {exited && <Pill className="self-center">Exited</Pill>}
           {"error" in quote ? (
             <span className="text-[13px] text-muted-foreground">{quote.error}</span>
