@@ -14,6 +14,7 @@ import {
   normalizeScenarioTicker,
   withAddedCompanies,
 } from "./scenario";
+import { defaultScenario, type OpeningRun } from "./default-run";
 import {
   BENCHMARKS,
   replay,
@@ -130,4 +131,30 @@ export async function runBacktest(
     );
   }
   return replay(snapshot.positions, weights, prices, benchmark, from, to);
+}
+
+/** Longest the opening replay may hold the page's stream open; past it the user runs it themselves. */
+const OPENING_RUN_TIMEOUT_MS = 45_000;
+
+/**
+ * The replay Backtesting opens with: today's weights against SPY over the default window ending `end`. It saves no
+ * scenario and touches no profile; the prices it fetches go into the shared provider cache like any run's, so the
+ * next open and the first Run read them from there. It never rejects: a failure or timeout comes back as a message
+ * for the replay panel.
+ */
+export async function openingRun(snapshot: Snapshot, end: string): Promise<OpeningRun> {
+  const { weights, benchmark, from, to } = defaultScenario(snapshot, end);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("The opening replay took too long. Run the replay to try again.")), OPENING_RUN_TIMEOUT_MS);
+  });
+  try {
+    const result = await Promise.race([runBacktest(snapshot, weights, benchmark, from, to), timeout]);
+    return { result, from, to, benchmark };
+  } catch (error) {
+    console.error("[backtesting] opening replay", error);
+    return { error: error instanceof Error ? error.message : "The opening replay is unavailable. Run the replay to try again." };
+  } finally {
+    clearTimeout(timer);
+  }
 }

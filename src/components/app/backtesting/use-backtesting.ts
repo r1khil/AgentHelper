@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { usePathname } from "next/navigation";
 import { usePageContext } from "@/components/app/hoot/page-context";
 import { BENCHMARKS, type BacktestResult, type Position, type Snapshot } from "@/lib/backtesting/engine";
@@ -11,6 +11,7 @@ import {
   withAddedCompanies,
 } from "@/lib/backtesting/scenario";
 import { applyTrade, fundingIds, fundingLabel, toPercentStrings, type Trade } from "@/lib/backtesting/trade";
+import { isTodaysWeights, type OpeningRun } from "@/lib/backtesting/default-run";
 import type { ScenarioRisk } from "@/lib/risk/compare";
 
 // The backtesting page's state and requests, shared by the redesigned and the classic layout so both run the same
@@ -71,6 +72,8 @@ export type Completed = {
   from: string;
   to: string;
   benchmark: Benchmark;
+  /** Replayed at today's weights with nothing added, so the scenario and today's line are the same. */
+  baseline: boolean;
 };
 
 export type BacktestingOptions = {
@@ -82,6 +85,8 @@ export type BacktestingOptions = {
   /** Null turns the risk comparison off (the synthetic preview has no stored prices). */
   riskEndpoint?: string | null;
   initial?: InitialScenario;
+  /** Today's weights against SPY, replayed on the server while the page streams; shown as the first run. */
+  openingRun?: Promise<OpeningRun>;
 };
 
 export function useBacktesting({
@@ -92,6 +97,7 @@ export function useBacktesting({
   tickerEndpoint = "/api/backtesting/ticker",
   riskEndpoint = "/api/backtesting/risk",
   initial,
+  openingRun,
 }: BacktestingOptions) {
   const [opened] = useState(() => openScenario(snapshot, initial));
   const [weights, setWeights] = useState(opened.weights);
@@ -105,9 +111,10 @@ export function useBacktesting({
   const [benchmark, setBenchmark] = useState<Benchmark>(initial?.benchmark ?? "SPY");
   const [risk, setRisk] = useState<{ data: ScenarioRisk | null; busy: boolean; error: string; for: string }>({ data: null, busy: false, error: "", for: "" });
   const [completed, setCompleted] = useState<Completed | null>(null);
-  const [busy, setBusy] = useState(false),
+  // The opening replay counts as a run in flight: a results-shaped skeleton, not empty cells, until it lands.
+  const [busy, setBusy] = useState(Boolean(openingRun)),
     [error, setError] = useState("");
-  const inFlight = useRef(false),
+  const inFlight = useRef(Boolean(openingRun)),
     runs = useRef(0),
     lookupInFlight = useRef(false);
   const positions = withAddedCompanies(snapshot, added).positions;
@@ -125,6 +132,28 @@ export function useBacktesting({
       completed.to !== to ||
       completed.benchmark !== benchmark ||
       JSON.stringify(completed.weights) !== JSON.stringify(weights));
+  useEffect(() => {
+    if (!openingRun) return;
+    let live = true;
+    // A promise from the server arrives as React's thenable, whose then() returns nothing; wrap it to chain.
+    Promise.resolve(openingRun)
+      .then(
+        (r) => {
+          if (!live) return;
+          if ("error" in r) setError(r.error);
+          else setCompleted({ id: ++runs.current, result: r.result, weights: { ...opened.weights }, from: r.from, to: r.to, benchmark: r.benchmark, baseline: true });
+        },
+        () => live && setError("The opening replay didn't load. Run the replay to try again."),
+      )
+      .finally(() => {
+        if (!live) return;
+        inFlight.current = false;
+        setBusy(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [openingRun, opened.weights]);
   // Hoot attaches the scenario on screen to a question asked from this page.
   const pathname = usePathname();
   const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -311,7 +340,7 @@ export function useBacktesting({
         throw new Error("Your session expired. Sign in again, then reload this page.");
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Unable to replay this period.");
-      setCompleted({ id: ++runs.current, result, weights: { ...weights }, from, to, benchmark });
+      setCompleted({ id: ++runs.current, result, weights: { ...weights }, from, to, benchmark, baseline: isTodaysWeights(positions, scenarioWeights) });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to run backtest. Please retry.");
     } finally {

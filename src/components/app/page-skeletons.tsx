@@ -1,7 +1,7 @@
 import { LastSessionSkeleton } from "@/app/(app)/_today/last-session";
 import { StressPanelFallback } from "@/components/app/risk/stress-panel";
 import { cn } from "@/lib/utils";
-import { Bone, SkeletonChart, SkeletonPage, SkeletonPanel, SkeletonPanelHeader, SkeletonPill, SkeletonRows, SkeletonStatStrip, SkeletonTabs, TextBone } from "./skeletons";
+import { Bone, ReplaySkeleton, SkeletonChart, SkeletonPage, SkeletonPanel, SkeletonPanelHeader, SkeletonPill, SkeletonRows, SkeletonStatStrip, SkeletonTabs, TextBone } from "./skeletons";
 
 // One loading skeleton per page, used by the route's loading.tsx. Each copies its page's outer layout classes
 // (grids, column widths, gaps, panel and row heights) from the component named above it, so the page streams in
@@ -1051,25 +1051,23 @@ export function BacktestingSkeleton() {
         </div>
       </div>
       <div className="flex min-w-0 flex-col gap-5">
-        <SkeletonStatStrip cells={4} />
+        <SkeletonStatStrip cells={4} wrap />
         <SkeletonPanel className="flex-1 px-4 pt-3.5 pb-4">
           <div className="flex shrink-0 flex-wrap items-center gap-x-3.5 gap-y-1">
             <TextBone className="text-emph font-semibold" w="w-44" />
             <TextBone className="text-body" w="w-16" />
             <TextBone className="text-body" w="w-24" />
           </div>
-          <div className="grid flex-1 place-items-center py-10">
-            <div className="flex w-full max-w-md flex-col items-center gap-2">
-              <TextBone className="text-emph" w="w-56" />
-              <TextBone className="text-body" w="w-80 max-w-full" />
-              <TextBone className="text-body" w="w-72 max-w-full" />
-            </div>
-          </div>
+          {/* A plain open replays today's weights as the page loads, so the panel is chart-shaped from the start. */}
+          <ReplaySkeleton />
         </SkeletonPanel>
         <SkeletonPanel className="shrink-0">
           <SkeletonPanelHeader w="w-36" aside="w-40" />
           <SkeletonRows count={2} row="flex h-10 gap-2.5" cells={["w-48", "ml-auto w-24", "w-[74px]"]} />
         </SkeletonPanel>
+        <div className="flex h-11 shrink-0 items-center rounded-[14px] bg-band-2 px-4 shadow-[0_0_0_1px_var(--border)]">
+          <TextBone className="text-body font-medium" w="w-36" />
+        </div>
       </div>
     </SkeletonPage>
   );

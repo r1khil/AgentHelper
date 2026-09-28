@@ -74,14 +74,36 @@ export type StatCell = {
 };
 
 /**
- * One panel split into equal cells: label, a big mono figure, a note. Labels and notes wrap in a narrow window rather
- * than cut off; the cells share their three rows (subgrid), so a two-line label keeps every figure on one line.
+ * Dividers for a strip that wraps: two cells a row while narrow (a left rule on the second of each pair, a top rule
+ * from the second row on), one row once the strip is 36rem wide. Literal classes, so Tailwind sees each one.
  */
-export function StatStrip({ cells, className, ...props }: { cells: StatCell[]; className?: string } & Omit<React.ComponentProps<"section">, "children">) {
-  return (
-    <section className={cn("panel grid shrink-0 overflow-hidden", className)} style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }} {...props}>
+const WRAP_DIVIDERS = {
+  left: "shadow-[inset_1px_0_0_var(--border)]",
+  topThenLeft: "shadow-[inset_0_1px_0_var(--border)] @min-[36rem]/strip:shadow-[inset_1px_0_0_var(--border)]",
+  cornerThenLeft: "shadow-[inset_1px_1px_0_var(--border)] @min-[36rem]/strip:shadow-[inset_1px_0_0_var(--border)]",
+} as const;
+export const wrapDivider = (i: number) =>
+  i === 0 ? undefined : i % 2 === 1 ? (i > 1 ? WRAP_DIVIDERS.cornerThenLeft : WRAP_DIVIDERS.left) : WRAP_DIVIDERS.topThenLeft;
+
+/** The grid classes and style for a strip of `count` equal cells; `wrap` goes two a row below 36rem (see wrapDivider). */
+export function stripGrid(count: number, wrap?: boolean) {
+  const cols = `repeat(${count}, minmax(0, 1fr))`;
+  return wrap
+    ? { className: "grid-cols-2 @min-[36rem]/strip:grid-cols-(--strip-cols)", style: { "--strip-cols": cols } as React.CSSProperties }
+    : { className: undefined, style: { gridTemplateColumns: cols } };
+}
+
+/**
+ * One panel split into equal cells: label, a big mono figure, a note. Labels and notes wrap in a narrow window rather
+ * than cut off; the cells share their three rows (subgrid), so a two-line label keeps every figure on one line. `wrap`
+ * (an even number of cells) puts two cells a row while the strip is narrower than 36rem.
+ */
+export function StatStrip({ cells, className, wrap, ...props }: { cells: StatCell[]; className?: string; wrap?: boolean } & Omit<React.ComponentProps<"section">, "children">) {
+  const grid = stripGrid(cells.length, wrap);
+  const strip = (
+    <section className={cn("panel grid shrink-0 overflow-hidden", grid.className, className)} style={grid.style} {...props}>
       {cells.map((c, i) => (
-        <div key={i} className={cn("row-span-3 grid min-w-0 grid-rows-subgrid px-[18px] py-3.5", i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
+        <div key={i} className={cn("row-span-3 grid min-w-0 grid-rows-subgrid px-[18px] py-3.5", wrap ? wrapDivider(i) : i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
           <div className="self-end text-body text-muted-foreground">{c.label}</div>
           <div
             className={cn(
@@ -98,6 +120,7 @@ export function StatStrip({ cells, className, ...props }: { cells: StatCell[]; c
       ))}
     </section>
   );
+  return wrap ? <div className="@container/strip min-w-0 shrink-0">{strip}</div> : strip;
 }
 
 /*

@@ -12,6 +12,7 @@ import type { GicsSector } from "@/lib/attribution/sectors";
 import { loadSeries } from "@/lib/attribution/store";
 import { attributionHeadline, summarizeAttribution } from "@/lib/attribution/summary";
 import { qualityNotices } from "@/lib/attribution/view";
+import { defaultWindow } from "@/lib/backtesting/default-run";
 import { BENCHMARKS, type Metrics } from "@/lib/backtesting/engine";
 import { loadSnapshot, resolveScenarioSnapshot, runBacktest } from "@/lib/backtesting/load";
 import { MAX_SCENARIO_COMPANIES } from "@/lib/backtesting/scenario";
@@ -122,7 +123,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
       description:
         "Hypothetical replay of the current holdings over past prices with today's weights held fixed (the current replay) and an optional modified scenario. It does not reconstruct past trades, weight changes or cash flows, so it is not realized performance; use get_attribution for how the Fund or a team actually did. The scenario may add recognized company tickers and change or drop weights with explicit offsets. Fixed weights rebalance daily using Yahoo adjusted closes. Returns performance metrics and holding contributions. This sandbox never changes the real portfolio. Execs and admins backtest the Fund; everyone else their team.",
       inputSchema: z.object({
-        from: iso.optional().describe("First session; defaults to three months before `to`"),
+        from: iso.optional().describe("First session; defaults to one year before `to`, like the Backtesting page"),
         to: iso.optional().describe("Last session; defaults to the last completed session"),
         benchmark: z.enum(Object.keys(BENCHMARKS) as [keyof typeof BENCHMARKS, ...(keyof typeof BENCHMARKS)[]]).default("SPY"),
         addedTickers: z.array(z.string()).max(MAX_SCENARIO_COMPANIES).optional().describe("Company tickers to add only to the modified scenario. Resolve them before assigning weights; each starts at 0%, so include explicit offsets in weights."),
@@ -140,8 +141,8 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
         try {
           const yesterday = DateTime.now().setZone(NY).minus({ days: 1 }).toISODate()!;
           const end = to && to < yesterday ? to : yesterday;
-          // Same default window as the Backtesting page: three months back from the end date.
-          const start = from ?? DateTime.fromISO(end, { zone: NY }).minus({ months: 3 }).toISODate()!;
+          // Same default window as the Backtesting page: a year back from the end date.
+          const start = from ?? defaultWindow(end).from;
           const saved = await loadSnapshot(viewer);
           const snapshot = addedTickers?.length ? await resolveScenarioSnapshot(saved, addedTickers) : saved;
           let weights = weightsFromOverrides(snapshot.positions, overrides ?? {});
