@@ -1,6 +1,7 @@
 import { agendaLine, agendaLines, figureLines, itemsToLines, performerLine } from "./format";
 import { AGENDA_LABELS, AGENDA_SECTIONS, type WeeklyAgenda, type WeeklyFigures, type WeeklyPerformers, type WeeklySources } from "./types";
-import { packTitle, weekEndingLabel } from "./weeks";
+import { DateTime } from "luxon";
+import { packTitle } from "./weeks";
 
 /**
  * The Sunday email to the exec who builds the deck: every data point on the slide, in the deck's order and style, so each
@@ -37,8 +38,12 @@ export function splitRecipients(listed: string[]): { to: string | null; cc: stri
   return { to: real[0] ?? null, cc: real.slice(1), skipped: all.filter(isTestAddress) };
 }
 
+/**
+ * Kept in the deck's long date style ("September 25, 2026") rather than the app's "25 Sep 2026": it goes to Aadi, and
+ * mail clients thread and filter on the subject. weekFromReplySubject still reads both styles.
+ */
 export function weeklyEmailSubject(weekEnding: string): string {
-  return `Weekly update data for the week ended ${weekEndingLabel(weekEnding)}`;
+  return `Weekly update data for the week ended ${DateTime.fromISO(weekEnding, { zone: "America/New_York" }).toFormat("LLLL d, yyyy")}`;
 }
 
 const FIGURE_LABELS: Record<keyof WeeklyFigures, string> = { aumK: "AUM", ytdPct: "The YTD return", benchmarkYtdPct: "The benchmark YTD" };
