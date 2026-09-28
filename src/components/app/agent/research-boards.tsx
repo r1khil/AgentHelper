@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense, use, useMemo, useState } from "react";
 import { ChevronRight, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtDate, fmtDateTime, relativeTime } from "@/lib/format";
+import { fixed, fmtDate, fmtDateTime, relativeTime } from "@/lib/format";
 import { CountChip, Panel, Pill, Segmented } from "@/components/app/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -293,10 +293,13 @@ function StatusCell({ h, flags }: { h: HoldingCardData; flags: ReturnType<typeof
   );
 }
 
-const pct = (v: number) => (v < 0 ? `(${Math.abs(v).toFixed(2)}%)` : `${v > 0 ? "+" : ""}${v.toFixed(2)}%`);
+const pct = (v: number) => {
+  const s = fixed(Math.abs(v), 2);
+  return Number(s) === 0 ? `${s}%` : v < 0 ? `(${s}%)` : `+${s}%`;
+};
 const bps = (pp: number) => {
   const n = Math.round(Math.abs(pp) * 100);
-  return pp < 0 ? `(${n} bps)` : `${pp > 0 ? "+" : ""}${n} bps`;
+  return n === 0 ? "0 bps" : pp < 0 ? `(${n} bps)` : `+${n} bps`;
 };
 
 function QuoteCell({ ticker, market, alert }: { ticker: string; market: Promise<MarketByTicker>; alert: boolean }) {

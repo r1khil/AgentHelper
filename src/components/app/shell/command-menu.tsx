@@ -9,7 +9,7 @@ import { ArrowRight, Briefcase, CalendarDays, ChartColumn, Layers, MessageSquare
 import { useTheme } from "next-themes";
 import { startHootChat } from "@/lib/actions/chats";
 import type { CommandHolding } from "@/lib/nav-data";
-import { fmtPct } from "@/lib/format";
+import { fmtCurrency, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useHootCommand } from "../hoot/use-hoot-command";
 import { leaveHootQuestion } from "../hoot/handoff";
@@ -268,7 +268,7 @@ function Preview({ item }: { item: Item }) {
   );
 }
 
-type Quote = { price: number | null; changePct: number | null; relativePp: number | null };
+type Quote = { price: number | null; currency: string | null; changePct: number | null; relativePp: number | null };
 
 /** Quotes fetched for the preview this session, so arrowing back and forth doesn't refetch. */
 const quoteCache = new Map<string, Quote>();
@@ -309,7 +309,7 @@ function HoldingPreview({ holding: h }: { holding: CommandHolding }) {
         {h.company} · {h.team}
       </div>
       <div className="mt-3 flex items-baseline gap-2">
-        <span className="figure text-2xl">{q?.price != null ? `$${q.price.toFixed(2)}` : "—"}</span>
+        <span className="figure text-2xl">{fmtCurrency(q?.price, q?.currency)}</span>
         {q?.changePct != null && <span className={cn("font-mono text-xs", q.changePct >= 0 ? "text-up" : "text-down")}>{fmtPct(q.changePct)}</span>}
       </div>
       <dl className="mt-4 border-t">

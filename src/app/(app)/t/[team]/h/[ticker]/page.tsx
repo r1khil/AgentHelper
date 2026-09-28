@@ -9,6 +9,7 @@ import { getBarsRange, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { listFilings } from "@/lib/providers/edgar";
 import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
 import { NY, todayNY } from "@/lib/providers/calendar";
+import { fmtCurrency } from "@/lib/format";
 import { canManageTeam, isFundWide } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { effectiveRunStatus, listHoldingChats } from "@/lib/chats";
@@ -97,7 +98,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
     period: e.fiscalPeriod,
     status: e.status,
     expectations: e.preLockedAt ? "locked" : e.expectations?.trim() ? "draft" : "none",
-    eps: e.epsEstimate != null ? Number(e.epsEstimate).toFixed(2) : null,
+    eps: e.epsEstimate != null ? fmtCurrency(e.epsEstimate, e.epsCurrency) : null,
   }));
 
   // ── Tabs ──

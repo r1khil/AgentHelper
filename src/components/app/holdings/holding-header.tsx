@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtMoney } from "@/lib/format";
+import { fmtCurrency } from "@/lib/format";
 import { Move } from "@/components/app/move";
 import { CountChip, Pill } from "@/components/app/panel";
 
@@ -48,11 +48,7 @@ export function HoldingHeader({
             <span className="text-[13px] text-muted-foreground">{quote.error}</span>
           ) : (
             <>
-              <span className="ml-2 font-mono text-lg font-medium tabular-nums" title={quote.currency && quote.currency !== "USD" ? quote.currency : undefined}>
-                {quote.currency && quote.currency !== "USD" ? "" : "$"}
-                {fmtMoney(quote.price)}
-                {quote.currency && quote.currency !== "USD" ? ` ${quote.currency}` : ""}
-              </span>
+              <span className="ml-2 font-mono text-lg font-medium tabular-nums">{fmtCurrency(quote.price, quote.currency)}</span>
               <Move value={quote.changePct} unit="%" digits={2} className="text-sm" />
               <span className="text-[13px] whitespace-nowrap text-muted-foreground">
                 vs S&amp;P <Move value={quote.relativePp} unit=" pp" digits={1} /> · {quote.when}

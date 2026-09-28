@@ -47,6 +47,7 @@ function previewEarnings(start: string, end: string): CalendarEvent[] {
       reportHour: i % 2 ? "amc" : "bmo",
       dateStatus: i % 3 ? "confirmed" : "estimated",
       epsEstimate: (1 + (i % 5) * 0.37).toFixed(2),
+      epsCurrency: "USD",
       earningsId: `preview-${i}`,
       teamId: "preview-team",
       teamSlug: "preview",
@@ -56,7 +57,7 @@ function previewEarnings(start: string, end: string): CalendarEvent[] {
       expectations: (["locked", "draft", "not_started"] as const)[i % 3],
     });
     if (i % 2 === 0)
-      out.push({ date, ticker: `BW${i}`, name: `Bellwether ${i}`, kind: "bellwether", sector, industry: null, reportHour: "bmo", dateStatus: "estimated", epsEstimate: "0.94", etf: "XLF", weightPct: "3.1" });
+      out.push({ date, ticker: `BW${i}`, name: `Bellwether ${i}`, kind: "bellwether", sector, industry: null, reportHour: "bmo", dateStatus: "estimated", epsEstimate: "0.94", epsCurrency: "USD", etf: "XLF", weightPct: "3.1" });
     i++;
   }
   return out;

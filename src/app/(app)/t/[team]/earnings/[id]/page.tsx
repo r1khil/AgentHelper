@@ -8,7 +8,7 @@ import { gatherResults, lockChecklist, markReviewed, rebuildPrepPack, requestEar
 import { canManageTeam } from "@/lib/auth";
 import { PrepPackCard } from "@/components/app/agent/prep-pack-card";
 import { agentConfigured } from "@/lib/agent/model";
-import { fmtDate, fmtDateTime, fmtMoney, relativeTime } from "@/lib/format";
+import { fmtCurrency, fmtDate, fmtDateTime, relativeTime } from "@/lib/format";
 import { todayNY } from "@/lib/providers/calendar";
 import { Panel, Pill } from "@/components/app/panel";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -77,12 +77,12 @@ export default async function EarningsDetail({ params, searchParams }: { params:
           <div className="flex flex-wrap gap-x-5 gap-y-1 text-[13px] text-muted-foreground">
             {e.epsEstimate && (
               <span>
-                Consensus EPS <span className="font-mono text-foreground">${fmtMoney(e.epsEstimate)}</span>
+                Consensus EPS <span className="font-mono text-foreground">{fmtCurrency(e.epsEstimate, e.epsCurrency)}</span>
               </span>
             )}
             {e.revenueEstimate && (
               <span>
-                Consensus revenue <span className="font-mono text-foreground">${fmtMoney(Number(e.revenueEstimate) / 1e9, 2)}B</span>
+                Consensus revenue <span className="font-mono text-foreground">{fmtCurrency(e.revenueEstimate, e.revenueCurrency, { scale: 1e9, suffix: "B" })}</span>
               </span>
             )}
           </div>

@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     if (!/^[A-Z0-9.^-]{1,12}$/i.test(quote)) return new Response("Bad ticker", { status: 400 });
     const snap = await marketSnapshot([quote.toUpperCase()]);
     const row = snap.rows[quote.toUpperCase()];
-    return Response.json({ price: row?.quote?.price ?? null, changePct: row?.quote?.changePct ?? null, relativePp: row?.relativePp ?? null }, { headers });
+    return Response.json({ price: row?.quote?.price ?? null, currency: row?.quote?.currency ?? null, changePct: row?.quote?.changePct ?? null, relativePp: row?.relativePp ?? null }, { headers });
   }
   const scope = url.searchParams.get("scope") ?? "";
   if (!/^[\w-]{1,80}$/.test(scope)) return Response.json({ counts: {}, holdings: [] }, { headers });

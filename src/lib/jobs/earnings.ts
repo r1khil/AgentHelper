@@ -5,6 +5,19 @@ import { earnings, holdings } from "@/db/schema";
 import { getEarningsDate } from "@/lib/providers/yahoo";
 import { getEarningsCalendar } from "@/lib/providers/finnhub";
 import { todayNY } from "@/lib/providers/calendar";
+import type { EarningsDate } from "@/lib/providers/types";
+
+/** Consensus EPS and revenue, Yahoo first, each with the currency of the provider that supplied that figure. */
+export function consensusFigures(y: EarningsDate | null | undefined, f: EarningsDate | null | undefined) {
+  const eps = y?.epsEstimate != null ? y : f;
+  const revenue = y?.revenueEstimate != null ? y : f;
+  return {
+    epsEstimate: eps?.epsEstimate?.toString() ?? null,
+    epsCurrency: (eps?.epsEstimate != null && eps.epsCurrency) || null,
+    revenueEstimate: revenue?.revenueEstimate?.toString() ?? null,
+    revenueCurrency: (revenue?.revenueEstimate != null && revenue.revenueCurrency) || null,
+  };
+}
 
 /** Refresh the next earnings date for every active holding; flip past events to "reported". */
 export async function refreshEarningsCalendar() {
@@ -20,6 +33,7 @@ export async function refreshEarningsCalendar() {
       const date = y?.date && y.date >= today ? y.date : next?.date;
       if (date) {
         const status: "confirmed" | "estimated" = y && y.date === date && y.isEstimate === false ? "confirmed" : "estimated";
+        const figures = consensusFigures(y, next);
         await db
           .insert(earnings)
           .values({
@@ -28,13 +42,12 @@ export async function refreshEarningsCalendar() {
             reportHour: next?.hour ?? null,
             dateStatus: status,
             dateSourceUrl: y?.sourceUrl ?? null,
-            epsEstimate: (y?.epsEstimate ?? next?.epsEstimate)?.toString() ?? null,
-            revenueEstimate: (y?.revenueEstimate ?? next?.revenueEstimate)?.toString() ?? null,
+            ...figures,
             fiscalPeriod: next?.fiscalPeriod ?? null,
           })
           .onConflictDoUpdate({
             target: [earnings.holdingId, earnings.reportDate],
-            set: { dateStatus: status, reportHour: next?.hour ?? null, epsEstimate: (y?.epsEstimate ?? next?.epsEstimate)?.toString() ?? null, revenueEstimate: (y?.revenueEstimate ?? next?.revenueEstimate)?.toString() ?? null },
+            set: { dateStatus: status, reportHour: next?.hour ?? null, ...figures },
           });
         updated++;
       }

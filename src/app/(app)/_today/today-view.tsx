@@ -176,6 +176,7 @@ function teamRows({ teams: teamList, rows, upcoming }: TeamInput, market?: Marke
           ticker: h.ticker,
           href: `/t/${teamSlug}/h/${h.ticker}`,
           price: q?.quote?.price ?? null,
+          currency: q?.quote?.currency ?? null,
           changePct: q?.quote?.changePct ?? null,
           relativePp: q?.relativePp ?? null,
           nextReport: report ? `${monthDay(report.reportDate)}${report.dateStatus === "estimated" ? " est." : ""}` : null,

@@ -23,7 +23,7 @@ export function fmtDeckPct(n: number | null | undefined): string {
 export function fmtAumK(n: number | null | undefined): string {
   if (n === null || n === undefined || !Number.isFinite(n)) return "—";
   const body = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  return n < 0 ? `($${body}k)` : `$${body}k`;
+  return n < 0 && body !== "0.0" ? `($${body}k)` : `$${body}k`;
 }
 
 /** Kept as written when a name arrives in capitals. */

@@ -19,6 +19,11 @@ describe("fmtAumK", () => {
     expect(fmtAumK(912)).toBe("$912.0k");
     expect(fmtAumK(null)).toBe("—");
   });
+
+  it("parenthesises losses but never a zero", () => {
+    expect(fmtAumK(-12.3)).toBe("($12.3k)");
+    expect(fmtAumK(-0.04)).toBe("$0.0k");
+  });
 });
 
 describe("performerLine", () => {

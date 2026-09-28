@@ -103,18 +103,22 @@ export async function lookupCompany(symbol: string): Promise<{ symbol: string; n
 }
 
 export async function getEarningsDate(symbol: string): Promise<EarningsDate | null> {
-  return cached(`yahoo:earnings:${symbol}`, 60 * 60 * 6, async () => {
-    const res = await spaced(HOST, GAP_MS, () => retry(() => yf().quoteSummary(symbol, { modules: ["calendarEvents"] })));
+  return cached(`yahoo:earnings:v2:${symbol}`, 60 * 60 * 6, async () => {
+    const res = await spaced(HOST, GAP_MS, () => retry(() => yf().quoteSummary(symbol, { modules: ["calendarEvents", "earningsTrend"] })));
     const e = res.calendarEvents?.earnings;
     const dates = (e?.earningsDate ?? []) as Date[];
     if (!dates.length) return null;
     const date = DateTime.fromJSDate(dates[0]).setZone(NY).toISODate()!;
     const ev = e as unknown as { isEarningsDateEstimate?: boolean; earningsAverage?: number; revenueAverage?: number };
+    // calendarEvents carries no currency; the trend rows name it per figure, and it is the same for every period.
+    const trend = (res.earningsTrend?.trend ?? []) as unknown as { earningsEstimate?: { earningsCurrency?: string }; revenueEstimate?: { revenueCurrency?: string } }[];
     return {
       date,
       isEstimate: ev.isEarningsDateEstimate ?? true,
       epsEstimate: ev.earningsAverage,
       revenueEstimate: ev.revenueAverage,
+      epsCurrency: trend.find((t) => t.earningsEstimate?.earningsCurrency)?.earningsEstimate?.earningsCurrency,
+      revenueCurrency: trend.find((t) => t.revenueEstimate?.revenueCurrency)?.revenueEstimate?.revenueCurrency,
       sourceUrl: `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}/`,
     };
   });
@@ -283,26 +287,28 @@ export async function getHolders(symbol: string): Promise<HoldersSnapshot> {
   });
 }
 
-export type EstimateRow = { period: string; endDate: string | null; eps: { avg: number | null; low: number | null; high: number | null; analysts: number | null; yearAgo: number | null; growthPct: number | null }; revenue: { avg: number | null; low: number | null; high: number | null; analysts: number | null; growthPct: number | null } };
+/** `currency` is the ISO code of each figure (TSM: EPS per ADR in USD, revenue in TWD), null when Yahoo omits it. */
+export type EstimateRow = { period: string; endDate: string | null; eps: { avg: number | null; low: number | null; high: number | null; analysts: number | null; yearAgo: number | null; growthPct: number | null; currency: string | null }; revenue: { avg: number | null; low: number | null; high: number | null; analysts: number | null; growthPct: number | null; currency: string | null } };
 export type EstimatesSnapshot = { trend: EstimateRow[]; recommendations: { period: string; strongBuy: number; buy: number; hold: number; sell: number; strongSell: number }[]; targetMeanPrice: number | null; targetLowPrice: number | null; targetHighPrice: number | null; analystCount: number | null };
 
 /** Consensus EPS and revenue estimates by period plus the recommendation mix, as Yahoo aggregates them. */
 export async function getEstimates(symbol: string): Promise<EstimatesSnapshot> {
-  return cached(`yahoo:estimates:${symbol}`, 60 * 60 * 12, async () => {
+  return cached(`yahoo:estimates:v2:${symbol}`, 60 * 60 * 12, async () => {
     const res = (await spaced(HOST, GAP_MS, () => retry(() => yf().quoteSummary(symbol, { modules: ["earningsTrend", "recommendationTrend", "financialData"] }), 2))) as {
-      earningsTrend?: { trend?: { period?: string; endDate?: Date | string | null; earningsEstimate?: Record<string, number | undefined>; revenueEstimate?: Record<string, number | undefined> }[] };
+      earningsTrend?: { trend?: { period?: string; endDate?: Date | string | null; earningsEstimate?: Record<string, unknown>; revenueEstimate?: Record<string, unknown> }[] };
       recommendationTrend?: { trend?: { period?: string; strongBuy?: number; buy?: number; hold?: number; sell?: number; strongSell?: number }[] };
       financialData?: { targetMeanPrice?: number; targetLowPrice?: number; targetHighPrice?: number; numberOfAnalystOpinions?: number };
     };
-    const n = (v: number | undefined) => (typeof v === "number" ? v : null);
-    const pct = (v: number | undefined) => (typeof v === "number" ? +(v * 100).toFixed(1) : null);
+    const n = (v: unknown) => (typeof v === "number" ? v : null);
+    const pct = (v: unknown) => (typeof v === "number" ? +(v * 100).toFixed(1) : null);
+    const code = (v: unknown) => (typeof v === "string" && v ? v : null);
     const trend = (res.earningsTrend?.trend ?? [])
       .filter((t) => t.period && ["0q", "+1q", "0y", "+1y"].includes(t.period))
       .map((t) => ({
         period: ({ "0q": "current quarter", "+1q": "next quarter", "0y": "current fiscal year", "+1y": "next fiscal year" } as Record<string, string>)[t.period!] ?? t.period!,
         endDate: t.endDate ? new Date(t.endDate).toISOString().slice(0, 10) : null,
-        eps: { avg: n(t.earningsEstimate?.avg), low: n(t.earningsEstimate?.low), high: n(t.earningsEstimate?.high), analysts: n(t.earningsEstimate?.numberOfAnalysts), yearAgo: n(t.earningsEstimate?.yearAgoEps), growthPct: pct(t.earningsEstimate?.growth) },
-        revenue: { avg: n(t.revenueEstimate?.avg), low: n(t.revenueEstimate?.low), high: n(t.revenueEstimate?.high), analysts: n(t.revenueEstimate?.numberOfAnalysts), growthPct: pct(t.revenueEstimate?.growth) },
+        eps: { avg: n(t.earningsEstimate?.avg), low: n(t.earningsEstimate?.low), high: n(t.earningsEstimate?.high), analysts: n(t.earningsEstimate?.numberOfAnalysts), yearAgo: n(t.earningsEstimate?.yearAgoEps), growthPct: pct(t.earningsEstimate?.growth), currency: code(t.earningsEstimate?.earningsCurrency) },
+        revenue: { avg: n(t.revenueEstimate?.avg), low: n(t.revenueEstimate?.low), high: n(t.revenueEstimate?.high), analysts: n(t.revenueEstimate?.numberOfAnalysts), growthPct: pct(t.revenueEstimate?.growth), currency: code(t.revenueEstimate?.revenueCurrency) },
       }));
     const recommendations = (res.recommendationTrend?.trend ?? []).slice(0, 2).map((r) => ({ period: r.period === "0m" ? "current" : r.period === "-1m" ? "one month ago" : (r.period ?? "?"), strongBuy: r.strongBuy ?? 0, buy: r.buy ?? 0, hold: r.hold ?? 0, sell: r.sell ?? 0, strongSell: r.strongSell ?? 0 }));
     const f = res.financialData;

@@ -1,17 +1,38 @@
+/** `n.toFixed(digits)`, except that a value which rounds to zero reads "0.00", never "-0.00". */
+export function fixed(n: number, digits = 2) {
+  const s = n.toFixed(digits);
+  return Number(s) === 0 ? (0).toFixed(digits) : s;
+}
+
+// signDisplay "negative" drops the minus from a value that rounds to zero ("0.00", not "-0.00").
 export function fmtMoney(n: number | string | null | undefined, digits = 2) {
   if (n === null || n === undefined || n === "") return "";
-  return Number(n).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return Number(n).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits, signDisplay: "negative" });
 }
 
 export function fmtPct(n: number | string | null | undefined, digits = 2, signed = true) {
   if (n === null || n === undefined || n === "") return "";
-  const v = Number(n);
-  return `${signed && v > 0 ? "+" : ""}${v.toFixed(digits)}%`;
+  const s = fixed(Number(n), digits);
+  return `${signed && Number(s) > 0 ? "+" : ""}${s}%`;
 }
 
 export function fmtCompact(n: number | null | undefined) {
   if (n === null || n === undefined) return "";
-  return Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
+  return Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1, signDisplay: "negative" }).format(n);
+}
+
+/**
+ * A provider's money figure in its own currency, accounting style: "$4.46" for USD, the ISO code for any other
+ * ("TWD 1,454.94B"), and no symbol when the currency is unknown, since a wrong "$" is worse than none. `scale`
+ * divides first and `suffix` names it (1e9 and "B"). Negatives go in parentheses; a zero is never "(0.00)".
+ */
+export function fmtCurrency(n: number | string | null | undefined, currency: string | null | undefined, { digits = 2, scale = 1, suffix = "" } = {}) {
+  if (n === null || n === undefined || n === "" || !Number.isFinite(Number(n))) return "—";
+  const v = Number(n) / scale;
+  const body = fmtMoney(Math.abs(v), digits);
+  const code = currency?.trim().toUpperCase();
+  const text = `${!code ? "" : code === "USD" ? "$" : `${code} `}${body}${suffix}`;
+  return v < 0 && Number(body.replaceAll(",", "")) !== 0 ? `(${text})` : text;
 }
 
 export function fmtDate(d: string | Date | null | undefined) {
