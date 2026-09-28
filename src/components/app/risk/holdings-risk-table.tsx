@@ -6,6 +6,7 @@ import { MagnitudeBar } from "../attribution/bars";
 import { Explained } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "./explainers";
 import { rnum, rpct } from "./format";
+import { tickerName } from "@/components/app/read-as";
 import { RowLink } from "@/components/app/row-link";
 
 export type TeamNames = Map<string, { name: string; slug: string }>;
@@ -15,7 +16,7 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
   const maxShare = Math.max(...rows.flatMap((h) => [Math.abs(h.riskShare), h.weight]), 0);
   return (
     <Card className="overflow-x-auto p-0">
-      <Table>
+      <Table aria-label="Holdings by share of risk">
         <TableHeader>
           <TableRow>
             <TableHead>Holding</TableHead>
@@ -36,10 +37,11 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
             return (
               <TableRow key={h.ticker}>
                 <TableCell>
-                  {team ? <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} className="font-mono font-semibold hover:underline">{h.ticker}</RowLink> : <span className="font-mono font-semibold">{h.ticker}</span>}
+                  {team ? <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} aria-label={tickerName(h.ticker, h.name)} className="font-mono font-semibold hover:underline">{h.ticker}</RowLink> : <span className="font-mono font-semibold">{h.ticker}</span>}
                   {h.source !== "own" && (
                     <span className="ml-1.5 rounded border px-1 py-px text-[10px] text-muted-foreground" title={h.source === "proxy" ? `Too little price history; modeled with ${h.proxy}` : "No price history or sector; treated as riskless"}>
                       {h.source === "proxy" ? `via ${h.proxy}` : "not modeled"}
+                      <span className="sr-only">: {h.source === "proxy" ? `too little price history; modeled with ${h.proxy}` : "no price history or sector; treated as riskless"}</span>
                     </span>
                   )}
                   <div className="max-w-44 truncate text-[11px] text-muted-foreground">{team?.name ?? h.name}</div>
@@ -62,7 +64,7 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
                 <TableCell className="text-right font-mono text-[12.5px]">{rnum(h.corrToPortfolio)}</TableCell>
                 {showActive && <TableCell className="text-right font-mono text-[12.5px]">{rpct(h.activeRiskShare)}</TableCell>}
                 <TableCell className="text-right">
-                  <Link href={`/backtesting?trade=${encodeURIComponent(`${h.ticker}:-2:cash`)}`} className="text-xs whitespace-nowrap text-muted-foreground hover:text-foreground hover:underline">
+                  <Link href={`/backtesting?trade=${encodeURIComponent(`${h.ticker}:-2:cash`)}`} aria-label={`Trim ${h.ticker} by 2 percentage points`} className="text-xs whitespace-nowrap text-muted-foreground hover:text-foreground hover:underline">
                     Trim 2 pp →
                   </Link>
                 </TableCell>

@@ -196,13 +196,13 @@ function ContributionTable({ r }: { r: StressOk }) {
       <table className="tnum w-full text-xs whitespace-nowrap">
         <thead className="sticky top-0 bg-background text-muted-foreground">
           <tr className="border-b">
-            <th className="px-2 py-1.5 text-left font-medium">Holding</th>
-            <th className="px-2 py-1.5 text-right font-medium">Weight</th>
-            <th className="px-2 py-1.5 text-right font-medium">Return</th>
-            <th className="px-2 py-1.5 text-right font-medium">
+            <th scope="col" className="px-2 py-1.5 text-left font-medium">Holding</th>
+            <th scope="col" className="px-2 py-1.5 text-right font-medium">Weight</th>
+            <th scope="col" className="px-2 py-1.5 text-right font-medium">Return</th>
+            <th scope="col" className="px-2 py-1.5 text-right font-medium">
               <Explained label="Contribution" align="right">{RISK_EXPLAIN.stressWorst}</Explained>
             </th>
-            <th className="px-2 py-1.5 text-right font-medium">Dollars</th>
+            <th scope="col" className="px-2 py-1.5 text-right font-medium">Dollars</th>
           </tr>
         </thead>
         <tbody>

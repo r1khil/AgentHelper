@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { fmtBp, fmtDateTime, fmtDay, fmtPct, ppToBp, relativeTime } from "@/lib/format";
 import { CountChip, Panel, Pill, Segmented } from "@/components/app/panel";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ReadAs, tickerName } from "@/components/app/read-as";
 import { RowLink } from "@/components/app/row-link";
 
 export type HoldingCardData = {
@@ -124,29 +125,31 @@ export function ResearchBoards({ holdings, market, showTeam }: { holdings: Holdi
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
-        <div className="min-w-[620px] xl:min-w-0">
-        <div className={cn(ROW, "sticky top-0 z-[1] h-9 border-b bg-band text-xs text-muted-foreground")} aria-hidden>
-          <span>Holding</span>
-          <span className="text-right">Day · vs S&amp;P</span>
-          <span>Next report</span>
-          <span className="hidden xl:block">Expectations</span>
-          <span>Research</span>
-          <span>Status</span>
-          <span />
+        <div role="table" aria-label="By holding" className="min-w-[620px] xl:min-w-0">
+        <div role="row" className={cn(ROW, "sticky top-0 z-[1] h-9 border-b bg-band text-xs text-muted-foreground")}>
+          <span role="columnheader" aria-sort={sort === "ticker" ? "ascending" : undefined}>Holding</span>
+          <span role="columnheader" className="text-right">
+            <ReadAs text="Day change and versus S&P 500">Day · vs S&amp;P</ReadAs>
+          </span>
+          <span role="columnheader" aria-sort={sort === "report" ? "ascending" : undefined}>Next report</span>
+          <span role="columnheader" className="hidden xl:block">Expectations</span>
+          <span role="columnheader" aria-sort={sort === "recent" ? "descending" : undefined}>Research</span>
+          <span role="columnheader" aria-sort={sort === "attention" ? "other" : undefined}>Status</span>
+          <span aria-hidden />
         </div>
         {holdings.length === 0 ? null : shown.length === 0 ? (
-          <p className="px-4 py-6 text-[13px] text-muted-foreground">
-            {f ? `No holdings match “${q.trim()}”` : "No holdings"}
-            {filter !== "all" ? ` under ${FILTER_LABEL[filter]}.` : "."}
-          </p>
+          <div role="row">
+            <p role="cell" className="px-4 py-6 text-[13px] text-muted-foreground">
+              {f ? `No holdings match “${q.trim()}”` : "No holdings"}
+              {filter !== "all" ? ` under ${FILTER_LABEL[filter]}.` : "."}
+            </p>
+          </div>
         ) : (
-          <ul>
+          <div role="rowgroup">
             {shown.map((h) => (
-              <li key={h.id} className="border-b border-row last:border-b-0">
-                <BoardRow h={h} flags={flags.get(h.id)!} market={market} showTeam={showTeam} now={now} />
-              </li>
+              <BoardRow key={h.id} h={h} flags={flags.get(h.id)!} market={market} showTeam={showTeam} now={now} />
             ))}
-          </ul>
+          </div>
         )}
         </div>
       </div>
@@ -185,22 +188,34 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
   const has = h.chats > 0;
   const who = showTeam ? h.teamName : null;
   return (
-    <RowLink href={h.href} className={cn(ROW, "group min-h-[54px] py-2 transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")} title={has ? `Open ${h.ticker} research` : `Start researching ${h.ticker}`}>
-      <div className="min-w-0">
+    // A table row; the ticker link stretches over it, so the whole row opens the board.
+    <div role="row" className={cn(ROW, "group relative min-h-[54px] border-b border-row py-2 transition-colors last:border-b-0 hover:bg-band has-[a:focus-visible]:bg-band")}>
+      <div role="rowheader" className="min-w-0">
         <div className="flex items-baseline gap-2">
-          <span className="font-mono text-[13px] font-semibold">{h.ticker}</span>
-          <span className="min-w-0 truncate text-[13.5px] text-ink-2" title={h.name}>
+          <RowLink
+            cover="stretch"
+            href={h.href}
+            aria-label={tickerName(h.ticker, h.name)}
+            title={`${h.name} · ${has ? `Open ${h.ticker} research` : `Start researching ${h.ticker}`}`}
+            className="font-mono text-[13px] font-semibold focus-visible:after:ring-0"
+          >
+            {h.ticker}
+          </RowLink>
+          {/* Already in the link's name. */}
+          <span aria-hidden className="min-w-0 truncate text-[13.5px] text-ink-2">
             {h.name}
           </span>
         </div>
         {who && <div className="mt-px truncate text-xs text-muted-foreground">{who}</div>}
       </div>
 
-      <Suspense fallback={<Skeleton className="ml-auto h-3.5 w-16" />}>
-        <QuoteCell ticker={h.ticker} market={market} alert={flags.movement} />
-      </Suspense>
+      <div role="cell" className="text-right">
+        <Suspense fallback={<Skeleton className="ml-auto h-3.5 w-16" />}>
+          <QuoteCell ticker={h.ticker} market={market} alert={flags.movement} />
+        </Suspense>
+      </div>
 
-      <div className="min-w-0 text-[13px]">
+      <div role="cell" className="min-w-0 text-[13px]">
         {h.earnings ? (
           <>
             <div className="font-mono text-[12.5px]">{fmtDay(h.earnings.reportDate)}</div>
@@ -217,7 +232,7 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
         )}
       </div>
 
-      <div className="hidden xl:block">
+      <div role="cell" className="hidden xl:block">
         {!h.earnings ? (
           <span className="text-xs text-muted-foreground">—</span>
         ) : h.earnings.hasExpectations ? (
@@ -227,7 +242,7 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
         )}
       </div>
 
-      <div className="min-w-0 text-[13px]">
+      <div role="cell" className="min-w-0 text-[13px]">
         {has ? (
           <>
             <div className="truncate">
@@ -240,10 +255,12 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
         )}
       </div>
 
-      <StatusCell h={h} flags={flags} />
+      <div role="cell" className="min-w-0">
+        <StatusCell h={h} flags={flags} />
+      </div>
 
       <ChevronRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
-    </RowLink>
+    </div>
   );
 }
 

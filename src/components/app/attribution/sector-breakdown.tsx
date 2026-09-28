@@ -11,6 +11,7 @@ import { fixed, fmtBp, fmtDate, fmtMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Move } from "../move";
 import { EXPLAIN } from "./explainers";
+import { ReadAs } from "../read-as";
 import { Explained } from "./info-tip";
 
 export type BreakdownQuery = { basePath: string; team?: string; period: string; from?: string; to?: string };
@@ -171,20 +172,22 @@ function DayTable({ days, hasBench }: { days: SectorDayBreakdown[]; hasBench: bo
         <Table className="text-[11px]">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-6" />
+              <TableHead className="w-6">
+                <span className="sr-only">Positions</span>
+              </TableHead>
               <TableHead>Date</TableHead>
-              <TableHead className="text-right"><Explained align="right" label="wp">{EXPLAIN.wp}</Explained></TableHead>
-              {hasBench && <TableHead className="text-right"><Explained align="right" label="wb">{EXPLAIN.wb}</Explained></TableHead>}
-              <TableHead className="text-right"><Explained align="right" label="rp">{EXPLAIN.rp}</Explained></TableHead>
-              {hasBench && <TableHead className="text-right"><Explained align="right" label="rb">{EXPLAIN.rb}</Explained></TableHead>}
-              {hasBench && <TableHead className="text-right"><Explained align="right" label="Rb">{EXPLAIN.Rb}</Explained></TableHead>}
-              {hasBench && <TableHead className="text-right"><Explained align="right" label="Raw alloc">{EXPLAIN.rawEffect}</Explained></TableHead>}
-              {hasBench && <TableHead className="text-right">Raw sel</TableHead>}
-              {hasBench && <TableHead className="text-right">Raw inter</TableHead>}
-              {hasBench && <TableHead className="text-right"><Explained align="right" label="coef">{EXPLAIN.coef}</Explained></TableHead>}
-              {hasBench && <TableHead className="text-right"><Explained align="right" label="Alloc">{EXPLAIN.scaledEffect}</Explained></TableHead>}
-              {hasBench && <TableHead className="text-right">Sel</TableHead>}
-              {hasBench && <TableHead className="text-right">Inter</TableHead>}
+              <TableHead className="text-right"><Explained align="right" label="wp" readAs="Fund sector weight">{EXPLAIN.wp}</Explained></TableHead>
+              {hasBench && <TableHead className="text-right"><Explained align="right" label="wb" readAs="Benchmark sector weight">{EXPLAIN.wb}</Explained></TableHead>}
+              <TableHead className="text-right"><Explained align="right" label="rp" readAs="Fund sector return">{EXPLAIN.rp}</Explained></TableHead>
+              {hasBench && <TableHead className="text-right"><Explained align="right" label="rb" readAs="Benchmark sector return">{EXPLAIN.rb}</Explained></TableHead>}
+              {hasBench && <TableHead className="text-right"><Explained align="right" label="Rb" readAs="Benchmark total return">{EXPLAIN.Rb}</Explained></TableHead>}
+              {hasBench && <TableHead className="text-right"><Explained align="right" label="Raw alloc" readAs="Raw allocation">{EXPLAIN.rawEffect}</Explained></TableHead>}
+              {hasBench && <TableHead className="text-right"><ReadAs text="Raw selection">Raw sel</ReadAs></TableHead>}
+              {hasBench && <TableHead className="text-right"><ReadAs text="Raw interaction">Raw inter</ReadAs></TableHead>}
+              {hasBench && <TableHead className="text-right"><Explained align="right" label="coef" readAs="Carino coefficient">{EXPLAIN.coef}</Explained></TableHead>}
+              {hasBench && <TableHead className="text-right"><Explained align="right" label="Alloc" readAs="Allocation">{EXPLAIN.scaledEffect}</Explained></TableHead>}
+              {hasBench && <TableHead className="text-right"><ReadAs text="Selection">Sel</ReadAs></TableHead>}
+              {hasBench && <TableHead className="text-right"><ReadAs text="Interaction">Inter</ReadAs></TableHead>}
               <TableHead className="text-right"><Explained align="right" label="growth">{EXPLAIN.growth}</Explained></TableHead>
               <TableHead className="text-right"><Explained align="right" label="Contribution">{EXPLAIN.contribution}</Explained></TableHead>
               <TableHead><Explained label="Flags">{EXPLAIN.priced}</Explained></TableHead>
@@ -247,12 +250,12 @@ function DayRows({ d, flags, open, hasBench, cols, onToggle }: { d: SectorDayBre
             <table className="ml-6 text-[11px]">
               <thead className="text-muted-foreground">
                 <tr>
-                  <th className="pr-4 text-left font-medium">Holding</th>
-                  <th className="pr-4 text-right font-medium">weight</th>
-                  <th className="pr-4 text-right font-medium">return</th>
-                  <th className="pr-4 text-right font-medium">contribution</th>
-                  <th className="pr-4 text-right font-medium">P&amp;L $</th>
-                  <th className="text-left font-medium">priced by</th>
+                  <th scope="col" className="pr-4 text-left font-medium">Holding</th>
+                  <th scope="col" className="pr-4 text-right font-medium">weight</th>
+                  <th scope="col" className="pr-4 text-right font-medium">return</th>
+                  <th scope="col" className="pr-4 text-right font-medium">contribution</th>
+                  <th scope="col" className="pr-4 text-right font-medium">P&amp;L $</th>
+                  <th scope="col" className="text-left font-medium">priced by</th>
                 </tr>
               </thead>
               <tbody>

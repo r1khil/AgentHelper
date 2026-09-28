@@ -79,7 +79,11 @@ export function JobRunsLive({ initial, transparency }: { initial: JobRunView[]; 
     <Table>
       <TableHeader>
         <TableRow>
-          {transparency && <TableHead className="w-6" />}
+          {transparency && (
+            <TableHead className="w-6">
+              <span className="sr-only">Details</span>
+            </TableHead>
+          )}
           <TableHead>Job</TableHead>
           <TableHead>Started</TableHead>
           <TableHead>Result</TableHead>

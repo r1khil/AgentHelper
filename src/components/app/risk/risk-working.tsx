@@ -29,7 +29,7 @@ export function BetaWorking({ r }: { r: RiskReport }) {
       <Step label="Formula">β = Σ wᵢ × βᵢ, with βᵢ = cov(rᵢ, r_SPY) ÷ var(r_SPY)</Step>
       <div className="max-h-48 overflow-y-auto">
         <table className="tnum w-full">
-          <thead className="text-muted-foreground"><tr><th className="text-left font-normal">Holding</th><th className="text-right font-normal">w</th><th className="text-right font-normal">β</th><th className="text-right font-normal">w × β</th></tr></thead>
+          <thead className="text-muted-foreground"><tr><th scope="col" className="text-left font-normal">Holding</th><th scope="col" className="text-right font-normal">w</th><th scope="col" className="text-right font-normal">β</th><th scope="col" className="text-right font-normal">w × β</th></tr></thead>
           <tbody>
             {top.map((h) => (
               <tr key={h.ticker}><td>{h.ticker}</td><td className="text-right">{rpct(h.weight, 2)}</td><td className="text-right">{rnum(h.beta, 3)}</td><td className="text-right">{rnum(h.weight * h.beta, 4)}</td></tr>
@@ -66,7 +66,7 @@ export function VarWorking({ r }: { r: RiskReport }) {
       <Step label="Percentile">PERCENTILE.INC at 5%: rank = 0.05 × ({v.observations} − 1) = {fixed(v.rank, 2)}, between sorted days #{lo + 1} and #{lo + 2}.</Step>
       <div className="max-h-40 overflow-y-auto">
         <table className="tnum w-full">
-          <thead className="text-muted-foreground"><tr><th className="text-left font-normal">#</th><th className="text-left font-normal">Day</th><th className="text-right font-normal">Simulated return</th></tr></thead>
+          <thead className="text-muted-foreground"><tr><th scope="col" className="text-left font-normal">#</th><th scope="col" className="text-left font-normal">Day</th><th scope="col" className="text-right font-normal">Simulated return</th></tr></thead>
           <tbody>
             {sorted.map((d, i) => (
               <tr key={d.date} className={i === lo || i === lo + 1 ? "font-semibold" : undefined}><td>{i + 1}</td><td>{fmtDate(d.date)}</td><td className="text-right">{rpct(d.ret, 3)}</td></tr>

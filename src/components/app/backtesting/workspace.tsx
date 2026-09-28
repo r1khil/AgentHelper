@@ -166,17 +166,17 @@ export function BacktestingWorkspace({
                 </caption>
                 <thead className="sticky top-0 bg-muted">
                   <tr>
-                    <th className={head}>Holding</th>
-                    <th className={cell}>Current</th>
-                    <th className={cell}>Modified (%)</th>
-                    <th className={cell}>Change</th>
-                    <th className={cell}>Action</th>
+                    <th scope="col" className={head}>Holding</th>
+                    <th scope="col" className={cell}>Current</th>
+                    <th scope="col" className={cell}>Modified (%)</th>
+                    <th scope="col" className={cell}>Change</th>
+                    <th scope="col" className={cell}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {positions.map((p) => (
                     <tr key={p.id} className="border-t">
-                      <th className="px-3 py-2 text-left font-medium">
+                      <th scope="row" className="px-3 py-2 text-left font-medium">
                         {p.ticker}
                         <span className="mt-1 block max-w-60 truncate text-xs font-normal text-muted-foreground">
                           {p.name}{p.kind === "scenario" ? " · Added to scenario" : ""}
@@ -225,7 +225,7 @@ export function BacktestingWorkspace({
                 </tbody>
                 <tfoot className="border-t bg-muted/40 font-medium">
                   <tr>
-                    <th className="px-3 py-2.5 text-left">Total</th>
+                    <th scope="row" className="px-3 py-2.5 text-left">Total</th>
                     <td className={cell}>100.00%</td>
                     <td className={cell}>{Number.isFinite(sum) ? fmtPct(sum) : "—"}</td>
                     <td className={cell}>{Number.isFinite(sum) ? bp(sum / 100 - 1) : "—"}</td>
@@ -603,27 +603,27 @@ export function DailyDifferences({
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  <th className={head}>Return</th>
-                  <th className={cell}>{names.original}</th>
-                  <th className={cell}>{names.modified}</th>
-                  <th className={cell}>Difference</th>
+                  <th scope="col" className={head}>Return</th>
+                  <th scope="col" className={cell}>{names.original}</th>
+                  <th scope="col" className={cell}>{names.modified}</th>
+                  <th scope="col" className={cell}>Difference</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-t">
-                  <th className={head}>Portfolio</th>
+                  <th scope="row" className={head}>Portfolio</th>
                   <td className={cell}>{pct(selected.original)}</td>
                   <td className={cell}>{pct(selected.modified)}</td>
                   <td className={cell}>{bp(selected.delta)}</td>
                 </tr>
                 <tr className="border-t">
-                  <th className={head}>Benchmark · {result.benchmark}</th>
+                  <th scope="row" className={head}>Benchmark · {result.benchmark}</th>
                   <td className={cell}>{pct(selected.benchmark)}</td>
                   <td className={cell}>{pct(selected.benchmark)}</td>
                   <td className={cell}>{bp(0)}</td>
                 </tr>
                 <tr className="border-t">
-                  <th className={head}>Difference vs {result.benchmark}</th>
+                  <th scope="row" className={head}>Difference vs {result.benchmark}</th>
                   <td className={cell}>{bp(selected.originalActive)}</td>
                   <td className={cell}>{bp(selected.modifiedActive)}</td>
                   <td className={cell}>{bp(selected.delta)}</td>
@@ -639,17 +639,17 @@ export function DailyDifferences({
               </caption>
               <thead>
                 <tr>
-                  <th className={head}>Holding</th>
-                  <th className={cell}>Holding return</th>
-                  <th className={cell}>{names.original}</th>
-                  <th className={cell}>{names.modified}</th>
-                  <th className={cell}>Difference</th>
+                  <th scope="col" className={head}>Holding</th>
+                  <th scope="col" className={cell}>Holding return</th>
+                  <th scope="col" className={cell}>{names.original}</th>
+                  <th scope="col" className={cell}>{names.modified}</th>
+                  <th scope="col" className={cell}>Difference</th>
                 </tr>
               </thead>
               <tbody>
                 {selected.contributions.map((c) => (
                   <tr key={c.id} className="border-t">
-                    <th className={head}>{c.ticker}</th>
+                    <th scope="row" className={head}>{c.ticker}</th>
                     <td className={cell}>{pct(c.return)}</td>
                     <td className={cell}>{bp(c.original)}</td>
                     <td className={cell}>{bp(c.modified)}</td>
@@ -721,11 +721,11 @@ export function Summary({ result, period, names = SERIES }: { result: BacktestRe
       <table className="w-full text-sm">
         <thead>
           <tr>
-            <th className={head}>Metric</th>
-            <th className={cell}>{names.original}</th>
-            <th className={cell}>{names.modified}</th>
-            <th className={cell}>Benchmark</th>
-            <th className={cell}>{names === SERIES ? "Delta (modified − current)" : `Delta (${names.modified.toLowerCase()} − ${names.original.toLowerCase()})`}</th>
+            <th scope="col" className={head}>Metric</th>
+            <th scope="col" className={cell}>{names.original}</th>
+            <th scope="col" className={cell}>{names.modified}</th>
+            <th scope="col" className={cell}>Benchmark</th>
+            <th scope="col" className={cell}>{names === SERIES ? "Delta (modified − current)" : `Delta (${names.modified.toLowerCase()} − ${names.original.toLowerCase()})`}</th>
           </tr>
         </thead>
         <tbody>
@@ -737,7 +737,7 @@ export function Summary({ result, period, names = SERIES }: { result: BacktestRe
               d = a === null || b === null ? null : b - a;
             return (
               <tr key={key} className="border-t">
-                <th className={head}>{label}</th>
+                <th scope="row" className={head}>{label}</th>
                 {[a, b, total ? period.benchmark : result.benchmarkMetrics[key]].map((v, i) => (
                   <td key={i} className={cell}>
                     {kind === "count" ? v : pct(v)}
@@ -750,7 +750,7 @@ export function Summary({ result, period, names = SERIES }: { result: BacktestRe
             );
           })}
           <tr className="border-t">
-            <th className={head}>Difference vs {result.benchmark}</th>
+            <th scope="row" className={head}>Difference vs {result.benchmark}</th>
             <td className={cell}>{bp(period.currentActive)}</td>
             <td className={cell}>{bp(period.modifiedActive)}</td>
             <td className={cell}>{bp(0)}</td>
@@ -814,16 +814,16 @@ export function Contributors({ result, period, names = SERIES }: { result: Backt
         <table className="w-full text-sm">
           <thead>
             <tr>
-              <th className={head}>Holding</th>
-              <th className={cell}>{names.original} contribution</th>
-              <th className={cell}>{names.modified} contribution</th>
-              <th className={cell}>Delta</th>
+              <th scope="col" className={head}>Holding</th>
+              <th scope="col" className={cell}>{names.original} contribution</th>
+              <th scope="col" className={cell}>{names.modified} contribution</th>
+              <th scope="col" className={cell}>Delta</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((c) => (
               <tr key={c.id} className="border-t">
-                <th className={head}>{c.ticker}</th>
+                <th scope="row" className={head}>{c.ticker}</th>
                 <td className={cell}>{bp(c.original)}</td>
                 <td className={cell}>{bp(c.modified)}</td>
                 <td className={cn(cell, tone(c.delta))}>{bp(c.delta)}</td>
@@ -832,7 +832,7 @@ export function Contributors({ result, period, names = SERIES }: { result: Backt
           </tbody>
           <tfoot>
             <tr className="border-t font-medium">
-              <th className={head}>Total</th>
+              <th scope="row" className={head}>Total</th>
               <td className={cell}>{bp(period.current)}</td>
               <td className={cell}>{bp(period.modified)}</td>
               <td className={cell}>{bp(period.delta)}</td>
