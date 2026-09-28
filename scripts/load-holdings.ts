@@ -6,6 +6,7 @@ config();
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { holdings, teams } from "../src/db/schema";
+import { pickCompanyName } from "../src/lib/company-name";
 
 // As of 2026-09-17. [ticker, shares, portfolio weight %]
 const BOOK: Record<string, [string, number, number][]> = {
@@ -67,8 +68,9 @@ async function main() {
     for (const [ticker, shares, weight] of book) {
       const [company, cik] = await Promise.all([lookupCompany(ticker), tickerToCik(ticker)]);
       if (!company) throw new Error(`Could not find ${ticker} on the market data provider`);
-      rows.push({ teamId: team.id, ticker, companyName: cik?.name ?? company.name, cik: cik?.cik ?? null, shares: String(shares), weightPct: weight.toFixed(2) });
-      console.log(`${slug.padEnd(12)} ${ticker.padEnd(5)} ${String(shares).padStart(5)} ${weight.toFixed(2).padStart(5)}%  ${cik?.name ?? company.name}`);
+      const companyName = pickCompanyName(ticker, [company.name, cik?.name]);
+      rows.push({ teamId: team.id, ticker, companyName, cik: cik?.cik ?? null, shares: String(shares), weightPct: weight.toFixed(2) });
+      console.log(`${slug.padEnd(12)} ${ticker.padEnd(5)} ${String(shares).padStart(5)} ${weight.toFixed(2).padStart(5)}%  ${companyName}`);
     }
   }
   const total = rows.reduce((s, r) => s + Number(r.weightPct), 0);

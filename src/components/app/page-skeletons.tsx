@@ -1161,7 +1161,7 @@ export function ChangelogSkeleton() {
         </div>
         <div className="flex flex-1 flex-col">
           {range(8).map((i) => (
-            <div key={i} className="grid min-h-[76px] flex-1 grid-cols-[96px_minmax(0,1fr)_auto] items-center gap-4 border-b border-row px-5 py-3 last:border-b-0">
+            <div key={i} className="grid grid-cols-[96px_minmax(0,1fr)_auto] items-start gap-4 border-b border-row px-5 py-3.5 last:border-b-0">
               <div className="min-w-0">
                 <TextBone className="font-mono text-body" w="w-12" />
                 <TextBone className="mt-0.5 text-caption" w="w-16" />
@@ -1169,6 +1169,7 @@ export function ChangelogSkeleton() {
               <div className="min-w-0">
                 <TextBone className="text-emph font-semibold" w="w-72 max-w-full" />
                 <TextBone className="mt-0.5 text-body leading-[1.45]" w="w-full" />
+                <TextBone className="text-body leading-[1.45]" w="w-full" />
                 {i % 2 === 0 && <TextBone className="text-body leading-[1.45]" w="w-1/2" />}
               </div>
               <Bone className="h-3 w-10 rounded-[4px]" />

@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gte, inArray, isNull } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { benchmarkSectorWeights, cashFlows, dailyCloses, holdings, securities, securityEvents, trades, type Security } from "@/db/schema";
 import { getSectorProfile, lookupCompany } from "@/lib/providers/yahoo";
+import { pickCompanyName } from "@/lib/company-name";
 import type { Db } from "@/lib/prices";
 import { FACTOR_ETFS } from "@/lib/risk/factor-symbols";
 import type { AttributionSeries } from "./attribution";
@@ -166,7 +167,8 @@ export async function ensureSecurity(db: Db, rawTicker: string): Promise<Securit
     .insert(securities)
     .values({
       ticker,
-      name: covering?.name ?? company.name,
+      // The covering holding's name keeps the ledger and the holding page in step, unless it is in SEC capitals.
+      name: pickCompanyName(ticker, [covering?.name, company.name]),
       sector: (guess?.sector ?? null) as GicsSector | null,
       sectorSource: guess?.source ?? null,
       yahooSector: profile.sector,

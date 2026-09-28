@@ -9,6 +9,7 @@ import { holdingNotes, holdings, teams } from "@/db/schema";
 import { canManageTeam, requireTeamAccess, requireUser } from "@/lib/auth";
 import { lookupCompany } from "@/lib/providers/yahoo";
 import { tickerToCik } from "@/lib/providers/edgar";
+import { pickCompanyName } from "@/lib/company-name";
 import { scopedHref } from "@/lib/scope";
 import { rememberedScope } from "@/lib/teams";
 
@@ -40,7 +41,7 @@ export async function addHolding(_prev: ActionResult | null, fd: FormData): Prom
   await db.insert(holdings).values({
     teamId,
     ticker,
-    companyName: cik?.name ?? company.name,
+    companyName: pickCompanyName(ticker, [company.name, cik?.name]),
     cik: cik?.cik ?? null,
     thesis: thesis || null,
     thesisUpdatedAt: thesis ? new Date() : null,
