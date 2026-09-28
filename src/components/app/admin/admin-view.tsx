@@ -154,13 +154,13 @@ export function AdminView(p: AdminViewProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:h-[calc(100dvh-104px)] lg:min-h-[600px] lg:grid-cols-[minmax(0,1fr)_440px]">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_440px]">
         <MembersPanel {...p.members} />
-        <div className="flex min-h-0 flex-col gap-5">
-          <Panel className="shrink-0">
+        <div className="flex flex-col gap-5">
+          <Panel variant="plain" className="shrink-0">
             <PanelHeader title="Connections" />
             {connections.map((c) => (
-              <div key={c.name} className="flex h-[52px] items-center gap-3 border-b border-row px-4 last:border-b-0">
+              <div key={c.name} className="flex h-[52px] items-center gap-3 px-4">
                 <span className={cn("size-2 shrink-0 rounded-full", DOT[c.dot])} aria-label={c.dot === "good" ? "Healthy" : c.dot === "caution" ? "Needs attention" : "Down"} />
                 <div className="min-w-0 flex-1" title={c.title}>
                   <div className="text-[13.5px] font-semibold">{c.name}</div>
@@ -179,10 +179,10 @@ export function AdminView(p: AdminViewProps) {
         </div>
       </div>
 
-      <Panel id="drive" className="scroll-mt-20">
+      <Panel id="drive" variant="plain" className="scroll-mt-20">
         <PanelHeader title="Google Drive" aside={drive.connected ? `connected as ${drive.accountEmail}` : drive.configured ? "not connected" : "set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, DRIVE_TOKEN_KEY"} />
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
-          <div className="grid content-start gap-3 p-4 lg:border-r">
+          <div className="grid content-start gap-3 p-4">
             <p className="text-[13.5px] text-ink-2">
               Hoot reads the Fund&rsquo;s document folder (initiating reports, earnings updates, models) and files analyst uploads into it. Permissions are read everything plus add new files only: the app never edits or deletes what you put there.
             </p>
@@ -268,7 +268,7 @@ export function AdminView(p: AdminViewProps) {
           </div>
         </div>
         {canMutate && drive.connected && drive.rootFolderId && (
-          <div className="flex items-center justify-between gap-3 border-t bg-band-2 px-4 py-2.5">
+          <div className="flex items-center justify-between gap-3 border-t border-row px-4 py-2.5">
             <span className="text-xs text-muted-foreground">
               With live updates on, Drive tells the app about changes as they happen; the morning sweep still does a full crawl and renews the channel. Reading files (summaries, search index) continues in the background a few at a time.
             </span>
@@ -302,7 +302,7 @@ export function AdminView(p: AdminViewProps) {
         </Panel>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <Panel id="agent" className="scroll-mt-20">
+          <Panel id="agent" variant="plain" className="scroll-mt-20">
             <PanelHeader title="Research agent" aside={p.services.agent ? `using ${p.agent.label ?? p.agent.id}` : "set OPENROUTER_API_KEY"} />
             <form action={setAgentModel} className="grid gap-2 p-4">
               <Label htmlFor="agent-model">Model</Label>
@@ -333,7 +333,7 @@ export function AdminView(p: AdminViewProps) {
             </PanelFooter>
           </Panel>
 
-          <Panel id="retrieval" className="scroll-mt-20">
+          <Panel id="retrieval" variant="plain" className="scroll-mt-20">
             <PanelHeader title="Retrieval" aside={p.retrieval.configured ? `${p.retrieval.embedLabel ?? p.retrieval.embedId}${p.retrieval.embedDims ? `, ${p.retrieval.embedDims} dims` : ""}` : "embeddings off"} />
             <div className="grid gap-3 p-4">
               <form action={setEmbeddingModel} className="grid gap-1.5">
@@ -384,7 +384,7 @@ export function AdminView(p: AdminViewProps) {
               />
             </div>
             {canMutate && (
-              <form action={reembedNow} className="flex items-center justify-between gap-3 border-t bg-band-2 px-4 py-2.5">
+              <form action={reembedNow} className="flex items-center justify-between gap-3 border-t border-row px-4 py-2.5">
                 <span className="text-xs text-muted-foreground">
                   Search fuses vector and full-text hits, then reranks. Free OpenRouter models share one budget (20 requests/min, 50 or 1,000/day) with the chat model: a switch re-embeds a few documents per run and stops on a 429 until the next run.
                 </span>
@@ -399,7 +399,7 @@ export function AdminView(p: AdminViewProps) {
         <McpPanel mcp={p.mcp} canMutate={canMutate} />
 
         {drive.connected && (
-          <Panel>
+          <Panel variant="plain">
             <PanelHeader title="PT sheet read" />
             <div className="flex items-center justify-between gap-3 px-4 py-3">
               <span className="text-[13px] text-ink-2">The price target sheet is read separately from the Drive folder: allowed tabs only, never edited. See each tab exactly as Hoot reads it.</span>

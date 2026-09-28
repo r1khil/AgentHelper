@@ -87,7 +87,7 @@ function LegendDot({ color, children }: { color: string; children: React.ReactNo
 
 export function CumulativePanel({ data, portfolioLabel, benchmarkLabel, asOf, className }: { data: CumulativeChartPoint[]; portfolioLabel: string; benchmarkLabel: string; asOf: string; className?: string }) {
   return (
-    <section className={cn("panel flex min-w-0 flex-col px-4 pt-3.5 pb-3", className)} aria-label="Cumulative return">
+    <section className={cn("panel-plain flex min-w-0 flex-col px-4 pt-2 pb-3", className)} aria-label="Cumulative return">
       <PanelTitle
         aside={
           <>
@@ -123,7 +123,7 @@ export function EffectsPanel({ items, total, aside, note, empty, className }: { 
   const scale = Number.isFinite(unit) ? unit : 0;
 
   return (
-    <section className={cn("panel flex min-w-0 flex-col px-4 pt-3.5 pb-3.5", className)} aria-label="Where it came from">
+    <section className={cn("panel-plain flex min-w-0 flex-col px-4 pt-2 pb-3.5", className)} aria-label="Where it came from">
       <PanelTitle aside={aside}>
         <h2 className="text-[14.5px] font-semibold whitespace-nowrap">Where it came from</h2>
       </PanelTitle>
@@ -176,7 +176,7 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
         <span className="text-right"><Tip label="Return" side="bottom">{EXPLAIN.teamReturn}</Tip></span>
         <span className="text-right"><Tip label="To the Fund" side="bottom">{EXPLAIN.fundContribution}</Tip></span>
       </div>
-      {rows.length === 0 && <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">No team holdings in this period.</div>}
+      {rows.length === 0 && <div className="px-4 py-3 text-sm text-muted-foreground">No team holdings in this period.</div>}
       {rows.map((t) => {
         const team = t.teamId ? teams.get(t.teamId) : undefined;
         const cells = (
@@ -187,7 +187,7 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
             <span className={cn(num, "font-semibold", tone(t.contribution, 10_000))}>{fmtBp(bps(t.contribution))}</span>
           </>
         );
-        const cls = cn("grid max-h-16 min-h-10 flex-1 items-center gap-2.5 border-b border-row px-4 text-[13.5px]", TEAM_COLS);
+        const cls = cn("grid h-10 items-center gap-2.5 border-b border-row px-4 text-[13.5px]", TEAM_COLS);
         return team ? (
           <Link key={t.teamId} href={`/t/${team.slug}/attribution${query}`} className={cn(cls, "transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")}>
             {cells}
@@ -264,7 +264,7 @@ export function HoldingsPanel({
 
 export function SectorEffectsPanel({ data, empty, className }: { data: SectorEffectPoint[] | null; empty: React.ReactNode; className?: string }) {
   return (
-    <Panel className={className} aria-label="Total effect by sector">
+    <Panel variant="plain" className={className} aria-label="Total effect by sector">
       <PanelHeader title={<Tip label="Total effect by sector">{EXPLAIN.effectsChart}</Tip>} aside="bp, most helpful first" />
       <div className="px-4 py-3">{data ? <SectorEffectsList data={data} /> : <div className="text-sm text-muted-foreground">{empty}</div>}</div>
     </Panel>
@@ -273,7 +273,7 @@ export function SectorEffectsPanel({ data, empty, className }: { data: SectorEff
 
 export function MethodPanel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <Panel className={className} aria-label="How this is calculated">
+    <Panel variant="plain" className={className} aria-label="How this is calculated">
       <PanelHeader title="How this is calculated" />
       <div className="px-4 py-3 text-[13px] leading-relaxed text-ink-2">{children}</div>
     </Panel>

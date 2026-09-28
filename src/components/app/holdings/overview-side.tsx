@@ -35,18 +35,18 @@ export type LatestItem = {
   at: number;
 };
 
-/** "Latest": filings, news, Drive files and models in one list, newest first; rows share the panel's height. */
+/** "Latest": filings, news, Drive files and models in one list, newest first. A plain section: no frame. */
 export function LatestPanel({ items, className }: { items: LatestItem[]; className?: string }) {
   return (
-    <section className={cn("panel flex min-h-[260px] flex-col overflow-hidden", className)}>
-      <div className="flex h-[42px] shrink-0 items-center border-b px-4">
+    <section className={cn("panel-plain flex flex-col", className)}>
+      <div className="flex h-10 shrink-0 items-center px-4">
         <h2 className="flex-1 text-[14.5px] font-semibold">Latest</h2>
         <span className="text-[12.5px] whitespace-nowrap text-muted-foreground">Filings, news and Drive</span>
       </div>
       {items.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-muted-foreground">Nothing filed, reported or uploaded for this holding yet.</p>
+        <p className="px-4 py-1 text-sm text-muted-foreground">Nothing filed, reported or uploaded for this holding yet.</p>
       ) : (
-        <ul className="flex min-h-0 flex-1 flex-col">
+        <ul className="flex flex-col">
           {items.map((it, i) => {
             const body = (
               <>
@@ -57,9 +57,9 @@ export function LatestPanel({ items, className }: { items: LatestItem[]; classNa
                 </span>
               </>
             );
-            const cls = "flex min-h-[52px] flex-1 items-center gap-2.5 px-4 py-1.5";
+            const cls = "flex min-h-[48px] items-center gap-2.5 rounded-lg px-4 py-1.5";
             return (
-              <li key={i} className="flex flex-1 border-b border-row last:border-b-0">
+              <li key={i} className="flex">
                 {it.href ? (
                   it.external ? (
                     <a href={it.href} target="_blank" rel="noreferrer" className={cn(cls, "w-full transition-colors hover:bg-band")}>

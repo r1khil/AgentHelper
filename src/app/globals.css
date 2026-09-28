@@ -112,7 +112,7 @@
     --radius: 0.625rem;
     /* Secondary body text (company names), row dividers, the header band of a panel and its footer band. */
     --ink-2: oklch(0.44 0.013 62);
-    --row: oklch(0.93 0.01 80);
+    --row: oklch(0.915 0.011 80);
     --band: oklch(0.965 0.01 82);
     --band-2: oklch(0.975 0.008 84);
     /* The navigation rail and the dark scoreboard cards, with the cream of the active item. */
@@ -193,7 +193,7 @@
     --chart-4: oklch(0.78 0.13 155);
     --chart-5: oklch(0.82 0.012 78);
     --ink-2: oklch(0.82 0.012 78);
-    --row: oklch(0.28 0.009 60);
+    --row: oklch(0.32 0.009 60);
     --band: oklch(0.27 0.01 60);
     --band-2: oklch(0.26 0.009 60);
     --rail: oklch(0.155 0.006 60);
@@ -365,6 +365,8 @@
   .app-container:has(> [data-full-bleed]) { padding: 0; }
   /* A panel: card background, a 1px ring instead of a border, no drop shadow. */
   .panel { background: var(--card); border-radius: 14px; box-shadow: 0 0 0 1px var(--border); }
+  /* A plain panel: a section of the page, set apart by its title and spacing rather than a frame. */
+  .panel-plain { background: transparent; }
   /* Small uppercase mono labels, e.g. MON 28 SEP. */
   .label-mono { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
   /* Big figures in mono. */

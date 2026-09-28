@@ -31,15 +31,25 @@ export function SkeletonPage({ className, children, fullBleed }: { className?: s
   );
 }
 
-/** A panel (card background, 1px ring). Add `flex-1 min-h-0` to fill a column, as on the real page. */
-export function SkeletonPanel({ className, children }: { className?: string; children?: React.ReactNode }) {
-  return <section className={cn("panel flex min-w-0 flex-col overflow-hidden", className)}>{children}</section>;
+/**
+ * A panel, like `<Panel>`: outlined (card background, 1px ring) or plain (no ring, no fill), sized by its content.
+ * Add `flex-1 min-h-0` only where the real page is a full-height workspace.
+ */
+export function SkeletonPanel({ className, children, variant = "outlined" }: { className?: string; children?: React.ReactNode; variant?: "outlined" | "plain" }) {
+  return (
+    <section data-variant={variant} className={cn("group/panel flex min-w-0 flex-col overflow-hidden", variant === "outlined" ? "panel" : "panel-plain", className)}>
+      {children}
+    </section>
+  );
 }
 
-/** PanelHeader's 44px band (or pass `className="h-[42px]"`, `h-12`… where the real header differs). */
+/**
+ * PanelHeader's band: 44px over a divider in an outlined panel, 40px with no divider in a plain one (or pass
+ * `className="h-12"`… where the real header differs).
+ */
 export function SkeletonPanelHeader({ className, w = "w-36", aside }: { className?: string; w?: string; aside?: string | false }) {
   return (
-    <div className={cn("flex h-11 shrink-0 items-center gap-2 border-b px-4", className)}>
+    <div className={cn("flex h-11 shrink-0 items-center gap-2 border-b px-4 group-data-[variant=plain]/panel:h-10 group-data-[variant=plain]/panel:border-b-0", className)}>
       <TextBone className="text-[14.5px] font-semibold" w={w} />
       <span className="flex-1" />
       {aside && <Bone className={cn("h-3 rounded-[4px]", aside)} />}
@@ -63,14 +73,15 @@ export function SkeletonStatStrip({ cells, size = "md", notes = true, className 
 }
 
 /**
- * Table-ish rows split by row dividers. `row` sets each row's height and grid (copy the real row's classes);
- * `cells` are the bars' widths, one per column ("" leaves a column empty).
+ * Table-ish rows, split by row dividers unless `divided={false}` (short lists in plain panels have none). `row` sets
+ * each row's height and grid (copy the real row's classes); `cells` are the bars' widths, one per column ("" leaves
+ * a column empty).
  */
-export function SkeletonRows({ count, row, cells, className }: { count: number; row: string; cells: string[]; className?: string }) {
+export function SkeletonRows({ count, row, cells, className, divided = true }: { count: number; row: string; cells: string[]; className?: string; divided?: boolean }) {
   return (
     <div className={cn("flex flex-col", className)}>
       {Array.from({ length: count }, (_, i) => (
-        <div key={i} className={cn("items-center border-b border-row px-4 last:border-b-0", row)}>
+        <div key={i} className={cn("items-center px-4", divided && "border-b border-row last:border-b-0", row)}>
           {cells.map((w, j) => (w ? <Bone key={j} className={cn("h-3 rounded-[4px]", w)} /> : <span key={j} />))}
         </div>
       ))}

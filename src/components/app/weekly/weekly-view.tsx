@@ -53,8 +53,8 @@ export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyView
   }
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <Panel data-tour="weekly-packs" className="lg:max-h-[calc(100dvh-104px)] lg:self-stretch">
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <Panel data-tour="weekly-packs" variant="plain" className="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-104px)]">
         <PanelHeader title="Packs" aside="Every Sunday 12:00" className="px-3.5" />
         <div className="min-h-0 flex-1 overflow-y-auto">
           {packs.map((p) => {
@@ -67,7 +67,7 @@ export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyView
                 href={`/weekly/${p.weekEnding}`}
                 aria-current={on ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2 border-b border-row px-3.5 py-2.5 transition-colors hover:bg-band focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset",
+                  "flex items-center gap-2 rounded-lg px-3.5 py-2.5 transition-colors hover:bg-band focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset",
                   on && "bg-band shadow-[inset_3px_0_0_var(--foreground)]",
                 )}
               >
@@ -88,7 +88,7 @@ export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyView
         {pack ? (
           <WeeklyPack key={pack.weekEnding} {...pack} />
         ) : selected ? (
-          <Panel className="flex-1 items-center justify-center p-10 text-center">
+          <Panel className="items-center p-6 text-center">
             <div className="text-[15px] font-semibold">Week ending {fmtDay(selected)}</div>
             <p className="mx-auto mt-1 mb-4 max-w-md text-[13.5px] text-muted-foreground">This pack has not been built yet.</p>
             {buildForm(selected, "Build this pack")}

@@ -147,10 +147,10 @@ export function ExposureView({
           />
         </section>
 
-        <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
           <SectorWeightsPanel x={x} benchShort={benchShort} />
-          <div className="flex min-h-0 flex-col gap-5">
-            <ActiveBetsPanel report={r} x={x} lookthrough={lookthrough ?? null} teams={teams} benchShort={benchShort} className="min-h-0 flex-1" />
+          <div className="flex flex-col gap-5">
+            <ActiveBetsPanel report={r} x={x} lookthrough={lookthrough ?? null} teams={teams} benchShort={benchShort} />
             <FactorTiltsPanel report={r} className="shrink-0" />
           </div>
         </div>
