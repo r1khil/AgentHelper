@@ -60,7 +60,7 @@ export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyView
           {packs.map((p) => {
             const on = p.weekEnding === selected;
             const meta =
-              p.state === "sent" ? `Sent ${short(p.sentAt ?? p.emailedAt ?? p.weekEnding)}` : p.builtAt ? `Built ${whenBuilt(p.builtAt, p.weekEnding)}` : "Not built yet";
+              p.state === "sent" ? `Sent ${short(p.sentAt ?? p.emailedAt ?? p.weekEnding)}` : p.builtAt ? `Built ${whenBuilt(p.builtAt)}` : "Not built yet";
             return (
               <Link
                 key={p.weekEnding}
