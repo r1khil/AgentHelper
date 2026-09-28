@@ -17,6 +17,13 @@ export const LAYOUT_LABELS: Record<CalendarLayout, string> = { week: "Week", mon
 export const CALENDAR_KINDS = ["holdings", "bellwethers", "economic"] as const;
 export type CalendarKind = (typeof CALENDAR_KINDS)[number];
 
+/**
+ * What each route shows before the Show filters are touched. The Calendar opens on the Fund's own reports;
+ * bellwethers and economic releases are a tick away, counted beside their boxes. /economic-calendar opens on the releases.
+ */
+export const EARNINGS_DEFAULT_SHOW: readonly CalendarKind[] = ["holdings"];
+export const ECONOMIC_DEFAULT_SHOW: readonly CalendarKind[] = ["economic"];
+
 export type ExpectationsState = "locked" | "draft" | "not_started";
 
 export type HoldingEventRow = { e: Earnings; h: Holding; teamSlug: string; teamName: string; sector: GicsSector | null; industry: string | null };
@@ -103,6 +110,58 @@ export function calendarHref(base: string, q: CalendarQuery, defaultShow: readon
 /** Toggle one kind in the Show filters. */
 export function toggleKind(show: readonly CalendarKind[], kind: CalendarKind): CalendarKind[] {
   return show.includes(kind) ? show.filter((k) => k !== kind) : CALENDAR_KINDS.filter((k) => k === kind || show.includes(k));
+}
+
+/** The Show filter a holding or bellwether answers to. */
+export const kindOf = (ev: Pick<CalendarEvent, "kind">): CalendarKind => (ev.kind === "holding" ? "holdings" : "bellwethers");
+
+export type DateRange = { from: string; to: string };
+
+/** The days on screen: the selected week (Monday to Sunday) in the Week layout, the whole month in Month and List. */
+export function calendarPeriod(layout: CalendarLayout, selectedDay: string, month: string): DateRange {
+  if (layout === "week") {
+    const days = weekDays(selectedDay);
+    return { from: days[0], to: days[6] };
+  }
+  const first = DateTime.fromISO(`${month}-01`, { zone: NY });
+  return { from: first.toISODate()!, to: first.endOf("month").toISODate()! };
+}
+
+export type KindCounts = Record<CalendarKind, number>;
+
+/**
+ * How many of each kind fall in `period`: holdings and bellwethers from the scoped events, releases from a list
+ * already narrowed by importance and search. A count doesn't depend on whether its kind is ticked, so an unticked
+ * box says how many rows ticking it adds, and a ticked one matches the header, which prints these same numbers.
+ */
+export function countKinds(events: readonly Pick<CalendarEvent, "date" | "kind">[], releases: readonly { date: string }[], period: DateRange): KindCounts {
+  const inPeriod = (d: string) => d >= period.from && d <= period.to;
+  const counts: KindCounts = { holdings: 0, bellwethers: 0, economic: 0 };
+  for (const ev of events) if (inPeriod(ev.date)) counts[kindOf(ev)]++;
+  for (const r of releases) if (inPeriod(r.date)) counts.economic++;
+  return counts;
+}
+
+/** The kinds that are unticked but have something in the period, with how many: what the page is holding back. */
+export function hiddenKinds(counts: KindCounts, show: readonly CalendarKind[]): { kind: CalendarKind; count: number }[] {
+  return CALENDAR_KINDS.filter((k) => !show.includes(k) && counts[k] > 0).map((kind) => ({ kind, count: counts[kind] }));
+}
+
+/**
+ * The kinds on each day among what the Show filters list, for the month picker's dots. A day with nothing
+ * shown is absent, so it gets no dot; a Fund report day is told apart from a day with only bellwethers or releases.
+ */
+export function dayKinds(events: readonly Pick<CalendarEvent, "date" | "kind">[], releases: readonly { date: string }[], show: readonly CalendarKind[]): Map<string, Set<CalendarKind>> {
+  const out = new Map<string, Set<CalendarKind>>();
+  const mark = (date: string, kind: CalendarKind) => {
+    if (!show.includes(kind)) return;
+    const set = out.get(date) ?? new Set<CalendarKind>();
+    set.add(kind);
+    out.set(date, set);
+  };
+  for (const ev of events) mark(ev.date, kindOf(ev));
+  for (const r of releases) mark(r.date, "economic");
+  return out;
 }
 
 /** Where the expectations for one report stand: locked (automatically on the report date, or by hand), a draft, or nothing yet. */
