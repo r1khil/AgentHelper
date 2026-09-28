@@ -26,7 +26,7 @@ import {
 import type { CalendarFactorContext } from "@/lib/economic-calendar/factor-lines";
 import type { EconomicEvent } from "@/lib/economic-calendar/types";
 import { nextRelease, todayIn } from "@/lib/economic-calendar/view";
-import { fmtDate, fmtMoney } from "@/lib/format";
+import { fmtCurrency, fmtDate } from "@/lib/format";
 import { NY } from "@/lib/providers/calendar";
 import { cn } from "@/lib/utils";
 import { earningsHref } from "@/lib/scope";
@@ -52,6 +52,7 @@ export type ReportRow = {
   reportHour: string | null;
   dateStatus: "confirmed" | "estimated" | null;
   epsEstimate: string | null;
+  epsCurrency: string | null;
   expectations: ExpectationsState;
   status: "upcoming" | "reported" | "reviewed";
 };
@@ -119,7 +120,6 @@ const minutesOf = (iso: string) => {
   return t.hour * 60 + t.minute;
 };
 /** "$4.62", "−$0.12". */
-const eps = (v: string | null) => (v === null || v === "" ? "—" : `${Number(v) < 0 ? "−" : ""}$${fmtMoney(Math.abs(Number(v)))}`);
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 function toItems(events: CalendarEvent[], econ: EconomicEvent[]): Item[] {
@@ -504,7 +504,7 @@ function Row({ item, rowProps: r, wide = false }: { item: Item; rowProps: RowPro
           <span className="font-mono text-[13px] font-semibold">{ev.ticker}</span>
           <span className="ml-2 text-muted-foreground">{sub.filter(Boolean).join(" · ")}</span>
         </span>
-        <span className="truncate font-mono text-[12.5px] text-ink-2">EPS est. {eps(ev.epsEstimate)}</span>
+        <span className="truncate font-mono text-[12.5px] text-ink-2">EPS est. {fmtCurrency(ev.epsEstimate, ev.epsCurrency)}</span>
         <span className={cn("truncate text-[12.5px] font-medium", st ? st.text : ev.status === "reviewed" ? "text-good-foreground" : "text-muted-foreground")}>
           {st ? st.row : ev.status === "reported" ? "Reported · reflection due" : ev.status === "reviewed" ? "Reviewed" : ""}
         </span>
@@ -753,7 +753,7 @@ function ReportTable({ title, rows, showTeam, reportHref }: { title: string; row
                   {r.reportHour ? <span className="ml-1.5 text-muted-foreground">{r.reportHour.toUpperCase()}</span> : null}
                 </TableCell>
                 <TableCell className="text-ink-2">{r.dateStatus ?? "—"}</TableCell>
-                <TableCell className="text-right font-mono text-[12.5px]">{eps(r.epsEstimate)}</TableCell>
+                <TableCell className="text-right font-mono text-[12.5px]">{fmtCurrency(r.epsEstimate, r.epsCurrency)}</TableCell>
                 <TableCell>
                   <Pill tone={EXPECTATIONS[r.expectations].tone}>{EXPECTATIONS[r.expectations].pill}</Pill>
                 </TableCell>

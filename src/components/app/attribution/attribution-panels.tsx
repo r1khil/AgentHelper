@@ -9,7 +9,7 @@ import { ContributorsTable, type TeamLookup } from "./contributors-table";
 import { CompactCumulativeChart, CumulativeDetails, type CumulativeChartPoint } from "./cumulative-active-chart";
 import { DataNoticesButton, type QualityNotice } from "./data-quality-notice";
 import { EXPLAIN } from "./explainers";
-import { fmtBpsShort, fmtWeight } from "./format";
+import { fmtBpsShort, fmtSigned, fmtWeight } from "./format";
 import { HoldingsColumn } from "./holdings-columns";
 import { Tip } from "./info-tip";
 import { INTERACTION_CLASS } from "./interaction-toggle";
@@ -189,7 +189,7 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
           <>
             <span className="truncate">{team?.name ?? "No team"}</span>
             <span className={cn(num, "text-muted-foreground")}>{fmtWeight(t.avgWeight)}</span>
-            <span className={cn(num, tone(t.ret, 10_000))}>{`${t.ret > 0 ? "+" : ""}${(t.ret * 100).toFixed(2)}%`}</span>
+            <span className={cn(num, tone(t.ret, 10_000))}>{fmtSigned(t.ret)}</span>
             <span className={cn(num, "font-semibold", tone(t.contribution, 10_000))}>{fmtBpsShort(t.contribution)} bp</span>
           </>
         );

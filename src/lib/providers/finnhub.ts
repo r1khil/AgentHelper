@@ -47,15 +47,23 @@ export async function getEarningsCalendar(symbol: string): Promise<EarningsDate[
   if (!finnhubConfigured()) return [];
   const from = DateTime.now().minus({ days: 120 }).toISODate()!;
   const to = DateTime.now().plus({ days: 120 }).toISODate()!;
-  return cached(`finnhub:earnings:${symbol}:${from}`, 60 * 60 * 6, async () => {
+  return cached(`finnhub:earnings:v2:${symbol}:${from}`, 60 * 60 * 6, async () => {
     const res = await fh<FhEarnings>("/calendar/earnings", { symbol, from, to });
-    return (res.earningsCalendar ?? [])
+    const rows = res.earningsCalendar ?? [];
+    // The calendar names no currency, and Finnhub may answer for the home listing (TSM comes back as 2330.TW,
+    // in TWD per local share). The profile says which currency its estimates are in.
+    const currency = rows.some((e) => e.epsEstimate != null || e.revenueEstimate != null)
+      ? await fh<{ estimateCurrency?: string }>("/stock/profile2", { symbol }).then((p) => p.estimateCurrency || undefined, () => undefined)
+      : undefined;
+    return rows
       .map((e) => ({
         date: e.date,
         hour: e.hour || undefined,
         isEstimate: true,
         epsEstimate: e.epsEstimate ?? undefined,
         revenueEstimate: e.revenueEstimate ?? undefined,
+        epsCurrency: currency,
+        revenueCurrency: currency,
         fiscalPeriod: e.year && e.quarter ? `Q${e.quarter} FY${e.year}` : undefined,
         sourceUrl: "https://finnhub.io/",
       }))
@@ -63,7 +71,10 @@ export async function getEarningsCalendar(symbol: string): Promise<EarningsDate[
   });
 }
 
-/** Every earnings event Finnhub lists in a date range, keyed by symbol. Empty when Finnhub is off. */
+/**
+ * Every earnings event Finnhub lists in a date range, keyed by symbol. Empty when Finnhub is off. The estimates carry
+ * no currency (a profile call per symbol is too many); the sector bellwethers that use them are S&P 500 names, in USD.
+ */
 export async function getEarningsCalendarRange(fromISO: string, toISO: string): Promise<Map<string, EarningsDate[]>> {
   if (!finnhubConfigured()) return new Map();
   const rows = await cached(

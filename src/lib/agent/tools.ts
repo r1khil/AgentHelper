@@ -450,7 +450,7 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
     }),
 
     get_earnings_calendar: tool({
-      description: "Next earnings date for a ticker, whether it is confirmed or estimated, and consensus estimates if available.",
+      description: "Next earnings date for a ticker, whether it is confirmed or estimated, and consensus estimates if available, each with its ISO currency (epsCurrency, revenueCurrency; state non-USD codes, never $).",
       inputSchema: z.object({ ticker: tickerArg }),
       execute: async ({ ticker }): Promise<ToolResult<unknown>> => {
         try {
@@ -756,7 +756,7 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
           const t = ticker.toUpperCase();
           const e = await getEstimates(t);
           const s = src("yest", `${t} analyst estimates (Yahoo Finance)`, `https://finance.yahoo.com/quote/${encodeURIComponent(t)}/analysis/`, "Yahoo Finance");
-          return { data: { ticker: t, ...e, sourceId: s.id, note: "Consensus figures; label them as such and never present them as guidance or as a forecast of your own." }, sources: [s] };
+          return { data: { ticker: t, ...e, sourceId: s.id, note: "Consensus figures; label them as such and never present them as guidance or as a forecast of your own. Each figure is in its `currency` (an ISO code, e.g. TWD); state that code and never write $ for a non-USD figure." }, sources: [s] };
         } catch (e) {
           return fail(e, null);
         }

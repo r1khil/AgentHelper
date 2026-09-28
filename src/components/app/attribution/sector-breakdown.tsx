@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { AttributionBreakdown, SectorBreakdown, SectorDayBreakdown, SectorRow } from "@/lib/attribution/attribution";
 import type { SectorLineage } from "@/lib/attribution/lineage";
 import { bucketLabel, type BucketKey } from "@/lib/attribution/sectors";
-import { fmtDate } from "@/lib/format";
+import { fixed, fmtDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Move } from "../move";
 import { EXPLAIN } from "./explainers";
@@ -24,10 +24,10 @@ type Payload = {
 };
 
 const DEFAULT_ROWS = 20;
-const w = (v: number) => `${(v * 100).toFixed(2)}%`;
-const r = (v: number) => `${(v * 100).toFixed(3)}%`;
-const bps = (v: number, d = 2) => `${(v * 10_000).toFixed(d)} bps`;
-const f = (v: number, d = 4) => v.toFixed(d);
+const w = (v: number) => `${fixed(v * 100, 2)}%`;
+const r = (v: number) => `${fixed(v * 100, 3)}%`;
+const bps = (v: number, d = 2) => `${fixed(v * 10_000, d)} bps`;
+const f = (v: number, d = 4) => fixed(v, d);
 const PRICED: Record<string, { label: string; warn: boolean }> = {
   close: { label: "close", warn: false },
   carried: { label: "carried forward", warn: true },

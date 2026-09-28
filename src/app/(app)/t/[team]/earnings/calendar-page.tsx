@@ -98,6 +98,7 @@ export async function CalendarPage({ slug, sp, route, defaultShow }: { slug: str
       reportHour: e.reportHour,
       dateStatus: e.dateStatus,
       epsEstimate: e.epsEstimate,
+      epsCurrency: e.epsCurrency,
       expectations: expectationsState(e),
       status: e.status,
     };

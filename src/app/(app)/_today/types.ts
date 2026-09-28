@@ -42,6 +42,8 @@ export type TeamHolding = {
   ticker: string;
   href: string;
   price: number | null;
+  /** The quote's ISO currency code. */
+  currency: string | null;
   changePct: number | null;
   relativePp: number | null;
   /** "Oct 15" or "Oct 15 est.", or null. */

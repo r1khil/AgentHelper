@@ -23,10 +23,10 @@ const TEAM = "team-tech";
 const OTHER = "team-fig";
 
 function holding(over: Partial<CalendarEvent> & { ticker: string; date: string }): CalendarEvent {
-  return { name: over.ticker, kind: "holding", sector: null, industry: null, reportHour: null, dateStatus: "estimated", epsEstimate: null, earningsId: `e-${over.ticker}`, teamId: TEAM, teamSlug: "tech", teamName: "Tech", ...over };
+  return { name: over.ticker, kind: "holding", sector: null, industry: null, reportHour: null, dateStatus: "estimated", epsEstimate: null, epsCurrency: null, earningsId: `e-${over.ticker}`, teamId: TEAM, teamSlug: "tech", teamName: "Tech", ...over };
 }
 function bell(over: Partial<CalendarEvent> & { ticker: string; date: string }): CalendarEvent {
-  return { name: over.ticker, kind: "bellwether", sector: "information_technology", industry: null, reportHour: null, dateStatus: "estimated", epsEstimate: null, etf: "XLK", weightPct: "5.0000", ...over };
+  return { name: over.ticker, kind: "bellwether", sector: "information_technology", industry: null, reportHour: null, dateStatus: "estimated", epsEstimate: null, epsCurrency: null, etf: "XLK", weightPct: "5.0000", ...over };
 }
 
 describe("buildMonthGrid", () => {

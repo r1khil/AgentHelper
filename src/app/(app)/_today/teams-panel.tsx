@@ -6,7 +6,7 @@ import { ChevronRight } from "lucide-react";
 import { Acct } from "./acct";
 import { Panel, PanelHeader } from "@/components/app/panel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fmtAccounting, fmtMoney } from "@/lib/format";
+import { fmtAccounting, fmtCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { TeamRowData } from "./types";
 
@@ -143,7 +143,7 @@ function TeamHoldings({ team, live }: { team: TeamRowData; live: boolean }) {
             </span>
             {live ? (
               <>
-                <span role="cell" className="text-right font-mono tabular-nums">{h.price === null ? "—" : `$${fmtMoney(h.price)}`}</span>
+                <span role="cell" className="text-right font-mono tabular-nums">{fmtCurrency(h.price, h.currency)}</span>
                 <span role="cell" className={cn("text-right font-mono tabular-nums", tone(h.changePct))}><Acct value={h.changePct} unit="%" /></span>
                 <span role="cell" className="text-right font-mono text-muted-foreground tabular-nums"><Acct value={h.relativePp} unit=" pp" /></span>
               </>

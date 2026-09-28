@@ -180,6 +180,7 @@ function teamRows({ teams: teamList, rows, upcoming, scope }: TeamInput, market?
           ticker: h.ticker,
           href: holdingHref(scope, teamSlug, h.ticker),
           price: q?.quote?.price ?? null,
+          currency: q?.quote?.currency ?? null,
           changePct: q?.quote?.changePct ?? null,
           relativePp: q?.relativePp ?? null,
           nextReport: report ? `${monthDay(report.reportDate)}${report.dateStatus === "estimated" ? " est." : ""}` : null,

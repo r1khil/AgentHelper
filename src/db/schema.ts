@@ -311,6 +311,9 @@ export const earnings = pgTable(
     dateSourceUrl: text("date_source_url"),
     epsEstimate: numeric("eps_estimate", { precision: 12, scale: 4 }),
     revenueEstimate: numeric("revenue_estimate", { precision: 20, scale: 2 }),
+    /** ISO codes for the two estimates, which can differ (TSM: EPS per ADR in USD, revenue in TWD). Null = unknown. */
+    epsCurrency: text("eps_currency"),
+    revenueCurrency: text("revenue_currency"),
     expectations: text("expectations"),
     keyQuestions: text("key_questions"),
     thesisChangeCriteria: text("thesis_change_criteria"),
