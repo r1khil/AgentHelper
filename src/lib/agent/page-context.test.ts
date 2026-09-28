@@ -47,4 +47,11 @@ describe("page context", () => {
     const ctx = parsePageContext({ kind: "backtesting", path: "/backtesting", title: "Backtesting", from: "2026-06-22", to: "2026-09-21", benchmark: "SPY", addedTickers: ["IBM"], changed: [{ ticker: "IBM", savedPct: 0, scenarioPct: 5 }, { ticker: "CASH", savedPct: 10, scenarioPct: 5 }], ran: false })!;
     expect(pageContextBlock(ctx)).toContain('addedTickers: ["IBM"], weights: { "IBM": 5, "CASH": 5 }');
   });
+  it("hands the Daily page over as a get_daily_performance call and says whether it was live", () => {
+    const ctx = parsePageContext({ kind: "daily", path: "/t/fig/daily", title: "FIG daily performance", scope: "team", team: "fig", session: "2026-09-28", status: "live" })!;
+    expect(ctx.kind).toBe("daily");
+    expect(pageContextBlock(ctx)).toContain('get_daily_performance with { scope: "team", team: "fig" }');
+    expect(pageContextLabel(ctx)).toBe("FIG daily performance · live");
+    expect(parsePageContext({ ...ctx, status: "maybe" })).toBeNull();
+  });
 });

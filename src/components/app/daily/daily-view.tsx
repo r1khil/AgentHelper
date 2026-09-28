@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Panel, PanelHeader, Pill, StatStrip, type PillTone, type StatCell } from "@/components/app/panel";
+import { FilterChip, FilterChips, Panel, PanelHeader, Pill, StatStrip, type PillTone, type StatCell } from "@/components/app/panel";
 import { EffectsPanel, MethodPanel, type EffectBar } from "@/components/app/attribution/attribution-panels";
 import type { TeamLookup } from "@/components/app/attribution/contributors-table";
 import { DataNoticesButton } from "@/components/app/attribution/data-quality-notice";
@@ -12,11 +12,13 @@ import { bps, pct, toneOf } from "@/components/app/attribution/format";
 import { Tip } from "@/components/app/attribution/info-tip";
 import { InteractionScope } from "@/components/app/attribution/interaction-toggle";
 import { SectorsPanel } from "@/components/app/attribution/sectors-panel";
+import { usePageContext } from "@/components/app/hoot/page-context";
 import type { TeamAttributionResult } from "@/lib/attribution/attribution";
 import type { LiveSnapshot, LiveStatus, PathPoint } from "@/lib/attribution/live";
 import { bucketLabel, INDEX_LABEL } from "@/lib/attribution/sectors";
 import { fmtBp, fmtDateTime, fmtDay, fmtPct, fmtTime, fmtUsd } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { Move } from "@/components/app/move";
 import { IntradayChart } from "./intraday-chart";
 import { LiveHoldingsTable } from "./live-holdings-table";
 
@@ -34,6 +36,8 @@ const STATUS: Record<LiveStatus, { label: string; tone: PillTone }> = {
   final: { label: "Final", tone: "neutral" },
 };
 
+type HoldingKind = "all" | "stocks" | "etfs";
+
 export type DailyScope = { kind: "fund" } | { kind: "team"; slug: string; name: string; benchmarkName: string; benchmarkSectors: string };
 
 function statusLine(s: LiveSnapshot) {
@@ -48,6 +52,7 @@ export function DailyView({ initial, scope, teams: teamList }: { initial: LiveSn
   const [points, setPoints] = useState<PathPoint[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [kind, setKind] = useState<HoldingKind>("all");
   const lastSnap = useRef(Date.parse(initial.generatedAt));
   const lastPath = useRef(0);
   const shown = useRef(`${initial.session}|${initial.status}`);
@@ -120,6 +125,13 @@ export function DailyView({ initial, scope, teams: teamList }: { initial: LiveSn
     };
   }, [snap.status, snap.phase, snap.opensAt, loadSnap, loadPath]);
 
+  // Hoot reads the page it was asked from: the session shown, and whether it is live.
+  usePageContext(
+    scope.kind === "fund"
+      ? { kind: "daily", path: "/daily", title: "Daily performance", scope: "fund", session: snap.session, status: snap.status }
+      : { kind: "daily", path: `/t/${scope.slug}/daily`, title: `${scope.name} daily performance`, scope: "team", team: scope.slug, session: snap.session, status: snap.status },
+  );
+
   const r = snap.result;
   const fund = scope.kind === "fund";
   const own = fund ? "Fund" : "team";
@@ -170,6 +182,9 @@ export function DailyView({ initial, scope, teams: teamList }: { initial: LiveSn
     </>
   );
   const notices = [...(failed ? ["The last refresh failed; these are the numbers from before it."] : []), ...snap.notes].map((text) => ({ text }));
+  const etfCount = snap.holdings.filter((h) => h.etf).length;
+  const shownRows = kind === "all" ? snap.holdings : snap.holdings.filter((h) => h.etf === (kind === "etfs"));
+  const group = shownRows.reduce((s, h) => ({ w: s.w + h.weightOpen, c: s.c + h.contribution, pnl: s.pnl + h.pnl }), { w: 0, c: 0, pnl: 0 });
   const portfolioLabel = fund ? "Owl Fund" : scope.name;
   const benchmarkLabel = fund ? INDEX_LABEL : "Sector benchmark";
 
@@ -208,7 +223,22 @@ export function DailyView({ initial, scope, teams: teamList }: { initial: LiveSn
         <div className={`${GRID} lg:items-start`}>
           <Panel>
             <PanelHeader title={<Tip label="Holdings">{EXPLAIN.contributors}</Tip>} count={snap.holdings.length} aside={`${fmtUsd(snap.value, 0)} ${fund ? "NAV" : "held"}`} />
-            <LiveHoldingsTable rows={snap.holdings} teams={teams} showTeam={fund} own={own} />
+            {etfCount > 0 && etfCount < snap.holdings.length && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-2.5">
+                <FilterChips label="Show holdings">
+                  <FilterChip onClick={() => setKind("all")} active={kind === "all"} count={snap.holdings.length}>All</FilterChip>
+                  <FilterChip onClick={() => setKind("stocks")} active={kind === "stocks"} count={snap.holdings.length - etfCount}>Stocks</FilterChip>
+                  <FilterChip onClick={() => setKind("etfs")} active={kind === "etfs"} count={etfCount}>ETFs</FilterChip>
+                </FilterChips>
+                <span className="flex-1" />
+                {kind !== "all" && (
+                  <span className="text-body text-muted-foreground">
+                    {kind === "etfs" ? "ETFs" : "Stocks"}: {fmtPct(pct(group.w), 1)} of the {own} at the open, <Move value={bps(group.c)} unit=" bp" digits={1} />, <Move value={group.pnl} digits={0} /> P&amp;L
+                  </span>
+                )}
+              </div>
+            )}
+            <LiveHoldingsTable rows={shownRows} teams={teams} showTeam={fund} own={own} />
           </Panel>
           <div className="flex min-w-0 flex-col gap-5">
             <SectorsPanel rows={r.sectors} hasBench={r.effects !== null} own={fund ? "Fund" : "Team"} />

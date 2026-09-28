@@ -118,6 +118,7 @@ const KIND_LABELS: Record<string, string> = {
   search_web: "Searching the web",
   get_insider_transactions: "Checking insider filings",
   get_attribution: "Reading the Fund's attribution",
+  get_daily_performance: "Reading today's performance",
   run_backtest: "Running a backtest",
   get_institutional_holders: "Checking who owns the stock",
   get_analyst_estimates: "Pulling consensus estimates",

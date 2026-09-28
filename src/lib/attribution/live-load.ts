@@ -1,9 +1,12 @@
 import "server-only";
 import { db } from "@/db/client";
-import { canManageTeam, isFundWide, type CurrentUser } from "@/lib/auth";
+import type { CurrentUser } from "@/lib/auth";
+import { canManageTeam, isFundWide } from "@/lib/roles";
 import { marketPhase } from "@/lib/providers/calendar";
 import { getIntradayBars, getQuotes } from "@/lib/providers/yahoo";
-import { getTeamBySlug } from "@/lib/teams";
+import { etfsAmong } from "@/lib/lookthrough/store";
+import { eq } from "drizzle-orm";
+import { teams } from "@/db/schema";
 import { buildLiveSnapshot, DOW_SYMBOL, intradayPath, type LiveQuote, type LiveSnapshot, type PathPoint } from "./live";
 import { loadTeamSectors } from "./load";
 import { benchmarkSymbols, type GicsSector } from "./sectors";
@@ -14,7 +17,8 @@ export type LiveScope = { team?: { id: string; name: string; slug: string; secto
 /** Who may see which book, the same rule as Attribution: execs and admins the Fund, a team's lead and fund-wide roles the team. Null when not allowed. */
 export async function liveScopeFor(user: CurrentUser, teamSlug: string | null): Promise<LiveScope | null> {
   if (!teamSlug) return isFundWide(user) ? {} : null;
-  const team = await getTeamBySlug(teamSlug);
+  // A direct query rather than lib/teams, which pulls in next/navigation (Hoot's tools load this module in scripts too).
+  const [team] = await db.select().from(teams).where(eq(teams.slug, teamSlug)).limit(1);
   if (!team || !canManageTeam(user, team.id)) return null;
   const sectors = (await loadTeamSectors()).get(team.id) ?? [];
   return { team: { id: team.id, name: team.name, slug: team.slug, sectors } };
@@ -24,15 +28,16 @@ export async function loadLiveSnapshot(scope: LiveScope, now = new Date()): Prom
   const raw = await readSeriesInputs(db);
   const market = marketPhase(now);
   const symbols = [...new Set([...raw.trades.map((t) => t.ticker), ...benchmarkSymbols(), DOW_SYMBOL])];
-  let quotes: Record<string, LiveQuote> = {};
   let quotesFailed = false;
-  try {
-    quotes = await getQuotes(symbols);
-  } catch (e) {
-    quotesFailed = true;
-    console.error("[daily] quotes failed", e);
-  }
-  const snapshot = buildLiveSnapshot({ raw, quotes, market, now, team: scope.team });
+  const [quotes, etfs] = await Promise.all([
+    getQuotes(symbols).catch((e): Record<string, LiveQuote> => {
+      quotesFailed = true;
+      console.error("[daily] quotes failed", e);
+      return {};
+    }),
+    etfsAmong([...new Set(raw.trades.map((t) => t.ticker))]),
+  ]);
+  const snapshot = buildLiveSnapshot({ raw, quotes, market, now, team: scope.team, etfs });
   if (snapshot && quotesFailed) snapshot.notes.unshift("Live quotes are unavailable right now; showing the last stored closes.");
   return snapshot;
 }
