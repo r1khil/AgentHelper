@@ -40,9 +40,9 @@ describe("⌘K Enter rule", () => {
   });
 
   it("counts Hoot's name for a page and its keywords as names", () => {
-    expect(enter("hoot")).toMatchObject({ kind: "page", page: { label: "Conversations" } });
+    expect(enter("hoot")).toMatchObject({ kind: "page", page: { label: "Research" } });
     expect(enter("earnings")).toMatchObject({ kind: "page", page: { label: "Calendar" } });
-    expect(enter("research")).toMatchObject({ kind: "page", page: { label: "Conversations" } });
+    expect(enter("research")).toMatchObject({ kind: "page", page: { label: "Research" } });
   });
 
   it("keeps asking Hoot on the list, right after what the query names", () => {
