@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
+import { CircleAlert } from "lucide-react";
 import { signInWithGoogle, signInWithPassword } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { HootHero } from "@/components/app/hoot/hoot-hero";
+import { LoginHoot } from "./login-hoot";
 
 export const metadata: Metadata = { title: "Sign in" };
 
+/**
+ * Sign-in, in the app's own look: a rail-colored pane with the mark and Hoot (dark in both themes, like the rail),
+ * and the form in a panel on the warm ground. Below md the pane becomes a band above the form.
+ */
 export default async function LoginPage({
   searchParams,
 }: {
@@ -14,52 +19,71 @@ export default async function LoginPage({
 }) {
   const { error, next } = await searchParams;
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-6">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <HootHero size={168} className="-mb-1" />
-          <div className="text-title font-semibold leading-tight">The Owl&apos;s Nest</div>
-          <div className="text-body text-muted-foreground">Research workspace</div>
+    <main className="flex min-h-dvh flex-col md:flex-row">
+      <div
+        data-rail-surface
+        className="flex shrink-0 flex-col bg-rail px-6 py-5 text-rail-foreground md:w-[42%] md:max-w-[560px] md:min-w-[340px] md:px-8 md:py-7"
+      >
+        <div className="flex items-center gap-3">
+          <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-xl bg-cream text-body font-bold tracking-[-0.04em] text-rail">
+            ON
+          </span>
+          <div className="min-w-0">
+            <div className="text-emph font-semibold text-cream">The Owl&apos;s Nest</div>
+            <div className="text-caption text-rail-foreground">Research workspace</div>
+          </div>
         </div>
-
-        {error && (
-          <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-body text-destructive">
-            {error}
-          </div>
-        )}
-
-        <form action={signInWithGoogle}>
-          <input type="hidden" name="next" value={next ?? "/"} />
-          <Button type="submit" variant="outline" className="w-full">
-            <GoogleIcon />
-            Continue with Google
-          </Button>
-        </form>
-
-        <div className="my-6 flex items-center gap-3 text-body text-muted-foreground">
-          <div className="h-px flex-1 bg-border" />
-          or use a username
-          <div className="h-px flex-1 bg-border" />
+        <div className="flex flex-1 items-center justify-center py-2 md:py-10">
+          <LoginHoot />
         </div>
+        {/* Balances the mark so Hoot sits in the middle of the pane. */}
+        <div aria-hidden className="hidden h-10 md:block" />
+      </div>
 
-        <form action={signInWithPassword} className="grid gap-3">
-          <input type="hidden" name="next" value={next ?? "/"} />
-          <div className="grid gap-1.5">
-            <Label htmlFor="username">Username</Label>
-            <Input id="username" name="username" autoComplete="username" autoCapitalize="none" required />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" autoComplete="current-password" required />
-          </div>
-          <Button type="submit" className="mt-1 w-full">
-            Sign in
-          </Button>
-        </form>
+      <div className="flex flex-1 items-center justify-center px-4 py-10 md:px-10">
+        <div className="w-full max-w-[380px]">
+          <h1 className="text-display font-semibold tracking-tight">Sign in</h1>
 
-        <p className="mt-6 text-center text-caption text-muted-foreground">
-          Access is by invitation. Ask a Fund admin if you need an account.
-        </p>
+          <div className="panel mt-5 p-6">
+            {error && (
+              <div role="alert" className="mb-5 flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-body text-destructive">
+                <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <span className="min-w-0">{error}</span>
+              </div>
+            )}
+
+            <form action={signInWithGoogle}>
+              <input type="hidden" name="next" value={next ?? "/"} />
+              <Button type="submit" variant="outline" className="h-10 w-full gap-2">
+                <GoogleIcon />
+                Continue with Google
+              </Button>
+            </form>
+
+            <div className="my-5 flex items-center gap-3 text-caption text-muted-foreground">
+              <div className="h-px flex-1 bg-row" />
+              or use a username
+              <div className="h-px flex-1 bg-row" />
+            </div>
+
+            <form action={signInWithPassword} className="grid gap-4">
+              <input type="hidden" name="next" value={next ?? "/"} />
+              <div className="grid gap-1.5">
+                <Label htmlFor="username">Username</Label>
+                <Input id="username" name="username" autoComplete="username" autoCapitalize="none" required className="h-10 px-3" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" name="password" type="password" autoComplete="current-password" required className="h-10 px-3" />
+              </div>
+              <Button type="submit" className="mt-1 h-10 w-full">
+                Sign in
+              </Button>
+            </form>
+          </div>
+
+          <p className="mt-4 text-caption text-muted-foreground">Access is by invitation. Ask a Fund admin if you need an account.</p>
+        </div>
       </div>
     </main>
   );
