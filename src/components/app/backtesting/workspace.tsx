@@ -484,16 +484,19 @@ export function DailyDifferences({
   result,
   Frame,
   names = SERIES,
+  defaultMode = "modifiedActive",
 }: {
   result: BacktestResult;
   Frame: Frame;
   /** Series names; the redesign calls them "Today's weights" and "Scenario". */
   names?: { original: string; modified: string };
+  /** What the heatmap colors by at first; a run at today's weights opens on today vs the benchmark. */
+  defaultMode?: "originalActive" | "modifiedActive" | "delta";
 }) {
   const [date, setDate] = useState(result.days.at(-1)!.date);
   const [mode, setMode] = useState<
     "originalActive" | "modifiedActive" | "delta"
-  >("modifiedActive");
+  >(defaultMode);
   const selected = result.days.find((d) => d.date === date)!;
   const months = [...new Set(result.days.map((d) => d.date.slice(0, 7)))];
   const byDate = new Map(result.days.map((d) => [d.date, d]));

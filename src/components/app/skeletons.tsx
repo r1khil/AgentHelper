@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { stripGrid, wrapDivider } from "./panel";
 
 // Loading-skeleton parts for the page-shaped fallbacks in page-skeletons.tsx. Each part keeps the outer geometry of
 // its counterpart in panel.tsx (same padding, header and row heights, same text classes for line boxes), so the
@@ -57,12 +58,13 @@ export function SkeletonPanelHeader({ className, w = "w-36", aside }: { classNam
   );
 }
 
-/** StatStrip with placeholder cells: same grid, padding and line boxes. */
-export function SkeletonStatStrip({ cells, notes = true, className }: { cells: number; notes?: boolean; className?: string }) {
-  return (
-    <section className={cn("panel grid shrink-0 overflow-hidden", className)} style={{ gridTemplateColumns: `repeat(${cells}, minmax(0, 1fr))` }}>
+/** StatStrip with placeholder cells: same grid, padding and line boxes, and the same `wrap`. */
+export function SkeletonStatStrip({ cells, notes = true, wrap, className }: { cells: number; notes?: boolean; wrap?: boolean; className?: string }) {
+  const grid = stripGrid(cells, wrap);
+  const strip = (
+    <section className={cn("panel grid shrink-0 overflow-hidden", grid.className, className)} style={grid.style}>
       {Array.from({ length: cells }, (_, i) => (
-        <div key={i} className={cn("min-w-0 px-[18px] py-3.5", i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
+        <div key={i} className={cn("min-w-0 px-[18px] py-3.5", wrap ? wrapDivider(i) : i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
           <TextBone className="text-body" w="w-20" />
           <TextBone className="figure mt-1 text-display leading-tight" w="w-24" />
           {notes && <TextBone className="mt-1 text-caption" w="w-28" />}
@@ -70,6 +72,7 @@ export function SkeletonStatStrip({ cells, notes = true, className }: { cells: n
       ))}
     </section>
   );
+  return wrap ? <div className="@container/strip min-w-0 shrink-0">{strip}</div> : strip;
 }
 
 /**
@@ -114,6 +117,31 @@ export function SkeletonTabs({ widths, className }: { widths: string[]; classNam
           <TextBone className="text-body" w={w} />
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Backtesting's replay while it computes, shaped like PerformanceChart plus its footnote: the date line, four
+ * figures, the hint row, the plot, its legend and two lines of notes. Used by the page skeleton and the live panel alike.
+ */
+export function ReplaySkeleton() {
+  return (
+    <div aria-hidden className="mt-3 min-w-0">
+      <TextBone className="mb-4 text-body" w="w-48" />
+      <div className="mb-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i}>
+            <TextBone className="mb-1 text-caption" w="w-24" />
+            <TextBone className="text-body font-medium sm:text-emph" w="w-20" />
+          </div>
+        ))}
+      </div>
+      <TextBone className="mb-3 flex h-14 items-center text-body sm:h-8" w="w-56" />
+      <SkeletonChart className="h-64 sm:h-72" />
+      <TextBone className="mt-3 text-caption" w="w-64" />
+      <TextBone className="mt-3 text-caption" w="w-full" />
+      <TextBone className="text-caption" w="w-2/3" />
     </div>
   );
 }

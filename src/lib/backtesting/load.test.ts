@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/providers/yahoo", () => ({ getAdjustedBarsRange: vi.fn(), resolveCompany: vi.fn() }));
 vi.mock("@/db/client", () => ({ db: { select: vi.fn() } }));
-import { resolveScenarioSnapshot, runBacktest } from "./load";
+import { openingRun, resolveScenarioSnapshot, runBacktest } from "./load";
 import { getAdjustedBarsRange, resolveCompany } from "@/lib/providers/yahoo";
 import type { Snapshot } from "./engine";
 const snapshot: Snapshot = {
@@ -87,6 +87,34 @@ it("keeps cash out of provider calls while using the current unnormalized weight
   expect(r.modified.totalReturn).toBeCloseTo(0.09);
   expect(getAdjustedBarsRange).toHaveBeenCalledTimes(2);
   expect(vi.mocked(getAdjustedBarsRange).mock.calls.map((c) => c[0])).not.toContain("CASH");
+});
+
+it("opens on today's weights against SPY over the last year, without writing the provider cache", async () => {
+  vi.mocked(getAdjustedBarsRange).mockResolvedValue([
+    { date: "2024-01-05", close: 100 },
+    { date: "2024-01-08", close: 102 },
+    { date: "2025-01-06", close: 110 },
+  ]);
+  const current: Snapshot = {
+    ...snapshot,
+    positions: [
+      { id: "a", ticker: "A", name: "A", weight: 0.8 },
+      { id: "cash", ticker: "CASH", name: "Cash", weight: 0.2, kind: "cash" },
+    ],
+  };
+  const run = await openingRun(current, "2025-01-06");
+  if (!("result" in run)) throw new Error(run.error);
+  expect(run).toMatchObject({ from: "2024-01-06", to: "2025-01-06", benchmark: "SPY" });
+  expect(run.result.original.totalReturn).toBeCloseTo(0.08);
+  expect(run.result.modified.totalReturn).toBe(run.result.original.totalReturn);
+  expect(vi.mocked(getAdjustedBarsRange).mock.calls).toEqual([
+    ["SPY", "2023-12-23", "2025-01-06", { persist: false }],
+    ["A", "2023-12-23", "2025-01-06", { persist: false }],
+  ]);
+});
+it("hands a failed opening replay back as a message instead of rejecting", async () => {
+  vi.mocked(getAdjustedBarsRange).mockRejectedValue(new Error("provider failure"));
+  expect(await openingRun(snapshot, "2025-01-06")).toEqual({ error: expect.stringMatching(/Adjusted history unavailable/) });
 });
 
 import { loadSnapshot } from "./load";

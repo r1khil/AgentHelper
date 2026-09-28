@@ -4,9 +4,11 @@ import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import { Panel, PanelHeader, StatStrip, type StatCell } from "@/components/app/panel";
+import { ReplaySkeleton, SkeletonStatStrip } from "@/components/app/skeletons";
 import { Tabs, tabPanelProps } from "@/components/app/tabs";
 import { PerformanceChart } from "@/components/charts/performance-chart";
 import type { BacktestResult } from "@/lib/backtesting/engine";
+import { DEFAULT_BENCHMARK, isTodaysWeights } from "@/lib/backtesting/default-run";
 import type { SavedScenarioSummary } from "@/lib/backtesting/saved";
 import { fmtBp, fmtDay, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -83,7 +85,7 @@ export function BacktestingRedesign({
         />
       </div>
       <div className="flex min-w-0 flex-col gap-5">
-        <Stats result={result} stale={dirty} />
+        <Stats result={result} baseline={Boolean(completed?.baseline)} busy={busy} stale={dirty} />
         <ReplayPanel bt={bt} result={result} realizedHref={realizedHref} />
         {bt.riskEnabled && (risk.data || risk.busy || risk.error) && (
           <Panel data-tour="bt-risk-impact" className="shrink-0">
@@ -96,8 +98,9 @@ export function BacktestingRedesign({
             </div>
           </Panel>
         )}
-        {result && <ResultDetails key={completed.id} result={result} bt={bt} />}
+        {result && <ResultDetails key={completed.id} result={result} baseline={completed.baseline} bt={bt} />}
         <SavedPanel items={saved} activeId={activeId} viewerId={viewerId} fundWide={fundWide} audience={saveAudience} />
+        <HowCalculated bt={bt} />
       </div>
       {/* Screen readers hear the run's progress; sighted readers see it in the replay panel. */}
       <span role="status" aria-live="polite" className="sr-only">
@@ -107,10 +110,12 @@ export function BacktestingRedesign({
   );
 }
 
-function Stats({ result, stale }: { result?: BacktestResult; stale: boolean }) {
+function Stats({ result, baseline, busy, stale }: { result?: BacktestResult; baseline: boolean; busy: boolean; stale: boolean }) {
+  if (!result && busy) return <SkeletonStatStrip cells={4} wrap />;
   if (!result)
     return (
       <StatStrip
+        wrap
         cells={[
           { label: "Scenario", value: "—", note: "Run the replay to compare" },
           { label: NAMES.original, value: "—", note: "Same window" },
@@ -120,13 +125,31 @@ function Stats({ result, stale }: { result?: BacktestResult; stale: boolean }) {
       />
     );
   const period = periodFigures(result);
-  const bp = Math.round(period.delta * 10_000);
   const vol = (v: number | null) => fmtPct(v === null ? null : v * 100, 1);
+  const span = `${day(result.from)} – ${day(result.days.at(-1)!.date)}`;
+  // At today's weights the scenario is today's portfolio, so the strip compares it with the benchmark instead.
+  if (baseline) {
+    const bp = Math.round(period.currentActive * 10_000);
+    return (
+      <StatStrip
+        wrap
+        className={cn(stale && "opacity-60")}
+        cells={[
+          { label: NAMES.original, value: shownPct(period.current), tone: toneOf(period.current), note: span },
+          { label: result.benchmark, value: shownPct(period.benchmark), tone: toneOf(period.benchmark), note: "Same window" },
+          { label: "Difference", value: fmtBp(bp), tone: bp > 0 ? "up" : bp < 0 ? "down" : null, note: `Today's weights minus ${result.benchmark}` },
+          { label: "Volatility", value: vol(result.original.volatility), note: `vs ${vol(result.benchmarkMetrics.volatility)} ${result.benchmark}` },
+        ]}
+      />
+    );
+  }
+  const bp = Math.round(period.delta * 10_000);
   return (
     <StatStrip
+      wrap
       className={cn(stale && "opacity-60")}
       cells={[
-        { label: "Scenario", value: shownPct(period.modified), tone: toneOf(period.modified), note: `${day(result.from)} – ${day(result.days.at(-1)!.date)}` },
+        { label: "Scenario", value: shownPct(period.modified), tone: toneOf(period.modified), note: span },
         { label: NAMES.original, value: shownPct(period.current), tone: toneOf(period.current), note: "Same window" },
         { label: "Difference", value: fmtBp(bp), tone: bp > 0 ? "up" : bp < 0 ? "down" : null, note: "Scenario minus today" },
         { label: "Volatility", value: vol(result.modified.volatility), note: `vs ${vol(result.original.volatility)} today` },
@@ -147,11 +170,14 @@ function Dot({ color, children }: { color: string; children: ReactNode }) {
 function ReplayPanel({ bt, result, realizedHref }: { bt: BacktestingState; result?: BacktestResult; realizedHref?: string }) {
   const points = useMemo(() => (result ? replayPoints(result) : []), [result]);
   const benchmark = result?.benchmark ?? bt.benchmark;
+  // A run at today's weights draws one portfolio line: the scenario would sit exactly on top of it. Before the
+  // first result, the legend follows the weights on screen.
+  const baseline = result ? Boolean(bt.completed?.baseline) : isTodaysWeights(bt.positions, bt.scenarioWeights);
   return (
     <Panel className="flex-1 px-4 pt-3.5 pb-4">
       <div className="flex shrink-0 flex-wrap items-center gap-x-3.5 gap-y-1">
         <h2 className="text-emph font-semibold whitespace-nowrap">Replay, rebalanced daily</h2>
-        <Dot color="var(--series-2)">Scenario</Dot>
+        {!baseline && <Dot color="var(--series-2)">Scenario</Dot>}
         <Dot color="var(--series-1)">{NAMES.original}</Dot>
         <Dot color="var(--series-neutral)">{benchmark}</Dot>
         <span className="flex-1" />
@@ -174,7 +200,7 @@ function ReplayPanel({ bt, result, realizedHref }: { bt: BacktestingState; resul
             note="Compounded daily total returns, rebased to the same closing baseline."
             nameMetrics
             series={[
-              { key: "modified", label: NAMES.modified, color: "var(--series-2)" },
+              ...(baseline ? [] : [{ key: "modified", label: NAMES.modified, color: "var(--series-2)" }]),
               { key: "original", label: NAMES.original, color: "var(--series-1)" },
               { key: "benchmark", label: result.benchmark, color: "var(--series-neutral)" },
             ]}
@@ -189,21 +215,17 @@ function ReplayPanel({ bt, result, realizedHref }: { bt: BacktestingState; resul
             </p>
           )}
         </div>
+      ) : bt.busy ? (
+        <ReplaySkeleton />
       ) : (
         <div className="grid flex-1 place-items-center py-10">
-          <div className="max-w-md text-center">
-            <div className="text-emph font-medium">{bt.busy ? runStatus(bt) : "Choose your dates and weights, then run the replay."}</div>
-            <p className="mt-2 text-body leading-relaxed text-muted-foreground">
-              <span className="font-medium text-ink-2">{bt.snapshot.scope}.</span> <ScopeNote snapshot={bt.snapshot} />
-            </p>
-            <p className="mt-2 text-caption text-muted-foreground">{METHOD_LINE}</p>
-            <p className="mt-1 text-caption text-muted-foreground">{DATES_HINT}</p>
-          </div>
+          <p className="max-w-md text-center text-emph font-medium">Choose your dates and weights, then run the replay.</p>
         </div>
       )}
     </Panel>
   );
 }
+
 const DetailFrame: Frame = ({ title, ariaLabel, children }) => (
   <section aria-label={ariaLabel} className="min-w-0">
     <h3 className="mb-3 text-body font-semibold">{title}</h3>
@@ -211,17 +233,16 @@ const DetailFrame: Frame = ({ title, ariaLabel, children }) => (
   </section>
 );
 
-type DetailTab = "daily" | "contributors" | "summary" | "notes";
+type DetailTab = "daily" | "contributors" | "summary";
 
 /** Everything else the run produced, one view at a time. */
-function ResultDetails({ result, bt }: { result: BacktestResult; bt: BacktestingState }) {
+function ResultDetails({ result, baseline, bt }: { result: BacktestResult; baseline: boolean; bt: BacktestingState }) {
   const [tab, setTab] = useState<DetailTab>("daily");
   const period = periodFigures(result);
   const tabs: { key: DetailTab; label: string }[] = [
     { key: "daily", label: "By day" },
     { key: "contributors", label: "Contributors" },
     { key: "summary", label: "Period summary" },
-    { key: "notes", label: "Calculation notes" },
   ];
   return (
     <Panel className="shrink-0">
@@ -231,21 +252,11 @@ function ResultDetails({ result, bt }: { result: BacktestResult; bt: Backtesting
       <div {...tabPanelProps("replay-detail", tab)} className={cn("p-4 text-body", bt.dirty && "opacity-60")}>
         {tab === "daily" && (
           <div className="space-y-6">
-            <DailyDifferences result={result} Frame={DetailFrame} names={NAMES} />
+            <DailyDifferences result={result} Frame={DetailFrame} names={NAMES} defaultMode={baseline ? "originalActive" : "modifiedActive"} />
           </div>
         )}
         {tab === "contributors" && <Contributors result={result} period={period} names={NAMES} />}
         {tab === "summary" && <Summary result={result} period={period} names={NAMES} />}
-        {tab === "notes" && (
-          <div className="max-w-3xl space-y-2 text-body leading-relaxed text-muted-foreground">
-            <p>
-              <span className="font-medium text-foreground">{bt.snapshot.scope}.</span> <ScopeNote snapshot={bt.snapshot} />
-            </p>
-            <p>{METHOD_LINE}.</p>
-            <p>{DATES_HINT}</p>
-            <CalculationNotes />
-          </div>
-        )}
       </div>
     </Panel>
   );
@@ -305,5 +316,26 @@ function SavedPanel({
         </p>
       )}
     </Panel>
+  );
+}
+
+/** What's in the portfolio, the method and the fine print: always one click away, before and after a run. */
+function HowCalculated({ bt }: { bt: BacktestingState }) {
+  return (
+    <details data-tour="bt-method" className="shrink-0 rounded-[14px] bg-band-2 shadow-[0_0_0_1px_var(--border)]">
+      <summary className="cursor-pointer px-4 py-3 text-body font-medium text-ink-2 select-none hover:text-foreground">How this is calculated</summary>
+      <div className="grid gap-2 border-t border-row px-4 py-4 text-body leading-relaxed text-muted-foreground">
+        <p>
+          <span className="font-medium text-foreground">{bt.snapshot.scope}.</span> <ScopeNote snapshot={bt.snapshot} />
+        </p>
+        <p>
+          The page opens on today&apos;s weights against {DEFAULT_BENCHMARK} over the last year, replayed as it loads. Change the weights, dates
+          or benchmark and run the replay to compare a scenario; nothing is saved unless you save it.
+        </p>
+        <p>{METHOD_LINE}.</p>
+        <p>{DATES_HINT}</p>
+        <CalculationNotes />
+      </div>
+    </details>
   );
 }

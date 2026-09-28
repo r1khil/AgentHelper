@@ -140,7 +140,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
         try {
           const yesterday = DateTime.now().setZone(NY).minus({ days: 1 }).toISODate()!;
           const end = to && to < yesterday ? to : yesterday;
-          // Same default window as the Backtesting page: three months back from the end date.
+          // Three months back from the end date by default (the Backtesting page itself opens on a year).
           const start = from ?? DateTime.fromISO(end, { zone: NY }).minus({ months: 3 }).toISODate()!;
           const saved = await loadSnapshot(viewer);
           const snapshot = addedTickers?.length ? await resolveScenarioSnapshot(saved, addedTickers) : saved;

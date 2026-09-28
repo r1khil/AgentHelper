@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { DateTime } from "luxon";
 import { canManageTeam, isFundWide, requireOnboardedUser } from "@/lib/auth";
-import { loadSnapshot } from "@/lib/backtesting/load";
+import { loadSnapshot, openingRun } from "@/lib/backtesting/load";
+import { defaultWindow } from "@/lib/backtesting/default-run";
 import { getScenario, listScenarios, scenarioOntoSnapshot } from "@/lib/backtesting/saved";
 import { fundingLabel, parseTradeParam } from "@/lib/backtesting/trade";
 import { BacktestingWorkspace, type InitialScenario } from "@/components/app/backtesting/workspace";
@@ -47,7 +48,7 @@ export default async function BacktestingPage({ searchParams }: PageProps<"/back
       </EmptyState>
     );
   }
-  const end = DateTime.now().setZone(NY).minus({ days: 1 });
+  const span = defaultWindow(DateTime.now().setZone(NY).minus({ days: 1 }).toISODate()!);
   const teamNames = classic ? Promise.resolve({}) : teamsByTicker(snapshot.positions.map((p) => p.ticker));
 
   // ?scenario=<id> reopens a saved what-if; ?trade=TICKER:-2:cash (from the Risk page) starts one;
@@ -105,9 +106,12 @@ export default async function BacktestingPage({ searchParams }: PageProps<"/back
   const key = scenario?.id ?? `${one(query.trade) ?? "saved"}:${one(query.from) ?? ""}:${one(query.to) ?? ""}`;
   const shared = {
     snapshot,
-    defaultFrom: end.minus({ months: 3 }).toISODate()!,
-    defaultTo: end.toISODate()!,
+    defaultFrom: span.from,
+    defaultTo: span.to,
     initial,
+    // A plain open replays today's weights against SPY while the page streams, so the first view has results.
+    // Nothing is saved or cached to the database; a link to a scenario, trade or dates waits for Run instead.
+    openingRun: initial ? undefined : openingRun(snapshot, span.to),
     saveAudience: isFundWide(user) ? "the Fund's execs and admins" : `everyone on ${user.team?.name ?? "your team"}`,
     realizedHref,
   };
