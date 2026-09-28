@@ -18,7 +18,14 @@ export type NavInput = {
   seesBook: boolean;
 };
 
-export type NavModel = { rail: RailItem[]; manage: RailItem | null; section: RailKey | null; title: string; tabs: NavTab[] };
+/** Where "up" is from a page about one item: the list it was opened from, in the scope in view. */
+export type NavBack = { label: string; href: string };
+
+/**
+ * `tabs` are the section's pages; a page about one item gets `back` instead (and no tabs), so the header carries one
+ * "where am I / go up" line and the page's own tabs are the only row below it.
+ */
+export type NavModel = { rail: RailItem[]; manage: RailItem | null; section: RailKey | null; title: string; tabs: NavTab[]; back: NavBack | null };
 
 const TITLES: Record<RailKey, string> = {
   today: "Today",
@@ -56,6 +63,17 @@ export function sectionFor(pathname: string): RailKey | null {
     default:
       return null;
   }
+}
+
+/**
+ * The item pages that stand on their own (a holding, one earnings report) and the list each goes up to. Master–detail
+ * pages (a movement, a model, a sell-side call, a research board or Hoot chat) show their item beside its list, so they
+ * keep the section's tabs: the list is already the way up, and the header matches their list page's.
+ */
+export function backFor(pathname: string, base: string | null): NavBack | null {
+  const m = pathname.match(/^\/t\/[^/]+\/(h|earnings)\/[^/]+\/?$/);
+  if (!m || !base) return null;
+  return m[1] === "h" ? { label: TITLES.holdings, href: base } : { label: TITLES.calendar, href: `${base}/earnings` };
 }
 
 const under = (pathname: string, href: string) => pathname === href || pathname.startsWith(href + "/");
@@ -100,17 +118,20 @@ export function navModel({ pathname, scope, fundWide, seesBook }: NavInput): Nav
     item("portfolio", portfolioHref),
   ].filter((x): x is RailItem => !!x);
 
+  const back = backFor(pathname, base);
   return {
     rail,
     manage: fundWide ? item("manage", "/weekly") : null,
     section,
     title: section ? TITLES[section] : "",
-    tabs: section && section !== "today" && section !== "calendar" ? tabs(section) : [],
+    tabs: section && section !== "today" && section !== "calendar" && !back ? tabs(section) : [],
+    back,
   };
 }
 
 function tabActive(section: RailKey, tab: Omit<NavTab, "active">, pathname: string) {
-  if (section === "holdings" && tab.key === "holdings") return pathname === tab.href || under(pathname, `${tab.href}/h`);
+  // Exact: every Holdings-section URL sits under the list's (a holding's own page has no tabs; see backFor).
+  if (section === "holdings" && tab.key === "holdings") return pathname === tab.href;
   // A general chat lives at /hoot/<id>, a holding's research at /t/<scope>/agent/h/<ticker>.
   if (section === "research" && tab.key === "conversations") return under(pathname, tab.href) || under(pathname, "/hoot");
   if (section === "portfolio") return new RegExp(`/${tab.key}(/|$)`).test(pathname);

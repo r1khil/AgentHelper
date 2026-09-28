@@ -15,6 +15,11 @@ import {
   buildMiniMonth,
   buildMonthGrid,
   calendarHref,
+  calendarPeriod,
+  countKinds,
+  dayKinds,
+  hiddenKinds,
+  kindOf,
   marketDayNote,
   toggleKind,
   weekDays,
@@ -97,10 +102,10 @@ const KIND: Record<Item["type"], { label: string; dot: string }> = {
   bellwether: { label: "Bellwether", dot: "var(--series-neutral)" },
   economic: { label: "Economic", dot: "var(--series-2)" },
 };
-const SHOW: { kind: CalendarKind; label: string; dot: string }[] = [
-  { kind: "holdings", label: "Fund holdings", dot: KIND.holding.dot },
-  { kind: "bellwethers", label: "Sector bellwethers", dot: KIND.bellwether.dot },
-  { kind: "economic", label: "Economic releases", dot: KIND.economic.dot },
+const SHOW: { kind: CalendarKind; label: string; dot: string; one: string }[] = [
+  { kind: "holdings", label: "Fund reports", dot: KIND.holding.dot, one: "Fund report" },
+  { kind: "bellwethers", label: "Sector bellwethers", dot: KIND.bellwether.dot, one: "bellwether" },
+  { kind: "economic", label: "Economic releases", dot: KIND.economic.dot, one: "release" },
 ];
 const HOUR_SORT: Record<string, number> = { bmo: 7 * 60, dmh: 12 * 60, amc: 16 * 60 + 5 };
 const HOUR_LABEL: Record<string, string> = { bmo: "Before open", amc: "After close", dmh: "During market" };
@@ -167,8 +172,9 @@ export function CalendarView(props: CalendarViewProps) {
   const weekEcon = weekInMonth ? monthEcon.filter((e) => inWeek(e.date)) : (weekFeed.feed?.events ?? []);
   const q = search.toLowerCase().trim();
   const keep = IMPORTANCE.find((i) => i.id === importance)!.keep;
-  const econFilter = (list: EconomicEvent[]) => (show.has("economic") ? list.filter((e) => keep(e) && `${e.name} ${e.category ?? ""} ${e.source ?? ""}`.toLowerCase().includes(q)) : []);
-  const earnFilter = (list: CalendarEvent[]) => list.filter((ev) => (ev.kind === "holding" ? show.has("holdings") : show.has("bellwethers")));
+  const matches = (list: EconomicEvent[]) => list.filter((e) => `${e.name} ${e.category ?? ""} ${e.source ?? ""}`.toLowerCase().includes(q));
+  const econFilter = (list: EconomicEvent[]) => (show.has("economic") ? matches(list).filter(keep) : []);
+  const earnFilter = (list: CalendarEvent[]) => list.filter((ev) => show.has(kindOf(ev)));
 
   const weekEvents = events.filter((ev) => inWeek(ev.date));
   const weekItems = toItems(earnFilter(weekEvents), econFilter(weekEcon));
@@ -196,17 +202,16 @@ export function CalendarView(props: CalendarViewProps) {
     ) : null;
   const rowProps = { now, today, nextId: next?.id ?? null, openRow, onRow: (id: string) => setOpenRow((r) => (r === id ? null : id)), accessible, askable, teamSlug, factorText, reportHref };
 
-  const counts = {
-    holdings: weekEvents.filter((ev) => ev.kind === "holding").length,
-    bellwethers: weekEvents.filter((ev) => ev.kind === "bellwether").length,
-    economic: weekEcon.length,
-  };
-  const scopeItems = query.layout === "week" ? weekItems : monthItems;
-  const meta = [
-    show.has("holdings") && plural(scopeItems.filter((i) => i.type === "holding").length, "Fund report"),
-    show.has("bellwethers") && plural(scopeItems.filter((i) => i.type === "bellwether").length, "bellwether"),
-    show.has("economic") && (primary.feed || query.layout !== "week" ? plural(scopeItems.filter((i) => i.type === "economic").length, "release") : "loading releases…"),
-  ].filter(Boolean);
+  // Every count on the page is of the period on screen (the week, or the month in Month and List), in the
+  // scope, with the releases narrowed by importance and search: the rows each Show box lists when ticked.
+  const period = calendarPeriod(query.layout, selectedDay, query.month);
+  const periodFeed = query.layout === "week" ? primary : monthFeed;
+  const periodEcon = matches(query.layout === "week" ? weekEcon : monthEcon);
+  const counts = countKinds(events, periodEcon.filter(keep), period);
+  const loaded = { holdings: true, bellwethers: true, economic: !!periodFeed.feed };
+  const periodText = query.layout === "week" ? "this week" : `in ${dt(mini.first).toFormat("LLLL")}`;
+  const meta = SHOW.filter((s) => show.has(s.kind)).map((s) => (loaded[s.kind] ? plural(counts[s.kind], s.one) : periodFeed.error ? "releases unavailable" : "loading releases…"));
+  const hidden = hiddenKinds(counts, query.show).filter((h) => loaded[h.kind]);
   const title = query.layout === "week" ? `Week of ${dt(week[0]).toFormat("LLLL d")}` : mini.label;
   const expectations = weekEvents.filter((ev) => ev.kind === "holding" && ev.teamId && accessible.has(ev.teamId));
   const coverage = primary.feed?.coverage;
@@ -222,8 +227,7 @@ export function CalendarView(props: CalendarViewProps) {
           nextHref={href({ month: dt(mini.first).plus({ months: 1 }).toFormat("yyyy-LL"), day: undefined })}
           todayHref={week.includes(today) ? null : href({ month: today.slice(0, 7), day: today })}
           dayHref={(d) => href({ day: d })}
-          earnings={new Set(earnFilter(events).map((ev) => ev.date))}
-          econ={new Set(show.has("economic") ? monthEcon.map((e) => e.date) : [])}
+          marks={dayKinds(events, matches(monthEcon).filter(keep), query.show)}
         />
         <Panel className="shrink-0 px-3.5 pt-3.5 pb-3.5">
           <h2 className="text-[14.5px] font-semibold">Show</h2>
@@ -236,7 +240,9 @@ export function CalendarView(props: CalendarViewProps) {
                     <span className={cn("grid size-4 shrink-0 place-items-center rounded-[5px]", on ? "bg-primary text-primary-foreground" : "shadow-[inset_0_0_0_1.5px_var(--border-strong)]")}>{on && <Check className="size-[11px]" strokeWidth={3} />}</span>
                     <span className="size-2 shrink-0 rounded-full" style={{ background: s.dot }} />
                     <span className="flex-1">{s.label}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{counts[s.kind]}</span>
+                    <span className="font-mono text-xs text-muted-foreground" title={`${loaded[s.kind] ? plural(counts[s.kind], s.one) : "Loading releases"} ${periodText}`}>
+                      {loaded[s.kind] ? counts[s.kind] : "…"}
+                    </span>
                   </Link>
                   {s.kind === "economic" && on && (
                     <div className="mt-2.5 flex flex-col gap-2 pl-[26px]">
@@ -248,7 +254,7 @@ export function CalendarView(props: CalendarViewProps) {
                           label: (
                             <>
                               {i.label}
-                              <span className="ml-1.5 font-mono text-[11px] font-normal text-muted-foreground">{weekEcon.filter(i.keep).length}</span>
+                              <span className="ml-1.5 font-mono text-[11px] font-normal text-muted-foreground">{periodEcon.filter(i.keep).length}</span>
                             </>
                           ),
                           active: importance === i.id,
@@ -266,6 +272,11 @@ export function CalendarView(props: CalendarViewProps) {
               );
             })}
           </ul>
+          {hidden.length > 0 && (
+            <p className="mt-2.5 text-[12px] leading-[17px] text-muted-foreground">
+              Nothing is left out: {hidden.map((h) => plural(h.count, SHOW.find((s) => s.kind === h.kind)!.one)).join(" and ")} {periodText} {hidden.length === 1 && hidden[0].count === 1 ? "is" : "are"} a tick away.
+            </p>
+          )}
           {props.canScope && <ScopeControl query={query} href={href} base={base} industries={props.industries} defaultShow={defaultShow} />}
           {props.notices.length > 0 && (
             <ul className="mt-3 flex flex-col gap-1.5 border-t border-row pt-2.5 text-[12px] leading-[17px] text-muted-foreground">
@@ -352,8 +363,7 @@ function MiniMonth({
   nextHref,
   todayHref,
   dayHref,
-  earnings,
-  econ,
+  marks,
 }: {
   mini: ReturnType<typeof buildMiniMonth>;
   today: string;
@@ -362,8 +372,8 @@ function MiniMonth({
   nextHref: string;
   todayHref: string | null;
   dayHref: (d: string) => string;
-  earnings: Set<string>;
-  econ: Set<string>;
+  /** The kinds each day has among what's shown; a day with none gets no dot. */
+  marks: Map<string, Set<CalendarKind>>;
 }) {
   const nav = "grid size-6 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground";
   const cells = mini.weeks.flat();
@@ -396,12 +406,13 @@ function MiniMonth({
           const first = inWeek && (col === 0 || !cells[i - 1]);
           const last = inWeek && (col === 6 || !cells[i + 1]);
           const note = marketDayNote(d);
+          const kinds = SHOW.filter((s) => marks.get(d)?.has(s.kind));
           return (
             <Link
               key={d}
               href={dayHref(d)}
               scroll={false}
-              aria-label={`Week of ${d}`}
+              aria-label={`Week of ${d}${kinds.length ? ` · ${kinds.map((s) => `${s.one}s`).join(", ")}` : ""}`}
               aria-current={inWeek ? "date" : undefined}
               title={note ?? undefined}
               className={cn(
@@ -416,8 +427,9 @@ function MiniMonth({
             >
               <span className={cn("grid size-[20px] place-items-center rounded-full leading-none", d === today && "shadow-[inset_0_0_0_1.5px_var(--foreground)]")}>{Number(d.slice(8))}</span>
               <span className="flex h-1 gap-0.5">
-                <span className="size-1 rounded-full" style={{ background: earnings.has(d) ? "var(--series-1)" : "transparent" }} />
-                <span className="size-1 rounded-full" style={{ background: econ.has(d) ? "var(--series-2)" : "transparent" }} />
+                {kinds.map((s) => (
+                  <span key={s.kind} className="size-1 rounded-full" style={{ background: s.dot }} />
+                ))}
               </span>
             </Link>
           );
@@ -621,7 +633,8 @@ function MonthLayout({
 }) {
   const grid = buildMonthGrid(month);
   const MAX = 4;
-  // A month cell lists the Fund's and bellwethers' reports and the high-importance releases; the rest are counted.
+  // A month cell lists the Fund's reports first, then bellwethers, then the high-importance releases; the rest are counted.
+  const rank = { holding: 0, bellwether: 1, economic: 2 };
   const label = (it: Item) => (it.type === "economic" ? it.e.name : it.ev.ticker);
   return (
     <div className="flex flex-1 flex-col">
@@ -636,7 +649,10 @@ function MonthLayout({
         <div key={row[0].date} className="grid min-h-[104px] flex-1 grid-cols-5 border-b border-row last:border-b-0">
           {row.map((day, i) => {
             const all = items.filter((it) => it.date === day.date);
-            const shown = all.filter((it) => it.type !== "economic" || it.e.importance === 3).slice(0, MAX);
+            const shown = all
+              .filter((it) => it.type !== "economic" || it.e.importance === 3)
+              .sort((a, b) => rank[a.type] - rank[b.type])
+              .slice(0, MAX);
             const more = all.length - shown.length;
             const note = marketDayNote(day.date);
             return (
