@@ -16,12 +16,15 @@ import { RowLink } from "@/components/app/row-link";
 const activeBp = (v: number | null) => rnum(v === null ? null : v * 10_000, 0);
 const tone = (v: number | null) => (v === null || Math.abs(v) < 5e-4 ? "text-muted-foreground" : v > 0 ? "text-up" : "text-down");
 
-/** Paired bars per sector: the portfolio (ink, 8px) over the benchmark (6px), with the active weight on the right. */
+/**
+ * Paired bars per sector: the portfolio (ink, 8px) over the benchmark (6px), then both weights and the active weight
+ * as figures on the right. The bars are decoration for the figures, so they sit outside the table's cells.
+ */
 export function SectorWeightsPanel({ x, benchShort, className }: { x: Exposure; benchShort: string; className?: string }) {
   const rows = x.sectors.filter((s) => s.key !== "cash");
   const max = Math.max(...rows.flatMap((s) => [s.weight, s.benchWeight ?? 0]), 0);
   const w = (v: number | null) => `${max > 0 && v !== null ? Math.max(0, Math.min(100, (v / max) * 100)) : 0}%`;
-  const COLS = "grid grid-cols-[170px_minmax(0,1fr)_64px] items-center gap-3 px-4";
+  const COLS = "grid grid-cols-[minmax(0,150px)_minmax(48px,1fr)_48px_56px_80px] items-center gap-2.5 px-4";
   return (
     <Panel id="sectors" className={cn("scroll-mt-4", className)}>
       <PanelHeader
@@ -36,9 +39,9 @@ export function SectorWeightsPanel({ x, benchShort, className }: { x: Exposure; 
       <div role="table" aria-label="Sector weights vs benchmark">
         <div role="row" className={cn(COLS, "h-[30px] shrink-0 text-body text-muted-foreground")}>
           <span role="columnheader">Sector</span>
-          <span role="columnheader">
-            <span className="sr-only">Weight</span>
-          </span>
+          <span aria-hidden />
+          <span role="columnheader" className="text-right">Fund</span>
+          <span role="columnheader" className="truncate text-right">{benchShort}</span>
           <span role="columnheader" className="flex items-center justify-end gap-1">
             <ReadAs text="Active weight, basis points">Active, bp</ReadAs>
             <InfoTip label="active weight">{RISK_EXPLAIN.activeWeight}</InfoTip>
@@ -51,15 +54,16 @@ export function SectorWeightsPanel({ x, benchShort, className }: { x: Exposure; 
             className={cn(COLS, "min-h-9 border-t border-row text-body")}
             title={`${s.label}: ${rpct(s.weight)}${s.benchWeight !== null ? ` vs ${rpct(s.benchWeight)} in ${benchShort}` : ""}${s.tickers.length ? ` · ${s.tickers.join(", ")}` : ""}`}
           >
-            <span role="rowheader" className="truncate">{s.label}</span>
-            {/* On screen the weights are the bars (and the row's tooltip); screen readers get them as text. */}
-            <div role="cell" className="flex flex-col gap-[3px]">
-              <div aria-hidden className="h-2 rounded-[2px] bg-foreground" style={{ width: w(s.weight) }} />
-              {s.benchWeight !== null && <div aria-hidden className="h-1.5 rounded-[2px] bg-bench-bar" style={{ width: w(s.benchWeight) }} />}
-              <span className="sr-only">
-                {`${x.throughEtfs ? "Fund, through ETFs" : "Fund"} ${rpct(s.weight)}${s.benchWeight !== null ? `, ${benchShort} ${rpct(s.benchWeight)}` : ""}${s.tickers.length ? `; ${s.tickers.join(", ")}` : ""}`}
-              </span>
+            <span role="rowheader" className="truncate">
+              {s.label}
+              {s.tickers.length > 0 && <span className="sr-only">: {s.tickers.join(", ")}</span>}
+            </span>
+            <div aria-hidden className="flex flex-col gap-[3px]">
+              <div className="h-2 rounded-[2px] bg-foreground" style={{ width: w(s.weight) }} />
+              {s.benchWeight !== null && <div className="h-1.5 rounded-[2px] bg-bench-bar" style={{ width: w(s.benchWeight) }} />}
             </div>
+            <span role="cell" className="text-right font-mono text-body">{rpct(s.weight)}</span>
+            <span role="cell" className="text-right font-mono text-body text-muted-foreground">{rpct(s.benchWeight)}</span>
             <span role="cell" className={cn("text-right font-mono text-body font-semibold", tone(s.active))}>{activeBp(s.active)}</span>
           </div>
         ))}

@@ -40,6 +40,7 @@ import {
   exactDate,
   tickDate,
   tone,
+  valueAxis,
 } from "./primitives";
 import { fmtAccounting, fmtBp, fmtPct } from "@/lib/format";
 
@@ -243,6 +244,7 @@ function ChartSession({
               vertical={false}
               stroke="var(--row)"
               strokeDasharray=""
+              syncWithTicks
             />
             <XAxis
               dataKey="time"
@@ -258,12 +260,14 @@ function ChartSession({
               tickLine={false}
             />
             <YAxis
-              tickFormatter={(v: number) => fmtPct(v, 1)}
               tick={chartTick}
               width={58}
               axisLine={false}
               tickLine={false}
-              domain={["auto", "auto"]}
+              {...valueAxis(
+                points.flatMap((p) => series.map((s) => p.returns[s.key])),
+                fmtPct,
+              )}
             />
             <ReferenceLine
               y={0}

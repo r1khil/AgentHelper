@@ -5,7 +5,7 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PerformanceChart } from "@/components/charts/performance-chart";
-import { ChartTooltip, chartGrid, chartTick, exactDate, tickDate, tone } from "@/components/charts/primitives";
+import { ChartTooltip, chartGrid, chartTick, exactDate, tickDate, tone, valueAxis } from "@/components/charts/primitives";
 import { fmtBp, fmtPct } from "@/lib/format";
 
 /** Percent points: `portfolio` and `benchmark` are cumulative returns in percent from the period's base close. */
@@ -46,9 +46,9 @@ export function CompactCumulativeChart({ data, portfolioLabel, benchmarkLabel }:
     <div className="h-full min-h-44 w-full" role="img" aria-label={`Cumulative return, ${portfolioLabel} versus ${benchmarkLabel}`}>
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <LineChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 0 }} accessibilityLayer={false}>
-          <CartesianGrid vertical={false} stroke={chartGrid} />
+          <CartesianGrid vertical={false} stroke={chartGrid} syncWithTicks />
           <XAxis dataKey="date" tick={chartTick} tickLine={false} axisLine={false} minTickGap={28} interval="preserveStartEnd" tickFormatter={(d: string) => label(d)} dy={6} />
-          <YAxis tick={chartTick} tickLine={false} axisLine={false} width={44} domain={["auto", "auto"]} tickFormatter={(v: number) => fmtPct(v, 1)} />
+          <YAxis tick={chartTick} tickLine={false} axisLine={false} width={44} {...valueAxis(data.flatMap((d) => [d.portfolio, d.benchmark]), fmtPct)} />
           <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.35} />
           <Tooltip
             cursor={{ stroke: "var(--border)" }}

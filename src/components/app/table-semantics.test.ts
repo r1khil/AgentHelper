@@ -191,7 +191,12 @@ describe("div grids read as tables", () => {
       { key: "energy", label: "Energy", weight: 0.02, benchWeight: 0.04, active: -0.02, tickers: [], etf: "XLE" },
     ];
     const x = { throughEtfs: false, hasBenchmark: true, sectors } as unknown as Exposure;
-    checkTables(render(h(SectorWeightsPanel, { x, benchShort: "S&P 500" })));
+    // The weights are visible figures in their own cells, not screen-reader text inside the bars.
+    const weights = checkTables(render(h(SectorWeightsPanel, { x, benchShort: "S&P 500" })));
+    const cellText = (n: Node) => all(n).map((c) => c.text).join("").trim();
+    expect(weights.filter((n) => role(n) === "columnheader").map(cellText).slice(0, 3)).toEqual(["Sector", "Fund", "S&amp;P 500"]);
+    expect(weights.filter((n) => role(n) === "cell").map(cellText).slice(0, 3)).toEqual(["30.0%", "28.0%", "200"]);
+    expect(weights.some((n) => (n.attrs.class ?? "").split(" ").includes("sr-only") && /%/.test(cellText(n)))).toBe(false);
     const bets = render(h(ActiveBetsPanel, { report: { holdings: [] } as unknown as RiskReport, x, lookthrough: null, teams: new Map(), benchShort: "S&P 500" }));
     const nodes = checkTables(bets);
     expect(nodes.filter((n) => role(n) === "columnheader").map((n) => all(n).map((c) => c.text).join("").trim())).toEqual(["ETF", "Sector", "Fund", "S&amp;P 500", "ActiveActive weight, basis points"]);

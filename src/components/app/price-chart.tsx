@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PerformanceChart } from "@/components/charts/performance-chart";
-import { ChartTooltip, TimeRangeSelector, chartTick, exactDate, tone } from "@/components/charts/primitives";
-import { fmtAccounting, fmtPct } from "@/lib/format";
+import { ChartTooltip, TimeRangeSelector, axisWidth, chartGrid, chartTick, exactDate, tone } from "@/components/charts/primitives";
+import { niceScale } from "@/lib/charts/ticks";
+import { fmtCurrency, fmtPct } from "@/lib/format";
 import { availableRanges, normalizeObservations, performance, selectRange, type Observation, type TimeRange } from "@/lib/charts/series";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
   const plotted = useMemo(() => points.map((p) => ({ time: p.time, date: p.date, holding: p.returns.holding, benchmark: p.returns.benchmark, price: p.values.holding })), [points]);
   const last = points.at(-1);
   const ticks = useMemo(() => pickTicks(points.map((p) => ({ time: p.time, date: p.date }))), [points]);
+  const axis = useMemo(() => priceAxis(plotted, points[0]?.values.holding, currency), [plotted, points, currency]);
 
   return (
     <section className={cn("panel min-w-0 px-4 py-3.5", className)} aria-label={`${ticker} versus S&P 500`}>
@@ -67,8 +69,9 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
       ) : (
         <div className="mt-2.5 h-[200px] w-full">
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <LineChart data={plotted} margin={{ top: 6, right: 4, bottom: 0, left: 4 }} accessibilityLayer={false}>
-              <CartesianGrid vertical={false} stroke="var(--row)" />
+            <LineChart data={plotted} margin={{ top: 6, right: 4, bottom: 0, left: axis ? 0 : 4 }} accessibilityLayer={false}>
+              {/* Gridlines only at the labelled prices, not the plot's unlabelled top and bottom edges. */}
+              <CartesianGrid vertical={false} stroke={chartGrid} syncWithTicks={!!axis} />
               <XAxis dataKey="time" type="number" scale="time" domain={["dataMin", "dataMax"]} ticks={ticks.map((t) => t.time)}
                 tick={({ x, y, payload }: { x: number | string; y: number | string; payload: { value: number } }) => {
                   // The end ticks hug the plot edges instead of centering past them.
@@ -81,7 +84,11 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
                   );
                 }}
                 axisLine={false} tickLine={false} interval={0} height={22} />
-              <YAxis hide domain={["auto", "auto"]} />
+              {axis ? (
+                <YAxis ticks={axis.ticks} domain={axis.domain} interval={0} tickFormatter={axis.format} tick={chartTick} tickLine={false} axisLine={false} width={axis.width} />
+              ) : (
+                <YAxis hide domain={["auto", "auto"]} />
+              )}
               <Tooltip
                 cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}
                 isAnimationActive={false}
@@ -93,7 +100,7 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
                       <div className="flex justify-between gap-4">
                         <span>{ticker}</span>
                         <span>
-                          {p.price != null ? `${fmtAccounting(p.price, 2, currency ? ` ${currency}` : "")} · ` : ""}
+                          {p.price != null ? `${fmtCurrency(p.price, currency)} · ` : ""}
                           <span className={tone(p.holding ?? null)}>{fmtPct(p.holding)}</span>
                         </span>
                       </div>
@@ -123,6 +130,22 @@ function LegendItem({ color, label, value }: { color: string; label: string; val
       <span className="font-mono">{fmtPct(value, 1)}</span>
     </span>
   );
+}
+
+/**
+ * The value axis in the holding's price. Both lines are drawn rebased to 0% at the range's first close, so a price is
+ * the holding's first close times (1 + return); the ticks are round prices (three or four) placed at their returns. The
+ * S&P 500 line shares the scale as the index rebased to that same starting price.
+ */
+function priceAxis(plotted: { holding: number | null | undefined; benchmark: number | null | undefined }[], base: number | null | undefined, currency?: string) {
+  if (base == null || !(base > 0)) return null;
+  const prices = plotted.flatMap((p) => [p.holding, p.benchmark]).filter((r): r is number => r != null && Number.isFinite(r)).map((r) => base * (1 + r / 100));
+  if (!prices.length) return null;
+  const s = niceScale(Math.min(...prices), Math.max(...prices));
+  if (!s) return null;
+  const toReturn = (price: number) => (price / base - 1) * 100;
+  const label = (price: number) => fmtCurrency(price, currency, { digits: s.digits });
+  return { ticks: s.ticks.map(toReturn), domain: s.domain.map(toReturn) as [number, number], format: (r: number) => label(base * (1 + r / 100)), width: axisWidth(s.ticks.map(label)) };
 }
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
