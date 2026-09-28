@@ -80,7 +80,7 @@ export const WHATS_NEW_TOUR: Tour = {
           target: '[data-tour="today-greeting"]',
           title: "The day in one line",
           what: "The market clock, then one sentence from me: how the fund did last session and how many things are waiting for you.",
-          how: "Once the tour's over I sit right here, beside the greeting, instead of in the corner. Click me to ask a research question.",
+          how: "Once the tour's over I sit right here, beside the greeting, instead of at the bottom of the menu. Click me to ask a research question.",
         },
         {
           id: "today-list",
@@ -420,7 +420,7 @@ export const WHATS_NEW_TOUR: Tour = {
           kind: "info",
           target: '[data-tour="account"]',
           title: "Your preferences live here",
-          body: "Click your initials at the bottom of the menu for Theme (light or dark), Floating Hoot, Transparency (the math behind every number), and \"Replay the tour\" to watch this again.",
+          body: "Click your initials at the bottom of the menu for Theme (light or dark), Hoot in the menu, Transparency (the math behind every number), and \"Replay the tour\" to watch this again.",
         },
       ],
     },
