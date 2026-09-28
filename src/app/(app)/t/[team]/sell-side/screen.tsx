@@ -140,7 +140,7 @@ async function CallPane({ call, user, byline, sector, spoken }: { call: Call; us
       >
         {ready &&
           (hidden ? (
-            <p className="px-5 py-4 text-[13.5px] text-muted-foreground">
+            <p className="px-5 py-4 text-body text-muted-foreground">
               The analysis and discussion for this call are visible to execs and admins only, because they draw on the price target sheet.
             </p>
           ) : (

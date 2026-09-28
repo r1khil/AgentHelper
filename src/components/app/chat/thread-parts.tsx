@@ -90,7 +90,7 @@ const TOOL_PROGRESS: Record<string, string> = {
 /** Hoot, thinking, with what he's doing. While it shows, the corner companion steps aside. */
 export function ThinkingRow({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center gap-2.5 text-[13px] text-ink-2">
+    <div className="flex items-center gap-2.5 text-body text-ink-2">
       <HootOnPage />
       <HootSprite mood="thinking" size={44} bob />
       <span className="min-w-0">{children}</span>
@@ -148,7 +148,7 @@ export function ActivityRow({ parts, live, trace, now, thinking = false }: { par
     if (trace.looseFetches.length > 0) {
       rows.push(
         <div key="loose" className="space-y-0.5">
-          <div className="px-0.5 text-[11px] text-muted-foreground">Outside any lookup</div>
+          <div className="px-0.5 text-caption text-muted-foreground">Outside any lookup</div>
           <FetchRows events={trace.looseFetches} />
         </div>,
       );
@@ -172,7 +172,7 @@ export function ActivityRow({ parts, live, trace, now, thinking = false }: { par
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className="inline-flex max-w-full items-center gap-2 rounded-full bg-band px-3 py-1.5 text-left text-[12.5px] text-ink-2 transition-colors hover:text-foreground"
+          className="inline-flex max-w-full items-center gap-2 rounded-full bg-band px-3 py-1.5 text-left text-body text-ink-2 transition-colors hover:text-foreground"
         >
           {running ? <Loader2 className="size-[13px] shrink-0 animate-spin" /> : <Wrench className="size-[13px] shrink-0" />}
           <span className="min-w-0 truncate">{label}</span>
@@ -185,7 +185,7 @@ export function ActivityRow({ parts, live, trace, now, thinking = false }: { par
         </div>
       )}
       {open && (
-        <div className="w-full space-y-1.5 rounded-[10px] bg-background p-2.5 text-xs shadow-[0_0_0_1px_var(--border)]">
+        <div className="w-full space-y-1.5 rounded-[10px] bg-background p-2.5 text-body shadow-[0_0_0_1px_var(--border)]">
           {trace && <TraceHeader view={trace} now={now} />}
           {rows.length > 0 ? rows : <p className="px-0.5 text-muted-foreground">No lookups yet.</p>}
         </div>
@@ -208,12 +208,12 @@ function ToolCard({ part }: { part: ToolPart }) {
   const errored = toolFailed(part);
   const n = part.output?.sources?.length ?? 0;
   return (
-    <div className={cn("flex items-center gap-2 rounded-lg bg-card px-2.5 py-1.5 text-xs shadow-[0_0_0_1px_var(--border)]", errored ? "text-destructive" : "text-muted-foreground")}>
+    <div className={cn("flex items-center gap-2 rounded-lg bg-card px-2.5 py-1.5 text-body shadow-[0_0_0_1px_var(--border)]", errored ? "text-destructive" : "text-muted-foreground")}>
       {done ? <Wrench className="size-3.5 shrink-0" /> : <Loader2 className="size-3.5 shrink-0 animate-spin" />}
       <span className="font-medium text-foreground">{label}</span>
       {input && <span className="truncate">{input}</span>}
       {errored && <span className="truncate">· {part.output?.error ?? part.errorText ?? "error"}</span>}
-      {done && !errored && n > 0 && <span className="ml-auto shrink-0 font-mono text-[11px]">{n} source{n === 1 ? "" : "s"}</span>}
+      {done && !errored && n > 0 && <span className="ml-auto shrink-0 font-mono text-caption">{n} source{n === 1 ? "" : "s"}</span>}
     </div>
   );
 }
@@ -222,9 +222,9 @@ function ToolCard({ part }: { part: ToolPart }) {
 export function UserBubble({ children, page }: { children: ReactNode; page?: PageContext | null }) {
   return (
     <div className="flex flex-col items-end gap-1">
-      <div className="max-w-[min(500px,85%)] space-y-2 rounded-[16px_16px_4px_16px] bg-primary px-3.5 py-2.5 text-sm leading-normal text-primary-foreground [&_p]:whitespace-pre-wrap">{children}</div>
+      <div className="max-w-[min(500px,85%)] space-y-2 rounded-[16px_16px_4px_16px] bg-primary px-3.5 py-2.5 text-body leading-normal text-primary-foreground [&_p]:whitespace-pre-wrap">{children}</div>
       {page && page.kind !== "page" && (
-        <Link href={page.path} className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground">
+        <Link href={page.path} className="inline-flex items-center gap-1 text-caption text-muted-foreground hover:text-foreground">
           <Eye className="size-3" aria-hidden /> Asked from {pageContextLabel(page)}
         </Link>
       )}
@@ -234,18 +234,18 @@ export function UserBubble({ children, page }: { children: ReactNode; page?: Pag
 
 /** Where a job, not a member, asked (a call brief): a quiet label in place of the question bubble. */
 export function PromptLabel({ children }: { children: ReactNode }) {
-  return <div className="text-[12px] font-medium text-muted-foreground">{children}</div>;
+  return <div className="text-body font-medium text-muted-foreground">{children}</div>;
 }
 
 /** The conversation's header row: ticker, title and meta on the left, actions (Trace, etc.) on the right. */
 export function ThreadHeader({ ticker, title, meta, children }: { ticker?: string; title: string; meta?: ReactNode; children?: ReactNode }) {
   return (
     <div className="flex h-12 shrink-0 items-center gap-2.5 border-b px-7">
-      {ticker && <span className="font-mono text-[13.5px] font-semibold">{ticker}</span>}
-      <h2 className="min-w-0 shrink truncate text-sm font-semibold">{title}</h2>
-      {meta && <span className="min-w-0 shrink-[4] truncate text-[12.5px] text-muted-foreground">{meta}</span>}
+      {ticker && <span className="font-mono text-body font-semibold">{ticker}</span>}
+      <h2 className="min-w-0 shrink truncate text-body font-semibold">{title}</h2>
+      {meta && <span className="min-w-0 shrink-[4] truncate text-body text-muted-foreground">{meta}</span>}
       <span className="flex-1" />
-      {children && <div className="flex shrink-0 items-center gap-3.5 text-[12.5px] text-muted-foreground">{children}</div>}
+      {children && <div className="flex shrink-0 items-center gap-3.5 text-body text-muted-foreground">{children}</div>}
     </div>
   );
 }
@@ -256,7 +256,7 @@ export function ThreadNote({ tone, children }: { tone: "caution" | "error" | "mu
   return (
     <div
       className={cn(
-        "rounded-[10px] px-3 py-2 text-[13px]",
+        "rounded-[10px] px-3 py-2 text-body",
         tone === "caution" && "bg-caution text-caution-foreground",
         tone === "error" && "bg-destructive/10 text-destructive",
         tone === "muted" && "flex items-center gap-2 bg-band text-ink-2",
@@ -315,10 +315,10 @@ export function Composer({
           disabled={disabled}
           rows={1}
           aria-label="Question"
-          className="field-sizing-content max-h-40 min-h-[22px] w-full resize-none bg-transparent text-sm leading-[22px] outline-none placeholder:text-muted-foreground disabled:opacity-60"
+          className="field-sizing-content max-h-40 min-h-[22px] w-full resize-none bg-transparent text-body leading-[22px] outline-none placeholder:text-muted-foreground disabled:opacity-60"
         />
         <div className="flex items-center gap-2">
-          {sees ? <SeesChip>{sees}</SeesChip> : hint ? <span className="min-w-0 truncate text-xs text-muted-foreground">{hint}</span> : null}
+          {sees ? <SeesChip>{sees}</SeesChip> : hint ? <span className="min-w-0 truncate text-caption text-muted-foreground">{hint}</span> : null}
           <span className="flex-1" />
           {streaming && onStop ? (
             <button type="button" onClick={onStop} aria-label="Stop" className="grid size-8 shrink-0 place-items-center rounded-full bg-card shadow-[0_0_0_1px_var(--border)] hover:shadow-[0_0_0_1px_var(--border-strong)]">
@@ -339,7 +339,7 @@ export function ComposerBox({ children }: { children: ReactNode }) {
 
 export function SeesChip({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-[5px] rounded-full bg-muted px-2.5 py-[3px] text-xs text-ink-2">
+    <span className="inline-flex min-w-0 items-center gap-[5px] rounded-full bg-muted px-2.5 py-[3px] text-caption text-ink-2">
       <Eye className="size-3 shrink-0" aria-hidden />
       <span className="truncate">Hoot can see: {children}</span>
     </span>
@@ -362,7 +362,7 @@ export function shortDate(iso: string | undefined | null) {
 
 /** Hoot's pink footnote number. */
 export function SourceNumber({ n, className }: { n: number | string; className?: string }) {
-  return <span className={cn("grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-hoot px-1 font-mono text-[10.5px] font-medium text-hoot-foreground", className)}>{n}</span>;
+  return <span className={cn("grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-hoot px-1 font-mono text-caption font-medium text-hoot-foreground", className)}>{n}</span>;
 }
 
 /**
@@ -377,8 +377,8 @@ export function SourceListCard({ n, source, onView }: { n: number; source: Sourc
     <>
       <SourceNumber n={n} className={target.kind === "unavailable" ? "bg-destructive/10 text-destructive" : undefined} />
       <span className="min-w-0">
-        <span className="block text-[13px] leading-[1.35]">{title}</span>
-        <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
+        <span className="block text-body leading-[1.35]">{title}</span>
+        <span className="mt-0.5 block text-caption text-muted-foreground">
           {meta}
           {target.kind === "unavailable" && " · unavailable"}
         </span>
@@ -402,10 +402,10 @@ export function SourcesHeading({ count, sub }: { count: number; sub?: string }) 
   return (
     <div className="shrink-0">
       <div className="flex items-baseline">
-        <h2 className="flex-1 text-sm font-semibold">Sources</h2>
-        <span className="font-mono text-xs text-muted-foreground">{count}</span>
+        <h2 className="flex-1 text-body font-semibold">Sources</h2>
+        <span className="font-mono text-body text-muted-foreground">{count}</span>
       </div>
-      {sub && <div className="mt-0.5 text-[11.5px] text-muted-foreground">{sub}</div>}
+      {sub && <div className="mt-0.5 text-caption text-muted-foreground">{sub}</div>}
     </div>
   );
 }

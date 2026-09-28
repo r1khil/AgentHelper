@@ -122,7 +122,7 @@ function SourceList({ sources }: { sources: GeneralChat["sources"] }) {
       <SourcesHeading count={sources.size} />
       <div className="-mx-1 mt-2.5 min-h-0 flex-1 overflow-y-auto px-1 pt-px pb-1">
         {sources.size === 0 ? (
-          <p className="text-[12.5px] leading-relaxed text-muted-foreground">Sources Hoot reads appear here, numbered the way the answer cites them.</p>
+          <p className="text-body leading-relaxed text-muted-foreground">Sources Hoot reads appear here, numbered the way the answer cites them.</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {[...sources.values()].map((s, i) => (
@@ -132,7 +132,7 @@ function SourceList({ sources }: { sources: GeneralChat["sources"] }) {
             ))}
           </ul>
         )}
-        {sources.size > 0 && <p className="mt-3 text-[11.5px] text-muted-foreground">Hover a number in the answer to preview its source. A red number means the source is unavailable.</p>}
+        {sources.size > 0 && <p className="mt-3 text-caption text-muted-foreground">Hover a number in the answer to preview its source. A red number means the source is unavailable.</p>}
       </div>
     </>
   );
@@ -204,8 +204,8 @@ function EmptyIntro({ suggestions, onPick, disabled }: { suggestions: string[]; 
     <div className="mx-auto w-full max-w-[560px] pt-4 text-center">
       <HootOnPage />
       <HootHero size={112} className="mx-auto mb-1" />
-      <div className="text-[15px] font-semibold">What should Hoot look into?</div>
-      <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
+      <div className="text-emph font-semibold">What should Hoot look into?</div>
+      <p className="mt-1 text-body leading-relaxed text-muted-foreground">
         Hoot pulls prices, SEC filings, financials, news, and your team&rsquo;s notes, with a source on every fact.
       </p>
       <div className="mt-5 grid gap-2 text-left">
@@ -215,7 +215,7 @@ function EmptyIntro({ suggestions, onPick, disabled }: { suggestions: string[]; 
             type="button"
             disabled={disabled}
             onClick={() => onPick(s)}
-            className="rounded-[10px] bg-card px-3.5 py-2.5 text-left text-[13.5px] leading-snug shadow-[0_0_0_1px_var(--border)] transition-colors hover:bg-band disabled:opacity-60"
+            className="rounded-[10px] bg-card px-3.5 py-2.5 text-left text-body leading-snug shadow-[0_0_0_1px_var(--border)] transition-colors hover:bg-band disabled:opacity-60"
           >
             {s}
           </button>
@@ -243,10 +243,10 @@ function Message({ message, live, trace, now }: { message: UIMessage; live: bool
     <div className="flex flex-col gap-3">
       {(activity.length > 0 || trace || (live && answer.length === 0)) && <ActivityRow parts={activity} live={live && answer.length === 0} trace={trace} now={now} thinking />}
       {answer.map((p, i) => (
-        <ResearchAnswer key={i} text={p.text} className="max-w-[700px] text-[15px] leading-[1.65] [&_p]:my-2.5 [&_p:first-child]:mt-0" />
+        <ResearchAnswer key={i} text={p.text} className="max-w-[700px] text-emph leading-[1.65] [&_p]:my-2.5 [&_p:first-child]:mt-0" />
       ))}
       {!live && meta.uncited !== undefined && meta.uncited > 0 && (
-        <div className="text-[11.5px] text-muted-foreground" title="Counted automatically from lines that state a number without a source marker, so the count can be off by a few.">
+        <div className="text-caption text-muted-foreground" title="Counted automatically from lines that state a number without a source marker, so the count can be off by a few.">
           {meta.uncited} {meta.uncited === 1 ? "line with a figure has" : "lines with figures have"} no source. Check {meta.uncited === 1 ? "it" : "them"} before relying on {meta.uncited === 1 ? "it" : "them"}.
         </div>
       )}

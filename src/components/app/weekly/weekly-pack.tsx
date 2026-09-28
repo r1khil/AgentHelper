@@ -95,10 +95,10 @@ export function WeeklyPack(props: WeeklyPackProps) {
       {props.builtAt && !sent && <HootMoodFor mood="happy" />}
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="min-w-0 flex-1">
-          <h2 className="text-[19px] font-semibold tracking-[-0.015em]" title={packTitle(props.weekEnding)}>
+          <h2 className="text-title font-semibold tracking-[-0.015em]" title={packTitle(props.weekEnding)}>
             Week ending {title}
           </h2>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">{meta.join(" · ")}</p>
+          <p className="mt-0.5 text-body text-muted-foreground">{meta.join(" · ")}</p>
         </div>
         <form action={buildWeeklyNow}>
           <input type="hidden" name="week" value={props.weekEnding} />
@@ -196,7 +196,7 @@ export function WeeklyPack(props: WeeklyPackProps) {
 }
 
 function Banner({ tone = "info", children }: { tone?: "info" | "caution"; children: React.ReactNode }) {
-  return <div className={cn("shrink-0 rounded-[10px] px-3.5 py-2 text-[13px]", tone === "caution" ? "bg-caution text-caution-foreground" : "bg-band text-ink-2")}>{children}</div>;
+  return <div className={cn("shrink-0 rounded-[10px] px-3.5 py-2 text-body", tone === "caution" ? "bg-caution text-caution-foreground" : "bg-band text-ink-2")}>{children}</div>;
 }
 
 /* ---------- Summary: the 2×2 grid ---------- */
@@ -225,10 +225,10 @@ function SummaryGrid(props: WeeklyPackProps) {
       // Hoot wrote these from the week's headlines, so each one cites its headline in pink.
       <PanelShell title="Why they moved" aside="Hoot's read of the news, not for the slide">
         {notes.map((w) => (
-          <div key={w.ticker} className="flex items-baseline gap-4 px-4 py-2 text-[13.5px]">
+          <div key={w.ticker} className="flex items-baseline gap-4 px-4 py-2 text-body">
             <span className="w-14 shrink-0 font-mono font-semibold">{w.ticker}</span>
             <span className="min-w-0 flex-1">{w.text}</span>
-            <a href={w.url} target="_blank" rel="noreferrer" title={w.headline} className="shrink-0 rounded-full bg-hoot px-2 py-0.5 text-xs text-hoot-foreground hover:underline">
+            <a href={w.url} target="_blank" rel="noreferrer" title={w.headline} className="shrink-0 rounded-full bg-hoot px-2 py-0.5 text-caption text-hoot-foreground hover:underline">
               {w.source}
             </a>
           </div>
@@ -246,7 +246,7 @@ function PanelShell({ title, aside, copy, children }: { title: string; aside: Re
         title={title}
         aside={
           <>
-            <span className="text-xs">{aside}</span>
+            <span className="text-body">{aside}</span>
             {copy && <CopyIcon text={copy} label={`Copy ${title}`} />}
           </>
         }
@@ -281,7 +281,7 @@ function CopyIcon({ text, label }: { text: string; label: string }) {
 }
 
 function Row({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("flex min-h-10 items-center gap-2.5 px-4 text-[13.5px]", className)}>{children}</div>;
+  return <div className={cn("flex min-h-10 items-center gap-2.5 px-4 text-body", className)}>{children}</div>;
 }
 
 function PerformerPanel({ title, section, list, teamOf, why }: { title: string; section: string; list: Performer[]; teamOf: (t: string) => string | undefined; why: string }) {
@@ -291,16 +291,16 @@ function PerformerPanel({ title, section, list, teamOf, why }: { title: string; 
       {list.length ? (
         list.map((p) => (
           <Row key={p.ticker}>
-            <span className="w-[84px] shrink-0 font-mono text-[12.5px] font-semibold">{p.ticker}</span>
+            <span className="w-[84px] shrink-0 font-mono text-body font-semibold">{p.ticker}</span>
             <span className="min-w-0 flex-1 truncate" title={performerLine(p)}>
               {p.name}
               {teamOf(p.ticker) && <span className="text-ink-2"> · {teamOf(p.ticker)}</span>}
             </span>
-            <Move value={p.pct} unit="%" className="text-[12.5px]" />
+            <Move value={p.pct} unit="%" className="text-body" />
           </Row>
         ))
       ) : (
-        <p className="p-4 text-[13px] text-muted-foreground">Nothing to rank yet. Friday&apos;s closes arrive with the price history job.</p>
+        <p className="p-4 text-body text-muted-foreground">Nothing to rank yet. Friday&apos;s closes arrive with the price history job.</p>
       )}
     </PanelShell>
   );
@@ -316,7 +316,7 @@ function DayPanel({ title, aside, label, items, from, note, mono }: { title: str
     <PanelShell title={title} aside={aside} copy={agendaLine(label, items)}>
       {days.map((d) => (
         <Row key={d.key} className="items-center py-2">
-          <span className="w-[92px] shrink-0 font-mono text-[12.5px] font-semibold">{d.stamp}</span>
+          <span className="w-[92px] shrink-0 font-mono text-body font-semibold">{d.stamp}</span>
           <span className="min-w-0 flex-1 leading-relaxed">
             {d.items.length === 0 ? (
               <span className="text-muted-foreground">Nothing scheduled</span>
@@ -326,7 +326,7 @@ function DayPanel({ title, aside, label, items, from, note, mono }: { title: str
                 return (
                   <span key={`${it.text}-${i}`}>
                     {i > 0 && <span className="text-muted-foreground">{mono ? ", " : " · "}</span>}
-                    <span className={cn(mono && "font-mono text-[12.5px] font-medium")}>{it.text}</span>
+                    <span className={cn(mono && "font-mono text-body font-medium")}>{it.text}</span>
                     {n && <span className="text-ink-2"> {n}</span>}
                   </span>
                 );
@@ -358,7 +358,7 @@ function EmailPanel({ week, state, sentAt, email, name }: { week: string; state:
   return (
     <Panel>
       <PanelHeader title="Sunday email" aside={<CopyButton text={email.text} label="Copy email" />} />
-      <div className="grid gap-3 border-b border-row px-4 py-3 text-[13.5px]">
+      <div className="grid gap-3 border-b border-row px-4 py-3 text-body">
         <p className="text-ink-2">
           Hoot emails this pack, every data point in the deck&apos;s order, so the deck can be put together by pasting.{" "}
           {email.to ? (
@@ -369,7 +369,7 @@ function EmailPanel({ week, state, sentAt, email, name }: { week: string; state:
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <PackStatusPill state={state} />
-          <span className="text-[13px] text-muted-foreground">{emailStatus(email, state, sentAt)}</span>
+          <span className="text-body text-muted-foreground">{emailStatus(email, state, sentAt)}</span>
         </div>
         <div className="flex flex-wrap gap-2">
           {sentBefore ? (
@@ -396,7 +396,7 @@ function EmailPanel({ week, state, sentAt, email, name }: { week: string; state:
       </div>
       <div className="flex min-h-0 flex-1 flex-col px-4 py-3">
         <div className="label-mono mb-2 text-muted-foreground">Preview · {email.subject}</div>
-        <pre className="min-h-0 flex-1 overflow-auto rounded-[10px] bg-band-2 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">{email.text}</pre>
+        <pre className="min-h-0 flex-1 overflow-auto rounded-[10px] bg-band-2 p-3 font-mono text-body leading-relaxed whitespace-pre-wrap">{email.text}</pre>
       </div>
     </Panel>
   );
@@ -490,11 +490,11 @@ function HighlightsPanel({
               <div key={f.id} className="grid gap-1.5">
                 <Label htmlFor={f.id}>{f.label}</Label>
                 <Input id={f.id} name={f.id} value={f.value} onChange={(e) => f.set(e.target.value)} placeholder={f.placeholder} inputMode="decimal" disabled={sent} className="font-mono" />
-                <span className="text-xs text-muted-foreground">{figureNote(f.fig)}</span>
+                <span className="text-body text-muted-foreground">{figureNote(f.fig)}</span>
               </div>
             ))}
           </div>
-          <p className="text-xs leading-relaxed text-muted-foreground">
+          <p className="text-body leading-relaxed text-muted-foreground">
             The app reads these from the price target sheet&apos;s 2025 Time-Weighted Returns tab when it builds the pack; the benchmark is the cell the sheet labels &ldquo;SPX YTD
             Performance&rdquo;. Anything you type and save wins over the sheet. Relative return is YTD less the benchmark.
           </p>
@@ -517,7 +517,7 @@ function HighlightsPanel({
         </Panel>
         <Panel>
           <PanelHeader title="YTD performance chart" />
-          <p className="p-4 text-[13px] text-muted-foreground">
+          <p className="p-4 text-body text-muted-foreground">
             Still pasted by hand from the price target sheet (OF vs SPXTR, SVX, SGX). The daily history behind it isn&apos;t in the sheet tabs the app reads, so this chart stays manual.
           </p>
         </Panel>
@@ -529,7 +529,7 @@ function HighlightsPanel({
 function Line({ text }: { text: string }) {
   return (
     <div className="flex min-h-10 items-center justify-between gap-2 border-b border-row px-4 py-1 last:border-b-0">
-      <span className="min-w-0 text-[13.5px] break-words">{text}</span>
+      <span className="min-w-0 text-body break-words">{text}</span>
       <CopyButton text={text} label="Copy" />
     </div>
   );
@@ -542,7 +542,7 @@ function AgendaPanels(props: WeeklyPackProps & { sent: boolean }) {
     <div className="grid flex-1 content-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
       <Panel className="self-start">
         <PanelHeader title="Last week's agenda" aside={<CopyButton text={AGENDA_SECTIONS.map((s) => agendaLine(AGENDA_LABELS[s], props.lastWeekAgenda[s])).join("\n")} label="Copy section" />} />
-        <p className="border-b border-row px-4 py-2 text-xs text-muted-foreground">A snapshot of the previous pack&apos;s agenda. Rebuilding refreshes it; you cannot edit it here.</p>
+        <p className="border-b border-row px-4 py-2 text-body text-muted-foreground">A snapshot of the previous pack&apos;s agenda. Rebuilding refreshes it; you cannot edit it here.</p>
         {AGENDA_SECTIONS.map((s) => (
           <Line key={s} text={agendaLine(AGENDA_LABELS[s], props.lastWeekAgenda[s])} />
         ))}
@@ -586,9 +586,9 @@ function AgendaEditor({ week, section, items, disabled }: { week: string; sectio
         onChange={(e) => setText(e.target.value)}
         disabled={disabled}
         placeholder={section === "processUpdates" ? "Monday: Stock pitch dry run" : "Monday: ANAB"}
-        className="font-mono text-xs"
+        className="font-mono text-body"
       />
-      <p className="text-xs text-muted-foreground">One item per line, as &ldquo;Day: text&rdquo;. Renders as: {line}</p>
+      <p className="text-body text-muted-foreground">One item per line, as &ldquo;Day: text&rdquo;. Renders as: {line}</p>
       {!disabled && (
         <div>
           <Button type="submit" size="sm" variant="outline">
@@ -625,12 +625,12 @@ function ChecksPanel(props: WeeklyPackProps & { checks: string[]; missing: strin
         <PanelHeader title="Checks" count={notes.length} aside="also listed in the Sunday email" />
         {notes.length ? (
           notes.map((n) => (
-            <div key={n} className="border-b border-row px-4 py-2.5 text-[13.5px] last:border-b-0">
+            <div key={n} className="border-b border-row px-4 py-2.5 text-body last:border-b-0">
               {n}
             </div>
           ))
         ) : (
-          <p className="p-4 text-[13px] text-muted-foreground">Nothing to double-check this week.</p>
+          <p className="p-4 text-body text-muted-foreground">Nothing to double-check this week.</p>
         )}
       </Panel>
       <Panel className="self-start">
@@ -638,16 +638,16 @@ function ChecksPanel(props: WeeklyPackProps & { checks: string[]; missing: strin
         {steps.length ? (
           steps.map(([step, v]) => (
             <div key={step} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5 border-b border-row px-4 py-2.5 last:border-b-0">
-              <span className="text-[13.5px] font-medium">{STEP_LABELS[step] ?? step}</span>
+              <span className="text-body font-medium">{STEP_LABELS[step] ?? step}</span>
               <Pill className="justify-self-end" tone={v.status === "ok" ? "good" : v.status === "failed" ? "caution" : "neutral"}>{v.status === "ok" ? "OK" : v.status === "failed" ? "Failed" : "Held"}</Pill>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-body text-muted-foreground">
                 {[v.detail, v.error].filter(Boolean).join(" · ") || "—"}
               </span>
-              <span className="font-mono text-[11px] text-muted-foreground">{fmtDateTime(v.at)}</span>
+              <span className="font-mono text-caption text-muted-foreground">{fmtDateTime(v.at)}</span>
             </div>
           ))
         ) : (
-          <p className="p-4 text-[13px] text-muted-foreground">No build steps recorded yet.</p>
+          <p className="p-4 text-body text-muted-foreground">No build steps recorded yet.</p>
         )}
         <PanelFooter>A step that failed costs only its own section; the Sunday email&apos;s Checks list says which part to fill in by hand.</PanelFooter>
       </Panel>

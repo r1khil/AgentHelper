@@ -24,8 +24,8 @@ const bp1 = (v: number) => fmtAccounting(bps(v), 1);
 function Figure({ label, explain, value, tone, className }: { label: string; explain?: string; value: string; tone?: number; className?: string }) {
   return (
     <div className={cn("min-w-0", className)}>
-      <div className="text-[11.5px] text-muted-foreground">{explain ? <Tip label={label}>{explain}</Tip> : label}</div>
-      <div className={cn("mt-0.5 font-mono text-[13px] font-medium", tone === undefined ? "text-foreground" : upDown(Number(fixed(tone, 1))))}>{value}</div>
+      <div className="text-caption text-muted-foreground">{explain ? <Tip label={label}>{explain}</Tip> : label}</div>
+      <div className={cn("mt-0.5 font-mono text-body font-medium", tone === undefined ? "text-foreground" : upDown(Number(fixed(tone, 1))))}>{value}</div>
     </div>
   );
 }
@@ -64,13 +64,13 @@ export function SectorsPanel({ rows, hasBench, own = "Fund", breakdownQuery, cla
   const toggle = (k: BucketKey) => setOpen((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const sorted = [...rows].sort((a, b) => (hasBench ? b.total - a.total : b.contribution - a.contribution));
   const cols = hasBench ? WITH_BENCH : NO_BENCH;
-  const num = "text-right font-mono text-[12.5px]";
+  const num = "text-right font-mono text-body";
   const columns = hasBench ? 6 : 4;
 
   return (
     <section className={cn("panel flex min-w-0 flex-col overflow-hidden", className)} aria-label="Sectors">
       <div role="table" aria-label="Sectors" className="flex flex-col">
-        <div role="row" className={cn("grid h-9 shrink-0 items-center gap-2.5 border-b px-4 text-xs text-muted-foreground", cols)}>
+        <div role="row" className={cn("grid h-9 shrink-0 items-center gap-2.5 border-b px-4 text-body text-muted-foreground", cols)}>
           <span role="columnheader"><Tip label="Sector" side="bottom">{EXPLAIN.sectors}</Tip></span>
           <span role="columnheader" className="text-right"><Tip label={<ReadAs text={`${own} weight`}>{own} wt</ReadAs>} side="bottom">{EXPLAIN.avgWeight}</Tip></span>
           {hasBench && <span role="columnheader" className="text-right"><Tip label={<ReadAs text="Benchmark weight">Bench wt</ReadAs>} side="bottom">{EXPLAIN.benchWeight}</Tip></span>}
@@ -86,7 +86,7 @@ export function SectorsPanel({ rows, hasBench, own = "Fund", breakdownQuery, cla
         </div>
         {sorted.length === 0 && (
           <div role="row">
-            <div role="cell" aria-colspan={columns} className="px-4 py-3 text-sm text-muted-foreground">No sectors held in this period.</div>
+            <div role="cell" aria-colspan={columns} className="px-4 py-3 text-body text-muted-foreground">No sectors held in this period.</div>
           </div>
         )}
         {sorted.map((r) => {
@@ -98,7 +98,7 @@ export function SectorsPanel({ rows, hasBench, own = "Fund", breakdownQuery, cla
               <div
                 role="row"
                 className={cn(
-                  "group/row relative grid h-10 items-center gap-2.5 border-b border-row px-4 text-left text-[13.5px] transition-colors hover:bg-band has-[button:focus-visible]:bg-band",
+                  "group/row relative grid h-10 items-center gap-2.5 border-b border-row px-4 text-left text-body transition-colors hover:bg-band has-[button:focus-visible]:bg-band",
                   cols,
                   isOpen && "bg-band",
                 )}
@@ -129,7 +129,7 @@ export function SectorsPanel({ rows, hasBench, own = "Fund", breakdownQuery, cla
           );
         })}
       </div>
-      <div className="mt-auto flex min-h-10 shrink-0 items-center gap-3 bg-band-2 px-4 text-[12.5px] text-muted-foreground">
+      <div className="mt-auto flex min-h-10 shrink-0 items-center gap-3 bg-band-2 px-4 text-body text-muted-foreground">
         <span className="truncate">
           {hasBench ? "Total effect vs sector benchmark, bp." : "Contribution, bp."} Select a sector for its {hasBench ? "effects" : "detail"}
           {breakdownQuery ? " and the daily working" : ""}.

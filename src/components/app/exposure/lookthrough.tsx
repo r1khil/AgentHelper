@@ -58,7 +58,7 @@ export function LookthroughSections({ state, scope, transparency, download, sect
     const held = state?.heldEtfs ?? [];
     return (
       <ExposureSection id={LOOKTHROUGH_ANCHOR} title="Through the ETFs" explain={RISK_EXPLAIN.lookthrough}>
-        <Card className="p-4 text-sm text-muted-foreground">
+        <Card className="p-4 text-body text-muted-foreground">
           {state?.reason === "no-table"
             ? "ETF holdings aren't set up yet (migration 0021). Once they are, the nightly price job stores each held ETF's full holdings weekly."
             : "No ETF holdings lists are stored yet. The nightly price job fetches them from each issuer weekly."}
@@ -81,12 +81,12 @@ export function LookthroughSections({ state, scope, transparency, download, sect
       >
         {lt.etfs.length > 0 && <EtfCoverageTable etfs={lt.etfs} stale={state.stale} />}
         {overlaps.length > 0 && (
-          <p className="mb-3 text-sm text-muted-foreground">
+          <p className="mb-3 text-body text-muted-foreground">
             <Explained label="Held both ways">{RISK_EXPLAIN.overlap}</Explained>: {overlaps.map((n) => `${n.key} ${rpct(n.total)}`).join(" · ")}
           </p>
         )}
         <CombinedExposureTable lt={lt} scope={scope} transparency={transparency} />
-        {download && <p className="mt-2 text-xs text-muted-foreground">{download}</p>}
+        {download && <p className="mt-2 text-caption text-muted-foreground">{download}</p>}
       </ExposureSection>
       <ExposureSection
         id={STOCK_ACTIVE_ANCHOR}
@@ -96,7 +96,7 @@ export function LookthroughSections({ state, scope, transparency, download, sect
       >
         {lt.active ? (
           <>
-            <p className="mb-2.5 text-[13px] text-ink-2">
+            <p className="mb-2.5 text-body text-ink-2">
               {lt.active.largestBet && (
                 <>
                   Largest bet by company: <span className="font-mono font-semibold text-foreground">{lt.active.largestBet.key}</span>{" "}
@@ -114,7 +114,7 @@ export function LookthroughSections({ state, scope, transparency, download, sect
             )}
           </>
         ) : (
-          <Card className="p-4 text-sm text-muted-foreground">{state.benchmarkMissing ?? "The benchmark's holdings aren't stored yet."} Stock-level active weights need them.</Card>
+          <Card className="p-4 text-body text-muted-foreground">{state.benchmarkMissing ?? "The benchmark's holdings aren't stored yet."} Stock-level active weights need them.</Card>
         )}
       </ExposureSection>
     </>
@@ -149,41 +149,41 @@ function EtfCoverageTable({ etfs, stale }: { etfs: EtfCoverage[]; stale: string[
               <TableRow key={e.etf}>
                 <TableCell>
                   <span className="font-mono font-semibold">{e.etf}</span>
-                  <div className={cn("text-[11px]", s.tone)}>
+                  <div className={cn("text-caption", s.tone)}>
                     {s.label}
                     {e.names > 0 && <span className="text-muted-foreground"> · {e.names} names</span>}
                   </div>
                   {/* On a phone the as-of column is hidden, so the date and source sit under the ETF. */}
                   {e.asOf && e.source && (
-                    <div className={cn("text-[11px] text-muted-foreground sm:hidden", isStale && "font-medium text-caution-foreground")}>
+                    <div className={cn("text-caption text-muted-foreground sm:hidden", isStale && "font-medium text-caution-foreground")}>
                       {fmtDay(e.asOf)} · {SOURCE_LABELS[e.source]}{isStale && " · stale"}
                     </div>
                   )}
                 </TableCell>
-                <TableCell className="text-right font-mono text-[12.5px]">{rpct(e.weight, 2)}</TableCell>
+                <TableCell className="text-right font-mono text-body">{rpct(e.weight, 2)}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <MagnitudeBar value={e.coverage} max={1} className="h-1.5 w-16 sm:w-24" />
-                    <span className="w-12 font-mono text-xs">{rpct(e.coverage)}</span>
+                    <span className="w-12 font-mono text-body">{rpct(e.coverage)}</span>
                   </div>
                 </TableCell>
-                <TableCell className="hidden text-xs sm:table-cell">
+                <TableCell className="hidden text-body sm:table-cell">
                   {e.asOf && e.source ? (
                     <>
                       <span className={cn(isStale && "font-medium text-caution-foreground")}>{fmtDay(e.asOf)}{isStale && " · stale"}</span>
-                      <div className="text-[11px] text-muted-foreground">{SOURCE_LABELS[e.source]}</div>
+                      <div className="text-caption text-muted-foreground">{SOURCE_LABELS[e.source]}</div>
                     </>
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
                 </TableCell>
-                <TableCell className="text-right font-mono text-[12.5px]">{e.notLookedThrough > 5e-5 ? rpct(e.notLookedThrough, 2) : "—"}</TableCell>
+                <TableCell className="text-right font-mono text-body">{e.notLookedThrough > 5e-5 ? rpct(e.notLookedThrough, 2) : "—"}</TableCell>
               </TableRow>
             );
           })}
         </TableBody>
       </Table>
-      {stale.length > 0 && <p className="border-t px-4 py-2 text-xs text-muted-foreground">Stale: holdings more than {STALE_AFTER_DAYS} days older than the positions. The weekly refresh retries each night until it succeeds.</p>}
+      {stale.length > 0 && <p className="border-t px-4 py-2 text-body text-muted-foreground">Stale: holdings more than {STALE_AFTER_DAYS} days older than the positions. The weekly refresh retries each night until it succeeds.</p>}
     </Card>
   );
 }
@@ -213,55 +213,55 @@ function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughRep
             <TableRow key={n.key}>
               <TableCell>
                 <span className="font-mono font-semibold">{n.key}</span>
-                {n.overlap && <span className="ml-1.5 rounded border px-1 py-px text-[10px] text-muted-foreground" title={RISK_EXPLAIN.overlap}>both</span>}
-                <div className="max-w-36 truncate text-[11px] text-muted-foreground sm:max-w-56">
+                {n.overlap && <span className="ml-1.5 rounded border px-1 py-px text-caption text-muted-foreground" title={RISK_EXPLAIN.overlap}>both</span>}
+                <div className="max-w-36 truncate text-caption text-muted-foreground sm:max-w-56">
                   {n.name}
                   {n.sector ? ` · ${SECTOR_LABELS[n.sector]}` : ""}
                   {n.symbols.length > 1 ? ` · ${n.symbols.join(" + ")}` : ""}
                 </div>
                 {/* On a phone the "Through ETFs" column is hidden, so the breakdown sits under the name. */}
-                {n.viaEtfs.length > 0 && <div className="max-w-44 text-[11px] whitespace-normal text-muted-foreground sm:hidden">via {viaText(n)}</div>}
+                {n.viaEtfs.length > 0 && <div className="max-w-44 text-caption whitespace-normal text-muted-foreground sm:hidden">via {viaText(n)}</div>}
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
                   <MagnitudeBar value={n.total} max={max} className="hidden h-1.5 w-20 sm:flex" />
-                  <span className="w-12 font-mono text-xs font-medium">{rpct(n.total, 2)}</span>
+                  <span className="w-12 font-mono text-body font-medium">{rpct(n.total, 2)}</span>
                 </div>
               </TableCell>
-              <TableCell className="text-right font-mono text-xs">{n.direct > 0 ? rpct(n.direct, 2) : "—"}</TableCell>
-              <TableCell className="hidden min-w-32 text-xs text-muted-foreground sm:table-cell">{viaText(n) || "—"}</TableCell>
+              <TableCell className="text-right font-mono text-body">{n.direct > 0 ? rpct(n.direct, 2) : "—"}</TableCell>
+              <TableCell className="hidden min-w-32 text-body text-muted-foreground sm:table-cell">{viaText(n) || "—"}</TableCell>
             </TableRow>
           ))}
         </TableBody>
         <TableFooter>
           {rest.length > 0 && (
             <TableRow>
-              <TableCell className="text-xs text-muted-foreground">Other {rest.length} companies</TableCell>
-              <TableCell className="font-mono text-xs text-muted-foreground">{rpct(restTotal, 2)}</TableCell>
+              <TableCell className="text-body text-muted-foreground">Other {rest.length} companies</TableCell>
+              <TableCell className="font-mono text-body text-muted-foreground">{rpct(restTotal, 2)}</TableCell>
               <TableCell />
               <TableCell className="hidden sm:table-cell" />
             </TableRow>
           )}
           <TableRow>
-            <TableCell className="text-xs text-muted-foreground">
+            <TableCell className="text-body text-muted-foreground">
               <Explained label="Not looked through">{RISK_EXPLAIN.notLookedThrough}</Explained>
-              {notLookedText && <div className="max-w-44 text-[11px] whitespace-normal sm:hidden">{notLookedText}</div>}
+              {notLookedText && <div className="max-w-44 text-caption whitespace-normal sm:hidden">{notLookedText}</div>}
             </TableCell>
-            <TableCell className="font-mono text-xs text-muted-foreground">{rpct(lt.notLookedThrough.total, 2)}</TableCell>
+            <TableCell className="font-mono text-body text-muted-foreground">{rpct(lt.notLookedThrough.total, 2)}</TableCell>
             <TableCell />
-            <TableCell className="hidden text-xs text-muted-foreground sm:table-cell">{notLookedText || "—"}</TableCell>
+            <TableCell className="hidden text-body text-muted-foreground sm:table-cell">{notLookedText || "—"}</TableCell>
           </TableRow>
           {(scope === "fund" || lt.cash !== 0) && (
             <TableRow>
-              <TableCell className="text-xs text-muted-foreground">Cash</TableCell>
-              <TableCell className="font-mono text-xs text-muted-foreground">{rpct(lt.cash, 2)}</TableCell>
+              <TableCell className="text-body text-muted-foreground">Cash</TableCell>
+              <TableCell className="font-mono text-body text-muted-foreground">{rpct(lt.cash, 2)}</TableCell>
               <TableCell />
               <TableCell className="hidden sm:table-cell" />
             </TableRow>
           )}
           <TableRow>
-            <TableCell className="text-xs font-medium">Total <span className="font-normal text-muted-foreground">· {lt.names.length} companies</span></TableCell>
-            <TableCell className="font-mono text-xs font-medium">{rpct(lt.total, 2)}</TableCell>
+            <TableCell className="text-body font-medium">Total <span className="font-normal text-muted-foreground">· {lt.names.length} companies</span></TableCell>
+            <TableCell className="font-mono text-body font-medium">{rpct(lt.total, 2)}</TableCell>
             <TableCell />
             <TableCell className="hidden sm:table-cell" />
           </TableRow>
@@ -303,22 +303,22 @@ function StockActiveTables({ rows, benchmarkLabel }: { rows: ActiveName[]; bench
             <TableRow key={r.key}>
               <TableCell>
                 <span className="font-mono font-semibold">{r.key}</span>
-                <div className="max-w-32 truncate text-[11px] text-muted-foreground sm:max-w-44">{r.name}</div>
+                <div className="max-w-32 truncate text-caption text-muted-foreground sm:max-w-44">{r.name}</div>
               </TableCell>
-              <TableCell className="text-right font-mono text-xs">
+              <TableCell className="text-right font-mono text-body">
                 {rpct(r.fund, 2)} <span className="text-muted-foreground">· {rpct(r.benchmark, 2)}</span>
               </TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
                   <DivergingBar value={r.active} max={max} className="hidden w-12 sm:flex" />
-                  <span className="w-14 text-right font-mono text-xs sm:w-16">{rnum(r.active * 10_000, 0)}</span>
+                  <span className="w-14 text-right font-mono text-body sm:w-16">{rnum(r.active * 10_000, 0)}</span>
                 </div>
               </TableCell>
             </TableRow>
           ))}
           {!items.length && (
             <TableRow>
-              <TableCell colSpan={3} className="text-xs text-muted-foreground">None</TableCell>
+              <TableCell colSpan={3} className="text-body text-muted-foreground">None</TableCell>
             </TableRow>
           )}
         </TableBody>

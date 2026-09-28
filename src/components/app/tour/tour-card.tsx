@@ -58,13 +58,13 @@ export const TourCard = forwardRef<HTMLDivElement, { view: CardView; onAction: (
       style={{ width: TOUR_CARD_WIDTH, maxWidth: "calc(100vw - 2rem)", translate: `${Math.round(x)}px ${Math.round(y)}px` }}
     >
       <div key={view.key}>
-        {view.eyebrow && <div className="mb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{view.eyebrow}</div>}
-        <h2 id={titleId} className="text-[15px] leading-snug font-semibold text-balance">
+        {view.eyebrow && <div className="mb-1 text-caption font-medium tracking-wide text-muted-foreground uppercase">{view.eyebrow}</div>}
+        <h2 id={titleId} className="text-emph leading-snug font-semibold text-balance">
           {view.title}
         </h2>
-        {view.body && <p className="mt-1.5 text-sm leading-relaxed">{view.body}</p>}
+        {view.body && <p className="mt-1.5 text-body leading-relaxed">{view.body}</p>}
         {view.points && (
-          <dl className="mt-2 grid gap-1.5 text-sm leading-snug">
+          <dl className="mt-2 grid gap-1.5 text-body leading-snug">
             {view.points.map((p) => (
               <div key={p.label}>
                 <dt className="inline font-medium">{p.label}: </dt>
@@ -74,7 +74,7 @@ export const TourCard = forwardRef<HTMLDivElement, { view: CardView; onAction: (
           </dl>
         )}
         {(view.what || view.how || view.source) && (
-          <dl className="mt-2.5 grid gap-2 text-sm leading-snug">
+          <dl className="mt-2.5 grid gap-2 text-body leading-snug">
             {view.what && <Line label="What it is" text={view.what} />}
             {view.how && <Line label="How it works" text={view.how} />}
             {view.source && <Line label="Where the data comes from" text={view.source} />}
@@ -87,14 +87,14 @@ export const TourCard = forwardRef<HTMLDivElement, { view: CardView; onAction: (
                 key={q}
                 type="button"
                 onClick={() => onAction("example", q)}
-                className="rounded-lg border bg-background px-2.5 py-1.5 text-left text-xs leading-snug transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                className="rounded-lg border bg-background px-2.5 py-1.5 text-left text-body leading-snug transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               >
                 {q}
               </button>
             ))}
           </div>
         )}
-        {view.prompt && <p className="mt-2.5 rounded-lg bg-muted px-2.5 py-1.5 text-sm font-medium">{view.prompt}</p>}
+        {view.prompt && <p className="mt-2.5 rounded-lg bg-muted px-2.5 py-1.5 text-body font-medium">{view.prompt}</p>}
 
         <div className="mt-3.5 flex flex-wrap items-center gap-2">
           <div className="mr-auto flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -103,7 +103,7 @@ export const TourCard = forwardRef<HTMLDivElement, { view: CardView; onAction: (
                 key={l.id}
                 type="button"
                 onClick={() => onAction(l.id)}
-                className="rounded text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                className="rounded text-body text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               >
                 {l.label}
               </button>
@@ -123,7 +123,7 @@ export const TourCard = forwardRef<HTMLDivElement, { view: CardView; onAction: (
             </Button>
           ))}
         </div>
-        {view.footnote && <p className="mt-2.5 text-xs text-muted-foreground">{view.footnote}</p>}
+        {view.footnote && <p className="mt-2.5 text-caption text-muted-foreground">{view.footnote}</p>}
       </div>
     </div>
   );
@@ -132,7 +132,7 @@ export const TourCard = forwardRef<HTMLDivElement, { view: CardView; onAction: (
 function Line({ label, text }: { label: string; text: string }) {
   return (
     <div>
-      <dt className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{label}</dt>
+      <dt className="text-caption font-medium tracking-wide text-muted-foreground uppercase">{label}</dt>
       <dd className="mt-0.5">{text}</dd>
     </div>
   );

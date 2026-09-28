@@ -4,6 +4,49 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* The type scale. Six sizes; hierarchy comes from moving a whole step (and from weight and color), never from half a
+   pixel. Pixels rather than rem, so text keeps its size relative to the px-based layout. Arbitrary text-[Npx] is a
+   lint error, and scripts/codemods/type-scale.mjs moves old classes onto the scale. */
+@theme {
+    --text-*: initial;
+    /* Chips, badges, counts, uppercase labels, avatar initials, tiny meta. */
+    --text-caption: 11px;
+    --text-caption--line-height: 16px;
+    /* Everything you read: table cells and rows, secondary lines, column headers, footers, help text, buttons. */
+    --text-body: 13px;
+    --text-body--line-height: 20px;
+    /* Panel titles, card headings, large reading text (chat answers), the line under a page title. */
+    --text-emph: 15px;
+    --text-emph--line-height: 22px;
+    /* Page titles in the header, section and dialog titles. */
+    --text-title: 20px;
+    --text-title--line-height: 28px;
+    /* Big figures in stat strips, the greeting and ticker headings. */
+    --text-display: 26px;
+    --text-display--line-height: 32px;
+    /* The one hero number (Today's Last session). */
+    --text-hero: 44px;
+    --text-hero--line-height: 44px;
+    /* Tailwind's named sizes are only a safety net for a pasted component or a branch that predates the codemod: they
+       land on the scale instead of falling back to 16px. Lint forbids them in src; write the scale names. */
+    --text-xs: var(--text-caption);
+    --text-xs--line-height: var(--text-caption--line-height);
+    --text-sm: var(--text-body);
+    --text-sm--line-height: var(--text-body--line-height);
+    --text-base: var(--text-emph);
+    --text-base--line-height: var(--text-emph--line-height);
+    --text-lg: var(--text-title);
+    --text-lg--line-height: var(--text-title--line-height);
+    --text-xl: var(--text-title);
+    --text-xl--line-height: var(--text-title--line-height);
+    --text-2xl: var(--text-display);
+    --text-2xl--line-height: var(--text-display--line-height);
+    --text-3xl: var(--text-display);
+    --text-3xl--line-height: var(--text-display--line-height);
+    --text-4xl: var(--text-hero);
+    --text-4xl--line-height: var(--text-hero--line-height);
+}
+
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
@@ -368,7 +411,7 @@
   /* A plain panel: a section of the page, set apart by its title and spacing rather than a frame. */
   .panel-plain { background: transparent; }
   /* Small uppercase mono labels, e.g. MON 28 SEP. */
-  .label-mono { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .label-mono { font-family: var(--font-mono); font-size: var(--text-caption); letter-spacing: 0.06em; text-transform: uppercase; }
   /* Big figures in mono. */
   .figure { font-family: var(--font-mono); font-weight: 500; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
   /* Hoot is charcoal; on dark pages every sprite gets a soft light behind him. */

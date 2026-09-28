@@ -43,12 +43,12 @@ export function PeriodSelector({ basePath, active, from, to, inception, latest }
         <PopoverContent align="start" className="w-auto rounded-[14px] p-3">
           <form action={basePath} className="flex items-center gap-1.5" onSubmit={() => setOpen(false)}>
             <input type="hidden" name="period" value="custom" />
-            <Input type="date" name="from" min={inception} max={latest} defaultValue={active === "custom" ? from : undefined} aria-label="From" className="h-8 w-36 font-mono text-xs" required />
-            <span className="text-xs text-muted-foreground">to</span>
-            <Input type="date" name="to" min={inception} max={latest} defaultValue={active === "custom" ? to : undefined} aria-label="To" className="h-8 w-36 font-mono text-xs" />
+            <Input type="date" name="from" min={inception} max={latest} defaultValue={active === "custom" ? from : undefined} aria-label="From" className="h-8 w-36 font-mono text-body" required />
+            <span className="text-body text-muted-foreground">to</span>
+            <Input type="date" name="to" min={inception} max={latest} defaultValue={active === "custom" ? to : undefined} aria-label="To" className="h-8 w-36 font-mono text-body" />
             <Button type="submit" size="sm" variant={active === "custom" ? "default" : "outline"}>Apply</Button>
           </form>
-          <p className="mt-2 text-xs text-muted-foreground">Measured from the close before the first day. The ledger starts {fmtDate(inception)}.</p>
+          <p className="mt-2 text-caption text-muted-foreground">Measured from the close before the first day. The ledger starts {fmtDate(inception)}.</p>
         </PopoverContent>
       </Popover>
     </Segmented>

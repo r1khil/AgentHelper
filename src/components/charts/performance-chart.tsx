@@ -122,7 +122,7 @@ function ChartSession({
   const helpId = useId();
   if (points.length < 2)
     return (
-      <div className="py-8 text-sm text-muted-foreground" role="status">
+      <div className="py-8 text-body text-muted-foreground" role="status">
         {points.length
           ? "At least two observations are needed to compare performance."
           : "No overlapping price history is available for this comparison."}
@@ -157,7 +157,7 @@ function ChartSession({
   return (
     <section aria-label={label} className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground tnum">
+        <p className="text-body text-muted-foreground tnum">
           {exactDate(start.date)} – {exactDate(end.date)}
         </p>
         {ranges && (
@@ -206,7 +206,7 @@ function ChartSession({
         />
       </div>
       <div
-        className="mb-3 flex h-14 items-center justify-between gap-2 text-xs sm:h-8"
+        className="mb-3 flex h-14 items-center justify-between gap-2 text-body sm:h-8"
         aria-live="polite"
       >
         {bounds ? (
@@ -356,17 +356,17 @@ function ChartSession({
         )}
       </div>
       <ChartLegend series={series} note={note} />
-      <p id={helpId} className="mt-2 text-[11px] text-muted-foreground">
+      <p id={helpId} className="mt-2 text-caption text-muted-foreground">
         Hover to inspect · Hold and drag to compare dates · Shift + ← → selects
         an interval · Esc or Clear selection resets
       </p>
       {kind === "return" && (
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 text-caption text-muted-foreground">
           Index starts at 100; it represents cumulative return, not portfolio
           dollars.
         </p>
       )}
-      <details className="mt-3 text-xs text-muted-foreground">
+      <details className="mt-3 text-caption text-muted-foreground">
         <summary className="w-fit cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-ring">
           View observations ({points.length})
         </summary>
@@ -423,9 +423,9 @@ function Metric({
 }) {
   return (
     <div>
-      <div className="mb-1 text-[11px] text-muted-foreground">{label}</div>
+      <div className="mb-1 text-caption text-muted-foreground">{label}</div>
       <div
-        className={`text-sm font-medium tracking-tight sm:text-base ${tone(change)}`}
+        className={`text-body font-medium tracking-tight sm:text-emph ${tone(change)}`}
       >
         {value}
       </div>

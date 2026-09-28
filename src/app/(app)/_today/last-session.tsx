@@ -19,7 +19,7 @@ export function LastSessionCard({ book }: { book: Book }) {
     return (
       <section data-tour="today-result" className="shrink-0 rounded-[14px] bg-rail px-5 py-[18px] text-cream">
         <div className="label-mono text-rail-label">Last session</div>
-        <p className="mt-3 text-[14px] text-rail-label">{book.message}</p>
+        <p className="mt-3 text-body text-rail-label">{book.message}</p>
       </section>
     );
   }
@@ -31,21 +31,21 @@ export function LastSessionCard({ book }: { book: Book }) {
     <section data-tour="today-result" aria-label="Last session" className="shrink-0 rounded-[14px] bg-rail px-5 py-[18px] text-cream">
       <div className="flex items-baseline justify-between gap-3 leading-4">
         <span className="label-mono text-rail-label">Last session · <span className="normal-case">{sessionStamp(book.sessionDate)}</span></span>
-        <Link href={book.href} className="text-[13px] font-medium whitespace-nowrap hover:underline">
+        <Link href={book.href} className="text-body font-medium whitespace-nowrap hover:underline">
           Attribution →
         </Link>
       </div>
       <div className="mt-2.5 flex items-baseline gap-3" title={book.kind === "team" && book.hero.unit === " bp" ? effectsText(book.effects) : undefined}>
-        <span className={cn("font-mono text-[44px] leading-none font-medium tracking-[-0.04em] tabular-nums", onRail(book.hero.value))}>
+        <span className={cn("font-mono text-hero leading-none font-medium tracking-[-0.04em] tabular-nums", onRail(book.hero.value))}>
           {fmtAccounting(book.hero.value, book.hero.unit === "%" ? 2 : 0, book.hero.unit)}
         </span>
-        <span className="truncate text-[13px] text-rail-label">{book.hero.label}</span>
+        <span className="truncate text-body text-rail-label">{book.hero.label}</span>
       </div>
       <div className="mt-3.5 grid grid-cols-3 gap-2.5">
         {book.cells.map((c) => (
           <div key={c.label} className="min-w-0" title={c.label === "vs sectors" ? effectsText(book.effects) : undefined}>
-            <div className="truncate text-xs text-rail-label">{c.label}</div>
-            <div className={cn("font-mono text-[17px] leading-[21px] font-medium tabular-nums", c.tone && onRail(c.value))}><Acct value={c.value} digits={c.unit === "%" ? 2 : 0} unit={c.unit} /></div>
+            <div className="truncate text-caption text-rail-label">{c.label}</div>
+            <div className={cn("font-mono text-title leading-[21px] font-medium tabular-nums", c.tone && onRail(c.value))}><Acct value={c.value} digits={c.unit === "%" ? 2 : 0} unit={c.unit} /></div>
           </div>
         ))}
       </div>
@@ -65,12 +65,12 @@ function effectsText(e: Effects | null) {
 function MoverList({ title, rows }: { title: string; rows: { ticker: string; contribution: number }[] }) {
   return (
     <div className="min-w-0">
-      <div className="mb-1 text-xs text-rail-label">{title}</div>
+      <div className="mb-1 text-body text-rail-label">{title}</div>
       {rows.length === 0 ? (
-        <div className="flex h-6 items-center font-mono text-[13px] text-rail-foreground">—</div>
+        <div className="flex h-6 items-center font-mono text-body text-rail-foreground">—</div>
       ) : (
         rows.map((r) => (
-          <div key={r.ticker} className="flex h-6 items-center font-mono text-[13px]">
+          <div key={r.ticker} className="flex h-6 items-center font-mono text-body">
             <span className="flex-1 font-semibold">{r.ticker}</span>
             <span className={cn("tabular-nums", onRail(r.contribution))}><Acct value={bps(r.contribution)} digits={0} /></span>
           </div>
@@ -108,14 +108,14 @@ export function EveningBrief({ brief }: { brief: Brief }) {
   return (
     <section aria-label="Hoot's evening brief" className="panel-plain shrink-0 px-[18px] py-2">
       <div className="flex items-center gap-2">
-        <h2 className="text-[14.5px] leading-5 font-semibold">Hoot&rsquo;s evening brief</h2>
+        <h2 className="text-emph leading-5 font-semibold">Hoot&rsquo;s evening brief</h2>
         <span className="flex-1" />
-        {written && <span className="text-[12.5px] whitespace-nowrap text-muted-foreground">{written}</span>}
+        {written && <span className="text-body whitespace-nowrap text-muted-foreground">{written}</span>}
       </div>
-      <p className="mt-2 line-clamp-4 text-[14.5px] leading-[1.55] text-pretty">
+      <p className="mt-2 line-clamp-4 text-emph leading-[1.55] text-pretty">
         <Cited text={lead} sources={brief.sources} />
       </p>
-      {brief.stale && <p className="mt-1.5 text-xs text-muted-foreground">Hoot wrote this from the evening figures, which have since been revised. The Last session figures are current.</p>}
+      {brief.stale && <p className="mt-1.5 text-caption text-muted-foreground">Hoot wrote this from the evening figures, which have since been revised. The Last session figures are current.</p>}
       {hasMore && <BriefDialog brief={brief} written={written} />}
     </section>
   );

@@ -50,7 +50,7 @@ export function SkeletonPanel({ className, children, variant = "outlined" }: { c
 export function SkeletonPanelHeader({ className, w = "w-36", aside }: { className?: string; w?: string; aside?: string | false }) {
   return (
     <div className={cn("flex h-11 shrink-0 items-center gap-2 border-b px-4 group-data-[variant=plain]/panel:h-10 group-data-[variant=plain]/panel:border-b-0", className)}>
-      <TextBone className="text-[14.5px] font-semibold" w={w} />
+      <TextBone className="text-emph font-semibold" w={w} />
       <span className="flex-1" />
       {aside && <Bone className={cn("h-3 rounded-[4px]", aside)} />}
     </div>
@@ -58,14 +58,14 @@ export function SkeletonPanelHeader({ className, w = "w-36", aside }: { classNam
 }
 
 /** StatStrip with placeholder cells: same grid, padding and line boxes. */
-export function SkeletonStatStrip({ cells, size = "md", notes = true, className }: { cells: number; size?: "md" | "lg"; notes?: boolean; className?: string }) {
+export function SkeletonStatStrip({ cells, notes = true, className }: { cells: number; notes?: boolean; className?: string }) {
   return (
     <section className={cn("panel grid shrink-0 overflow-hidden", className)} style={{ gridTemplateColumns: `repeat(${cells}, minmax(0, 1fr))` }}>
       {Array.from({ length: cells }, (_, i) => (
         <div key={i} className={cn("min-w-0 px-[18px] py-3.5", i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
-          <TextBone className="text-[12.5px]" w="w-20" />
-          <TextBone className={cn("figure mt-1 leading-tight", size === "lg" ? "text-[26px]" : "text-2xl")} w="w-24" />
-          {notes && <TextBone className="mt-1 text-xs" w="w-28" />}
+          <TextBone className="text-body" w="w-20" />
+          <TextBone className="figure mt-1 text-display leading-tight" w="w-24" />
+          {notes && <TextBone className="mt-1 text-caption" w="w-28" />}
         </div>
       ))}
     </section>
@@ -111,7 +111,7 @@ export function SkeletonTabs({ widths, className }: { widths: string[]; classNam
     <div aria-hidden className={cn("flex min-h-9 shrink-0 gap-5 border-b", className)}>
       {widths.map((w, i) => (
         <div key={i} className="flex items-center">
-          <TextBone className="text-sm" w={w} />
+          <TextBone className="text-body" w={w} />
         </div>
       ))}
     </div>

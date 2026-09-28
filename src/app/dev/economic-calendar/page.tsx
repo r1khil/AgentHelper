@@ -94,11 +94,11 @@ export default async function Preview({ searchParams }: { searchParams: Promise<
         askable={false}
         banner={
           live ? (
-            <p role="note" className="border-b bg-band-2 px-5 py-2 text-[12.5px] text-muted-foreground">
+            <p role="note" className="border-b bg-band-2 px-5 py-2 text-body text-muted-foreground">
               Local verification view · live calendar feed · app authentication remains required on the main route.
             </p>
           ) : (
-            <p role="note" className="border-b bg-caution px-5 py-2 text-[12.5px] text-caution-foreground">
+            <p role="note" className="border-b bg-caution px-5 py-2 text-body text-caution-foreground">
               <strong className="font-semibold">Development preview · synthetic data.</strong> Dates and values illustrate the interface, not the real economic schedule. Live coverage is not verified.
             </p>
           )

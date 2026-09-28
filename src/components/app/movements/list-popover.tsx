@@ -13,7 +13,7 @@ export function MovementListPopover({ open: openCount, total, children }: { open
       <PopoverTrigger render={<Button variant="outline" size="sm" data-tour="movements-list" />}>
         <List />
         Movements
-        <span className="font-mono text-[11px] text-muted-foreground" title={`${openCount} open · ${total - openCount} completed`}>
+        <span className="font-mono text-caption text-muted-foreground" title={`${openCount} open · ${total - openCount} completed`}>
           {openCount} open
         </span>
         <ChevronDown className="text-muted-foreground" />

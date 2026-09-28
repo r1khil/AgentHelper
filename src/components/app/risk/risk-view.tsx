@@ -109,7 +109,7 @@ export function RiskView({
       <div className={FIRST_SCREEN}>
         <div data-tour="risk-toolbar" className="flex min-w-0 shrink-0 items-center gap-2.5">
           <LookbackSelector basePath={basePath} active={r.lookback} />
-          <span className="flex min-w-0 items-center gap-1 text-[13px] text-muted-foreground">
+          <span className="flex min-w-0 items-center gap-1 text-body text-muted-foreground">
             <span className="truncate">{context}</span>
             <InfoTip label="forward-looking risk">{RISK_EXPLAIN.exAnte}</InfoTip>
           </span>
@@ -190,7 +190,7 @@ export function RiskView({
 
         <section data-tour="risk-holdings" aria-label="Holdings by share of risk">
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-[14.5px] font-semibold">Holdings by share of risk</h2>
+            <h2 className="text-emph font-semibold">Holdings by share of risk</h2>
             <Segmented
               label="Holdings view"
               segments={[
@@ -200,7 +200,7 @@ export function RiskView({
             />
           </div>
           {r.holdings.length >= 3 && (
-            <p className="mb-2.5 text-[13px] text-ink-2">
+            <p className="mb-2.5 text-body text-ink-2">
               The three largest risk sources ({r.holdings.slice(0, 3).map((h) => h.ticker).join(", ")}) are {rpct(topWeight)} of value and {rpct(topShare)} of risk.
             </p>
           )}
@@ -223,15 +223,15 @@ export function RiskView({
               <Explained label="Realized, from the Fund's own returns">{RISK_EXPLAIN.realized}</Explained>
             </SectionHead>
             {!realized ? (
-              <div className="text-sm text-muted-foreground">No ledger history yet.</div>
+              <div className="text-body text-muted-foreground">No ledger history yet.</div>
             ) : (
               <>
                 {!realized.enough && (
-                  <p className="text-[13px] text-muted-foreground">
+                  <p className="text-body text-muted-foreground">
                     Realized volatility, beta, tracking error and Sharpe need {MIN_REALIZED_DAYS} trading days of ledger history; the ledger has {realized.days} since {fmtDate(inception)}. Until then, use the forward-looking numbers above.
                   </p>
                 )}
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-body">
                   <Realized label="Return" explain="Compounded daily NAV return over the window, net of deposits and withdrawals." value={rpct(realized.totalReturn, 2)} />
                   <Realized label="Volatility" explain={RISK_EXPLAIN.vol} value={rpct(realized.vol)} />
                   <Realized label="Beta" explain={RISK_EXPLAIN.beta} value={rnum(realized.beta)} />
@@ -251,8 +251,8 @@ export function RiskView({
         {stress}
 
         <details data-tour="risk-method" className="group rounded-[14px] bg-band-2 shadow-[0_0_0_1px_var(--border)]">
-          <summary className="cursor-pointer px-4 py-3 text-[13.5px] font-medium text-ink-2 select-none hover:text-foreground">How this is calculated, and the data behind it</summary>
-          <div className="grid gap-3 border-t border-row px-4 py-4 text-xs leading-relaxed text-muted-foreground">
+          <summary className="cursor-pointer px-4 py-3 text-body font-medium text-ink-2 select-none hover:text-foreground">How this is calculated, and the data behind it</summary>
+          <div className="grid gap-3 border-t border-row px-4 py-4 text-body leading-relaxed text-muted-foreground">
             <p>
               Forward-looking figures apply today&apos;s positions (the trade ledger replayed to the {fmtDate(r.asOf)} close) to {r.window.days} daily total returns
               (split-adjusted closes plus dividends on their ex-dates, from Yahoo Finance, stored nightly) on the S&amp;P 500&apos;s trading days. Covariance is the
@@ -295,12 +295,12 @@ const WORST_DAY =
 function Realized({ label, explain, value, hint }: { label: string; explain: string; value: string; hint?: string }) {
   return (
     <div>
-      <dt className="flex items-center gap-1 text-xs text-muted-foreground">
+      <dt className="flex items-center gap-1 text-body text-muted-foreground">
         {label}
         <InfoTip label={label}>{explain}</InfoTip>
       </dt>
-      <dd className={cn("figure text-base")}>{value}</dd>
-      {hint && <dd className="text-[11px] text-muted-foreground">{hint}</dd>}
+      <dd className={cn("figure text-emph")}>{value}</dd>
+      {hint && <dd className="text-caption text-muted-foreground">{hint}</dd>}
     </div>
   );
 }

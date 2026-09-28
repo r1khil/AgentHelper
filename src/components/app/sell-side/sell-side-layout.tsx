@@ -54,18 +54,18 @@ export function SellSideLayout({
                         )}
                       >
                         <span className="flex items-baseline gap-2">
-                          <span className="font-mono text-[12.5px] font-semibold">{c.ticker}</span>
-                          <span className="min-w-0 flex-1 truncate text-[13.5px]">{c.title}</span>
-                          <span className={cn("shrink-0 text-xs font-medium", TONE[c.status.tone])}>{c.status.label}</span>
+                          <span className="font-mono text-body font-semibold">{c.ticker}</span>
+                          <span className="min-w-0 flex-1 truncate text-body">{c.title}</span>
+                          <span className={cn("shrink-0 text-body font-medium", TONE[c.status.tone])}>{c.status.label}</span>
                         </span>
-                        <span className="mt-0.5 block truncate text-xs text-muted-foreground">{c.meta}</span>
+                        <span className="mt-0.5 block truncate text-caption text-muted-foreground">{c.meta}</span>
                       </RowLink>
                     </li>
                   );
                 })}
               </ul>
             ) : (
-              <p className="px-3.5 py-4 text-[13px] text-muted-foreground">{empty}</p>
+              <p className="px-3.5 py-4 text-body text-muted-foreground">{empty}</p>
             )}
           </nav>
         </Panel>
@@ -79,8 +79,8 @@ export function SellSideLayout({
 export function PickACall({ children }: { children: React.ReactNode }) {
   return (
     <Panel className="flex-1 items-center justify-center p-8 text-center">
-      <p className="text-[14.5px] font-semibold">Pick a call</p>
-      <p className="mt-1 max-w-sm text-[13px] text-muted-foreground">{children}</p>
+      <p className="text-emph font-semibold">Pick a call</p>
+      <p className="mt-1 max-w-sm text-body text-muted-foreground">{children}</p>
     </Panel>
   );
 }
@@ -89,8 +89,8 @@ export function PickACall({ children }: { children: React.ReactNode }) {
 export function PickATeam() {
   return (
     <div className="shrink-0 rounded-[14px] bg-rail p-3.5 text-cream">
-      <h2 className="text-[14.5px] font-semibold">Record a call</h2>
-      <p className="mt-1.5 text-[13px] leading-snug text-rail-label">
+      <h2 className="text-emph font-semibold">Record a call</h2>
+      <p className="mt-1.5 text-body leading-snug text-rail-label">
         Showing every team’s calls. Pick a sector team with the scope switcher in the rail to record a new one.
       </p>
     </div>

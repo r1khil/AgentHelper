@@ -58,7 +58,7 @@ export function SectorBreakdownPanel({ sector, query }: { sector: BucketKey; que
     };
   }, [sector, query.period, query.from, query.to, query.team]);
 
-  if (error) return <div className="px-2 py-3 text-sm text-destructive">{error}</div>;
+  if (error) return <div className="px-2 py-3 text-body text-destructive">{error}</div>;
   if (!data) {
     return (
       <div className="grid gap-2 px-2 py-3">
@@ -69,10 +69,10 @@ export function SectorBreakdownPanel({ sector, query }: { sector: BucketKey; que
     );
   }
   const { breakdown, row, linking, lineage } = data;
-  if (!breakdown || !row) return <div className="px-2 py-3 text-sm text-muted-foreground">No days in this period for {bucketLabel(sector)}.</div>;
+  if (!breakdown || !row) return <div className="px-2 py-3 text-body text-muted-foreground">No days in this period for {bucketLabel(sector)}.</div>;
   const hasBench = breakdown.days.some((d) => d.bench);
   return (
-    <div className="grid gap-5 px-2 py-3 text-xs">
+    <div className="grid gap-5 px-2 py-3 text-body">
       {hasBench && <FormulaBlock row={row} days={breakdown.days} />}
       {hasBench && linking.K !== null && <CarinoBlock linking={linking} />}
       <DayTable days={breakdown.days} hasBench={hasBench} />
@@ -84,7 +84,7 @@ export function SectorBreakdownPanel({ sector, query }: { sector: BucketKey; que
 function Block({ title, explain, children }: { title: string; explain: string; children: React.ReactNode }) {
   return (
     <section className="grid gap-1.5">
-      <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <h4 className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">
         <Explained label={title}>{explain}</Explained>
       </h4>
       {children}
@@ -169,7 +169,7 @@ function DayTable({ days, hasBench }: { days: SectorDayBreakdown[]; hasBench: bo
   return (
     <Block title={`Per day (${days.length})`} explain={EXPLAIN.scaledEffect}>
       <div className="overflow-x-auto rounded-md border">
-        <Table className="text-[11px]">
+        <Table className="text-caption">
           <TableHeader>
             <TableRow>
               <TableHead className="w-6">
@@ -247,7 +247,7 @@ function DayRows({ d, flags, open, hasBench, cols, onToggle }: { d: SectorDayBre
       {open && (
         <TableRow className="bg-muted/20 hover:bg-muted/20">
           <TableCell colSpan={cols} className="py-1.5">
-            <table className="ml-6 text-[11px]">
+            <table className="ml-6 text-caption">
               <thead className="text-muted-foreground">
                 <tr>
                   <th scope="col" className="pr-4 text-left font-medium">Holding</th>

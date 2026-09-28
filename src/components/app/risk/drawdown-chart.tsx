@@ -8,7 +8,7 @@ export type DrawdownPoint = { date: string; fund: number; market: number };
 
 /** Underwater chart: the Fund's and the S&P 500's decline from their running peaks, in percent. */
 export function DrawdownChart({ data, fundLabel }: { data: DrawdownPoint[]; fundLabel: string }) {
-  if (data.length < 2) return <div className="text-sm text-muted-foreground">Needs at least two trading days.</div>;
+  if (data.length < 2) return <div className="text-body text-muted-foreground">Needs at least two trading days.</div>;
   const min = Math.min(...data.flatMap((d) => [d.fund, d.market]), -1);
   return (
     <div className="h-52 w-full" role="img" aria-label={`${fundLabel} and S&P 500 drawdown from peak`}>
@@ -20,7 +20,7 @@ export function DrawdownChart({ data, fundLabel }: { data: DrawdownPoint[]; fund
           <Tooltip
             formatter={(v, name) => [fmtPct(Number(v)), name === "fund" ? fundLabel : "S&P 500 (SPY)"]}
             labelFormatter={(d) => exactDate(String(d))}
-            contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+            contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: "var(--text-caption)" }}
           />
           <Area type="linear" dataKey="fund" stroke="var(--series-1)" fill="var(--series-1)" fillOpacity={0.15} strokeWidth={1.5} isAnimationActive={false} />
           <Line type="linear" dataKey="market" stroke="var(--series-neutral)" strokeDasharray="4 3" dot={false} strokeWidth={1.25} isAnimationActive={false} />

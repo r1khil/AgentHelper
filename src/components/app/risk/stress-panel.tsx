@@ -19,7 +19,7 @@ export const backtestHref = (r: StressOk) => `/backtesting?${new URLSearchParams
 
 function Head() {
   return (
-    <div role="row" className={cn(COLS, "h-8 shrink-0 text-xs text-muted-foreground")}>
+    <div role="row" className={cn(COLS, "h-8 shrink-0 text-body text-muted-foreground")}>
       <span role="columnheader">Window</span>
       <span role="columnheader">Dates</span>
       <span role="columnheader" className="text-right">Fund</span>
@@ -54,21 +54,21 @@ export function StressPanel({ results, fundLabel, className }: { results: Stress
         <Head />
         {results.map((r) =>
           r.status === "ok" ? (
-            <div key={r.key} role="row" className={cn(COLS, "min-h-11 border-t border-row text-[13.5px]")}>
+            <div key={r.key} role="row" className={cn(COLS, "min-h-11 border-t border-row text-body")}>
               <span role="rowheader" className="truncate font-medium">
                 <a href={`#${stressAnchor(r.key)}`} className="hover:underline" title={`${r.note} Open the day-by-day path and each holding's contribution.`}>
                   {r.label}
                 </a>
               </span>
-              <span role="cell" className="truncate font-mono text-[11.5px] text-muted-foreground">{stressDates(r.start, r.end)}</span>
-              <span role="cell" className={cn("text-right font-mono text-[12.5px]", tone(r.fund))} title={fundLabel}>{rpct(r.fund)}</span>
-              <span role="cell" className="text-right font-mono text-[12.5px] text-muted-foreground">{rpct(r.market)}</span>
-              <span role="cell" className={cn("text-right font-mono text-[12.5px] font-semibold", tone(r.fund - r.market))}>{rbp(r.fund - r.market)}</span>
+              <span role="cell" className="truncate font-mono text-caption text-muted-foreground">{stressDates(r.start, r.end)}</span>
+              <span role="cell" className={cn("text-right font-mono text-body", tone(r.fund))} title={fundLabel}>{rpct(r.fund)}</span>
+              <span role="cell" className="text-right font-mono text-body text-muted-foreground">{rpct(r.market)}</span>
+              <span role="cell" className={cn("text-right font-mono text-body font-semibold", tone(r.fund - r.market))}>{rbp(r.fund - r.market)}</span>
             </div>
           ) : (
-            <div key={r.key} role="row" className={cn(COLS, "min-h-11 border-t border-row text-[13.5px]")}>
+            <div key={r.key} role="row" className={cn(COLS, "min-h-11 border-t border-row text-body")}>
               <span role="rowheader" className="truncate font-medium">{r.label}</span>
-              <span role="cell" aria-colspan={4} className="col-span-4 truncate text-xs text-muted-foreground" title={r.reason}>{stressDates(r.from, r.to)} · {r.reason}</span>
+              <span role="cell" aria-colspan={4} className="col-span-4 truncate text-caption text-muted-foreground" title={r.reason}>{stressDates(r.from, r.to)} · {r.reason}</span>
             </div>
           ),
         )}
@@ -93,10 +93,10 @@ export function StressPanelFallback({ className }: { className?: string }) {
       <div role="table" aria-label="Stress tests">
         <Head />
         {STRESS_WINDOWS.map((w) => (
-          <div key={w.key} role="row" className={cn(COLS, "min-h-11 border-t border-row text-[13.5px]")}>
+          <div key={w.key} role="row" className={cn(COLS, "min-h-11 border-t border-row text-body")}>
             <span role="rowheader" className="truncate font-medium">{w.label}</span>
-            <span role="cell" className="truncate font-mono text-[11.5px] text-muted-foreground">{stressDates(w.from, w.to)}</span>
-            <span role="cell" aria-colspan={3} className="col-span-3 text-right text-xs text-muted-foreground">loading…</span>
+            <span role="cell" className="truncate font-mono text-caption text-muted-foreground">{stressDates(w.from, w.to)}</span>
+            <span role="cell" aria-colspan={3} className="col-span-3 text-right text-body text-muted-foreground">loading…</span>
           </div>
         ))}
       </div>

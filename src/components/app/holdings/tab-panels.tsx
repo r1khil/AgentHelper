@@ -10,11 +10,11 @@ import { RowLink } from "@/components/app/row-link";
 const ROW = "flex items-center gap-3 border-b border-row px-4 last:border-b-0";
 
 function Tag({ children, hot }: { children: React.ReactNode; hot?: boolean }) {
-  return <span className={cn("grid h-5 min-w-[50px] shrink-0 place-items-center rounded-full px-1.5 font-mono text-[10.5px] font-medium", hot ? "bg-hoot text-hoot-foreground" : "bg-muted text-ink-2")}>{children}</span>;
+  return <span className={cn("grid h-5 min-w-[50px] shrink-0 place-items-center rounded-full px-1.5 font-mono text-caption font-medium", hot ? "bg-hoot text-hoot-foreground" : "bg-muted text-ink-2")}>{children}</span>;
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="px-4 py-6 text-sm text-muted-foreground">{children}</p>;
+  return <p className="px-4 py-6 text-body text-muted-foreground">{children}</p>;
 }
 
 // ── Research ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -43,13 +43,13 @@ export function ResearchTab({ ticker, chats, boardHref }: { ticker: string; chat
             <li key={c.id} className="border-b border-row last:border-b-0">
               <RowLink href={c.href} className="flex h-[52px] items-center gap-3 px-4 transition-colors hover:bg-band">
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{c.title}</span>
-                  <span className="block truncate text-xs text-muted-foreground">
+                  <span className="block truncate text-body font-medium">{c.title}</span>
+                  <span className="block truncate text-caption text-muted-foreground">
                     {c.author ?? "Someone"} · {c.questions} question{c.questions === 1 ? "" : "s"}
                   </span>
                 </span>
                 {c.running && <Pill tone="hoot">Answering…</Pill>}
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">{relativeTime(c.updatedAt)}</span>
+                <span className="shrink-0 font-mono text-body text-muted-foreground">{relativeTime(c.updatedAt)}</span>
               </RowLink>
             </li>
           ))}
@@ -111,10 +111,10 @@ export function DocumentsTab({
                 <li key={d.id} className="border-b border-row px-4 py-2.5 last:border-b-0">
                   <div className="flex items-center gap-3">
                     <Pill className="w-36 justify-center">{d.label}</Pill>
-                    <a href={d.href} target="_blank" rel="noreferrer" title={d.path} className="min-w-0 flex-1 truncate text-sm hover:underline">
+                    <a href={d.href} target="_blank" rel="noreferrer" title={d.path} className="min-w-0 flex-1 truncate text-body hover:underline">
                       {d.name}
                     </a>
-                    <span className="shrink-0 font-mono text-xs text-muted-foreground">{d.modified ? relativeTime(d.modified) : ""}</span>
+                    <span className="shrink-0 font-mono text-body text-muted-foreground">{d.modified ? relativeTime(d.modified) : ""}</span>
                   </div>
                   {d.summary && <div className="pl-[156px]">{d.summary}</div>}
                 </li>
@@ -142,9 +142,9 @@ export function DocumentsTab({
                 <li key={m.id} className="border-b border-row last:border-b-0">
                   <RowLink href={m.href} className="flex h-11 items-center gap-3 px-4 transition-colors hover:bg-band">
                     <Tag>v{m.version}</Tag>
-                    <span className="min-w-0 flex-1 truncate text-sm">{m.fileName}</span>
+                    <span className="min-w-0 flex-1 truncate text-body">{m.fileName}</span>
                     {m.pending > 0 && <Pill>{m.pending} to review</Pill>}
-                    <span className="shrink-0 text-xs text-muted-foreground">
+                    <span className="shrink-0 text-body text-muted-foreground">
                       {m.uploader ? `${m.uploader} · ` : ""}
                       <span className="font-mono">{fmtDate(m.createdAt)}</span>
                     </span>
@@ -166,10 +166,10 @@ export function DocumentsTab({
               {indexed.map((f) => (
                 <li key={f.id} className={cn(ROW, "h-11")}>
                   <Tag hot={f.isNew}>{f.form}</Tag>
-                  <a href={f.url ?? "#"} target="_blank" rel="noreferrer" title={f.note ?? undefined} className="min-w-0 flex-1 truncate text-[13.5px] hover:underline">
+                  <a href={f.url ?? "#"} target="_blank" rel="noreferrer" title={f.note ?? undefined} className="min-w-0 flex-1 truncate text-body hover:underline">
                     {f.title}
                   </a>
-                  <span className="shrink-0 font-mono text-xs text-muted-foreground">{f.date ? fmtDate(f.date) : ""}</span>
+                  <span className="shrink-0 font-mono text-body text-muted-foreground">{f.date ? fmtDate(f.date) : ""}</span>
                 </li>
               ))}
             </ul>
@@ -185,10 +185,10 @@ export function DocumentsTab({
               {edgar.map((f) => (
                 <li key={f.key} className={cn(ROW, "h-11")}>
                   <Tag>{f.form}</Tag>
-                  <a href={f.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-[13.5px] hover:underline">
+                  <a href={f.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-body hover:underline">
                     {f.title}
                   </a>
-                  <span className="shrink-0 font-mono text-xs text-muted-foreground">{fmtDate(f.filedAt)}</span>
+                  <span className="shrink-0 font-mono text-body text-muted-foreground">{fmtDate(f.filedAt)}</span>
                 </li>
               ))}
             </ul>
@@ -203,10 +203,10 @@ export function DocumentsTab({
             <ul className="min-h-0 flex-1">
               {news.map((n) => (
                 <li key={n.id} className="border-b border-row px-4 py-2.5 last:border-b-0">
-                  <a href={n.url} target="_blank" rel="noreferrer" className="text-[13.5px] leading-snug hover:underline">
+                  <a href={n.url} target="_blank" rel="noreferrer" className="text-body leading-snug hover:underline">
                     {n.headline}
                   </a>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-body text-muted-foreground">
                     {n.source} · {relativeTime(n.publishedAt)}
                   </div>
                 </li>
@@ -252,7 +252,7 @@ export function EarningsTab({ rows, calendarHref }: { rows: EarningsRow[]; calen
         <Empty>No reports on file yet. The morning sweep adds the next report date once a provider has it.</Empty>
       ) : (
         <div role="table" aria-label="Earnings" className="min-h-0 flex-1">
-          <div role="row" className="grid h-9 grid-cols-[120px_minmax(0,1fr)_110px_120px_150px_90px] items-center gap-3 border-b px-4 text-xs text-muted-foreground">
+          <div role="row" className="grid h-9 grid-cols-[120px_minmax(0,1fr)_110px_120px_150px_90px] items-center gap-3 border-b px-4 text-body text-muted-foreground">
             <span role="columnheader">Report</span>
             <span role="columnheader">When</span>
             <span role="columnheader">Period</span>
@@ -267,16 +267,16 @@ export function EarningsTab({ rows, calendarHref }: { rows: EarningsRow[]; calen
             <div
               key={r.id}
               role="row"
-              className="relative grid h-10 grid-cols-[120px_minmax(0,1fr)_110px_120px_150px_90px] items-center gap-3 border-b border-row px-4 text-sm transition-colors last:border-b-0 hover:bg-band"
+              className="relative grid h-10 grid-cols-[120px_minmax(0,1fr)_110px_120px_150px_90px] items-center gap-3 border-b border-row px-4 text-body transition-colors last:border-b-0 hover:bg-band"
             >
-              <span role="rowheader" className="font-mono text-[13px]">
+              <span role="rowheader" className="font-mono text-body">
                 <RowLink cover="stretch" href={r.href}>
                   {fmtDate(r.date)}
                 </RowLink>
               </span>
               <span role="cell" className="truncate text-ink-2">{r.when || "—"}</span>
-              <span role="cell" className="truncate font-mono text-[13px] text-ink-2">{r.period ?? "—"}</span>
-              <span role="cell" className="text-right font-mono text-[13px]">{r.eps ?? "—"}</span>
+              <span role="cell" className="truncate font-mono text-body text-ink-2">{r.period ?? "—"}</span>
+              <span role="cell" className="text-right font-mono text-body">{r.eps ?? "—"}</span>
               <span role="cell">
                 {r.expectations === "locked" ? (
                   <Pill tone="good">Locked in</Pill>
@@ -288,7 +288,7 @@ export function EarningsTab({ rows, calendarHref }: { rows: EarningsRow[]; calen
                   <span className="text-muted-foreground">—</span>
                 )}
               </span>
-              <span role="cell" className="text-[13px] text-muted-foreground">{STATUS[r.status]}</span>
+              <span role="cell" className="text-body text-muted-foreground">{STATUS[r.status]}</span>
             </div>
           ))}
         </div>

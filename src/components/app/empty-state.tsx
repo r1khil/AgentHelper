@@ -22,8 +22,8 @@ export function EmptyState({
       {/* The one Hoot on the page: the corner companion steps aside while this shows. */}
       {hoot && <HootOnPage />}
       {hoot && <HootSprite mood={hoot} size={88} track bob className="mx-auto mb-3" />}
-      <div className="text-sm font-medium">{title}</div>
-      {children && <div className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{children}</div>}
+      <div className="text-body font-medium">{title}</div>
+      {children && <div className="mx-auto mt-1 max-w-md text-body text-muted-foreground">{children}</div>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

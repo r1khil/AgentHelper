@@ -171,18 +171,18 @@ export function CommandMenu({
                 value={query}
                 onValueChange={setQuery}
                 placeholder="Ask Hoot, or jump to a holding or page"
-                className="h-full min-w-0 flex-1 bg-transparent text-[17px] outline-none placeholder:text-muted-foreground"
+                className="h-full min-w-0 flex-1 bg-transparent text-title outline-none placeholder:text-muted-foreground"
               />
-              <kbd className="rounded-full bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground">esc</kbd>
+              <kbd className="rounded-full bg-muted px-2 py-0.5 font-mono text-caption text-muted-foreground">esc</kbd>
             </div>
             <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_300px]">
               <Command.List className="max-h-[440px] min-h-0 overflow-y-auto p-2 [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-1.5">
-                <Command.Empty className="px-3 py-8 text-center text-sm text-muted-foreground">Nothing matches. Press {mod}↵ to ask Hoot instead.</Command.Empty>
+                <Command.Empty className="px-3 py-8 text-center text-body text-muted-foreground">Nothing matches. Press {mod}↵ to ask Hoot instead.</Command.Empty>
                 {groups.map((g) => (
                   <Command.Group
                     key={g.label}
                     heading={
-                      <span className="label-mono flex items-center gap-1.5 text-[10.5px] text-muted-foreground">
+                      <span className="label-mono flex items-center gap-1.5 text-caption text-muted-foreground">
                         {g.label === "Ask Hoot" && <OwlMark className="size-3.5" />}
                         {g.label}
                       </span>
@@ -193,7 +193,7 @@ export function CommandMenu({
                         key={item.id}
                         value={item.id}
                         onSelect={() => run(item)}
-                        className="flex h-[38px] cursor-pointer items-center gap-3 rounded-[10px] px-3 text-[14.5px] data-[selected=true]:bg-band"
+                        className="flex h-[38px] cursor-pointer items-center gap-3 rounded-[10px] px-3 text-emph data-[selected=true]:bg-band"
                       >
                         <ItemRow item={item} />
                       </Command.Item>
@@ -205,7 +205,7 @@ export function CommandMenu({
                 {current && <Preview item={current} seeing={seeing} />}
               </aside>
             </div>
-            <div className="flex h-9 shrink-0 items-center gap-5 border-t px-5 text-xs text-muted-foreground">
+            <div className="flex h-9 shrink-0 items-center gap-5 border-t px-5 text-body text-muted-foreground">
               <span>↑↓ move</span>
               <span>↵ open</span>
               <span>{mod}↵ ask Hoot</span>
@@ -226,11 +226,11 @@ function ItemRow({ item }: { item: Item }) {
       return (
         <>
           <Briefcase className={icon} />
-          <span className="font-mono text-[14px] font-semibold">{item.holding.ticker}</span>
-          <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
+          <span className="font-mono text-body font-semibold">{item.holding.ticker}</span>
+          <span className="min-w-0 flex-1 truncate text-body text-muted-foreground">
             {item.holding.company} · {item.holding.team}
           </span>
-          <span className="text-xs text-muted-foreground opacity-0 [[data-selected=true]_&]:opacity-100">↵</span>
+          <span className="text-body text-muted-foreground opacity-0 [[data-selected=true]_&]:opacity-100">↵</span>
         </>
       );
     case "ask":
@@ -252,7 +252,7 @@ function ItemRow({ item }: { item: Item }) {
         <>
           <PageIcon label={item.page.label} />
           <span className="shrink-0">{item.page.label}</span>
-          {item.page.hint && <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">{item.page.hint}</span>}
+          {item.page.hint && <span className="min-w-0 flex-1 truncate text-body text-muted-foreground">{item.page.hint}</span>}
         </>
       );
     case "scope":
@@ -295,10 +295,10 @@ function Preview({ item, seeing }: { item: Item; seeing: string | null }) {
             : [`${item.theme === "dark" ? "Dark" : "Light"} mode`, "Remembered in this browser."];
   return (
     <div>
-      <div className="text-[15px] font-semibold">{title}</div>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{body}</p>
+      <div className="text-emph font-semibold">{title}</div>
+      <p className="mt-1.5 text-body leading-relaxed text-muted-foreground">{body}</p>
       {seeing && !command && (item.kind === "ask" || item.kind === "suggest") && (
-        <p className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">
+        <p className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full border bg-muted/50 px-2 py-0.5 text-caption text-muted-foreground">
           <Eye className="size-3 shrink-0" aria-hidden />
           <span className="truncate">Hoot can see: {seeing}</span>
         </p>
@@ -342,17 +342,17 @@ function HoldingPreview({ holding: h }: { holding: CommandHolding }) {
   ];
   return (
     <div>
-      <div className="font-mono text-[17px] font-semibold">{h.ticker}</div>
-      <div className="text-[13px] text-muted-foreground">
+      <div className="font-mono text-title font-semibold">{h.ticker}</div>
+      <div className="text-body text-muted-foreground">
         {h.company} · {h.team}
       </div>
       <div className="mt-3 flex items-baseline gap-2">
-        <span className="figure text-2xl">{fmtCurrency(q?.price, q?.currency)}</span>
-        {q?.changePct != null && <span className={cn("font-mono text-xs", q.changePct >= 0 ? "text-up" : "text-down")}>{fmtPct(q.changePct)}</span>}
+        <span className="figure text-display">{fmtCurrency(q?.price, q?.currency)}</span>
+        {q?.changePct != null && <span className={cn("font-mono text-body", q.changePct >= 0 ? "text-up" : "text-down")}>{fmtPct(q.changePct)}</span>}
       </div>
       <dl className="mt-4 border-t">
         {rows.map(([k, v, cls]) => (
-          <div key={k} className="flex items-center justify-between gap-3 border-b border-row py-2 text-[13px]">
+          <div key={k} className="flex items-center justify-between gap-3 border-b border-row py-2 text-body">
             <dt className="text-muted-foreground">{k}</dt>
             <dd className={cn("text-right", cls)}>{v}</dd>
           </div>

@@ -59,7 +59,7 @@ export function AttributionToolbar({
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-x-2.5 gap-y-2">
       <PeriodSelector basePath={basePath} active={period.key} from={from} to={to} inception={inception} latest={latest} />
-      <span className="text-[13px] whitespace-nowrap text-muted-foreground">{rangeText(period.start, period.end, days)}</span>
+      <span className="text-body whitespace-nowrap text-muted-foreground">{rangeText(period.start, period.end, days)}</span>
       <span className="flex-1" />
       <DataNoticesButton notices={notices} />
       {ledger && <LedgerButton />}
@@ -73,14 +73,14 @@ function PanelTitle({ children, aside }: { children: React.ReactNode; aside?: Re
     <div className="flex min-h-7 shrink-0 items-center gap-3.5">
       {children}
       <span className="flex-1" />
-      {aside && <div className="flex items-center gap-2.5 text-xs whitespace-nowrap text-muted-foreground">{aside}</div>}
+      {aside && <div className="flex items-center gap-2.5 text-body whitespace-nowrap text-muted-foreground">{aside}</div>}
     </div>
   );
 }
 
 function LegendDot({ color, children }: { color: string; children: React.ReactNode }) {
   return (
-    <span className="flex items-center gap-[5px] text-xs text-ink-2">
+    <span className="flex items-center gap-[5px] text-body text-ink-2">
       <span className="size-2 rounded-full" style={{ background: color }} aria-hidden />
       {children}
     </span>
@@ -93,12 +93,12 @@ export function CumulativePanel({ data, portfolioLabel, benchmarkLabel, asOf, cl
       <PanelTitle
         aside={
           <>
-            <span className="font-mono text-[11px] uppercase">Prices as of <span className="normal-case">{fmtDay(asOf)}</span> close</span>
+            <span className="font-mono text-caption uppercase">Prices as of <span className="normal-case">{fmtDay(asOf)}</span> close</span>
             {data.length >= 2 && <CumulativeDetails data={data} portfolioLabel={portfolioLabel} benchmarkLabel={benchmarkLabel} explain={EXPLAIN.cumulativeChart} />}
           </>
         }
       >
-        <h2 className="text-[14.5px] font-semibold whitespace-nowrap"><Tip label="Cumulative return">{EXPLAIN.cumulativeChart}</Tip></h2>
+        <h2 className="text-emph font-semibold whitespace-nowrap"><Tip label="Cumulative return">{EXPLAIN.cumulativeChart}</Tip></h2>
         <LegendDot color="var(--series-1)">{portfolioLabel}</LegendDot>
         <LegendDot color="var(--series-neutral)">{benchmarkLabel}</LegendDot>
       </PanelTitle>
@@ -127,10 +127,10 @@ export function EffectsPanel({ items, total, aside, note, empty, className }: { 
   return (
     <section className={cn("panel-plain flex min-w-0 flex-col px-4 pt-2 pb-3.5", className)} aria-label="Where it came from">
       <PanelTitle aside={aside}>
-        <h2 className="text-[14.5px] font-semibold whitespace-nowrap">Where it came from</h2>
+        <h2 className="text-emph font-semibold whitespace-nowrap">Where it came from</h2>
       </PanelTitle>
       {total === null ? (
-        <div className="flex flex-1 items-center text-sm text-muted-foreground">{empty}</div>
+        <div className="flex flex-1 items-center text-body text-muted-foreground">{empty}</div>
       ) : (
         <>
           <div className="mt-3.5 mb-3 flex flex-1 flex-col gap-3.5">
@@ -140,7 +140,7 @@ export function EffectsPanel({ items, total, aside, note, empty, className }: { 
               const shown = Math.round(v);
               const width = Math.max(Math.abs(v) * scale, shown === 0 ? 0 : 0.8);
               return (
-                <div key={e.label} className={cn("grid grid-cols-[92px_minmax(0,1fr)_48px] items-center gap-2.5 text-[13.5px]", e.interaction && INTERACTION_CLASS)}>
+                <div key={e.label} className={cn("grid grid-cols-[92px_minmax(0,1fr)_48px] items-center gap-2.5 text-body", e.interaction && INTERACTION_CLASS)}>
                   <span className={cn("truncate", isTotal && "font-semibold")}><Tip label={e.label}>{e.explain}</Tip></span>
                   <div className="relative h-[18px] rounded-[6px] bg-muted" aria-hidden>
                     <span className="absolute -top-[3px] -bottom-[3px] left-[30%] w-px bg-muted-foreground/45" />
@@ -149,14 +149,14 @@ export function EffectsPanel({ items, total, aside, note, empty, className }: { 
                       style={{ left: v < 0 ? `${30 - width}%` : "30%", width: `${width}%` }}
                     />
                   </div>
-                  <span className={cn("text-right font-mono text-[13px]", isTotal ? "font-semibold text-foreground" : shown > 0 ? "text-up" : shown < 0 ? "text-down" : "text-muted-foreground")}>
+                  <span className={cn("text-right font-mono text-body", isTotal ? "font-semibold text-foreground" : shown > 0 ? "text-up" : shown < 0 ? "text-down" : "text-muted-foreground")}>
                     {fmtAccounting(v, 0)}
                   </span>
                 </div>
               );
             })}
           </div>
-          {note && <p className="text-[12.5px] leading-normal text-ink-2">{note}</p>}
+          {note && <p className="text-body leading-normal text-ink-2">{note}</p>}
         </>
       )}
     </section>
@@ -170,13 +170,13 @@ const TEAM_COLS = "grid-cols-[minmax(0,1fr)_56px_70px_88px]";
  * screen readers: the team name is the row header and its link stretches over the row.
  */
 export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, className }: { rows: TeamRow[]; teams: TeamLookup; cashContribution: number; cashWeight?: number; query: string; className?: string }) {
-  const num = "text-right font-mono text-[12.5px]";
+  const num = "text-right font-mono text-body";
   const tone = (v: number, scale: number) => (Math.round(v * scale) > 0 ? "text-up" : Math.round(v * scale) < 0 ? "text-down" : "text-muted-foreground");
   const showCash = Math.abs(cashContribution) > 1e-9 || cashWeight !== undefined;
   return (
     <section className={cn("panel flex min-w-0 flex-col overflow-hidden", className)} aria-label="Teams">
       <div role="table" aria-label="Teams" className="flex flex-col">
-        <div role="row" className={cn("grid h-9 shrink-0 items-center gap-2.5 border-b px-4 text-xs text-muted-foreground", TEAM_COLS)}>
+        <div role="row" className={cn("grid h-9 shrink-0 items-center gap-2.5 border-b px-4 text-body text-muted-foreground", TEAM_COLS)}>
           <span role="columnheader"><Tip label="Team" side="bottom">{EXPLAIN.teams}</Tip></span>
           <span role="columnheader" className="text-right"><Tip label={<ReadAs text="Average weight">Avg wt</ReadAs>} side="bottom">{EXPLAIN.teamWeight}</Tip></span>
           <span role="columnheader" className="text-right"><Tip label="Return" side="bottom">{EXPLAIN.teamReturn}</Tip></span>
@@ -184,7 +184,7 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
         </div>
         {rows.length === 0 && (
           <div role="row">
-            <div role="cell" aria-colspan={4} className="px-4 py-3 text-sm text-muted-foreground">No team holdings in this period.</div>
+            <div role="cell" aria-colspan={4} className="px-4 py-3 text-body text-muted-foreground">No team holdings in this period.</div>
           </div>
         )}
         {rows.map((t) => {
@@ -193,7 +193,7 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
             <div
               key={t.teamId ?? "none"}
               role="row"
-              className={cn("relative grid h-10 items-center gap-2.5 border-b border-row px-4 text-[13.5px]", TEAM_COLS, team && "transition-colors hover:bg-band has-[a:focus-visible]:bg-band")}
+              className={cn("relative grid h-10 items-center gap-2.5 border-b border-row px-4 text-body", TEAM_COLS, team && "transition-colors hover:bg-band has-[a:focus-visible]:bg-band")}
             >
               <span role="rowheader" className="truncate">
                 {team ? (
@@ -212,7 +212,7 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
         })}
       </div>
       {showCash && (
-        <div className="mt-auto flex min-h-10 shrink-0 items-center bg-band-2 px-4 text-[12.5px] text-muted-foreground">
+        <div className="mt-auto flex min-h-10 shrink-0 items-center bg-band-2 px-4 text-body text-muted-foreground">
           <span className="truncate">
             Cash, fees and interest{cashWeight !== undefined && ` · ${fmtPct(pct(cashWeight), 1)} average weight`} ·{" "}
             <span className={cn("font-mono", tone(cashContribution, 10_000))}>{fmtBp(bps(cashContribution))}</span>
@@ -264,7 +264,7 @@ export function HoldingsPanel({
         }
       />
       {holdings.length === 0 ? (
-        <div className="p-6 text-center text-sm text-muted-foreground">No holdings in this period.</div>
+        <div className="p-6 text-center text-body text-muted-foreground">No holdings in this period.</div>
       ) : showAll ? (
         <ContributorsTable rows={holdings} teams={teams} showTeam={showTeam} />
       ) : (
@@ -281,7 +281,7 @@ export function SectorEffectsPanel({ data, empty, className }: { data: SectorEff
   return (
     <Panel variant="plain" className={className} aria-label="Total effect by sector">
       <PanelHeader title={<Tip label="Total effect by sector">{EXPLAIN.effectsChart}</Tip>} aside="bp, most helpful first" />
-      <div className="px-4 py-3">{data ? <SectorEffectsList data={data} /> : <div className="text-sm text-muted-foreground">{empty}</div>}</div>
+      <div className="px-4 py-3">{data ? <SectorEffectsList data={data} /> : <div className="text-body text-muted-foreground">{empty}</div>}</div>
     </Panel>
   );
 }
@@ -290,7 +290,7 @@ export function MethodPanel({ children, className }: { children: React.ReactNode
   return (
     <Panel variant="plain" className={className} aria-label="How this is calculated">
       <PanelHeader title="How this is calculated" />
-      <div className="px-4 py-3 text-[13px] leading-relaxed text-ink-2">{children}</div>
+      <div className="px-4 py-3 text-body leading-relaxed text-ink-2">{children}</div>
     </Panel>
   );
 }

@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const field =
-  "h-[34px] w-full min-w-0 rounded-[10px] bg-rail-2 px-3 text-[13.5px] text-cream outline-none placeholder:text-rail-foreground focus-visible:ring-2 focus-visible:ring-cream/40 disabled:opacity-60";
+  "h-[34px] w-full min-w-0 rounded-[10px] bg-rail-2 px-3 text-body text-cream outline-none placeholder:text-rail-foreground focus-visible:ring-2 focus-visible:ring-cream/40 disabled:opacity-60";
 
 /** The dark "Record a call" card: pick the company, name the call, then record it on the call's own page. */
 export function NewCall({ team, teamId, holdings }: { team: string; teamId: string; holdings: { id: string; ticker: string; companyName: string }[] }) {
@@ -42,7 +42,7 @@ export function NewCall({ team, teamId, holdings }: { team: string; teamId: stri
         }
       }}
     >
-      <h2 className="text-[14.5px] font-semibold">Record a call</h2>
+      <h2 className="text-emph font-semibold">Record a call</h2>
       <div className="mt-2.5 flex flex-col gap-2">
         {/* The native select sits invisibly over a styled face, so the picker keeps native keyboard and screen-reader behavior. */}
         <div className={cn(field, "relative flex items-center gap-2 focus-within:ring-2 focus-within:ring-cream/40", busy && "opacity-60")}>
@@ -86,20 +86,20 @@ export function NewCall({ team, teamId, holdings }: { team: string; teamId: stri
                 className={cn(field, "font-mono uppercase placeholder:normal-case")}
               />
             </div>
-            <p className="text-xs leading-snug text-rail-foreground">No portfolio holding required. We’ll check any internal files available for this ticker.</p>
+            <p className="text-body leading-snug text-rail-foreground">No portfolio holding required. We’ll check any internal files available for this ticker.</p>
           </>
         )}
         <input aria-label="Call title" name="title" required maxLength={160} placeholder="Title, e.g. “MS semis desk”" disabled={busy} className={field} />
         <button
           type="submit"
           disabled={busy}
-          className="flex h-[34px] w-full items-center justify-center gap-2 rounded-full bg-cream text-[13px] font-semibold text-cream-foreground transition-opacity outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-cream/60 focus-visible:ring-offset-2 focus-visible:ring-offset-rail disabled:opacity-60"
+          className="flex h-[34px] w-full items-center justify-center gap-2 rounded-full bg-cream text-body font-semibold text-cream-foreground transition-opacity outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-cream/60 focus-visible:ring-offset-2 focus-visible:ring-offset-rail disabled:opacity-60"
         >
           <span aria-hidden className="size-[9px] rounded-full bg-down" />
           {busy ? "Creating…" : "Start recording"}
         </button>
         {error && (
-          <p role="alert" className="text-[13px] text-down-on-rail">
+          <p role="alert" className="text-body text-down-on-rail">
             {error}
           </p>
         )}

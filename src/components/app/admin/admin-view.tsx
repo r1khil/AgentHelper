@@ -163,8 +163,8 @@ export function AdminView(p: AdminViewProps) {
               <div key={c.name} className="flex h-[52px] items-center gap-3 px-4">
                 <span className={cn("size-2 shrink-0 rounded-full", DOT[c.dot])} aria-label={c.dot === "good" ? "Healthy" : c.dot === "caution" ? "Needs attention" : "Down"} />
                 <div className="min-w-0 flex-1" title={c.title}>
-                  <div className="text-[13.5px] font-semibold">{c.name}</div>
-                  <div className="truncate text-xs text-muted-foreground" title={c.line}>
+                  <div className="text-body font-semibold">{c.name}</div>
+                  <div className="truncate text-caption text-muted-foreground" title={c.line}>
                     {c.line}
                   </div>
                 </div>
@@ -183,7 +183,7 @@ export function AdminView(p: AdminViewProps) {
         <PanelHeader title="Google Drive" aside={drive.connected ? `connected as ${drive.accountEmail}` : drive.configured ? "not connected" : "set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, DRIVE_TOKEN_KEY"} />
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
           <div className="grid content-start gap-3 p-4">
-            <p className="text-[13.5px] text-ink-2">
+            <p className="text-body text-ink-2">
               Hoot reads the Fund&rsquo;s document folder (initiating reports, earnings updates, models) and files analyst uploads into it. Permissions are read everything plus add new files only: the app never edits or deletes what you put there.
             </p>
             {canMutate && (
@@ -209,13 +209,13 @@ export function AdminView(p: AdminViewProps) {
                     Save
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Layout expected inside it: one folder per sector team, then one folder per company named like &ldquo;American Express (AXP)&rdquo;.</p>
+                <p className="text-body text-muted-foreground">Layout expected inside it: one folder per sector team, then one folder per company named like &ldquo;American Express (AXP)&rdquo;.</p>
               </form>
             )}
           </div>
           <div className="grid content-start gap-3 p-4">
             {!drive.connected ? (
-              <p className="text-[13.5px] text-muted-foreground">{drive.configured ? "Connect the Fund's Google account to start." : "Add the three Drive variables to the environment, redeploy, then connect."}</p>
+              <p className="text-body text-muted-foreground">{drive.configured ? "Connect the Fund's Google account to start." : "Add the three Drive variables to the environment, redeploy, then connect."}</p>
             ) : (
               <KV
                 rows={[
@@ -269,7 +269,7 @@ export function AdminView(p: AdminViewProps) {
         </div>
         {canMutate && drive.connected && drive.rootFolderId && (
           <div className="flex items-center justify-between gap-3 border-t border-row px-4 py-2.5">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-body text-muted-foreground">
               With live updates on, Drive tells the app about changes as they happen; the morning sweep still does a full crawl and renews the channel. Reading files (summaries, search index) continues in the background a few at a time.
             </span>
             <div className="flex shrink-0 gap-2">
@@ -321,10 +321,10 @@ export function AdminView(p: AdminViewProps) {
                   </Button>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-body text-muted-foreground">
                 Applies to the next chat turn, draft feedback, earnings extraction, research-log distillation, and earnings prep packs. All three are free OpenRouter models; a rate-limited model hands the request to the next one on the list.
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-body text-muted-foreground">
                 Changelog summaries are written by <span className="font-mono">{p.changelogModel}</span> (set with CHANGELOG_MODEL).
               </p>
             </form>
@@ -385,7 +385,7 @@ export function AdminView(p: AdminViewProps) {
             </div>
             {canMutate && (
               <form action={reembedNow} className="flex items-center justify-between gap-3 border-t border-row px-4 py-2.5">
-                <span className="text-xs text-muted-foreground">
+                <span className="text-body text-muted-foreground">
                   Search fuses vector and full-text hits, then reranks. Free OpenRouter models share one budget (20 requests/min, 50 or 1,000/day) with the chat model: a switch re-embeds a few documents per run and stops on a 429 until the next run.
                 </span>
                 <Button type="submit" variant="outline" className="shrink-0">
@@ -402,7 +402,7 @@ export function AdminView(p: AdminViewProps) {
           <Panel variant="plain">
             <PanelHeader title="PT sheet read" />
             <div className="flex items-center justify-between gap-3 px-4 py-3">
-              <span className="text-[13px] text-ink-2">The price target sheet is read separately from the Drive folder: allowed tabs only, never edited. See each tab exactly as Hoot reads it.</span>
+              <span className="text-body text-ink-2">The price target sheet is read separately from the Drive folder: allowed tabs only, never edited. See each tab exactly as Hoot reads it.</span>
               <Button nativeButton={false} render={<Link href="/admin/pt-sheet" prefetch={false} />} variant="outline" className="shrink-0">
                 Test PT sheet read
               </Button>
@@ -414,7 +414,7 @@ export function AdminView(p: AdminViewProps) {
   );
 }
 
-const LINK = "rounded-full text-[12.5px] font-semibold whitespace-nowrap text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
+const LINK = "rounded-full text-body font-semibold whitespace-nowrap text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
 
 /** A one-button form styled as the Connections panel's action link. */
 function ActionForm({ action, tone, children }: { action: () => Promise<void>; tone?: "caution"; children: React.ReactNode }) {
@@ -429,7 +429,7 @@ function ActionForm({ action, tone, children }: { action: () => Promise<void>; t
 
 function Banner({ tone, children }: { tone?: "good" | "caution"; children: React.ReactNode }) {
   return (
-    <div role="status" className={cn("rounded-[10px] px-3.5 py-2 text-[13px]", tone === "good" ? "bg-good text-good-foreground" : tone === "caution" ? "bg-caution text-caution-foreground" : "bg-band text-ink-2")}>
+    <div role="status" className={cn("rounded-[10px] px-3.5 py-2 text-body", tone === "good" ? "bg-good text-good-foreground" : tone === "caution" ? "bg-caution text-caution-foreground" : "bg-band text-ink-2")}>
       {children}
     </div>
   );
@@ -437,7 +437,7 @@ function Banner({ tone, children }: { tone?: "good" | "caution"; children: React
 
 function KV({ rows }: { rows: [string, React.ReactNode][] }) {
   return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-4 border-t border-row text-[13px]">
+    <dl className="grid grid-cols-[auto_1fr] gap-x-4 border-t border-row text-body">
       {rows.map(([k, v]) => (
         <div key={k} className="col-span-2 grid grid-cols-subgrid border-b border-row py-2 last:border-b-0">
           <dt className="text-muted-foreground">{k}</dt>
@@ -456,7 +456,7 @@ function McpPanel({ mcp, canMutate }: { mcp: AdminViewProps["mcp"]; canMutate: b
       <div className={cn("grid", canMutate && "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]")}>
         <div className="min-w-0 overflow-x-auto">
           {servers.length === 0 ? (
-            <p className="p-4 text-[13px] text-muted-foreground">
+            <p className="p-4 text-body text-muted-foreground">
               No MCP servers yet. Register a remote server (Streamable HTTP) and its tools join the research agent under the prefix you choose. Auth tokens stay in environment variables; only the variable name is stored here.
             </p>
           ) : (
@@ -475,13 +475,13 @@ function McpPanel({ mcp, canMutate }: { mcp: AdminViewProps["mcp"]; canMutate: b
                   <TableRow key={m.id}>
                     <TableCell className="pl-4 align-top">
                       <div className="font-medium">{m.name}</div>
-                      <div className="max-w-[280px] truncate text-xs text-muted-foreground" title={m.url}>
+                      <div className="max-w-[280px] truncate text-caption text-muted-foreground" title={m.url}>
                         {m.url}
                       </div>
-                      {m.authEnv && <div className="text-xs text-muted-foreground">auth from {m.authEnv}</div>}
+                      {m.authEnv && <div className="text-body text-muted-foreground">auth from {m.authEnv}</div>}
                     </TableCell>
-                    <TableCell className="align-top font-mono text-xs">{m.toolPrefix}_</TableCell>
-                    <TableCell className="align-top text-xs">
+                    <TableCell className="align-top font-mono text-body">{m.toolPrefix}_</TableCell>
+                    <TableCell className="align-top text-body">
                       <Pill tone={m.enabled ? "good" : "neutral"}>{m.enabled ? "Enabled" : "Disabled"}</Pill>
                       <div className="mt-1 text-muted-foreground">{m.lastOkAt ? `ok ${fmtDateTime(m.lastOkAt)}` : "never connected"}</div>
                       {m.lastError && (
@@ -495,7 +495,7 @@ function McpPanel({ mcp, canMutate }: { mcp: AdminViewProps["mcp"]; canMutate: b
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="max-w-[240px] align-top text-xs whitespace-normal text-muted-foreground">
+                    <TableCell className="max-w-[240px] align-top text-body whitespace-normal text-muted-foreground">
                       {m.toolNames?.length ? m.toolNames.join(", ") : "—"}
                       {m.allowedTools?.length ? <div className="mt-1">allowed: {m.allowedTools.join(", ")}</div> : null}
                     </TableCell>
@@ -524,10 +524,10 @@ function McpPanel({ mcp, canMutate }: { mcp: AdminViewProps["mcp"]; canMutate: b
                         </div>
                         <form action={setMcpDailyCap} className="mt-1.5 flex items-center justify-end gap-1.5">
                           <input type="hidden" name="id" value={m.id} />
-                          <Label htmlFor={`mcp-cap-${m.id}`} className="text-xs font-normal text-muted-foreground">
+                          <Label htmlFor={`mcp-cap-${m.id}`} className="text-body font-normal text-muted-foreground">
                             Daily cap
                           </Label>
-                          <Input id={`mcp-cap-${m.id}`} name="cap" inputMode="numeric" placeholder="none" defaultValue={budget[m.name]?.cap ?? ""} className="h-7 w-16 font-mono text-xs" />
+                          <Input id={`mcp-cap-${m.id}`} name="cap" inputMode="numeric" placeholder="none" defaultValue={budget[m.name]?.cap ?? ""} className="h-7 w-16 font-mono text-body" />
                           <Button type="submit" size="sm" variant="outline">
                             Save
                           </Button>
@@ -542,7 +542,7 @@ function McpPanel({ mcp, canMutate }: { mcp: AdminViewProps["mcp"]; canMutate: b
         </div>
         {canMutate && (
           <form action={addMcpServer} className="grid content-start gap-2 border-t p-4 lg:border-t-0 lg:border-l">
-            <div className="text-[13.5px] font-semibold">Add a server</div>
+            <div className="text-body font-semibold">Add a server</div>
             <div className="grid gap-1">
               <Label htmlFor="mcp-name">Name</Label>
               <Input id="mcp-name" name="name" placeholder="EDGAR full-text search" required />
@@ -568,7 +568,7 @@ function McpPanel({ mcp, canMutate }: { mcp: AdminViewProps["mcp"]; canMutate: b
             <Button type="submit" variant="outline" className="justify-self-start">
               Add and test
             </Button>
-            <p className="text-xs text-muted-foreground">Tools appear to the agent as prefix_toolname. The env var is read on this deployment and sent as a Bearer token; set it on Vercel before adding the server.</p>
+            <p className="text-body text-muted-foreground">Tools appear to the agent as prefix_toolname. The env var is read on this deployment and sent as a Bearer token; set it on Vercel before adding the server.</p>
           </form>
         )}
       </div>

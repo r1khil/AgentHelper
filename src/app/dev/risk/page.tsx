@@ -19,7 +19,7 @@ export default async function Preview({ searchParams }: PageProps<"/dev/risk">) 
   const transparency = one(query.transparency) !== "0";
   return (
     <main className="flex min-h-dvh flex-col p-6">
-      <p className="mb-4 rounded-[10px] border border-dashed p-3 text-sm">Local browser QA · synthetic prices and holdings · no live portfolio data · add ?scope=team for the team view, ?transparency=0 to hide the working</p>
+      <p className="mb-4 rounded-[10px] border border-dashed p-3 text-body">Local browser QA · synthetic prices and holdings · no live portfolio data · add ?scope=team for the team view, ?transparency=0 to hide the working</p>
       <RiskView
         report={report}
         inception={report.realized?.from ?? report.asOf}

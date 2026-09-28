@@ -114,7 +114,7 @@ export function ExposureView({
       <div className={FIRST_SCREEN}>
         <div data-tour="exposure-toolbar" className="flex min-w-0 shrink-0 items-center gap-2.5">
           {controls}
-          <span className="truncate text-[13px] text-muted-foreground">{context}</span>
+          <span className="truncate text-body text-muted-foreground">{context}</span>
           <span className="flex-1" />
           {notices}
           <LookbackSelector basePath={basePath} active={r.lookback} extra={query} />
@@ -159,18 +159,18 @@ export function ExposureView({
       <div className="mt-8 grid gap-8">
         <details id="sector-detail" className="group scroll-mt-4">
           <summary className="flex cursor-pointer list-none items-baseline justify-between gap-3 select-none [&::-webkit-details-marker]:hidden">
-            <h2 className="text-[14.5px] font-semibold">
+            <h2 className="text-emph font-semibold">
               <span className="mr-1.5 inline-block text-muted-foreground transition-transform group-open:rotate-90">›</span>
               Sector table: exact weights, holdings in each sector and share of risk
             </h2>
-            <span className="text-[12.5px] text-muted-foreground">
+            <span className="text-body text-muted-foreground">
               {x.throughEtfs ? "Through ETFs · " : ""}
               {x.hasBenchmark ? `Largest overweight first · vs ${benchmarkLabel}` : "By weight · no benchmark saved"}
             </span>
           </summary>
           <div className="mt-2.5">
             {x.throughEtfs && lt && (
-              <p className="mb-2 text-xs text-muted-foreground">
+              <p className="mb-2 text-body text-muted-foreground">
                 <Explained label="Each ETF split into its holdings">{RISK_EXPLAIN.throughEtfSectors}</Explained>. Risk shares are measured on the ETFs as held, so they&apos;re in the Direct holdings view.
                 {lt.report.notLookedThrough.total > 5e-5 && <> {rpct(lt.report.notLookedThrough.total, 2)} not looked through stays in its ETF&apos;s sector.</>}
               </p>
@@ -223,8 +223,8 @@ export function ExposureView({
         <LookthroughSections state={lookthrough ?? null} scope={r.scope} transparency={transparency} sectorBet={bet} />
 
         <Card className="gap-1.5 p-4">
-          <div className="text-[14.5px] font-semibold">Where the active risk comes from</div>
-          <p className="text-[13px] text-ink-2">
+          <div className="text-emph font-semibold">Where the active risk comes from</div>
+          <p className="text-body text-ink-2">
             {active
               ? <>Tracking error is {rpct(active.trackingError, 2)}. {active.sentences[0]} </>
               : "Tracking error needs benchmark sector weights. "}
@@ -233,8 +233,8 @@ export function ExposureView({
         </Card>
 
         <details className="rounded-[14px] bg-band-2 shadow-[0_0_0_1px_var(--border)]">
-          <summary className="cursor-pointer px-4 py-3 text-[13.5px] font-medium text-ink-2 select-none hover:text-foreground">How this is calculated, and the data behind it</summary>
-          <div className="grid gap-3 border-t border-row px-4 py-4 text-xs leading-relaxed text-muted-foreground">
+          <summary className="cursor-pointer px-4 py-3 text-body font-medium text-ink-2 select-none hover:text-foreground">How this is calculated, and the data behind it</summary>
+          <div className="grid gap-3 border-t border-row px-4 py-4 text-body leading-relaxed text-muted-foreground">
             <p>
               Weights are today&apos;s positions (the trade ledger replayed to the {fmtDate(r.asOf)} close) as a share of {fund ? "NAV, cash included" : `the ${scopeLabel}'s holdings, scaled to 100%`}.
               The benchmark is {fund ? (weightSetAsOf ? `the S&P 500 sector weights saved ${fmtDate(weightSetAsOf)}, drifted to today by the Select Sector SPDR ETFs' returns` : "the saved S&P 500 sector weights, drifted to today") : `the team's own sectors (${benchmarkLabel}), rescaled to 100%`},
@@ -302,18 +302,18 @@ function TopPositions({ x, report: r }: { x: Exposure; report: RiskReport }) {
             const s = sector.get(h.ticker);
             return (
               <TableRow key={h.ticker}>
-                <TableCell className="font-mono text-xs text-muted-foreground">{i + 1}</TableCell>
+                <TableCell className="font-mono text-body text-muted-foreground">{i + 1}</TableCell>
                 <TableCell>
                   <span className="font-mono font-semibold">{h.ticker}</span>
-                  <div className="max-w-32 truncate text-[11px] text-muted-foreground sm:max-w-52">{h.name}{s ? ` · ${SECTOR_LABELS[s]}` : ""}</div>
+                  <div className="max-w-32 truncate text-caption text-muted-foreground sm:max-w-52">{h.name}{s ? ` · ${SECTOR_LABELS[s]}` : ""}</div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <MagnitudeBar value={h.weight} max={max} color="var(--foreground)" className="h-1.5 w-12 sm:w-24" />
-                    <span className="w-12 font-mono text-xs">{rpct(h.weight)}</span>
+                    <span className="w-12 font-mono text-body">{rpct(h.weight)}</span>
                   </div>
                 </TableCell>
-                <TableCell className={cn("text-right font-mono text-[12.5px]", i === x.top.holdings.length - 1 && "font-semibold")}>{rpct(cumulative[i])}</TableCell>
+                <TableCell className={cn("text-right font-mono text-body", i === x.top.holdings.length - 1 && "font-semibold")}>{rpct(cumulative[i])}</TableCell>
               </TableRow>
             );
           })}
@@ -322,9 +322,9 @@ function TopPositions({ x, report: r }: { x: Exposure; report: RiskReport }) {
           <TableFooter>
             <TableRow>
               <TableCell />
-              <TableCell className="text-xs text-muted-foreground">Other {x.holdingsCount - x.top.holdings.length} holdings</TableCell>
-              <TableCell className="font-mono text-xs text-muted-foreground">{rpct(x.invested - x.top.weight)}</TableCell>
-              <TableCell className="text-right font-mono text-xs text-muted-foreground">{rpct(x.invested)} invested</TableCell>
+              <TableCell className="text-body text-muted-foreground">Other {x.holdingsCount - x.top.holdings.length} holdings</TableCell>
+              <TableCell className="font-mono text-body text-muted-foreground">{rpct(x.invested - x.top.weight)}</TableCell>
+              <TableCell className="text-right font-mono text-body text-muted-foreground">{rpct(x.invested)} invested</TableCell>
             </TableRow>
           </TableFooter>
         )}

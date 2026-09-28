@@ -11,14 +11,14 @@ export default function HootGallery() {
   return (
     <main className="mx-auto max-w-5xl space-y-10 px-6 py-10">
       <section>
-        <h1 className="text-lg font-semibold">Hoot</h1>
-        <p className="text-sm text-muted-foreground">Sprites watch the pointer, the caret, clicks and scrolling, and blink; they close their eyes for passwords. The 3D hero does the same, tilts his head, fluffs up now and then, and hops when clicked.</p>
+        <h1 className="text-title font-semibold">Hoot</h1>
+        <p className="text-body text-muted-foreground">Sprites watch the pointer, the caret, clicks and scrolling, and blink; they close their eyes for passwords. The 3D hero does the same, tilts his head, fluffs up now and then, and hops when clicked.</p>
       </section>
       <section className="flex flex-wrap items-end gap-8">
         {MOODS.map((m) => (
           <figure key={m} className="text-center">
             <HootSprite mood={m} size={112} track bob />
-            <figcaption className="mt-1 text-xs text-muted-foreground">{m}</figcaption>
+            <figcaption className="mt-1 text-caption text-muted-foreground">{m}</figcaption>
           </figure>
         ))}
       </section>

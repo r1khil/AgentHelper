@@ -64,7 +64,7 @@ export function BenchmarkWeightsForm({ today, initial }: { today: string; initia
           <div key={s} className="flex items-center justify-between gap-3">
             <Label htmlFor={`w_${s}`} className="min-w-0 font-normal">
               <span className="truncate">{SECTOR_LABELS[s]}</span>
-              <span className="text-xs text-muted-foreground">{ETF_BY_SECTOR[s]}</span>
+              <span className="text-body text-muted-foreground">{ETF_BY_SECTOR[s]}</span>
             </Label>
             <div className="flex items-center gap-1">
               <Input
@@ -80,14 +80,14 @@ export function BenchmarkWeightsForm({ today, initial }: { today: string; initia
                 className="tnum h-8 w-24 text-right"
                 required
               />
-              <span className="text-xs text-muted-foreground">%</span>
+              <span className="text-body text-muted-foreground">%</span>
             </div>
           </div>
         ))}
       </div>
 
       <div className="flex items-center justify-between gap-3 border-t pt-3">
-        <span className={cn("tnum text-sm", balanced ? "text-muted-foreground" : "text-down")}>
+        <span className={cn("tnum text-body", balanced ? "text-muted-foreground" : "text-down")}>
           Total {fmtPct(total)}{!balanced && " · must equal 100%"}
         </span>
         <Button type="submit" size="sm" disabled={pending || !balanced}>{pending ? "Saving…" : "Save weights"}</Button>

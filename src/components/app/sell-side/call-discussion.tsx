@@ -20,7 +20,7 @@ export function CallDiscussion({ embedded = false, ...props }: Props & { embedde
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-5">
         <div>
           <h2 className="font-semibold">Discuss this call</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Ask follow-up questions using the transcript and saved evidence.</p>
+          <p className="mt-1 text-body text-muted-foreground">Ask follow-up questions using the transcript and saved evidence.</p>
         </div>
         <Button variant="outline" aria-expanded={open} onClick={() => setOpen(!open)}>
           {open ? "Close call chat" : "Open call chat"}
@@ -63,7 +63,7 @@ function EmbeddedDiscussion(props: Props) {
   }, [askSeq, props.chatId]);
   return (
     <section aria-label="Discuss this call">
-      <p className="mb-3 text-[13px] text-muted-foreground">Ask follow-up questions using the transcript and saved evidence.</p>
+      <p className="mb-3 text-body text-muted-foreground">Ask follow-up questions using the transcript and saved evidence.</p>
       <ChatPanel key={mount.key} {...props} initialMessages={mount.messages} initialRunStatus={mount.runStatus} />
     </section>
   );

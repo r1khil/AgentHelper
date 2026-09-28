@@ -20,11 +20,11 @@ export function AskPanel({ ticker, configured, teamSlug, scopeName }: { ticker?:
           <HootOnPage />
           <HootSprite mood="idle" size={56} track className="-mt-1 shrink-0" />
           <div className="min-w-0 flex-1">
-            <h2 className="text-[17px] font-semibold tracking-[-0.015em]">What should Hoot look into?</h2>
-            <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
+            <h2 className="text-title font-semibold tracking-[-0.015em]">What should Hoot look into?</h2>
+            <p className="mt-1 text-body leading-relaxed text-muted-foreground">
               Hoot pulls prices, SEC filings, financials, news, economic data and your team&rsquo;s notes, with a source on every fact.
             </p>
-            {!configured && <div className="mt-3 rounded-[10px] bg-caution px-3 py-2 text-[13px] text-caution-foreground">Hoot isn&apos;t set up yet: an admin needs to turn it on.</div>}
+            {!configured && <div className="mt-3 rounded-[10px] bg-caution px-3 py-2 text-body text-caution-foreground">Hoot isn&apos;t set up yet: an admin needs to turn it on.</div>}
             <AskHoot
               teamSlug={teamSlug}
               configured={configured}
@@ -44,7 +44,7 @@ export function AskPanel({ ticker, configured, teamSlug, scopeName }: { ticker?:
                   disabled={!configured}
                   title={s}
                   onClick={() => window.dispatchEvent(new CustomEvent("hoot:fill-ask", { detail: s }))}
-                  className="group flex w-full max-w-[300px] items-center gap-2 rounded-full bg-band px-3 py-1.5 text-left text-[12.5px] leading-snug text-ink-2 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60 xl:max-w-none xl:rounded-[8px] xl:bg-transparent xl:px-2 xl:py-[7px] xl:text-[13px] xl:hover:bg-band"
+                  className="group flex w-full max-w-[300px] items-center gap-2 rounded-full bg-band px-3 py-1.5 text-left text-body leading-snug text-ink-2 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60 xl:max-w-none xl:rounded-[8px] xl:bg-transparent xl:px-2 xl:py-[7px] xl:text-body xl:hover:bg-band"
                 >
                   <span className="min-w-0 flex-1 truncate xl:line-clamp-2 xl:whitespace-normal">{s}</span>
                   <CornerDownLeft className="hidden size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 xl:block" aria-hidden />

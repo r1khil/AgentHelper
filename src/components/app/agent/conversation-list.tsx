@@ -93,7 +93,7 @@ export function ConversationSidebar({
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search chats"
             aria-label="Search chats"
-            className="min-w-0 flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
+            className="min-w-0 flex-1 bg-transparent text-body text-foreground outline-none placeholder:text-muted-foreground"
           />
         </label>
         <Button type="button" size="lg" className="h-[34px] gap-1 px-3.5" onClick={() => void startNew()} disabled={starting || !configured}>
@@ -105,7 +105,7 @@ export function ConversationSidebar({
         {boards.length > 0 && <Group label="By holding" rows={boards} selectedId={selectedId} onSelect={onSelect} />}
         {general.length > 0 && <Group label="General" rows={general} selectedId={selectedId} onSelect={onSelect} />}
         {boards.length === 0 && general.length === 0 && (
-          <p className="px-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
+          <p className="px-2.5 text-body leading-relaxed text-muted-foreground">
             {f ? `No chats match “${q.trim()}”.` : "No chats yet. Ask Hoot a question, or open a holding's research, to start one."}
           </p>
         )}
@@ -117,7 +117,7 @@ export function ConversationSidebar({
 function Group({ label, rows, selectedId, onSelect }: { label: string; rows: SidebarChat[]; selectedId?: string | null; onSelect?: (c: SidebarChat) => boolean }) {
   return (
     <div>
-      <div className="px-2.5 pb-1.5 font-mono text-[10.5px] tracking-[0.06em] text-muted-foreground uppercase">{label}</div>
+      <div className="px-2.5 pb-1.5 font-mono text-caption tracking-[0.06em] text-muted-foreground uppercase">{label}</div>
       <ul className="flex flex-col">
         {rows.map((c) => {
           const selected = c.id === selectedId;
@@ -136,10 +136,10 @@ function Group({ label, rows, selectedId, onSelect }: { label: string; rows: Sid
                 )}
               >
                 <div className="flex items-baseline gap-1.5">
-                  {c.ticker && <span className="font-mono text-[12.5px] font-semibold">{c.ticker}</span>}
-                  <span className="min-w-0 flex-1 truncate text-[13.5px]">{c.title === "New chat" ? "New conversation" : c.title}</span>
+                  {c.ticker && <span className="font-mono text-body font-semibold">{c.ticker}</span>}
+                  <span className="min-w-0 flex-1 truncate text-body">{c.title === "New chat" ? "New conversation" : c.title}</span>
                 </div>
-                <div className="mt-px flex items-center gap-1 text-xs text-muted-foreground">
+                <div className="mt-px flex items-center gap-1 text-caption text-muted-foreground">
                   {c.running && <Loader2 className="size-3 shrink-0 animate-spin" aria-label="Answering" />}
                   <span className="truncate">
                     {c.authorName ?? "Someone"} · {plural(c.questions, "question")} · {listWhen(c.updatedAt)}

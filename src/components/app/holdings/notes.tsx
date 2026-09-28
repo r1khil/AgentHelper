@@ -21,9 +21,9 @@ function initials(name: string | null) {
 function NoteRow({ n }: { n: NoteItem }) {
   return (
     <li className="group flex gap-3 px-4 py-2.5">
-      <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-muted text-[10.5px] font-semibold">{initials(n.authorName)}</span>
+      <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-muted text-caption font-semibold">{initials(n.authorName)}</span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-body text-muted-foreground">
           <span title={n.createdAt.toISOString()}>
             {n.authorName ?? "Unknown"} · {monthDay(n.createdAt)}
           </span>
@@ -31,13 +31,13 @@ function NoteRow({ n }: { n: NoteItem }) {
           {n.canDelete && (
             <form action={deleteNote} className="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
               <input type="hidden" name="id" value={n.id} />
-              <button type="submit" className="text-xs hover:text-destructive focus-visible:outline-2 focus-visible:outline-ring">
+              <button type="submit" className="text-body hover:text-destructive focus-visible:outline-2 focus-visible:outline-ring">
                 Delete
               </button>
             </form>
           )}
         </div>
-        <p className="mt-0.5 text-sm leading-normal whitespace-pre-wrap">{n.body}</p>
+        <p className="mt-0.5 text-body leading-normal whitespace-pre-wrap">{n.body}</p>
       </div>
     </li>
   );
@@ -48,13 +48,13 @@ export function NotesPanel({ holdingId, notes, className }: { holdingId: string;
   return (
     <section className={cn("panel-plain flex flex-col", className)}>
       <div className="flex h-10 shrink-0 items-center gap-2 px-4">
-        <h2 className="text-[14.5px] font-semibold">Team notes</h2>
+        <h2 className="text-emph font-semibold">Team notes</h2>
         {notes.length > 0 && <CountChip>{notes.length}</CountChip>}
         <span className="flex-1" />
         <QuickNote holdingId={holdingId} />
       </div>
       {notes.length === 0 ? (
-        <p className="px-4 py-1 text-sm text-muted-foreground">No notes yet. Anything the team should know about this holding goes here.</p>
+        <p className="px-4 py-1 text-body text-muted-foreground">No notes yet. Anything the team should know about this holding goes here.</p>
       ) : (
         <ul>
           {notes.map((n) => (
@@ -71,7 +71,7 @@ export function NotesTab({ holdingId, notes }: { holdingId: string; notes: NoteI
   return (
     <section className="panel flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex h-11 shrink-0 items-center gap-2 border-b px-4">
-        <h2 className="text-[14.5px] font-semibold">Team notes</h2>
+        <h2 className="text-emph font-semibold">Team notes</h2>
         <CountChip>{notes.length}</CountChip>
       </div>
       <form action={addNote} className="grid shrink-0 gap-2 border-b px-4 py-3">
@@ -84,7 +84,7 @@ export function NotesTab({ holdingId, notes }: { holdingId: string; notes: NoteI
         </div>
       </form>
       {notes.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-muted-foreground">No notes yet.</p>
+        <p className="px-4 py-6 text-body text-muted-foreground">No notes yet.</p>
       ) : (
         <ul className="min-h-0 flex-1">
           {notes.map((n) => (

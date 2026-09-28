@@ -7,7 +7,7 @@ import { CountChip } from "./panel";
 
 /*
  * The one tab control. Tabs move between views of one thing: a section's pages in the header, a holding's sections,
- * a model's sections, the ledger's tables, a call's brief and transcript. One look everywhere: 14px labels, the
+ * a model's sections, the ledger's tables, a call's brief and transcript. One look everywhere: text-body (13px) labels, the
  * active one 600 with a 2px ink underline, an optional count chip, 20px apart.
  *
  * - Every tab has an `href`: the tabs are links to other URLs, so they render as a `nav` with `aria-current="page"`
@@ -61,7 +61,7 @@ export function tabKeyTarget(key: string, index: number, count: number): number 
 
 const tabClass = (active: boolean) =>
   cn(
-    "flex shrink-0 items-center gap-1.5 rounded-sm text-sm whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset",
+    "flex shrink-0 items-center gap-1.5 rounded-sm text-body whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset",
     active ? "font-semibold text-foreground shadow-[inset_0_-2px_0_var(--foreground)]" : "text-muted-foreground hover:text-foreground",
   );
 

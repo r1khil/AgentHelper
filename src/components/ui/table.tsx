@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
@@ -11,7 +11,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-[13.5px]", className)}
+        className={cn("w-full caption-bottom text-body", className)}
         {...props}
       />
     </div>
@@ -70,7 +70,7 @@ function TableHead({ className, scope = "col", ...props }: React.ComponentProps<
       data-slot="table-head"
       scope={scope}
       className={cn(
-        "h-10 px-2 text-left align-middle text-[12.5px] font-normal whitespace-nowrap text-muted-foreground first:pl-4 last:pr-4 [&:has([role=checkbox])]:pr-0",
+        "h-10 px-2 text-left align-middle text-body font-normal whitespace-nowrap text-muted-foreground first:pl-4 last:pr-4 [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -98,7 +98,7 @@ function TableCaption({
   return (
     <caption
       data-slot="table-caption"
-      className={cn("mt-4 text-sm text-muted-foreground", className)}
+      className={cn("mt-4 text-body text-muted-foreground", className)}
       {...props}
     />
   )

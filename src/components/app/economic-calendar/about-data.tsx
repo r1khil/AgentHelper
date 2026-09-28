@@ -17,7 +17,7 @@ export function FeedStatus({ feed, error, loading, onRetry }: { feed: CalendarFe
   const pathname = usePathname();
   if (error?.expired)
     return (
-      <p role="alert" className="text-[12px] leading-5 text-caution-foreground">
+      <p role="alert" className="text-body leading-5 text-caution-foreground">
         {error.message}{" "}
         <Link href={`/login?next=${encodeURIComponent(pathname)}`} className="font-medium underline underline-offset-2">
           Sign in again
@@ -26,18 +26,18 @@ export function FeedStatus({ feed, error, loading, onRetry }: { feed: CalendarFe
     );
   if (!feed)
     return error ? (
-      <p role="alert" className="text-[12px] leading-5 text-caution-foreground">
+      <p role="alert" className="text-body leading-5 text-caution-foreground">
         Economic releases unavailable. {error.message}{" "}
         <button type="button" onClick={onRetry} className="font-medium underline underline-offset-2">
           Try again
         </button>
       </p>
     ) : (
-      <p className="text-[12px] text-muted-foreground">Loading economic releases…</p>
+      <p className="text-body text-muted-foreground">Loading economic releases…</p>
     );
   const at = fmtTime(feed.fetchedAt);
   return (
-    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] leading-5 text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-body leading-5 text-muted-foreground">
       <span aria-hidden="true" className={cn("size-1.5 rounded-full", error || feed.mode === "demo" || feed.stale ? "bg-caution-foreground" : "bg-up")} />
       {error ? (
         <span className="text-caution-foreground" title={error.message}>
@@ -65,9 +65,9 @@ function AboutData({ feed }: { feed: CalendarFeed }) {
       <PopoverTrigger id="about-data" className="underline decoration-border underline-offset-2 hover:text-foreground hover:decoration-foreground">
         About this data
       </PopoverTrigger>
-      <PopoverContent side="top" align="start" className="w-[440px] gap-3 rounded-[14px] bg-card p-4 text-[12.5px] shadow-lg ring-1 ring-border">
+      <PopoverContent side="top" align="start" className="w-[440px] gap-3 rounded-[14px] bg-card p-4 text-body shadow-lg ring-1 ring-border">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="text-[14px] font-semibold">About this data</span>
+          <span className="text-body font-semibold">About this data</span>
           <span className="text-muted-foreground">{feed.provider}</span>
         </div>
         {sources.length > 0 && (
@@ -85,7 +85,7 @@ function AboutData({ feed }: { feed: CalendarFeed }) {
                     target="_blank"
                     rel="noreferrer"
                     title={ok ? `${s.count} records in this range` : `Unavailable: ${s.error ?? "no response"}`}
-                    className={cn("inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-[12px]", ok ? "bg-muted text-ink-2 hover:text-foreground" : "bg-caution text-caution-foreground")}
+                    className={cn("inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-caption", ok ? "bg-muted text-ink-2 hover:text-foreground" : "bg-caution text-caution-foreground")}
                   >
                     <span aria-hidden="true" className={cn("size-1.5 rounded-full", ok ? "bg-up" : "bg-caution-foreground")} />
                     {s.name}

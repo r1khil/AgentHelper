@@ -104,7 +104,7 @@ const kb = (b: number | undefined) => (b === undefined ? "" : b >= 1_000_000 ? `
 export function TraceHeader({ view, now }: { view: TraceView; now: number }) {
   const elapsed = view.startedAt ? (view.endedAt ?? now) - view.startedAt : 0;
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-0.5 text-[11px] text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-0.5 text-caption text-muted-foreground">
       <span className="font-medium text-foreground">Transparency</span>
       <span>
         step {Math.max(view.stepsStarted, 1)}
@@ -132,7 +132,7 @@ export function StepDivider({ n, view }: { n: number; view: TraceView }) {
   if (!s?.start) return null;
   const end = s.end;
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-0.5 pt-1 text-[11px] text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-0.5 pt-1 text-caption text-muted-foreground">
       <span className="font-medium text-foreground">{s.start.writeUp ? "Write-up" : `Step ${n + 1}`}</span>
       <span>tools: {s.start.toolChoice}</span>
       {s.start.writeUp ? (
@@ -166,7 +166,7 @@ const LAYER: Record<string, { label: string; className: string }> = {
 export function FetchRows({ events, end }: { events: TraceEvent[]; end?: Extract<TraceEvent, { t: "tool.end" }> }) {
   if (events.length === 0 && !end) return null;
   return (
-    <ul className="ml-5 space-y-0.5 text-[11px] text-muted-foreground">
+    <ul className="ml-5 space-y-0.5 text-caption text-muted-foreground">
       {events.map((e) => (
         <li key={e.seq} className="flex items-center gap-1.5">
           {e.t === "fetch" ? (

@@ -137,7 +137,7 @@ function Stats({ result, stale }: { result?: BacktestResult; stale: boolean }) {
 
 function Dot({ color, children }: { color: string; children: ReactNode }) {
   return (
-    <span className="flex items-center gap-[5px] text-xs whitespace-nowrap text-ink-2">
+    <span className="flex items-center gap-[5px] text-body whitespace-nowrap text-ink-2">
       <span className="size-2 rounded-full" style={{ background: color }} />
       {children}
     </span>
@@ -150,17 +150,17 @@ function ReplayPanel({ bt, result, realizedHref }: { bt: BacktestingState; resul
   return (
     <Panel className="flex-1 px-4 pt-3.5 pb-4">
       <div className="flex shrink-0 flex-wrap items-center gap-x-3.5 gap-y-1">
-        <h2 className="text-[14.5px] font-semibold whitespace-nowrap">Replay, rebalanced daily</h2>
+        <h2 className="text-emph font-semibold whitespace-nowrap">Replay, rebalanced daily</h2>
         <Dot color="var(--series-2)">Scenario</Dot>
         <Dot color="var(--series-1)">{NAMES.original}</Dot>
         <Dot color="var(--series-neutral)">{benchmark}</Dot>
         <span className="flex-1" />
-        <span className={cn("min-w-0 truncate text-xs text-muted-foreground", bt.dirty && "text-caution-foreground")} title={runStatus(bt)}>
+        <span className={cn("min-w-0 truncate text-caption text-muted-foreground", bt.dirty && "text-caution-foreground")} title={runStatus(bt)}>
           {(bt.busy || bt.dirty || result) && runStatus(bt)}
         </span>
       </div>
       {bt.error && (
-        <p role="alert" className="mt-3 rounded-[10px] bg-[color-mix(in_oklch,var(--down)_10%,var(--card))] px-3 py-2 text-[13px] text-down">
+        <p role="alert" className="mt-3 rounded-[10px] bg-[color-mix(in_oklch,var(--down)_10%,var(--card))] px-3 py-2 text-body text-down">
           {bt.error}
         </p>
       )}
@@ -179,12 +179,12 @@ function ReplayPanel({ bt, result, realizedHref }: { bt: BacktestingState; resul
               { key: "benchmark", label: result.benchmark, color: "var(--series-neutral)" },
             ]}
           />
-          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+          <p className="mt-3 text-caption leading-relaxed text-muted-foreground">
             <span className="font-medium text-foreground">Hypothetical replay, not this portfolio’s realized return.</span>{" "}
             <ReplayNote result={result} realizedHref={realizedHref} />
           </p>
           {result.cashSubstitutions.length > 0 && (
-            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            <p className="mt-1.5 text-caption leading-relaxed text-muted-foreground">
               <CashNote result={result} />
             </p>
           )}
@@ -192,12 +192,12 @@ function ReplayPanel({ bt, result, realizedHref }: { bt: BacktestingState; resul
       ) : (
         <div className="grid flex-1 place-items-center py-10">
           <div className="max-w-md text-center">
-            <div className="text-[14.5px] font-medium">{bt.busy ? runStatus(bt) : "Choose your dates and weights, then run the replay."}</div>
-            <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+            <div className="text-emph font-medium">{bt.busy ? runStatus(bt) : "Choose your dates and weights, then run the replay."}</div>
+            <p className="mt-2 text-body leading-relaxed text-muted-foreground">
               <span className="font-medium text-ink-2">{bt.snapshot.scope}.</span> <ScopeNote snapshot={bt.snapshot} />
             </p>
-            <p className="mt-2 text-xs text-muted-foreground">{METHOD_LINE}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{DATES_HINT}</p>
+            <p className="mt-2 text-caption text-muted-foreground">{METHOD_LINE}</p>
+            <p className="mt-1 text-caption text-muted-foreground">{DATES_HINT}</p>
           </div>
         </div>
       )}
@@ -206,7 +206,7 @@ function ReplayPanel({ bt, result, realizedHref }: { bt: BacktestingState; resul
 }
 const DetailFrame: Frame = ({ title, ariaLabel, children }) => (
   <section aria-label={ariaLabel} className="min-w-0">
-    <h3 className="mb-3 text-[13.5px] font-semibold">{title}</h3>
+    <h3 className="mb-3 text-body font-semibold">{title}</h3>
     {children}
   </section>
 );
@@ -228,7 +228,7 @@ function ResultDetails({ result, bt }: { result: BacktestResult; bt: Backtesting
       <PanelHeader title="Replay in detail">
         <Tabs label="Replay detail" idBase="replay-detail" rule={false} className="ml-4 self-stretch" onSelect={(k) => setTab(k as DetailTab)} items={tabs.map((t) => ({ ...t, active: tab === t.key }))} />
       </PanelHeader>
-      <div {...tabPanelProps("replay-detail", tab)} className={cn("p-4 text-sm", bt.dirty && "opacity-60")}>
+      <div {...tabPanelProps("replay-detail", tab)} className={cn("p-4 text-body", bt.dirty && "opacity-60")}>
         {tab === "daily" && (
           <div className="space-y-6">
             <DailyDifferences result={result} Frame={DetailFrame} names={NAMES} />
@@ -237,7 +237,7 @@ function ResultDetails({ result, bt }: { result: BacktestResult; bt: Backtesting
         {tab === "contributors" && <Contributors result={result} period={period} names={NAMES} />}
         {tab === "summary" && <Summary result={result} period={period} names={NAMES} />}
         {tab === "notes" && (
-          <div className="max-w-3xl space-y-2 text-[13px] leading-relaxed text-muted-foreground">
+          <div className="max-w-3xl space-y-2 text-body leading-relaxed text-muted-foreground">
             <p>
               <span className="font-medium text-foreground">{bt.snapshot.scope}.</span> <ScopeNote snapshot={bt.snapshot} />
             </p>
@@ -273,14 +273,14 @@ function SavedPanel({
           {items.map((s) => {
             const detail = `${s.changes} change${s.changes === 1 ? "" : "s"} · ${day(s.from)} – ${day(s.to)} vs ${s.benchmark}${s.note ? ` · ${s.note}` : ""}`;
             return (
-              <li key={s.id} className={cn("group relative flex h-10 items-center gap-2.5 border-b border-row px-4 text-[13.5px] last:border-b-0 hover:bg-band", s.id === activeId && "bg-band")}>
+              <li key={s.id} className={cn("group relative flex h-10 items-center gap-2.5 border-b border-row px-4 text-body last:border-b-0 hover:bg-band", s.id === activeId && "bg-band")}>
                 <Link href={`/backtesting?scenario=${s.id}`} title={detail} className="min-w-0 flex-1 truncate font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset">
                   {s.name}
                 </Link>
-                <span className="text-[12.5px] whitespace-nowrap text-muted-foreground">
+                <span className="text-body whitespace-nowrap text-muted-foreground">
                   {s.createdBy ?? "Someone"} · {fmtDay(s.createdAt)}
                 </span>
-                <span className="w-[74px] text-right font-mono text-xs whitespace-nowrap text-muted-foreground" title={detail}>
+                <span className="w-[74px] text-right font-mono text-body whitespace-nowrap text-muted-foreground" title={detail}>
                   {s.changes} change{s.changes === 1 ? "" : "s"}
                 </span>
                 {(fundWide || (viewerId && s.createdById === viewerId)) && (
@@ -300,7 +300,7 @@ function SavedPanel({
           })}
         </ul>
       ) : (
-        <p className="px-4 py-3 text-[13px] text-muted-foreground">
+        <p className="px-4 py-3 text-body text-muted-foreground">
           Nothing saved yet. Save a scenario to get a link {audience ?? "others"} can open.
         </p>
       )}

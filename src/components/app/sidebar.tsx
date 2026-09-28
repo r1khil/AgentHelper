@@ -109,7 +109,7 @@ export function MobileBar(props: Props) {
     <div className="sticky top-0 z-40 flex items-center justify-between border-b bg-sidebar/95 px-4 py-2.5 backdrop-blur md:hidden">
       <Link href="/" className="flex items-center gap-2">
         <OwlMark className="size-7" />
-        <span className="text-sm font-semibold">The Owl&apos;s Nest</span>
+        <span className="text-body font-semibold">The Owl&apos;s Nest</span>
       </Link>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger render={<Button variant="ghost" size="icon" aria-label="Open menu" />}>
@@ -169,7 +169,7 @@ function SidebarBody({ user, teams, signOut, dock }: Props & { dock?: React.Reac
       <div className="px-3 pt-4 pb-3">
         <Link href="/" className="flex items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-sidebar-accent">
           <OwlMark className="size-7" />
-          <span className="text-sm font-semibold">The Owl&apos;s Nest</span>
+          <span className="text-body font-semibold">The Owl&apos;s Nest</span>
         </Link>
       </div>
 
@@ -219,7 +219,7 @@ function NavGroup({ label, links, active }: { label: string; links: NavLink[]; a
   if (!links.length) return null;
   return (
     <nav aria-label={label} className="mt-4 flex flex-col gap-px">
-      <div className="px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{label}</div>
+      <div className="px-2.5 pb-1 text-caption font-medium tracking-wide text-muted-foreground uppercase">{label}</div>
       {links.map((n) => (
         <NavItem key={n.href} href={n.href} label={n.label} icon={n.icon} active={active(n)} />
       ))}
@@ -235,11 +235,11 @@ export function ScopeSwitcher({ teams, current, fundWide, variant = "card" }: { 
   const card = (
     <>
       <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
-        {current === "fund" ? <Layers className="size-3.5" /> : <span className="text-[11px] font-semibold">{initials(name)}</span>}
+        {current === "fund" ? <Layers className="size-3.5" /> : <span className="text-caption font-semibold">{initials(name)}</span>}
       </span>
       <span className="min-w-0 flex-1 leading-tight">
-        <span className="block text-[11px] text-muted-foreground">{fundWide ? "Viewing" : "Your team"}</span>
-        <span className="block text-sm font-medium text-balance">{name}</span>
+        <span className="block text-caption text-muted-foreground">{fundWide ? "Viewing" : "Your team"}</span>
+        <span className="block text-body font-medium text-balance">{name}</span>
       </span>
     </>
   );
@@ -248,10 +248,10 @@ export function ScopeSwitcher({ teams, current, fundWide, variant = "card" }: { 
   const short = current === "fund" ? "Fund" : current ? initials(current.name) : "—";
   const railTile = (
     <>
-      <span className="grid h-[34px] w-11 place-items-center rounded-[10px] bg-rail-2 font-mono text-xs font-semibold text-cream shadow-[inset_0_0_0_1px_var(--rail-line)]">
+      <span className="grid h-[34px] w-11 place-items-center rounded-[10px] bg-rail-2 font-mono text-body font-semibold text-cream shadow-[inset_0_0_0_1px_var(--rail-line)]">
         {current === "fund" ? <Layers className="size-4" /> : short}
       </span>
-      <span className="flex items-center gap-px text-[11px] font-medium text-rail-label">
+      <span className="flex items-center gap-px text-caption font-medium text-rail-label">
         {short}
         {fundWide && teams.length >= 2 && <ChevronDown className="size-[11px]" />}
       </span>
@@ -351,7 +351,7 @@ export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user
               data-tour="account"
               aria-label={`${user.fullName}: preferences and sign out`}
               title={user.fullName}
-              className="grid size-8 place-items-center rounded-full bg-avatar text-[11.5px] font-semibold text-cream-foreground transition-shadow hover:shadow-[0_0_0_2px_var(--rail-line)] focus-visible:ring-2 focus-visible:ring-cream/60 focus-visible:outline-none data-popup-open:shadow-[0_0_0_2px_var(--rail-line)]"
+              className="grid size-8 place-items-center rounded-full bg-avatar text-caption font-semibold text-cream-foreground transition-shadow hover:shadow-[0_0_0_2px_var(--rail-line)] focus-visible:ring-2 focus-visible:ring-cream/60 focus-visible:outline-none data-popup-open:shadow-[0_0_0_2px_var(--rail-line)]"
             />
           }
         >
@@ -365,8 +365,8 @@ export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user
         >
           <Avatar name={user.fullName} />
           <span className="min-w-0 flex-1 leading-tight">
-            <span className="block truncate text-sm font-medium">{user.fullName}</span>
-            <span className="block truncate text-xs text-muted-foreground">{ROLE_LABELS[user.role]}</span>
+            <span className="block truncate text-body font-medium">{user.fullName}</span>
+            <span className="block truncate text-caption text-muted-foreground">{ROLE_LABELS[user.role]}</span>
           </span>
           <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
         </PopoverTrigger>
@@ -375,12 +375,12 @@ export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user
         <div className="flex items-center gap-2.5 px-1.5 py-1.5">
           <Avatar name={user.fullName} />
           <span className="min-w-0 flex-1 leading-tight">
-            <span className="block truncate text-sm font-medium">{user.fullName}</span>
-            <span className="block truncate text-xs text-muted-foreground">{user.username ?? user.email}</span>
+            <span className="block truncate text-body font-medium">{user.fullName}</span>
+            <span className="block truncate text-caption text-muted-foreground">{user.username ?? user.email}</span>
           </span>
         </div>
         <div className="-mx-1.5 my-1.5 h-px bg-border" />
-        <div className="px-1.5 pt-0.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Preferences</div>
+        <div className="px-1.5 pt-0.5 pb-1 text-caption font-medium tracking-wide text-muted-foreground uppercase">Preferences</div>
         <HootToggle on={user.hootEnabled} />
         {fundWide && <TransparencyToggle on={user.transparencyMode} />}
         <ThemeToggle />
@@ -392,7 +392,7 @@ export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user
               setOpen(false);
               replayTour();
             }}
-            className={cn(prefRow, "w-full text-left text-sm hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none")}
+            className={cn(prefRow, "w-full text-left text-body hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none")}
           >
             <Sparkles className="size-4 shrink-0 text-muted-foreground" />
             Replay the tour
@@ -402,7 +402,7 @@ export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user
         <button
           type="button"
           onClick={() => signOut()}
-          className="flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left text-sm hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left text-body hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           <LogOut className="size-4 text-muted-foreground" />
           Sign out
@@ -414,7 +414,7 @@ export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user
 
 function Avatar({ name }: { name: string }) {
   return (
-    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-[11px] font-semibold">{initials(name) || "?"}</span>
+    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-caption font-semibold">{initials(name) || "?"}</span>
   );
 }
 
@@ -432,7 +432,7 @@ function HootToggle({ on }: { on: boolean }) {
   return (
     <label className={cn(prefRow, "cursor-pointer hover:bg-accent")} title="Hoot at the bottom of the menu on every page: flags deadlines and takes quick questions">
       <HootIcon className="size-4 shrink-0" />
-      <span className="min-w-0 flex-1 text-sm">Hoot in the menu</span>
+      <span className="min-w-0 flex-1 text-body">Hoot in the menu</span>
       <Switch
         checked={on}
         disabled={pending}
@@ -455,7 +455,7 @@ function TransparencyToggle({ on }: { on: boolean }) {
   return (
     <label className={cn(prefRow, "cursor-pointer hover:bg-accent")} title="Show how answers, attribution and jobs are computed">
       <ScanEye className="size-4 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 flex-1 text-sm">Transparency</span>
+      <span className="min-w-0 flex-1 text-body">Transparency</span>
       <Switch
         checked={on}
         disabled={pending}
@@ -487,7 +487,7 @@ function ThemeToggle() {
   return (
     <div className={prefRow}>
       <SunMoon className="size-4 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 flex-1 text-sm">Theme</span>
+      <span className="min-w-0 flex-1 text-body">Theme</span>
       <Segmented
         label="Theme"
         segments={THEMES.map(({ value, label, icon: Icon }) => ({
@@ -512,7 +512,7 @@ function NavItem({ href, label, icon: Icon, active }: { href: string; label: str
       data-tour={`nav-${label.toLowerCase().replace(/[^a-z]+/g, "-")}`}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        "relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-body transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         active
           ? "bg-background font-medium text-foreground shadow-xs ring-1 ring-sidebar-border dark:bg-sidebar-accent dark:shadow-none dark:ring-0"
           : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",

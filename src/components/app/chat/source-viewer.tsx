@@ -73,7 +73,7 @@ function DocumentBody({ source, chatId }: { source: Source; chatId: string }) {
   if (!doc) return <p role="status">{pending ? "Research is still running. This document will open when the answer is saved…" : "Loading source document…"}</p>;
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-body text-muted-foreground">
         <span>{doc.title}</span>
         {original && (
           <a className="underline" href={original} target="_blank" rel="noopener noreferrer">
@@ -86,14 +86,14 @@ function DocumentBody({ source, chatId }: { source: Source; chatId: string }) {
       ) : (
         <>
           {!range && (
-            <p role="status" className="text-xs text-muted-foreground">
+            <p role="status" className="text-body text-muted-foreground">
               {source.location?.text || source.excerpt
                 ? "The supporting passage could not be located in the current document. Showing the full document."
                 : "No passage location was saved. Showing the full document."}
             </p>
           )}
           <div className="max-h-[65vh] overflow-auto rounded border bg-background p-4">
-            <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+            <div className="whitespace-pre-wrap break-words text-body leading-relaxed">
               {range ? (
                 <>
                   {text.slice(0, range.start)}

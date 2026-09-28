@@ -40,7 +40,7 @@ export function ModelsView({
       ) : (
         <div className="flex min-w-0 flex-col gap-4">
           {error && <Banner tone="error">{error}</Banner>}
-          <p className="py-2.5 text-sm text-muted-foreground">
+          <p className="py-2.5 text-body text-muted-foreground">
             Select a model to review its proposed values. Nothing is waiting for review right now.
           </p>
         </div>
@@ -74,11 +74,11 @@ function ModelList({ items, uploadTargets, selectedHoldingId }: { items: ModelLi
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <span className="w-11 shrink-0 font-mono text-[13px] font-semibold">{i.ticker}</span>
-                  <span className="min-w-0 flex-1 truncate text-[13.5px]">{m.fileName}</span>
-                  {m.proposed > 0 ? <CountChip hot>{m.proposed}</CountChip> : <span className="px-[7px] font-mono text-[11px] text-muted-foreground">–</span>}
+                  <span className="w-11 shrink-0 font-mono text-body font-semibold">{i.ticker}</span>
+                  <span className="min-w-0 flex-1 truncate text-body">{m.fileName}</span>
+                  {m.proposed > 0 ? <CountChip hot>{m.proposed}</CountChip> : <span className="px-[7px] font-mono text-caption text-muted-foreground">–</span>}
                 </div>
-                <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                <div className="mt-0.5 truncate text-caption text-muted-foreground">
                   {[i.teamName, m.uploader ?? "Unknown uploader"].filter(Boolean).join(" · ")} ·{" "}
                   <span className={cn(summary.warn && "text-caution-foreground")}>{summary.text}</span> · {shortDate(m.createdAt)}
                 </div>
@@ -88,13 +88,13 @@ function ModelList({ items, uploadTargets, selectedHoldingId }: { items: ModelLi
         })}
         {without.length > 0 && (
           <>
-            <li className="flex h-9 items-center border-b border-row bg-band px-3.5 text-[12.5px] font-medium text-muted-foreground">
-              No model yet <span className="ml-2 font-mono text-[11px]">{without.length}</span>
+            <li className="flex h-9 items-center border-b border-row bg-band px-3.5 text-body font-medium text-muted-foreground">
+              No model yet <span className="ml-2 font-mono text-caption">{without.length}</span>
             </li>
             {without.map((i) => (
               <li key={i.holdingId} className="flex items-center gap-2 border-b border-row px-3.5 py-2">
-                <span className="w-11 shrink-0 font-mono text-[13px] font-semibold">{i.ticker}</span>
-                <span className="min-w-0 flex-1 truncate text-[13px] text-ink-2">
+                <span className="w-11 shrink-0 font-mono text-body font-semibold">{i.ticker}</span>
+                <span className="min-w-0 flex-1 truncate text-body text-ink-2">
                   {i.companyName}
                   {i.teamName && <span className="text-muted-foreground"> · {i.teamName}</span>}
                 </span>
@@ -133,16 +133,16 @@ function ModelDetail({ d, uploadTargets }: { d: ModelDetailData; uploadTargets: 
     <div className="flex min-w-0 flex-col gap-5">
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 text-[19px] font-semibold tracking-[-0.015em]">
+          <div className="flex flex-wrap items-center gap-x-2 text-title font-semibold tracking-[-0.015em]">
             <Link href={d.holdingHref} className="font-mono hover:underline">
               {d.ticker}
             </Link>
             <span>·</span>
             <span className="min-w-0 truncate">{d.fileName}</span>
             <CountChip>v{d.version}</CountChip>
-            <span className="truncate text-sm font-normal tracking-normal text-muted-foreground">{d.companyName}</span>
+            <span className="truncate text-body font-normal tracking-normal text-muted-foreground">{d.companyName}</span>
           </div>
-          <div className="mt-0.5 text-[13px] text-muted-foreground">
+          <div className="mt-0.5 text-body text-muted-foreground">
             {d.uploader ?? "Unknown uploader"} · uploaded {shortDate(d.createdAt)} ·{" "}
             {mapped ? (
               `${d.mappings.length} line item${d.mappings.length === 1 ? "" : "s"} mapped to reported figures`
@@ -151,12 +151,12 @@ function ModelDetail({ d, uploadTargets }: { d: ModelDetailData; uploadTargets: 
             )}{" "}
             · {d.cik ? `SEC CIK ${Number(d.cik)}` : <span className="text-caution-foreground">Not an SEC filer, so no values can be proposed from filings</span>}
           </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[13px] text-muted-foreground">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-body text-muted-foreground">
             {d.versions.length > 1 && (
               <>
                 <span>Versions</span>
                 {d.versions.map((v, i) => (
-                  <span key={v.id} className="font-mono text-xs">
+                  <span key={v.id} className="font-mono text-body">
                     {i > 0 && <span className="mr-1.5 text-muted-foreground">·</span>}
                     {v.id === d.id ? <strong className="text-foreground">v{v.version}</strong> : <Link href={v.href} className="hover:text-foreground hover:underline">v{v.version}</Link>}
                   </span>
@@ -205,7 +205,7 @@ function ModelDetail({ d, uploadTargets }: { d: ModelDetailData; uploadTargets: 
         (mapped ? (
           <ProposalsPanels d={d} counts={counts} />
         ) : (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-1 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-1 text-body text-muted-foreground">
             Map at least one line item first. You enter its first period by hand; Hoot checks the other periods against that number.
             <Button nativeButton={false} render={<Link href={`${d.href}?tab=map`} scroll={false} />} size="sm">
               Map a line item
@@ -233,17 +233,17 @@ function ProposalsPanels({ d, counts }: { d: ModelDetailData; counts: Record<Mod
     <>
       <Panel>
         <PanelHeader title="Proposed values">
-          <span className="truncate text-[12.5px] text-muted-foreground">Straight from SEC filings, not written by AI · formula cells are never touched</span>
+          <span className="truncate text-body text-muted-foreground">Straight from SEC filings, not written by AI · formula cells are never touched</span>
         </PanelHeader>
         {d.proposals.length === 0 ? (
-          <div className="flex flex-col items-start gap-3 px-4 py-4 text-[13.5px] text-muted-foreground">
+          <div className="flex flex-col items-start gap-3 px-4 py-4 text-body text-muted-foreground">
             Generate proposals to fill the other mapped periods from the figures the company reported to the SEC. Each proposal carries its period, unit, reported label, filing, and derivation.
             <GenerateButton d={d} label="Generate proposals" primary />
           </div>
         ) : (
           <div className="flex flex-col overflow-x-auto">
             <div className="flex min-w-[760px] flex-col">
-              <div className={cn(GRID, "h-[34px] shrink-0 border-b px-4 text-xs text-muted-foreground")}>
+              <div className={cn(GRID, "h-[34px] shrink-0 border-b px-4 text-body text-muted-foreground")}>
                 <span>Line item · cell</span>
                 <span title="The XBRL tag the company used for this figure in its SEC filing">Reported figure</span>
                 <span>Period</span>
@@ -251,7 +251,7 @@ function ProposalsPanels({ d, counts }: { d: ModelDetailData; counts: Record<Mod
                 <span>Derivation</span>
                 <span className="text-right">Decision</span>
               </div>
-              {rows.length === 0 && <p className="px-4 py-3 text-[13.5px] text-muted-foreground">Only exceptions are left; they are below.</p>}
+              {rows.length === 0 && <p className="px-4 py-3 text-body text-muted-foreground">Only exceptions are left; they are below.</p>}
               {rows.map((p) => (
                 <ProposalRow key={p.id} p={p} />
               ))}
@@ -259,7 +259,7 @@ function ProposalsPanels({ d, counts }: { d: ModelDetailData; counts: Record<Mod
           </div>
         )}
         <PanelFooter>
-          <span className="font-mono text-[11.5px]">
+          <span className="font-mono text-caption">
             {counts.proposed} open · {counts.approved} approved · {counts.exception} exception{counts.exception === 1 ? "" : "s"} · {counts.rejected} rejected
           </span>
           <span className="min-w-0 flex-1 truncate">Writing creates a new file version; the previous version stays downloadable.</span>
@@ -288,36 +288,36 @@ function ProposalRow({ p }: { p: ModelProposalRow }) {
     <div
       className={cn(
         GRID,
-        "min-h-12 border-b border-row px-4 py-1.5 text-[13.5px]",
+        "min-h-12 border-b border-row px-4 py-1.5 text-body",
         p.status === "approved" && "bg-good-tint",
         p.status === "rejected" && "text-muted-foreground [&_.value]:line-through",
       )}
     >
       <span className="min-w-0">
         <span className="font-medium">{p.label}</span>
-        <span className="ml-2 font-mono text-[11.5px] text-muted-foreground" title={`${p.sheet}!${p.cellRef}`}>
+        <span className="ml-2 font-mono text-caption text-muted-foreground" title={`${p.sheet}!${p.cellRef}`}>
           {p.cellRef}
         </span>
       </span>
       <span className="min-w-0">
-        <span className="block truncate font-mono text-[11.5px] text-ink-2" title={`${p.taxonomy}:${p.concept}`}>
+        <span className="block truncate font-mono text-caption text-ink-2" title={`${p.taxonomy}:${p.concept}`}>
           {p.taxonomy}:{p.concept}
         </span>
         {p.reportedLabel && (
-          <span className="block truncate text-[11.5px] text-muted-foreground" title={`Reported as: ${p.reportedLabel}`}>
+          <span className="block truncate text-caption text-muted-foreground" title={`Reported as: ${p.reportedLabel}`}>
             {p.reportedLabel}
           </span>
         )}
       </span>
-      <span className="min-w-0 font-mono text-xs">
+      <span className="min-w-0 font-mono text-body">
         {periodLabel(p.periodEnd)}
         {p.fiscalPeriod && (
-          <span className="block truncate text-[11px] text-muted-foreground" title={`Tagged ${p.fiscalPeriod}: fiscal year and period as tagged in the source filing; comparatives carry the filing's tag, not the period's`}>
+          <span className="block truncate text-caption text-muted-foreground" title={`Tagged ${p.fiscalPeriod}: fiscal year and period as tagged in the source filing; comparatives carry the filing's tag, not the period's`}>
             {p.fiscalPeriod}
           </span>
         )}
       </span>
-      <span className="value text-right font-mono text-[13px] font-medium">{fmtValue(p.value)}</span>
+      <span className="value text-right font-mono text-body font-medium">{fmtValue(p.value)}</span>
       <Derivation p={p} extension={extension} />
       <DecisionButtons id={p.id} status={p.status} canApprove={p.value !== null} reviewer={p.reviewer} />
     </div>
@@ -326,13 +326,13 @@ function ProposalRow({ p }: { p: ModelProposalRow }) {
 
 function Derivation({ p, extension }: { p: ModelProposalRow; extension: boolean }) {
   return (
-    <span className="min-w-0 text-[12.5px]">
+    <span className="min-w-0 text-body">
       <span className={cn("block truncate", extension || p.derivation ? "text-caution-foreground" : "text-muted-foreground")} title={p.derivation ?? undefined}>
         {p.derivation ? "Derived, see note" : "Reported"}
         {extension && " · Company extension"}
       </span>
       {p.sourceUrl ? (
-        <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="block truncate font-mono text-[11px] text-muted-foreground hover:text-foreground hover:underline">
+        <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="block truncate font-mono text-caption text-muted-foreground hover:text-foreground hover:underline">
           {p.accession?.slice(-6) ?? "filing"} · {p.filedAt}
         </a>
       ) : null}
@@ -344,24 +344,24 @@ function ExceptionsPanel({ rows }: { rows: ModelProposalRow[] }) {
   return (
     <section className="shrink-0 overflow-hidden rounded-[14px] bg-[color-mix(in_oklch,var(--caution)_40%,var(--card))] shadow-[0_0_0_1px_color-mix(in_oklch,var(--caution-foreground)_28%,var(--card))]">
       <div className="flex h-[42px] items-center border-b border-[color-mix(in_oklch,var(--caution-foreground)_28%,var(--card))] px-4">
-        <h2 className="flex-1 text-[14.5px] font-semibold">Exceptions · need your judgment</h2>
-        <span className="font-mono text-[12.5px] text-caution-foreground">{rows.length}</span>
+        <h2 className="flex-1 text-emph font-semibold">Exceptions · need your judgment</h2>
+        <span className="font-mono text-body text-caution-foreground">{rows.length}</span>
       </div>
       {rows.map((p) => (
-        <div key={p.id} className="flex min-h-11 items-center gap-3 border-b border-[color-mix(in_oklch,var(--caution-foreground)_20%,var(--card))] px-4 py-1.5 text-[13.5px] last:border-b-0">
-          <span className="inline-flex h-[22px] shrink-0 items-center rounded-full bg-card px-[9px] text-[11.5px] font-semibold whitespace-nowrap text-caution-foreground">{exceptionKind(p.exceptionReason)}</span>
+        <div key={p.id} className="flex min-h-11 items-center gap-3 border-b border-[color-mix(in_oklch,var(--caution-foreground)_20%,var(--card))] px-4 py-1.5 text-body last:border-b-0">
+          <span className="inline-flex h-[22px] shrink-0 items-center rounded-full bg-card px-[9px] text-caption font-semibold whitespace-nowrap text-caution-foreground">{exceptionKind(p.exceptionReason)}</span>
           <span className="shrink-0 font-medium">
-            {p.label} <span className="font-mono text-[11.5px] font-normal text-muted-foreground">{p.cellRef} · {periodLabel(p.periodEnd)}</span>
+            {p.label} <span className="font-mono text-caption font-normal text-muted-foreground">{p.cellRef} · {periodLabel(p.periodEnd)}</span>
           </span>
           <span className="line-clamp-2 min-w-0 flex-1 text-ink-2" title={p.exceptionReason ?? undefined}>
             {p.exceptionReason}
           </span>
           <ExceptionDecide id={p.id} canApprove={p.value !== null}>
-            <div className="grid gap-1.5 text-[13px]">
+            <div className="grid gap-1.5 text-body">
               <div className="font-semibold">
-                {p.label} <span className="font-mono text-xs font-normal text-muted-foreground">{p.sheet}!{p.cellRef}</span>
+                {p.label} <span className="font-mono text-body font-normal text-muted-foreground">{p.sheet}!{p.cellRef}</span>
               </div>
-              <dl className="grid grid-cols-[88px_1fr] gap-x-2 gap-y-1 text-[12.5px]">
+              <dl className="grid grid-cols-[88px_1fr] gap-x-2 gap-y-1 text-body">
                 <dt className="text-muted-foreground">Period</dt>
                 <dd className="font-mono">
                   {periodLabel(p.periodEnd)}
@@ -370,7 +370,7 @@ function ExceptionsPanel({ rows }: { rows: ModelProposalRow[] }) {
                 <dt className="text-muted-foreground">Value</dt>
                 <dd className="font-mono">{fmtValue(p.value)}</dd>
                 <dt className="text-muted-foreground">Concept</dt>
-                <dd className="truncate font-mono text-[11.5px]" title={`${p.taxonomy}:${p.concept}`}>
+                <dd className="truncate font-mono text-caption" title={`${p.taxonomy}:${p.concept}`}>
                   {p.taxonomy}:{p.concept}
                 </dd>
                 {p.reportedLabel && (
@@ -389,14 +389,14 @@ function ExceptionsPanel({ rows }: { rows: ModelProposalRow[] }) {
                   <>
                     <dt className="text-muted-foreground">Source</dt>
                     <dd>
-                      <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="font-mono text-[11.5px] hover:underline">
+                      <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="font-mono text-caption hover:underline">
                         {p.accession?.slice(-6) ?? "filing"} · {p.filedAt}
                       </a>
                     </dd>
                   </>
                 )}
               </dl>
-              <p className="text-[12.5px] text-caution-foreground">{p.exceptionReason}</p>
+              <p className="text-body text-caution-foreground">{p.exceptionReason}</p>
             </div>
           </ExceptionDecide>
         </div>
@@ -410,7 +410,7 @@ function MappingsPanel({ d }: { d: ModelDetailData }) {
     <Panel>
       <PanelHeader title="Mappings" count={d.mappings.length} aside="Carried forward to each new version" />
       {d.mappings.length === 0 ? (
-        <p className="px-4 py-3 text-[13.5px] text-muted-foreground">No line items mapped yet.</p>
+        <p className="px-4 py-3 text-body text-muted-foreground">No line items mapped yet.</p>
       ) : (
         <div className="overflow-x-auto">
           <Table>
@@ -431,22 +431,22 @@ function MappingsPanel({ d }: { d: ModelDetailData }) {
                 <TableRow key={mm.id}>
                   <TableCell className="pl-4">
                     <div className="font-medium">{mm.labelInModel}</div>
-                    <div className="font-mono text-[11.5px] text-muted-foreground">
+                    <div className="font-mono text-caption text-muted-foreground">
                       {mm.sheet}!row {mm.rowRef}
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-[11.5px]">{mm.concept}</TableCell>
-                  <TableCell className="text-xs">
+                  <TableCell className="font-mono text-caption">{mm.concept}</TableCell>
+                  <TableCell className="text-body">
                     {mm.unit} · ÷{fmtNumber(mm.scale)}
                     {mm.sign === -1 ? " · sign flipped" : ""} · {mm.periodType}
                   </TableCell>
-                  <TableCell className="font-mono text-[11.5px]">
+                  <TableCell className="font-mono text-caption">
                     {Object.entries(mm.periodColumns)
                       .sort((a, b) => (a[1] < b[1] ? -1 : 1))
                       .map(([c, dt]) => `${c}=${dt}`)
                       .join(", ")}
                   </TableCell>
-                  <TableCell className="max-w-64 truncate text-xs text-muted-foreground" title={mm.rationale ?? ""}>
+                  <TableCell className="max-w-64 truncate text-caption text-muted-foreground" title={mm.rationale ?? ""}>
                     {mm.rationale}
                   </TableCell>
                   <TableCell className="pr-4 text-right">
@@ -469,7 +469,7 @@ function MappingsPanel({ d }: { d: ModelDetailData }) {
 
 function Banner({ tone, children }: { tone: "good" | "error"; children: React.ReactNode }) {
   return (
-    <div role={tone === "error" ? "alert" : "status"} className={cn("rounded-[10px] px-3.5 py-2 text-[13.5px]", tone === "good" ? "bg-good text-good-foreground" : "bg-destructive/10 text-destructive")}>
+    <div role={tone === "error" ? "alert" : "status"} className={cn("rounded-[10px] px-3.5 py-2 text-body", tone === "good" ? "bg-good text-good-foreground" : "bg-destructive/10 text-destructive")}>
       {children}
     </div>
   );

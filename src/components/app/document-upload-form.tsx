@@ -58,7 +58,7 @@ export function DocumentUploadForm({ holdingId, disabledReason }: { holdingId: s
     }
   }
 
-  if (disabledReason) return <p className="text-xs text-muted-foreground">{disabledReason}</p>;
+  if (disabledReason) return <p className="text-body text-muted-foreground">{disabledReason}</p>;
 
   return (
     <form onSubmit={submit} className="grid gap-2">
@@ -76,7 +76,7 @@ export function DocumentUploadForm({ holdingId, disabledReason }: { holdingId: s
           {busy ?? "Upload"}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Filed under the team and company folder in the Fund&rsquo;s Drive; Hoot can read it right away. Up to 50MB.</p>
+      <p className="text-body text-muted-foreground">Filed under the team and company folder in the Fund&rsquo;s Drive; Hoot can read it right away. Up to 50MB.</p>
     </form>
   );
 }

@@ -9,7 +9,7 @@ export function GlancePanel({ rows }: { rows: GlanceRow[] }) {
     <section className="panel shrink-0 overflow-hidden" aria-label="At a glance">
       <dl>
         {rows.map((r) => (
-          <div key={r.label} className="flex h-[42px] items-center gap-2.5 border-b border-row px-4 text-[13.5px] last:border-b-0">
+          <div key={r.label} className="flex h-[42px] items-center gap-2.5 border-b border-row px-4 text-body last:border-b-0">
             <dt className="w-[108px] shrink-0 text-muted-foreground">{r.label}</dt>
             <dd className="min-w-0 flex-1 truncate font-medium" title={r.title}>
               {r.value}
@@ -40,20 +40,20 @@ export function LatestPanel({ items, className }: { items: LatestItem[]; classNa
   return (
     <section className={cn("panel-plain flex flex-col", className)}>
       <div className="flex h-10 shrink-0 items-center px-4">
-        <h2 className="flex-1 text-[14.5px] font-semibold">Latest</h2>
-        <span className="text-[12.5px] whitespace-nowrap text-muted-foreground">Filings, news and Drive</span>
+        <h2 className="flex-1 text-emph font-semibold">Latest</h2>
+        <span className="text-body whitespace-nowrap text-muted-foreground">Filings, news and Drive</span>
       </div>
       {items.length === 0 ? (
-        <p className="px-4 py-1 text-sm text-muted-foreground">Nothing filed, reported or uploaded for this holding yet.</p>
+        <p className="px-4 py-1 text-body text-muted-foreground">Nothing filed, reported or uploaded for this holding yet.</p>
       ) : (
         <ul className="flex flex-col">
           {items.map((it, i) => {
             const body = (
               <>
-                <span className={cn("grid h-5 min-w-[50px] shrink-0 place-items-center rounded-full px-1.5 font-mono text-[10.5px] font-medium", it.hot ? "bg-hoot text-hoot-foreground" : "bg-muted text-ink-2")}>{it.kind}</span>
+                <span className={cn("grid h-5 min-w-[50px] shrink-0 place-items-center rounded-full px-1.5 font-mono text-caption font-medium", it.hot ? "bg-hoot text-hoot-foreground" : "bg-muted text-ink-2")}>{it.kind}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13.5px] leading-snug">{it.title}</span>
-                  <span className="mt-px block truncate text-xs text-muted-foreground">{it.meta}</span>
+                  <span className="block truncate text-body leading-snug">{it.title}</span>
+                  <span className="mt-px block truncate text-caption text-muted-foreground">{it.meta}</span>
                 </span>
               </>
             );

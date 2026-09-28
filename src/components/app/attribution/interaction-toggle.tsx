@@ -28,7 +28,7 @@ export function InteractionSwitch() {
   const id = useId();
   if (!ctx) return null;
   return (
-    <label htmlFor={id} className="flex cursor-pointer items-center gap-1.5 text-xs whitespace-nowrap text-muted-foreground hover:text-foreground">
+    <label htmlFor={id} className="flex cursor-pointer items-center gap-1.5 text-body whitespace-nowrap text-muted-foreground hover:text-foreground">
       <input id={id} type="checkbox" checked={ctx.show} onChange={(e) => ctx.setShow(e.target.checked)} className="size-3.5 accent-primary" />
       Show interaction
     </label>

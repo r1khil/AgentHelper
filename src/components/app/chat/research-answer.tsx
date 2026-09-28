@@ -77,7 +77,7 @@ export function Citation({ id: cited, full = false }: { id: string; full?: boole
   const unavailable = target.kind === "unavailable";
   if (links && !full) return <ChipCitation id={id} n={numbers.get(id)} title={title} source={source} unavailable={unavailable} links={links} />;
   const className = full
-    ? "block w-full rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted"
+    ? "block w-full rounded-md px-2 py-1.5 text-left text-caption hover:bg-muted"
     : `${CHIP} ${unavailable ? "bg-destructive/10 text-destructive" : "bg-hoot text-hoot-foreground hover:ring-1 hover:ring-hoot-foreground/50"}`;
   const content = full ? (
     <>
@@ -113,7 +113,7 @@ export function Citation({ id: cited, full = false }: { id: string; full?: boole
       <Tooltip.Trigger render={trigger} />
       <Tooltip.Portal>
         <Tooltip.Positioner side="top" sideOffset={6} className="z-[70]">
-          <Tooltip.Popup className="w-80 max-w-[calc(100vw-2rem)] rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
+          <Tooltip.Popup className="w-80 max-w-[calc(100vw-2rem)] rounded-lg border bg-popover p-3 text-body text-popover-foreground shadow-lg">
             <div className="font-semibold">{title}</div>
             <div className="mt-1 text-muted-foreground">
               {source ? sourceType(source) : "Unknown source type"} · {fmtDate(source?.publishedAt) || "Date unavailable"}
@@ -167,7 +167,7 @@ function ChipCitation({ id, n, title, source, unavailable, links }: { id: string
       />
       <Tooltip.Portal>
         <Tooltip.Positioner side="top" sideOffset={6} className="z-[70]">
-          <Tooltip.Popup className="w-80 max-w-[calc(100vw-2rem)] rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
+          <Tooltip.Popup className="w-80 max-w-[calc(100vw-2rem)] rounded-lg border bg-popover p-3 text-body text-popover-foreground shadow-lg">
             <div className="font-semibold">{title}</div>
             <div className="mt-1 text-muted-foreground">
               {source ? sourceType(source) : "Unknown source type"} · {fmtDate(source?.publishedAt) || "Date unavailable"}
@@ -182,12 +182,12 @@ function ChipCitation({ id, n, title, source, unavailable, links }: { id: string
 }
 
 /** Hoot's pink numbered citation chip: tiny, round, mono. */
-const CHIP = "mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1.5 align-[1px] font-mono text-[10.5px] leading-none font-medium not-italic no-underline focus-visible:outline-2";
+const CHIP = "mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1.5 align-[1px] font-mono text-caption leading-none font-medium not-italic no-underline focus-visible:outline-2";
 
 /** Reusable for research prose anywhere in the app. Markdown's URL protections stay enabled. */
 export function ResearchAnswer({ text, className }: { text: string; className?: string }) {
   return (
-    <div className={cn("prose-sm max-w-none text-sm leading-relaxed [&_h1]:mt-3 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-semibold [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_table]:my-2 [&_table]:text-xs [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:bg-muted [&_th]:px-2 [&_th]:py-1 [&_ul]:list-disc [&_ul]:pl-5", className)}>
+    <div className={cn("prose-sm max-w-none text-body leading-relaxed [&_h1]:mt-3 [&_h1]:text-emph [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:text-body [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:text-body [&_h3]:font-semibold [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_table]:my-2 [&_table]:text-body [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:bg-muted [&_th]:px-2 [&_th]:py-1 [&_ul]:list-disc [&_ul]:pl-5", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkCitations]}
         components={{

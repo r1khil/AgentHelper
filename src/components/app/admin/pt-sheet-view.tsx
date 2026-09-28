@@ -30,20 +30,20 @@ export function PtSheetBody({ sheet, error }: { sheet: PtSheet | null; error: st
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="min-w-0 flex-1">
           {/* The way back up to Admin is in the app header (nav.ts backFor), so this is the page's h1. */}
-          <h1 className="text-[19px] font-semibold tracking-[-0.015em]">PT sheet read test</h1>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">Exactly what Hoot will see from the price target sheet. The app only reads it; nothing here is saved.</p>
+          <h1 className="text-title font-semibold tracking-[-0.015em]">PT sheet read test</h1>
+          <p className="mt-0.5 text-body text-muted-foreground">Exactly what Hoot will see from the price target sheet. The app only reads it; nothing here is saved.</p>
         </div>
         <Button nativeButton={false} render={<Link href="/admin/pt-sheet?fresh=1" prefetch={false} />} size="lg">
           <RefreshCw data-icon="inline-start" />
           Read again
         </Button>
       </div>
-      {error && <div className="rounded-[10px] bg-caution px-3.5 py-2 text-[13px] text-caution-foreground">{error}</div>}
+      {error && <div className="rounded-[10px] bg-caution px-3.5 py-2 text-body text-caution-foreground">{error}</div>}
       {sheet && (
         <>
           <Panel className="shrink-0">
             <PanelHeader title="Sheet" aside={`${sheet.tabs.filter((t) => t.status === "ok").length} of ${sheet.tabs.length + sheet.missingTabs.length} allowed tabs read`} />
-            <dl className="grid grid-cols-[auto_1fr] gap-x-6 px-4 text-[13.5px]">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-6 px-4 text-body">
               {[
                 [
                   "Sheet",
@@ -53,15 +53,15 @@ export function PtSheetBody({ sheet, error }: { sheet: PtSheet | null; error: st
                 ],
                 [
                   "Last edited",
-                  <span key="e" className="font-mono text-[12.5px]">
+                  <span key="e" className="font-mono text-body">
                     {fmtDateTime(sheet.modifiedTime)}
-                    {sheet.lastModifiedBy ? <span className="font-sans text-[13.5px]"> by {sheet.lastModifiedBy}</span> : null}
+                    {sheet.lastModifiedBy ? <span className="font-sans text-body"> by {sheet.lastModifiedBy}</span> : null}
                   </span>,
                 ],
                 [
                   "Read by the app",
                   <span key="r">
-                    <span className="font-mono text-[12.5px]">{fmtDateTime(sheet.fetchedAt)}</span> (reused for up to 5 minutes)
+                    <span className="font-mono text-body">{fmtDateTime(sheet.fetchedAt)}</span> (reused for up to 5 minutes)
                   </span>,
                 ],
                 [
@@ -97,7 +97,7 @@ function TabPanel({ tab }: { tab: PtTab }) {
         title={tab.name}
         aside={
           tab.status === "ok" ? (
-            <span className="font-mono text-xs">
+            <span className="font-mono text-body">
               {tab.rows.length} rows · {tab.rows.reduce((n, r) => n + r.cells.length, 0)} cells{tab.errorCells ? ` · ${tab.errorCells} error cells` : ""}
               {tab.truncated ? " · cut short" : ""}
             </span>
@@ -106,19 +106,19 @@ function TabPanel({ tab }: { tab: PtTab }) {
       >
         {tab.status === "layout_changed" && <Pill tone="caution">Layout changed</Pill>}
       </PanelHeader>
-      <p className="border-b border-row px-4 py-2 text-[12.5px] text-muted-foreground">{tab.about}</p>
+      <p className="border-b border-row px-4 py-2 text-body text-muted-foreground">{tab.about}</p>
       {tab.status === "layout_changed" ? (
-        <p className="px-4 py-3 text-[13.5px] text-caution-foreground">Not read: the tab&rsquo;s layout changed (missing column labels: {tab.missingLabels.join(", ")}).</p>
+        <p className="px-4 py-3 text-body text-caution-foreground">Not read: the tab&rsquo;s layout changed (missing column labels: {tab.missingLabels.join(", ")}).</p>
       ) : (
         <div className="max-h-[480px] overflow-auto">
-          <table className="w-max min-w-full border-collapse text-[13px]">
-            <thead className="sticky top-0 z-10 bg-band text-left text-xs text-muted-foreground">
+          <table className="w-max min-w-full border-collapse text-body">
+            <thead className="sticky top-0 z-10 bg-band text-left text-body text-muted-foreground">
               <tr>
                 <th scope="col" className="sticky left-0 z-20 border-b bg-band px-3 py-1.5 text-right font-medium">Row</th>
                 {columns.map((c) => (
                   <th scope="col" key={c.col} className="border-b px-3 py-1.5 font-medium whitespace-nowrap">
                     {c.label && <span className="text-foreground">{c.label} </span>}
-                    <span className="font-mono text-[11px]">{c.col}</span>
+                    <span className="font-mono text-caption">{c.col}</span>
                   </th>
                 ))}
               </tr>
@@ -128,7 +128,7 @@ function TabPanel({ tab }: { tab: PtTab }) {
                 const byCol = new Map(r.cells.map((c) => [c.col, c]));
                 return (
                   <tr key={r.row} className="border-b border-row last:border-b-0 hover:bg-band">
-                    <td className="sticky left-0 bg-card px-3 py-1.5 text-right font-mono text-xs text-muted-foreground tnum">{r.row}</td>
+                    <td className="sticky left-0 bg-card px-3 py-1.5 text-right font-mono text-body text-muted-foreground tnum">{r.row}</td>
                     {columns.map(({ col }) => {
                       const cell = byCol.get(col);
                       const text = cell ? displayValue(cell) : "";
@@ -136,7 +136,7 @@ function TabPanel({ tab }: { tab: PtTab }) {
                         <td
                           key={col}
                           title={cell ? `${cell.ref}: ${text}` : undefined}
-                          className={cn("max-w-[280px] truncate px-3 py-1.5 whitespace-nowrap", typeof cell?.v === "number" && "text-right font-mono text-[12.5px] tnum", cell?.error && "font-mono text-[12.5px] text-down")}
+                          className={cn("max-w-[280px] truncate px-3 py-1.5 whitespace-nowrap", typeof cell?.v === "number" && "text-right font-mono text-body tnum", cell?.error && "font-mono text-body text-down")}
                         >
                           {text}
                         </td>
@@ -151,8 +151,8 @@ function TabPanel({ tab }: { tab: PtTab }) {
       )}
       {tab.truncated && <PanelFooter className="text-caution-foreground">Tab cut short: too many cells. Hoot gets the same rows shown here.</PanelFooter>}
       <details className="border-t bg-band-2">
-        <summary className="cursor-pointer px-4 py-2 text-[12.5px] text-muted-foreground select-none hover:text-foreground">The same tab as the text Hoot is given</summary>
-        <pre className="max-h-96 overflow-auto px-4 pb-4 font-mono text-xs leading-relaxed whitespace-pre">{renderTab(tab)}</pre>
+        <summary className="cursor-pointer px-4 py-2 text-body text-muted-foreground select-none hover:text-foreground">The same tab as the text Hoot is given</summary>
+        <pre className="max-h-96 overflow-auto px-4 pb-4 font-mono text-body leading-relaxed whitespace-pre">{renderTab(tab)}</pre>
       </details>
     </Panel>
   );

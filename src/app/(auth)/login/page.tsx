@@ -18,12 +18,12 @@ export default async function LoginPage({
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
           <HootHero size={168} className="-mb-1" />
-          <div className="text-lg font-semibold leading-tight">The Owl&apos;s Nest</div>
-          <div className="text-sm text-muted-foreground">Research workspace</div>
+          <div className="text-title font-semibold leading-tight">The Owl&apos;s Nest</div>
+          <div className="text-body text-muted-foreground">Research workspace</div>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-body text-destructive">
             {error}
           </div>
         )}
@@ -36,7 +36,7 @@ export default async function LoginPage({
           </Button>
         </form>
 
-        <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="my-6 flex items-center gap-3 text-body text-muted-foreground">
           <div className="h-px flex-1 bg-border" />
           or use a username
           <div className="h-px flex-1 bg-border" />
@@ -57,7 +57,7 @@ export default async function LoginPage({
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
+        <p className="mt-6 text-center text-caption text-muted-foreground">
           Access is by invitation. Ask a Fund admin if you need an account.
         </p>
       </div>

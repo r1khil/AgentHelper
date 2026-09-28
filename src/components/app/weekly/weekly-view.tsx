@@ -26,7 +26,7 @@ export type WeeklyViewProps = {
 /** S10: packs list on the left, the selected pack on the right. Both /weekly routes render this. */
 export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyViewProps) {
   const noticeEl = (notice.ok || notice.error) && (
-    <div role="status" className={cn("shrink-0 rounded-[10px] px-3.5 py-2 text-[13px]", notice.error ? "bg-caution text-caution-foreground" : "bg-good text-good-foreground")}>
+    <div role="status" className={cn("shrink-0 rounded-[10px] px-3.5 py-2 text-body", notice.error ? "bg-caution text-caution-foreground" : "bg-good text-good-foreground")}>
       {notice.error ?? notice.ok}
     </div>
   );
@@ -72,8 +72,8 @@ export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyView
                 )}
               >
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13.5px] font-medium">Week ending {short(p.weekEnding)}</div>
-                  <div className="mt-px truncate text-xs text-muted-foreground">{meta}</div>
+                  <div className="truncate text-body font-medium">Week ending {short(p.weekEnding)}</div>
+                  <div className="mt-px truncate text-caption text-muted-foreground">{meta}</div>
                 </div>
                 <PackStatusPill state={p.state} title={p.state === "sent" && p.status !== "sent" ? "The Sunday email went out; the pack can still be edited" : undefined} />
               </RowLink>
@@ -89,8 +89,8 @@ export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyView
           <WeeklyPack key={pack.weekEnding} {...pack} />
         ) : selected ? (
           <Panel className="items-center p-6 text-center">
-            <div className="text-[15px] font-semibold">Week ending {fmtDay(selected)}</div>
-            <p className="mx-auto mt-1 mb-4 max-w-md text-[13.5px] text-muted-foreground">This pack has not been built yet.</p>
+            <div className="text-emph font-semibold">Week ending {fmtDay(selected)}</div>
+            <p className="mx-auto mt-1 mb-4 max-w-md text-body text-muted-foreground">This pack has not been built yet.</p>
             {buildForm(selected, "Build this pack")}
           </Panel>
         ) : null}

@@ -123,7 +123,7 @@ export function CoverageTable({ r }: { r: RiskReport }) {
               <TableCell className="font-medium">{c.ticker}</TableCell>
               <TableCell className="tnum text-right">{c.observations} / {r.window.days}</TableCell>
               <TableCell className="tnum text-right">{c.filled}</TableCell>
-              <TableCell className="text-xs text-muted-foreground">
+              <TableCell className="text-body text-muted-foreground">
                 {c.source === "own" ? (c.filled ? "own returns; gaps filled from sector ETF (holdings) or 0 (ETFs)" : "own returns") : c.source === "proxy" ? `sector ETF ${c.proxy}` : "riskless (no history, no sector)"}
               </TableCell>
             </TableRow>

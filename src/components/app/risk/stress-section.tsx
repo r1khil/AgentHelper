@@ -30,7 +30,7 @@ export function StressSectionFallback() {
       <SectionHead>{STRESS_DETAIL.title}</SectionHead>
       <div className="panel">
         {STRESS_WINDOWS.map((w) => (
-          <div key={w.key} className="border-b border-row px-4 py-3 pl-10 text-sm text-muted-foreground last:border-b-0">
+          <div key={w.key} className="border-b border-row px-4 py-3 pl-10 text-body text-muted-foreground last:border-b-0">
             {w.label} · loading…
           </div>
         ))}

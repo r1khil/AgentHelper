@@ -19,12 +19,12 @@ export function PrepPackCard({ pack, compact, actions, className }: { pack: Prep
       <div className={cn("flex flex-wrap items-center gap-2 py-2.5", compact ? "px-3" : "px-4")}>
         <ClipboardList className="size-3.5 text-muted-foreground" />
         <span className="label-mono text-muted-foreground">Earnings prep pack</span>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-body text-muted-foreground">
           reports {fmtDay(pack.reportDate)} · {n} sourced bullet{n === 1 ? "" : "s"} · built {relativeTime(pack.builtAt)}
         </span>
         {actions && <div className="ml-auto">{actions}</div>}
       </div>
-      <div className={cn("border-t pt-3 pb-3.5 text-[12.8px] leading-[18px]", compact ? "px-3" : "px-4")}>
+      <div className={cn("border-t pt-3 pb-3.5 text-body leading-[18px]", compact ? "px-3" : "px-4")}>
         <div className={cn("grid gap-4", compact ? "grid-cols-1" : "md:grid-cols-2")}>
           {pack.sections.map((s) => (
             <section key={s.key} className={cn(!compact && s.key === "not_retrieved" && "md:col-span-2")}>
@@ -40,7 +40,7 @@ export function PrepPackCard({ pack, compact, actions, className }: { pack: Prep
                         const num = numbers.get(id);
                         if (!src || !num) return null;
                         const t = resolveSource(src);
-                        const chip = "ml-1 inline-grid h-4 min-w-4 place-items-center rounded-full bg-hoot px-1 align-[1px] font-mono text-[10px] leading-none font-medium text-hoot-foreground";
+                        const chip = "ml-1 inline-grid h-4 min-w-4 place-items-center rounded-full bg-hoot px-1 align-[1px] font-mono text-caption leading-none font-medium text-hoot-foreground";
                         return t.kind === "external" ? (
                           <a key={id} href={t.href} target="_blank" rel="noopener noreferrer" title={`${src.title}${src.publishedAt ? ` (${src.publishedAt.slice(0, 10)})` : ""}`} className={cn(chip, "hover:ring-1 hover:ring-hoot-foreground/50")}>
                             {num}
@@ -59,7 +59,7 @@ export function PrepPackCard({ pack, compact, actions, className }: { pack: Prep
           ))}
         </div>
         {pack.sources.length > 0 && (
-          <ol className="mt-4 grid gap-0.5 border-t pt-3 text-[11px] leading-4 text-muted-foreground md:grid-cols-2">
+          <ol className="mt-4 grid gap-0.5 border-t pt-3 text-caption leading-4 text-muted-foreground md:grid-cols-2">
             {pack.sources.map((s, i) => {
               const t = resolveSource(s);
               const label = `${s.title}${s.publishedAt ? ` · ${fmtDate(s.publishedAt)}` : ""}`;
@@ -80,7 +80,7 @@ export function PrepPackCard({ pack, compact, actions, className }: { pack: Prep
             })}
           </ol>
         )}
-        <p className="mt-3 text-[11px] text-muted-foreground">Write your expectations, key questions and thesis-change criteria before they lock at the report.</p>
+        <p className="mt-3 text-caption text-muted-foreground">Write your expectations, key questions and thesis-change criteria before they lock at the report.</p>
       </div>
     </div>
   );

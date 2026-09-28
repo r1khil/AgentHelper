@@ -4,7 +4,8 @@ import { fmtDate, fmtDayMonth } from "@/lib/format";
 import { Segmented } from "@/components/app/panel";
 
 /** Axis ticks: small muted mono, like every other figure in the app. */
-export const chartTick = { fontSize: 10.5, fill: "var(--muted-foreground)", fontFamily: "var(--font-mono)" };
+/** Axis ticks at the type scale's caption size (11px); an SVG attribute can't read the CSS token. */
+export const chartTick = { fontSize: 11, fill: "var(--muted-foreground)", fontFamily: "var(--font-mono)" };
 /** Light gridlines in the row-divider color. */
 export const chartGrid = "var(--row)";
 export const tone = (value: number | null) =>
@@ -46,7 +47,7 @@ export function ChartTooltip({
   children: ReactNode;
 }) {
   return (
-    <div className="max-w-full rounded-[10px] border bg-popover/95 p-3 text-xs text-popover-foreground shadow-sm backdrop-blur-sm">
+    <div className="max-w-full rounded-[10px] border bg-popover/95 p-3 text-body text-popover-foreground shadow-sm backdrop-blur-sm">
       <div className="mb-2 font-medium">{label}</div>
       <div className="space-y-1.5 font-mono tnum">{children}</div>
     </div>
@@ -61,7 +62,7 @@ export function ChartLegend({
   note?: string;
 }) {
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-caption text-muted-foreground">
       {series.map((s) => (
         <span key={s.key} className="inline-flex items-center gap-1.5">
           {s.dashed ? (

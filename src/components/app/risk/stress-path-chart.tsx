@@ -25,7 +25,7 @@ export function StressPathChart({ data, fundLabel, benchmarkLabel }: { data: Str
             <Tooltip
               formatter={(v, name) => [fmtPct(Number(v)), names[String(name)] ?? String(name)]}
               labelFormatter={(d) => exactDate(String(d))}
-              contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+              contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: "var(--text-caption)" }}
             />
             <Line type="linear" dataKey="fund" stroke="var(--series-1)" strokeWidth={2} dot={false} isAnimationActive={false} />
             <Line type="linear" dataKey="market" stroke="var(--series-neutral)" strokeDasharray="4 3" strokeWidth={1.25} dot={false} isAnimationActive={false} />

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import type { Position } from "@/lib/backtesting/engine";
 import type { Funding, Trade } from "@/lib/backtesting/trade";
 
-const select = "h-9 rounded-md border bg-background px-2.5 text-sm";
+const select = "h-9 rounded-md border bg-background px-2.5 text-body";
 
 /** The quick trade's fields and its apply step, shared by both layouts. */
 export function useQuickTrade(positions: Position[], onApply: (trade: Trade) => string | null) {
@@ -36,10 +36,10 @@ export function QuickTrade({ positions, onApply, disabled }: { positions: Positi
 
   return (
     <div data-tour="bt-quick-trade" className="mt-3 rounded-md border border-dashed p-3">
-      <div className="mb-2 text-sm font-medium">
+      <div className="mb-2 text-body font-medium">
         Quick trade <span className="font-normal text-muted-foreground">· change one holding by percentage points and offset it automatically</span>
       </div>
-      <div className="flex flex-wrap items-end gap-2 text-sm">
+      <div className="flex flex-wrap items-end gap-2 text-body">
         <select aria-label="Trade direction" className={select} value={side} onChange={(e) => setSide(e.target.value as "trim" | "add")}>
           <option value="trim">Trim</option>
           <option value="add">Add to</option>
@@ -77,7 +77,7 @@ export function QuickTrade({ positions, onApply, disabled }: { positions: Positi
         </select>
         <Button type="button" variant="outline" disabled={disabled || !ticker} onClick={apply}>Apply</Button>
       </div>
-      {error && <p role="alert" className="mt-2 text-sm text-destructive">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-body text-destructive">{error}</p>}
     </div>
   );
 }

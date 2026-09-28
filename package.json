@@ -13,6 +13,8 @@
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
+    "codemod:type-scale": "node scripts/codemods/type-scale.mjs",
+    "check:type-scale": "node scripts/codemods/type-scale.mjs --check",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed.ts",

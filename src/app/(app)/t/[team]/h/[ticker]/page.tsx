@@ -212,7 +212,7 @@ function glanceRows({ h, teamName, leadNames, next, moves, base, now }: { h: Hol
   const overdue = open.find((mv) => mv.dueAt && mv.dueAt.getTime() < now);
   const last = moves[0];
   const expectations = next ? (next.preLockedAt ? "Locked in" : next.expectations?.trim() ? "Draft" : "Not started") : null;
-  const link = "text-[12.5px] font-semibold hover:underline";
+  const link = "text-body font-semibold hover:underline";
   return [
     {
       label: "Team",

@@ -10,7 +10,7 @@ export function QuickNote({ holdingId }: { holdingId: string }) {
         required
         aria-label="Add a note for the team"
         placeholder="Add a note for the team…"
-        className="h-8 w-72 max-w-full rounded-lg bg-transparent px-2.5 text-right text-[13px] placeholder:text-muted-foreground focus:bg-card focus:text-left focus:shadow-[0_0_0_1px_var(--border)] focus:outline-none"
+        className="h-8 w-72 max-w-full rounded-lg bg-transparent px-2.5 text-right text-body placeholder:text-muted-foreground focus:bg-card focus:text-left focus:shadow-[0_0_0_1px_var(--border)] focus:outline-none"
       />
     </form>
   );
