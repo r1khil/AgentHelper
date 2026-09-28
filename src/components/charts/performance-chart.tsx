@@ -42,7 +42,7 @@ import {
   tone,
   valueAxis,
 } from "./primitives";
-import { fmtAccounting, fmtBp, fmtPct } from "@/lib/format";
+import { fmtAccounting, fmtBp, fmtCurrency, fmtPct } from "@/lib/format";
 
 import {
   emptySelection,
@@ -58,6 +58,9 @@ export type ChartSeries = {
   label: string;
   color: string;
   dashed?: boolean;
+  /** An ISO currency code for a price in money: "$594.97", "EUR 12.50". */
+  currency?: string;
+  /** Otherwise a unit that trails the figure, e.g. "pts" for an index level: "7,798.99 pts". */
   unit?: string;
 };
 type Props = {
@@ -71,16 +74,14 @@ type Props = {
   nameMetrics?: boolean;
 };
 
-function price(value: number | null | undefined, unit?: string) {
-  return value == null
-    ? "Unavailable"
-    : fmtAccounting(value, 2, unit ? ` ${unit}` : "");
-}
-
-function formatChange(value: number | null, unit?: string) {
-  return value === null
-    ? "Unavailable"
-    : fmtAccounting(value, 2, unit ? ` ${unit}` : "");
+/** A series' price or price change in its own terms: its currency ("$594.97", "($12.40)"), else its unit ("7,798.99 pts"). */
+export function seriesAmount(
+  value: number | null | undefined,
+  s: Pick<ChartSeries, "currency" | "unit"> | undefined,
+) {
+  if (value == null) return "Unavailable";
+  if (s?.currency) return fmtCurrency(value, s.currency);
+  return fmtAccounting(value, 2, s?.unit ? ` ${s.unit}` : "");
 }
 
 /** Daily-price comparisons and cumulative-return indices share one interaction contract. */
@@ -175,7 +176,7 @@ function ChartSession({
       <div className="mb-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 tnum">
         <Metric
           label={metric(kind === "price" ? "Starting price" : "Starting index")}
-          value={price(baseline, kind === "price" ? primary.unit : undefined)}
+          value={seriesAmount(baseline, kind === "price" ? primary : undefined)}
         />
         <Metric
           label={metric(
@@ -187,14 +188,12 @@ function ChartSession({
                 ? "Selected close"
                 : "Selected index",
           )}
-          value={price(value, kind === "price" ? primary.unit : undefined)}
+          value={seriesAmount(value, kind === "price" ? primary : undefined)}
         />
         <Metric
           label={metric(kind === "price" ? "Price change" : "Index change")}
           value={
-            change === null
-              ? "Unavailable"
-              : fmtAccounting(change, 2, kind === "price" && primary.unit ? ` ${primary.unit}` : "")
+            seriesAmount(change, kind === "price" ? primary : undefined)
           }
           change={change}
         />
@@ -327,15 +326,15 @@ function ChartSession({
                     {kind === "price" && (
                       <>
                         {bounds
-                          ? formatChange(
+                          ? seriesAmount(
                               intervalPerformance(
                                 baselinePoint,
                                 selected,
                                 s.key,
                               ).change,
-                              s.unit,
+                              s,
                             )
-                          : price(selected.values[s.key], s.unit)}{" "}
+                          : seriesAmount(selected.values[s.key], s)}{" "}
                         ·{" "}
                       </>
                     )}
@@ -399,7 +398,7 @@ function ChartSession({
                   {series.map((s) => (
                     <td key={s.key} className="p-2 whitespace-nowrap">
                       {kind === "price" && (
-                        <>{price(p.values[s.key], s.unit)} / </>
+                        <>{seriesAmount(p.values[s.key], s)} / </>
                       )}
                       {p.returns[s.key] == null
                         ? "Unavailable"
