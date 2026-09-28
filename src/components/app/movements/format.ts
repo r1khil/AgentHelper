@@ -63,10 +63,6 @@ export function gatheredAt(d: Date) {
   return `${parts.hour}:${parts.minute} ${String(parts.dayPeriod ?? "").toLowerCase()} ${parts.weekday}`;
 }
 
-export function firstName(name: string | null) {
-  return name ? name.split(" ")[0] || name : null;
-}
-
 export function wordCount(text: string | null) {
   return text?.trim() ? text.trim().split(/\s+/).length : 0;
 }
