@@ -129,7 +129,7 @@ export function ResearchLogCard({ entries, canManage, defaultOpen }: { entries: 
               </ul>
             </>
           )}
-          <div className="mt-3 text-[11px] text-muted-foreground">Written by the agent after each answer. Evidence dates say how old the sources behind a fact are; the agent re-checks old ones before quoting a number.</div>
+          <div className="mt-3 text-[11px] text-muted-foreground">Written by Hoot after each answer. Evidence dates say how old the sources behind a fact are; Hoot re-checks old ones before quoting a number.</div>
         </div>
       )}
     </div>

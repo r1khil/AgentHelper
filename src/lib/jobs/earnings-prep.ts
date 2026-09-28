@@ -91,7 +91,7 @@ export async function buildPrepPack(earningsId: string): Promise<{ ok: true; pac
         refId: e.id,
         dedupeKey: `prep:${e.id}:${r.id}`,
         subject: `Earnings prep pack ready: ${h.ticker} reports ${fmtDate(e.reportDate)}`,
-        body: `The agent gathered ${bulletCount(pack)} sourced evidence bullets for ${h.ticker}'s ${e.fiscalPeriod ?? ""} report on ${fmtDate(e.reportDate)}: last quarter's figures, guidance on record, consensus, the team's own questions, and items to watch.\n\nIt contains no expectations; those are yours to write before the report.\n\nResearch board: ${boardUrl}\nEarnings page: ${earningsUrl}`,
+        body: `The agent gathered ${bulletCount(pack)} sourced evidence bullets for ${h.ticker}'s ${e.fiscalPeriod ?? ""} report on ${fmtDate(e.reportDate)}: last quarter's figures, guidance on record, consensus, the team's own questions, and items to watch.\n\nIt contains no expectations; those are yours to write before the report.\n\n${h.ticker} research: ${boardUrl}\nEarnings page: ${earningsUrl}`,
       }).catch((err) => console.error("[prep] notify failed", err));
     }
     await rememberMemory({ scope: "holding", teamId: h.teamId, holdingId: h.id, kind: "log", body: `Built the earnings prep pack for the ${e.reportDate} report: ${bulletCount(pack)} sourced bullets across ${pack.sections.filter((s) => s.key !== "not_retrieved").length} sections.`, meta: { earningsId: e.id }, model: def.modelId }).catch(() => {});

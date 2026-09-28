@@ -117,7 +117,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
 
   const noteItems: NoteItem[] = notes.map(({ n, authorName }) => ({ id: n.id, body: n.body, authorName, createdAt: n.createdAt, canDelete: n.authorId === user.id || manage }));
   const menuLinks = [
-    { label: "Research board", href: boardHref },
+    { label: `${h.ticker} research`, href: boardHref },
     { label: "Earnings", href: `${holdingPath}?tab=earnings` },
     { label: "Documents & filings", href: `${holdingPath}?tab=documents` },
     { label: "Movements", href: `${base}/movements` },

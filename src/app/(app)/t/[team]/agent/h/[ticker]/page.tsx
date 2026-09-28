@@ -16,7 +16,7 @@ import { loadResearchSidebar } from "@/components/app/agent/load-sidebar";
 
 export async function generateMetadata({ params }: { params: Promise<{ ticker: string }> }): Promise<Metadata> {
   const { ticker } = await params;
-  return { title: `${ticker.toUpperCase()} · Agent` };
+  return { title: `${ticker.toUpperCase()} · Research` };
 }
 
 export default async function HoldingBoardPage({ params, searchParams }: { params: Promise<{ team: string; ticker: string }>; searchParams: Promise<{ chat?: string }> }) {

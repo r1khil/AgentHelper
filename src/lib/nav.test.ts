@@ -78,10 +78,11 @@ describe("navModel", () => {
     expect(nav.tabs.find((t) => t.active)?.key).toBe("risk");
   });
 
-  it("shows a general conversation under Conversations", () => {
+  it("shows a general chat under Research › Chats", () => {
     const nav = navModel({ pathname: "/hoot/abc", ...exec });
     expect(nav.section).toBe("research");
-    expect(nav.tabs.find((t) => t.active)?.key).toBe("conversations");
+    expect(nav.title).toBe("Research");
+    expect(nav.tabs.find((t) => t.active)?.label).toBe("Chats");
   });
 
   it("gives analysts without the book only Backtesting, and no Manage", () => {
@@ -100,6 +101,6 @@ describe("navModel", () => {
 describe("destinations", () => {
   it("names pages the way Hoot's commands do", () => {
     const names = destinations(exec).map((d) => d.hoot).filter(Boolean);
-    expect(names).toEqual(expect.arrayContaining(["Today", "Holdings", "Hoot", "Sell-side analyzer", "Models", "Movements", "Earnings", "Economic calendar", "Attribution", "Risk", "Exposure", "Backtesting", "Weekly update", "Changelog", "Admin"]));
+    expect(names).toEqual(expect.arrayContaining(["Today", "Holdings", "Research", "Sell-side analyzer", "Models", "Movements", "Earnings", "Economic calendar", "Attribution", "Risk", "Exposure", "Backtesting", "Weekly update", "Changelog", "Admin"]));
   });
 });
