@@ -1,3 +1,4 @@
+import { fmtDay } from "@/lib/format";
 // Citing a gathered source in the write-up. The update is saved as plain text, so a citation is a short readable
 // reference the reader (and Hoot, who reads the same evidence list) can match to a source: who published it, when,
 // and the start of its headline.
@@ -13,9 +14,9 @@ export function gist(title: string, max = GIST_CHARS) {
   return `${(space > max / 2 ? cut.slice(0, space) : t.slice(0, max)).replace(/[\s,;:.–—-]+$/, "")}…`;
 }
 
-/** "[Yahoo, Sep 24: Meta's stock surges as it moves from AI…]"; the date is left out when the source has none. */
+/** "[Yahoo, Thu 24 Sep: Meta's stock surges as it moves from AI…]"; the date is left out when the source has none. */
 export function citationFor(e: { title: string; publisher: string | null; publishedAt: Date | null }, fallbackSource: string) {
-  const date = e.publishedAt?.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" });
+  const date = e.publishedAt ? fmtDay(e.publishedAt) : null;
   return `[${[e.publisher || fallbackSource, date].filter(Boolean).join(", ")}: ${gist(e.title)}]`;
 }
 

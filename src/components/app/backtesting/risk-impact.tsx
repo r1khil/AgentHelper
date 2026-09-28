@@ -3,32 +3,33 @@
 import { Card } from "@/components/ui/card";
 import { SectionTitle } from "@/components/app/page-header";
 import type { ScenarioMetrics, ScenarioRisk } from "@/lib/risk/compare";
+import { fmtAccounting, fmtBp, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Explained, InfoTip } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "../risk/explainers";
 
-const pct = (v: number | null, d = 2) => (v === null || !Number.isFinite(v) ? "—" : `${(v * 100).toFixed(d)}%`);
-const num = (v: number | null, d = 2) => (v === null || !Number.isFinite(v) ? "—" : v.toFixed(d));
+const pct = (v: number | null, d = 2) => fmtPct(v === null ? null : v * 100, d);
+const num = (v: number | null, d = 2) => fmtAccounting(v, d);
 const cell = "px-3 py-2 text-right tnum whitespace-nowrap";
 
 // Lower is less risk for every row except effective positions, where higher is more diversified.
-const ROWS: { key: keyof ScenarioMetrics; label: string; explain: string; fmt: (v: number | null) => string; unit: "pp" | "x"; higherIsSafer?: boolean }[] = [
-  { key: "vol", label: "Volatility", explain: RISK_EXPLAIN.vol, fmt: pct, unit: "pp" },
+const ROWS: { key: keyof ScenarioMetrics; label: string; explain: string; fmt: (v: number | null) => string; unit: "bp" | "x"; higherIsSafer?: boolean }[] = [
+  { key: "vol", label: "Volatility", explain: RISK_EXPLAIN.vol, fmt: pct, unit: "bp" },
   { key: "beta", label: "Beta", explain: RISK_EXPLAIN.beta, fmt: num, unit: "x" },
-  { key: "trackingError", label: "Tracking error", explain: RISK_EXPLAIN.trackingError, fmt: pct, unit: "pp" },
-  { key: "var", label: "1-day VaR (95%)", explain: RISK_EXPLAIN.var, fmt: pct, unit: "pp" },
-  { key: "es", label: "Expected shortfall", explain: RISK_EXPLAIN.es, fmt: pct, unit: "pp" },
+  { key: "trackingError", label: "Tracking error", explain: RISK_EXPLAIN.trackingError, fmt: pct, unit: "bp" },
+  { key: "var", label: "1-day VaR (95%)", explain: RISK_EXPLAIN.var, fmt: pct, unit: "bp" },
+  { key: "es", label: "Expected shortfall", explain: RISK_EXPLAIN.es, fmt: pct, unit: "bp" },
   { key: "effectiveN", label: "Effective positions", explain: RISK_EXPLAIN.effectiveN, fmt: (v) => num(v, 1), unit: "x", higherIsSafer: true },
-  { key: "top5", label: "Top 5 weight", explain: RISK_EXPLAIN.top5, fmt: pct, unit: "pp" },
+  { key: "top5", label: "Top 5 weight", explain: RISK_EXPLAIN.top5, fmt: pct, unit: "bp" },
 ];
 
-function Change({ before, after, unit, higherIsSafer }: { before: number | null; after: number | null; unit: "pp" | "x"; higherIsSafer?: boolean }) {
+function Change({ before, after, unit, higherIsSafer }: { before: number | null; after: number | null; unit: "bp" | "x"; higherIsSafer?: boolean }) {
   if (before === null || after === null || !Number.isFinite(before) || !Number.isFinite(after)) return <span className="text-muted-foreground">—</span>;
   const d = after - before;
-  const shown = unit === "pp" ? (d * 100).toFixed(2) : d.toFixed(2);
-  if (Number(shown) === 0) return <span className="text-muted-foreground">no change</span>;
+  const shown = unit === "bp" ? fmtBp(d * 10_000) : fmtAccounting(d, 2);
+  if (!/[1-9]/.test(shown)) return <span className="text-muted-foreground">no change</span>;
   const safer = higherIsSafer ? d > 0 : d < 0;
-  return <span className={safer ? "text-up" : "text-down"}>{d > 0 ? "+" : ""}{shown}{unit === "pp" ? " pp" : ""}</span>;
+  return <span className={safer ? "text-up" : "text-down"}>{shown}</span>;
 }
 
 const arrow = (a: string, b: string) => (a === b ? a : `${a} → ${b}`);

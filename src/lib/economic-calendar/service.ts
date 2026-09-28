@@ -8,6 +8,7 @@ import {
   loadConfiguredCalendar,
 } from "./provider-selection";
 import type { CalendarFeed, CalendarRange } from "./types";
+import { fmtDateTime } from "@/lib/format";
 
 /** How long the last copy of a week that loaded is kept to show through an outage. */
 const LAST_GOOD_SECONDS = 30 * 86_400;
@@ -46,7 +47,7 @@ export async function getEconomicCalendar(
           : saved.sources,
       coverage: {
         status: "partial",
-        message: `Live calendar sources are unavailable, so this is the copy loaded ${loaded.toFormat("ccc MMM d 'at' h:mm a")} ET. Anything released or rescheduled since then is missing.`,
+        message: `Live calendar sources are unavailable, so this is the copy loaded ${fmtDateTime(loaded.toJSDate())}. Anything released or rescheduled since then is missing.`,
       },
     };
     await storeCached(cacheKey, STALE_RETRY_SECONDS, feed);

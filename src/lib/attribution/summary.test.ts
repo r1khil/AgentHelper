@@ -1,6 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { AttributionResult } from "./attribution";
 import { attributionHeadline, summarizeAttribution } from "./summary";
+
+// Dates this year print without the year ("Tue 22 Sep"); pin the clock so these stay 2026's.
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-28T12:00:00Z"));
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 const result: AttributionResult = {
   start: "2026-09-18",
@@ -36,7 +45,7 @@ describe("summarizeAttribution", () => {
     notices: [],
   });
 
-  it("reports the headline in percent and bps against the S&P 500", () => {
+  it("reports the headline in percent and bp against the S&P 500, in accounting style", () => {
     expect(s.headline).toMatchObject({ returnPct: -1.2, spxPriceReturnPct: 1, activeVsSpxBps: -220, activeVsSectorBenchmarkBps: -80, selectionBps: -65 });
   });
   it("lists the best and worst contributors with team names", () => {
@@ -49,7 +58,7 @@ describe("summarizeAttribution", () => {
     expect(s.daily?.[1].returnPct).toBeCloseTo(((1 - 0.012) / 1.01 - 1) * 100, 2);
   });
   it("summarizes in one line", () => {
-    expect(attributionHeadline(s)).toContain("Whole fund, 7D (2026-09-18 close to 2026-09-22 close): return -1.2%; S&P 500 1%, active -220 bps");
-    expect(attributionHeadline(s)).toContain("biggest detractors NVDA -40 bps; top contributors JPM 8 bps");
+    expect(attributionHeadline(s)).toContain("Whole fund, 7D (Fri 18 Sep close to Tue 22 Sep close): return (1.20%); S&P 500 1.00%, active (220 bp)");
+    expect(attributionHeadline(s)).toContain("biggest detractors NVDA (40 bp); top contributors JPM 8 bp");
   });
 });

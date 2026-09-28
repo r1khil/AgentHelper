@@ -577,7 +577,7 @@ export function HootCompanion({ firstName, suppressed = false, dock = null }: { 
           <HootPanel
             greeting={greeting(new Date(), firstName)}
             suggestions={suggestionsFor(pathname, ticker)}
-            scopeHint={ticker ? `${ticker}'s research board` : null}
+            scopeHint={ticker ? `${ticker} research` : null}
             seeing={seeing}
             nudges={nudges}
             loading={!feed}

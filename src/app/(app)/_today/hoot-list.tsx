@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { DateTime } from "luxon";
 import { Activity, CalendarDays, CalendarRange, FileText, Mic, Sparkles, Table2, X } from "lucide-react";
 import { dismissHootNudge } from "@/lib/actions/preferences";
 import type { HootFeed, HootNudge } from "@/lib/hoot/types";
-import { NY } from "@/lib/providers/calendar";
 import { analystSentence, isOverdue, listNudges, listSentence, nudgeAction, nudgeWhen } from "@/lib/today";
 import { Panel, PanelHeader, PanelFooter } from "@/components/app/panel";
 import { Button } from "@/components/ui/button";
+import { fmtTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const REFRESH_MS = 5 * 60_000;
@@ -107,7 +106,7 @@ export function HootList() {
         title="Hoot's list for you"
         count={nudges.length ? nudges.length : undefined}
         hot
-        aside={<span suppressHydrationWarning>Updated {DateTime.fromISO(updatedAt).setZone(NY).toFormat("h:mm")} · refreshes every 5 min</span>}
+        aside={<span suppressHydrationWarning>Updated {fmtTime(updatedAt)} · refreshes every 5 min</span>}
       />
       {nudges.length === 0 ? (
         <p className="flex h-[58px] items-center px-4 text-[14px] text-muted-foreground">Nothing needs you right now. I&rsquo;ll put things here as they come up.</p>

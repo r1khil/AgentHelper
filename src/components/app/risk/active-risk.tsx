@@ -8,7 +8,8 @@ import type { RiskReport } from "@/lib/risk/model";
 import { MagnitudeBar } from "../attribution/bars";
 import { Explained } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "./explainers";
-import { rpct, rsci, rsigned } from "./format";
+import { fmtBp } from "@/lib/format";
+import { rbp, rpct, rsci } from "./format";
 import type { TeamNames } from "./holdings-risk-table";
 import { Source, Step, Working } from "./working";
 import { RowLink } from "@/components/app/row-link";
@@ -16,9 +17,8 @@ import { RowLink } from "@/components/app/row-link";
 const TOP = 10;
 export const ACTIVE_RISK_ANCHOR = "active-risk";
 
-/** Marginal tracking error is TE per unit of weight, which is also percentage points of TE per point of weight. */
-export const rpp = (v: number | null | undefined, digits = 2) =>
-  v === null || v === undefined || !Number.isFinite(v) ? "—" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(digits)} pp`;
+/** Marginal tracking error is TE per unit of weight, so 100 bp more of a holding moves TE by `marginalTe` × 100 bp. */
+const marginalBp = (m: number, digits = 1) => fmtBp(m * 100, digits);
 
 /**
  * Where the tracking error comes from: holdings ranked by their share of active risk, beside their weight, with a
@@ -82,7 +82,7 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
                 <Explained label="Weight vs share of active risk">{RISK_EXPLAIN.holdingActiveRiskShare}</Explained>
               </TableHead>
               <TableHead className="text-right"><Explained align="right" label="TE points">{RISK_EXPLAIN.teContribution}</Explained></TableHead>
-              <TableHead className="text-right"><Explained align="right" label="+1 pp from cash">{RISK_EXPLAIN.marginalTe}</Explained></TableHead>
+              <TableHead className="text-right"><Explained align="right" label="+100 bp from cash">{RISK_EXPLAIN.marginalTe}</Explained></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -114,8 +114,8 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
                       {a.benchmark.legs.map((l) => (
                         <tr key={l.etf} title={l.label}>
                           <td className="pr-3">{l.etf}</td>
-                          <td className="pr-3 text-right">{rsigned(l.weight)}</td>
-                          <td className="pr-3 text-right">{l.sectorActive === null ? "—" : rpp(l.sectorActive * 100, 1)}</td>
+                          <td className="pr-3 text-right">{rpct(l.weight)}</td>
+                          <td className="pr-3 text-right">{rbp(l.sectorActive)}</td>
                           <td className="text-right">{rpct(l.activeRiskShare)}</td>
                         </tr>
                       ))}
@@ -149,7 +149,7 @@ function Bars({ weight, share, max, aggregate }: { weight: number; share: number
   if (aggregate) {
     return (
       <div className="grid gap-1 text-xs">
-        <div className="flex items-center gap-2" title="Share of value"><span className="w-24 text-[11px] text-muted-foreground">weight</span><span className="tnum w-14 text-muted-foreground">{weight < 0 ? rsigned(weight) : rpct(weight)}</span></div>
+        <div className="flex items-center gap-2" title="Share of value"><span className="w-24 text-[11px] text-muted-foreground">weight</span><span className="tnum w-14 text-muted-foreground">{weight < 0 ? rpct(weight) : rpct(weight)}</span></div>
         <div className="flex items-center gap-2" title="Share of active risk"><span className="w-24 text-[11px] text-muted-foreground">active risk</span><span className="tnum w-14 font-medium">{rpct(share)}</span></div>
       </div>
     );
@@ -183,7 +183,7 @@ function HoldingRow({ h, max, teams }: { h: ActiveRiskRow; max: number; teams: T
       </TableCell>
       <TableCell><Bars weight={h.weight} share={h.share} max={max} /></TableCell>
       <TableCell className="text-right font-mono text-[12.5px]">{rpct(h.teContribution, 2)}</TableCell>
-      <TableCell className="text-right font-mono text-[12.5px]">{rpp(h.marginalTe)}</TableCell>
+      <TableCell className="text-right font-mono text-[12.5px]">{marginalBp(h.marginalTe)}</TableCell>
     </TableRow>
   );
 }
@@ -209,12 +209,12 @@ function ActiveRiskWorking({ r, a, download }: { r: RiskReport; a: ActiveRisk; d
       </Step>
       {byMarginal && (
         <Step label={`${byMarginal.ticker}'s marginal`}>
-          (Σa)ᵢ ÷ TE = {rsci(sigmaA(byMarginal.marginalTe), 8)} ÷ {rsci(a.dailyTe, 6)} × √252 = {byMarginal.marginalTe.toFixed(4)}; for 1 pp of weight: <b>{rpp(byMarginal.marginalTe, 3)}</b> of tracking error
+          (Σa)ᵢ ÷ TE = {rsci(sigmaA(byMarginal.marginalTe), 8)} ÷ {rsci(a.dailyTe, 6)} × √252 = {rsci(byMarginal.marginalTe, 4)}; for 100 bp of weight: <b>{marginalBp(byMarginal.marginalTe, 1)}</b> of tracking error
         </Step>
       )}
       {check && (
         <Step label="Exact check">
-          recompute √(aᵀΣa) × √252 with {check.ticker} +1 pp funded from cash: {rpct(check.before, 3)} → {rpct(check.after, 3)} = <b>{rpp(check.change * 100, 3)}</b> (the marginal&apos;s {rpp((check.linear ?? 0) * 100, 3)} is the first-order estimate)
+          recompute √(aᵀΣa) × √252 with {check.ticker} +100 bp funded from cash: {rpct(check.before, 3)} → {rpct(check.after, 3)} = <b>{rbp(check.change, 1)}</b> (the marginal&apos;s {rbp(check.linear ?? 0, 1)} is the first-order estimate)
         </Step>
       )}
       <Source>

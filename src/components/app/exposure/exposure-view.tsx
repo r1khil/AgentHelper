@@ -3,7 +3,7 @@ import { Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatStrip } from "@/components/app/panel";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtDay } from "@/lib/format";
 import { activeRiskBreakdown } from "@/lib/risk/active";
 import { buildExposure, type Exposure } from "@/lib/risk/exposure";
 import type { LookthroughState } from "@/lib/risk/lookthrough-report";
@@ -12,9 +12,9 @@ import { SECTOR_LABELS } from "@/lib/attribution/sectors";
 import { cn } from "@/lib/utils";
 import { MagnitudeBar } from "../attribution/bars";
 import { Explained, InfoTip } from "../attribution/info-tip";
-import { ACTIVE_RISK_ANCHOR, rpp } from "../risk/active-risk";
+import { ACTIVE_RISK_ANCHOR } from "../risk/active-risk";
 import { RISK_EXPLAIN } from "../risk/explainers";
-import { rnum, rpct, rusd, rusdFull } from "../risk/format";
+import { rbp, rnum, rpct, rusd, rusdFull } from "../risk/format";
 import type { TeamNames } from "../risk/holdings-risk-table";
 import { OpenDetailsOnHash } from "../risk/open-on-hash";
 import { ConcentrationWorking } from "../risk/risk-working";
@@ -30,7 +30,7 @@ export { ExposureSection };
 
 /** The Fund toolbar's context line, e.g. "Today's positions by GICS sector against the S&P 500 sector weights (as of Sep 17)". */
 export function fundExposureContext(weightSetAsOf: string | null, throughEtfs: boolean) {
-  const asOf = weightSetAsOf ? ` (as of ${fmtDate(weightSetAsOf).replace(/, \d{4}$/, "")})` : "";
+  const asOf = weightSetAsOf ? ` (as of ${fmtDay(weightSetAsOf)})` : "";
   return `Today's positions${throughEtfs ? ", ETFs split into their holdings," : ""} by GICS sector against the S&P 500 sector weights${asOf}`;
 }
 
@@ -135,7 +135,7 @@ export function ExposureView({
               },
               {
                 label: <Label explain={RISK_EXPLAIN.largestActiveBet}>Largest active sector</Label>,
-                value: bet && bet.active !== null ? `${bet.active > 0 ? "+" : ""}${(bet.active * 100).toFixed(1)} pp` : "—",
+                value: bet && bet.active !== null ? rbp(bet.active) : "—",
                 note: bet && bet.active !== null ? bet.label : "Add S&P 500 sector weights",
               },
               {
@@ -264,10 +264,10 @@ function BetWorking({ x }: { x: Exposure }) {
   return (
     <Working className="mt-2" title="Largest active sector: working">
       <Step label={bet.label}>
-        portfolio {rpct(bet.weight, 2)} − benchmark {rpct(bet.benchWeight, 2)} = <b>{rpp(bet.active! * 100, 2)}</b>
+        portfolio {rpct(bet.weight, 2)} − benchmark {rpct(bet.benchWeight, 2)} = <b>{rbp(bet.active)}</b>
       </Step>
       {bet.tickers.length > 0 && <Step label="Holdings">{bet.tickers.join(", ")}</Step>}
-      {next && <Step label="Next largest">{next.label} {rpp(next.active! * 100, 2)}</Step>}
+      {next && <Step label="Next largest">{next.label} {rbp(next.active)}</Step>}
       <Source>the largest absolute active weight among the sectors in the table above; cash is shown on its own.</Source>
     </Working>
   );

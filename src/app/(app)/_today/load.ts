@@ -6,6 +6,7 @@ import { computeAttribution, computeTeamAttribution } from "@/lib/attribution/at
 import { loadAttributionSeries, loadTeamSectors } from "@/lib/attribution/load";
 import { resolvePeriod } from "@/lib/attribution/periods";
 import { indexReturn } from "@/lib/attribution/view";
+import { fixed } from "@/lib/format";
 import type { Source } from "@/lib/providers/types";
 import { scoreboard, sessionSentence, weekdayName } from "@/lib/today";
 import type { Book, Brief } from "./types";
@@ -89,9 +90,10 @@ async function loadBrief(sessionDate: string, fundReturn: number): Promise<Brief
     .limit(1);
   const s = row?.summary as { analysis?: string; sources?: Source[]; facts?: string } | undefined;
   const paragraphs = (s?.analysis ?? "").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-  // The figures block Hoot read opens "Fund return: -0.29%".
-  const written = /Fund return:\s*(-?[\d.]+)%/.exec(s?.facts ?? "")?.[1];
-  const stale = written !== undefined && Number(written).toFixed(2) !== (fundReturn * 100).toFixed(2);
+  // The figures block Hoot read opens "Fund return: (0.29%)" (or "-0.29%", as blocks before accounting style did).
+  const m = /Fund return:\s*(\()?(-?[\d.,]+)%/.exec(s?.facts ?? "");
+  const written = m ? (m[1] ? -1 : 1) * Number(m[2].replaceAll(",", "")) : undefined;
+  const stale = written !== undefined && fixed(written, 2) !== fixed(fundReturn * 100, 2);
   if (!paragraphs.length) return null;
   const sources = (Array.isArray(s?.sources) ? s.sources : []).map((x) => ({ id: x.id, title: x.title, url: x.url, publisher: x.publisher }));
   return { paragraphs, sources, stale, writtenAt: row?.finishedAt ? row.finishedAt.toISOString() : null };

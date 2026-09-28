@@ -9,7 +9,8 @@ import { ContributorsTable, type TeamLookup } from "./contributors-table";
 import { CompactCumulativeChart, CumulativeDetails, type CumulativeChartPoint } from "./cumulative-active-chart";
 import { DataNoticesButton, type QualityNotice } from "./data-quality-notice";
 import { EXPLAIN } from "./explainers";
-import { fmtBpsShort, fmtSigned, fmtWeight } from "./format";
+import { fmtAccounting, fmtBp, fmtDay, fmtPct } from "@/lib/format";
+import { bps, pct } from "./format";
 import { HoldingsColumn } from "./holdings-columns";
 import { Tip } from "./info-tip";
 import { INTERACTION_CLASS } from "./interaction-toggle";
@@ -17,15 +18,8 @@ import { PeriodSelector } from "./period-selector";
 import { SectorEffectsList, type SectorEffectPoint } from "./sector-effects-list";
 import { RowLink } from "@/components/app/row-link";
 
-const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-/** "Sep 17", with the year only when it isn't the same as `other`'s. */
-function shortDate(iso: string, other: string) {
-  const [y, m, d] = iso.split("-");
-  return `${MONTH[Number(m) - 1]} ${Number(d)}${y === other.slice(0, 4) ? "" : `, ${y}`}`;
-}
-
 export function rangeText(start: string, end: string, days: number) {
-  return `${shortDate(start, end)} close through ${shortDate(end, start)} · ${days} trading ${days === 1 ? "day" : "days"}`;
+  return `${fmtDay(start)} close through ${fmtDay(end)} · ${days} trading ${days === 1 ? "day" : "days"}`;
 }
 
 export const LEDGER_HREF = "/attribution/ledger";
@@ -98,7 +92,7 @@ export function CumulativePanel({ data, portfolioLabel, benchmarkLabel, asOf, cl
       <PanelTitle
         aside={
           <>
-            <span className="font-mono text-[11px] uppercase">Prices as of {shortDate(asOf, asOf)} close</span>
+            <span className="font-mono text-[11px] uppercase">Prices as of <span className="normal-case">{fmtDay(asOf)}</span> close</span>
             {data.length >= 2 && <CumulativeDetails data={data} portfolioLabel={portfolioLabel} benchmarkLabel={benchmarkLabel} explain={EXPLAIN.cumulativeChart} />}
           </>
         }
@@ -155,7 +149,7 @@ export function EffectsPanel({ items, total, aside, note, empty, className }: { 
                     />
                   </div>
                   <span className={cn("text-right font-mono text-[13px]", isTotal ? "font-semibold text-foreground" : shown > 0 ? "text-up" : shown < 0 ? "text-down" : "text-muted-foreground")}>
-                    {fmtBpsShort(e.value)}
+                    {fmtAccounting(v, 0)}
                   </span>
                 </div>
               );
@@ -189,9 +183,9 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
         const cells = (
           <>
             <span className="truncate">{team?.name ?? "No team"}</span>
-            <span className={cn(num, "text-muted-foreground")}>{fmtWeight(t.avgWeight)}</span>
-            <span className={cn(num, tone(t.ret, 10_000))}>{fmtSigned(t.ret)}</span>
-            <span className={cn(num, "font-semibold", tone(t.contribution, 10_000))}>{fmtBpsShort(t.contribution)} bp</span>
+            <span className={cn(num, "text-muted-foreground")}>{fmtPct(pct(t.avgWeight), 1)}</span>
+            <span className={cn(num, tone(t.ret, 10_000))}>{fmtPct(pct(t.ret))}</span>
+            <span className={cn(num, "font-semibold", tone(t.contribution, 10_000))}>{fmtBp(bps(t.contribution))}</span>
           </>
         );
         const cls = cn("grid max-h-16 min-h-10 flex-1 items-center gap-2.5 border-b border-row px-4 text-[13.5px]", TEAM_COLS);
@@ -206,8 +200,8 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
       {showCash && (
         <div className="mt-auto flex min-h-10 shrink-0 items-center bg-band-2 px-4 text-[12.5px] text-muted-foreground">
           <span className="truncate">
-            Cash, fees and interest{cashWeight !== undefined && ` · ${fmtWeight(cashWeight)} average weight`} ·{" "}
-            <span className={cn("font-mono", tone(cashContribution, 10_000))}>{fmtBpsShort(cashContribution)} bp</span>
+            Cash, fees and interest{cashWeight !== undefined && ` · ${fmtPct(pct(cashWeight), 1)} average weight`} ·{" "}
+            <span className={cn("font-mono", tone(cashContribution, 10_000))}>{fmtBp(bps(cashContribution))}</span>
           </span>
         </div>
       )}

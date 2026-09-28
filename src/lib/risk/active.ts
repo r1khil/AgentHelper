@@ -1,5 +1,5 @@
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
-import { fixed } from "@/lib/format";
+import { fmtBp, fmtPct } from "@/lib/format";
 import { TRADING_DAYS, sum, volAfterBump } from "./math";
 import type { HoldingRisk, RiskReport } from "./model";
 
@@ -30,13 +30,10 @@ export type ActiveRisk = {
   sentences: string[];
 };
 
-const p1 = (x: number) => `${fixed(x * 100, 1)}%`;
-const pp = (x: number, d = 1) => {
-  const s = fixed(Math.abs(x * 100), d);
-  return `${Number(s) === 0 ? "" : x > 0 ? "+" : "−"}${s} pp`;
-};
-/** marginalTe is TE (a fraction) per unit of weight, so it is also "pp of TE per pp of weight". */
-const ppPerPp = (m: number) => `${Math.abs(m).toFixed(2)} pp`;
+const p1 = (x: number) => fmtPct(x * 100, 1);
+const bp = (x: number) => fmtBp(x * 10_000);
+/** marginalTe is TE (a fraction) per unit of weight, so 100 bp more of a holding moves TE by marginalTe × 100 bp. */
+const per100bp = (m: number) => fmtBp(Math.abs(m) * 100);
 
 export function activeRiskBreakdown(r: RiskReport, opts: { bookLabel?: string } = {}): ActiveRisk | null {
   const te = r.portfolio.trackingError;
@@ -66,7 +63,7 @@ export function activeRiskBreakdown(r: RiskReport, opts: { bookLabel?: string } 
   if (!gaps.length && holdings[0] && holdings[0].share > 0) sentences.push(`The largest source of active risk is ${holdings[0].ticker}: ${p1(holdings[0].weight)} of ${book} and ${p1(holdings[0].share)} of active risk.`);
   // The benchmark side: an underweight sector is a bet too.
   const under = legs.find((l) => l.activeRiskShare >= 0.02 && (l.sectorActive ?? 0) < 0);
-  if (under) sentences.push(`Being underweight ${under.label} (${pp(under.sectorActive!)} vs ${under.etf}) is ${p1(under.activeRiskShare)} of active risk.`);
+  if (under) sentences.push(`Being underweight ${under.label} (${bp(under.sectorActive!)} vs ${under.etf}) is ${p1(under.activeRiskShare)} of active risk.`);
   const reducer = [...holdings].sort((a, b) => a.share - b.share)[0];
   if (reducer && reducer.share <= -0.01) sentences.push(`${reducer.ticker} offsets other bets: ${p1(reducer.weight)} of ${book} and ${p1(reducer.share)} of active risk.`);
   // Sizing: the holdings where one more percentage point moves tracking error most, each way.
@@ -74,8 +71,8 @@ export function activeRiskBreakdown(r: RiskReport, opts: { bookLabel?: string } 
   const up = byMarginal[0];
   const down = byMarginal.at(-1);
   if (up && up.marginalTe > 0) {
-    let s = `Adding 1 pp of ${up.ticker} from cash raises tracking error by about ${ppPerPp(up.marginalTe)}`;
-    if (down && down !== up && down.marginalTe < 0) s += `; adding 1 pp of ${down.ticker} lowers it by about ${ppPerPp(down.marginalTe)}`;
+    let s = `Adding 100 bp of ${up.ticker} from cash raises tracking error by about ${per100bp(up.marginalTe)}`;
+    if (down && down !== up && down.marginalTe < 0) s += `; adding 100 bp of ${down.ticker} lowers it by about ${per100bp(down.marginalTe)}`;
     sentences.push(`${s}.`);
   }
 

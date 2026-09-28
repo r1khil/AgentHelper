@@ -1,4 +1,5 @@
 import type { Position } from "./engine";
+import { fmtPct } from "@/lib/format";
 
 /**
  * Explicit per-ticker overrides in percent. Unspecified positions, including cash,
@@ -16,6 +17,6 @@ export function weightsFromOverrides(positions: Position[], overridesPct: Record
   const out = Object.fromEntries(positions.map((p) => [p.id, fixed.get(p.id) ?? p.weight]));
   const total = Object.values(out).reduce((a, b) => a + b, 0);
   if (Math.abs(total - 1) > 1e-8)
-    throw new Error(`Scenario weights total ${(total * 100).toFixed(2)}%; specify an offset (such as CASH) so they total 100.00%.`);
+    throw new Error(`Scenario weights total ${fmtPct(total * 100)}; specify an offset (such as CASH) so they total 100.00%.`);
   return out;
 }

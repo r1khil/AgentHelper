@@ -1,3 +1,4 @@
+import { fmtDate } from "@/lib/format";
 /** Pure helpers for turning a pull request body into something worth showing a model. */
 
 const FOOTER_PATTERNS = [
@@ -67,5 +68,5 @@ export function parseSummaryReply(text: string): { headline: string; summary: st
 
 /** Calendar day in New York, so a late-evening merge is filed under the day the team saw it. */
 export function mergeDayLabel(d: Date): string {
-  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" });
+  return fmtDate(d);
 }

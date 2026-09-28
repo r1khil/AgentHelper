@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
-import { relativeTime } from "@/lib/format";
+import { fmtBp, ppToBp, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Panel, Pill } from "@/components/app/panel";
 import { Move } from "@/components/app/move";
@@ -52,7 +52,7 @@ function MovementList({ items, selectedId, className }: { items: MovementListIte
           </span>
         </div>
         <p className="mt-0.5 text-[12.5px] leading-[1.45] text-muted-foreground">
-          Opened when a holding&apos;s daily return differs from the S&amp;P 500&apos;s by {MOVEMENT_THRESHOLD_PP} pp or more. Due noon the next trading day. Checked nightly after the close.
+          Opened when a holding&apos;s daily return differs from the S&amp;P 500&apos;s by {fmtBp(MOVEMENT_THRESHOLD_PP * 100)} or more. Due noon the next trading day. Checked nightly after the close.
         </p>
       </div>
       <ul className="min-h-0 flex-1 overflow-y-auto">
@@ -76,7 +76,7 @@ function MovementList({ items, selectedId, className }: { items: MovementListIte
                       Data problem
                     </span>
                   ) : (
-                    <Move value={i.relativePp} unit=" pp" className="text-[13px]" />
+                    <Move value={ppToBp(i.relativePp)} unit=" bp" digits={0} className="text-[13px]" />
                   )}
                   <span className="flex-1" />
                   <Pill tone={pill.tone}>{pill.label}</Pill>
@@ -118,7 +118,7 @@ function MovementDetail({ d, list, items }: { d: MovementDetailData; list: React
                 <span className="text-muted-foreground"> · {d.companyName}</span>
               </span>
               {!d.dataQuality && (
-                <span className="flex flex-wrap gap-x-4 gap-y-1 text-[13.5px] text-ink-2" title={`Official closes · Yahoo Finance. Rule: relative move of ${MOVEMENT_THRESHOLD_PP} pp or more.`}>
+                <span className="flex flex-wrap gap-x-4 gap-y-1 text-[13.5px] text-ink-2" title={`Official closes · Yahoo Finance. Rule: relative move of ${fmtBp(MOVEMENT_THRESHOLD_PP * 100)} or more.`}>
                   <span>
                     {d.ticker} <Move value={d.holdingReturnPct} unit="%" digits={2} />
                   </span>
@@ -126,7 +126,7 @@ function MovementDetail({ d, list, items }: { d: MovementDetailData; list: React
                     S&amp;P 500 <Move value={d.spxReturnPct} unit="%" digits={2} />
                   </span>
                   <span>
-                    Relative <Move value={d.relativePp} unit=" pp" className="font-semibold" />
+                    Relative <Move value={ppToBp(d.relativePp)} unit=" bp" digits={0} className="font-semibold" />
                   </span>
                 </span>
               )}

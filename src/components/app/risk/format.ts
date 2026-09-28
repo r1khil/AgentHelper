@@ -1,17 +1,20 @@
-import { fixed, fmtPct } from "@/lib/format";
+import { fmtAccounting, fmtBp, fmtPct, fmtUsd, fmtUsdCompact } from "@/lib/format";
 
-const missing = (v: number | null | undefined): v is null | undefined => v === null || v === undefined || !Number.isFinite(v);
-/** Dollars with a true minus, which a value that rounds to $0 never gets. */
-const usd = (v: number, opts: Intl.NumberFormatOptions) => {
-  const body = Math.abs(v).toLocaleString("en-US", opts);
-  return `${v < 0 && /[1-9]/.test(body) ? "−" : ""}$${body}`;
-};
+/*
+ * The risk model works in fractions. These convert to the page's units (percent, basis points, dollars) and format
+ * with the app's shared accounting style from "@/lib/format"; they hold no formatting rules of their own.
+ */
+const scaled = (v: number | null | undefined, k: number) => (v === null || v === undefined ? null : v * k);
 
-/** The risk model works in fractions; the page shows percentages and dollars. */
-export const rpct = (v: number | null | undefined, digits = 1) => (missing(v) ? "—" : fmtPct(v * 100, digits, false));
-export const rsigned = (v: number | null | undefined, digits = 1) => (missing(v) ? "—" : fmtPct(v * 100, digits));
-export const rnum = (v: number | null | undefined, digits = 2) => (missing(v) ? "—" : fixed(v, digits));
-export const rusd = (v: number | null | undefined) => (missing(v) ? "—" : usd(v, { notation: "compact", maximumFractionDigits: 1 }));
-export const rusdFull = (v: number) => usd(v, { maximumFractionDigits: 0 });
+/** A return, weight or risk figure as a fraction: -0.123 → "(12.3%)". */
+export const rpct = (v: number | null | undefined, digits = 1) => fmtPct(scaled(v, 100), digits);
+/** An active (relative) figure as a fraction: -0.0123 → "(123 bp)". */
+export const rbp = (v: number | null | undefined, digits = 0) => fmtBp(scaled(v, 10_000), digits);
+/** A plain ratio such as a beta or correlation: -0.5 → "(0.50)". */
+export const rnum = (v: number | null | undefined, digits = 2) => fmtAccounting(v, digits);
+/** Compact dollars: -1500 → "($1.5K)". */
+export const rusd = (v: number | null | undefined) => fmtUsdCompact(v);
+/** Whole dollars: -1234.4 → "($1,234)". */
+export const rusdFull = (v: number) => fmtUsd(v, 0);
 /** Daily decimals in the working panels, shown to enough places to reproduce the next step. */
 export const rsci = (v: number, digits = 6) => (Math.abs(v) < 1e-4 && v !== 0 ? v.toExponential(3) : v.toFixed(digits));

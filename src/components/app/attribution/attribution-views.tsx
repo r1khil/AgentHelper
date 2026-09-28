@@ -4,12 +4,12 @@ import { StatStrip, type StatCell } from "@/components/app/panel";
 import type { AttributionResult, TeamAttributionResult } from "@/lib/attribution/attribution";
 import type { PeriodKey } from "@/lib/attribution/periods";
 import { bucketLabel, INDEX_LABEL } from "@/lib/attribution/sectors";
-import { fmtDate } from "@/lib/format";
+import { fmtBp, fmtDate, fmtPct } from "@/lib/format";
 import { AttributionToolbar, CumulativePanel, EffectsPanel, HoldingsPanel, LEDGER_HREF, MethodPanel, SectorEffectsPanel, TeamsPanel, type EffectBar } from "./attribution-panels";
 import type { TeamLookup } from "./contributors-table";
 import type { QualityNotice } from "./data-quality-notice";
 import { EXPLAIN } from "./explainers";
-import { fmtBp, fmtBpsShort, fmtSigned, fmtWeight, toneOf } from "./format";
+import { bps, pct, toneOf } from "./format";
 import { Tip } from "./info-tip";
 import { InteractionScope } from "./interaction-toggle";
 import type { BreakdownQuery } from "./sector-breakdown";
@@ -32,7 +32,7 @@ export type PeriodView = {
 const FOLD = "flex min-h-[calc(100dvh-104px)] flex-col gap-4";
 const GRID = "grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]";
 
-const pctOrDash = (v: number | null) => (v === null ? "—" : fmtSigned(v));
+const pctOrDash = (v: number | null) => fmtPct(pct(v));
 
 function Toolbar({ view, days, notices, ledger }: { view: PeriodView; days: number; notices: QualityNotice[]; ledger?: boolean }) {
   return (
@@ -92,14 +92,14 @@ export function FundAttributionView({
   const breakdownQuery: BreakdownQuery | undefined = transparency ? { basePath: view.basePath, period: view.period.key, from: view.from, to: view.to } : undefined;
 
   const cells: StatCell[] = [
-    { label: <Tip label="Owl Fund" side="bottom">{EXPLAIN.portfolio}</Tip>, value: fmtSigned(result.portfolioReturn), tone: toneOf(result.portfolioReturn), note: "Total return" },
+    { label: <Tip label="Owl Fund" side="bottom">{EXPLAIN.portfolio}</Tip>, value: fmtPct(pct(result.portfolioReturn)), tone: toneOf(result.portfolioReturn), note: "Total return" },
     { label: <Tip label={INDEX_LABEL} side="bottom">{EXPLAIN.index}</Tip>, value: pctOrDash(spx), note: "Index, price return" },
-    { label: <Tip label={`Active vs ${INDEX_LABEL}`} side="bottom">{EXPLAIN.active}</Tip>, value: fmtBp(active), tone: toneOf(active), note: "Fund minus index" },
+    { label: <Tip label={`Active vs ${INDEX_LABEL}`} side="bottom">{EXPLAIN.active}</Tip>, value: fmtBp(bps(active)), tone: toneOf(active), note: "Fund minus index" },
     {
       label: <Tip label="vs sector benchmark" side="bottom">{EXPLAIN.benchmark}</Tip>,
-      value: fmtBp(result.activeReturn),
+      value: fmtBp(bps(result.activeReturn)),
       tone: toneOf(result.activeReturn),
-      note: result.benchmarkReturn === null ? "Needs sector weights" : `Benchmark ${fmtSigned(result.benchmarkReturn)}`,
+      note: result.benchmarkReturn === null ? "Needs sector weights" : `Benchmark ${fmtPct(pct(result.benchmarkReturn))}`,
     },
   ];
 
@@ -113,10 +113,10 @@ export function FundAttributionView({
   const total: EffectBar | null = result.effects && result.activeReturn !== null ? { label: "Total", value: result.activeReturn, explain: `${EXPLAIN.benchmark} Brinson-Fachler, daily, Carino-linked.` } : null;
   const note = (
     <>
-      {leader && leader.selection > 0 && <>Selection led by {bucketLabel(leader.key)} ({fmtBpsShort(leader.selection)}). </>}
+      {leader && leader.selection > 0 && <>Selection led by {bucketLabel(leader.key)}, {fmtBp(bps(leader.selection))}. </>}
       {cashRow && result.effects && (
         <>
-          {cashRow.allocation < 0 ? "Cash drag is" : "Cash accounts for"} {fmtBpsShort(cashRow.allocation)} of the allocation effect; sector bets {fmtBpsShort(result.effects.allocation - cashRow.allocation)}.
+          {cashRow.allocation < 0 ? "Cash drag is" : "Cash accounts for"} {fmtBp(bps(cashRow.allocation))} of the allocation effect; sector bets {fmtBp(bps(result.effects.allocation - cashRow.allocation))}.
         </>
       )}
     </>
@@ -205,10 +205,10 @@ export function TeamAttributionView({
   const breakdownQuery: BreakdownQuery | undefined = transparency ? { basePath: view.basePath, team: teamSlug, period: view.period.key, from: view.from, to: view.to } : undefined;
 
   const cells: StatCell[] = [
-    { label: <Tip label={teamName} side="bottom">{EXPLAIN.teamReturn}</Tip>, value: fmtSigned(result.portfolioReturn), tone: toneOf(result.portfolioReturn), note: "Team return, own capital" },
+    { label: <Tip label={teamName} side="bottom">{EXPLAIN.teamReturn}</Tip>, value: fmtPct(pct(result.portfolioReturn)), tone: toneOf(result.portfolioReturn), note: "Team return, own capital" },
     { label: <Tip label="Sector benchmark" side="bottom">{EXPLAIN.teamBenchmark}</Tip>, value: pctOrDash(result.benchmarkReturn), note: <span title={benchmarkSectors}>{benchmarkName}</span> },
-    { label: <Tip label="Active vs benchmark" side="bottom">{EXPLAIN.teamActive}</Tip>, value: fmtBp(result.activeReturn), tone: toneOf(result.activeReturn), note: "Team minus benchmark" },
-    { label: <Tip label="To the Fund" side="bottom">{EXPLAIN.fundContribution}</Tip>, value: fmtBp(result.fundContribution), tone: toneOf(result.fundContribution), note: `${fmtWeight(result.avgFundWeight)} of the Fund on average` },
+    { label: <Tip label="Active vs benchmark" side="bottom">{EXPLAIN.teamActive}</Tip>, value: fmtBp(bps(result.activeReturn)), tone: toneOf(result.activeReturn), note: "Team minus benchmark" },
+    { label: <Tip label="To the Fund" side="bottom">{EXPLAIN.fundContribution}</Tip>, value: fmtBp(bps(result.fundContribution)), tone: toneOf(result.fundContribution), note: `${fmtPct(pct(result.avgFundWeight), 1)} of the Fund on average` },
   ];
 
   const effects: EffectBar[] =
@@ -222,7 +222,7 @@ export function TeamAttributionView({
   const leaderSel = leader ? leader.selection + leader.interaction : 0;
   const note = (
     <>
-      {leader && leaderSel > 0 ? <>Selection led by {bucketLabel(leader.key)} ({fmtBpsShort(leaderSel)}). </> : <>Selection is the team&apos;s picks against their sector ETFs, interaction included. </>}
+      {leader && leaderSel > 0 ? <>Selection led by {bucketLabel(leader.key)}, {fmtBp(bps(leaderSel))}. </> : <>Selection is the team&apos;s picks against their sector ETFs, interaction included. </>}
       Benchmark: {benchmarkSectors} ({benchmarkName}).
     </>
   );

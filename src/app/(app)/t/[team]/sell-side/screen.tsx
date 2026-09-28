@@ -16,20 +16,11 @@ import { AnalysisBrief } from "@/components/app/sell-side/analysis-brief";
 import { CallDiscussion } from "@/components/app/sell-side/call-discussion";
 import { PickACall, PickATeam, SellSideLayout, type SavedCallRow } from "@/components/app/sell-side/sell-side-layout";
 import { listStatus, minutesLabel } from "@/components/app/sell-side/timeline";
+import { fmtDay } from "@/lib/format";
 
 type Call = Awaited<ReturnType<typeof listCalls>>[number];
 export type SellSideScope = { slug: string; team: Team | null; teamIds: TeamIds; teamById: Map<string, Team>; user: CurrentUser };
 
-const TZ = "America/New_York";
-const year = (d: Date) => new Intl.DateTimeFormat("en-US", { year: "numeric", timeZone: TZ }).format(d);
-function shortDate(d: Date) {
-  const sameYear = year(d) === year(new Date());
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }), timeZone: TZ }).format(d);
-}
-function longDate(d: Date) {
-  const sameYear = year(d) === year(new Date());
-  return new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", ...(sameYear ? {} : { year: "numeric" }), timeZone: TZ }).format(d);
-}
 
 /** Who recorded each call and how far its saved audio has got, for the saved-calls rows and the call's meta line. */
 async function callFacts(calls: Call[]) {
@@ -78,7 +69,7 @@ export async function SellSideScreen({ scope, call }: { scope: SellSideScope; ca
       href: sellSideHref(scope.slug, teamById.get(c.teamId)?.slug ?? scope.slug, c.id),
       ticker: c.ticker,
       title: c.title,
-      meta: [facts.name(c), shortDate(c.createdAt), counts.seconds > 0 ? minutesLabel(counts.seconds) : null, !team ? teamById.get(c.teamId)?.name : null]
+      meta: [facts.name(c), fmtDay(c.createdAt), counts.seconds > 0 ? minutesLabel(counts.seconds) : null, !team ? teamById.get(c.teamId)?.name : null]
         .filter(Boolean)
         .join(" · "),
       status: listStatus(c, counts),
@@ -106,7 +97,7 @@ export async function SellSideScreen({ scope, call }: { scope: SellSideScope; ca
         <CallPane
           call={selected}
           user={user}
-          byline={[facts.name(selected), longDate(selected.createdAt)].filter(Boolean).join(" · ")}
+          byline={[facts.name(selected), fmtDay(selected.createdAt)].filter(Boolean).join(" · ")}
           sector={teamById.get(selected.teamId)?.name}
           spoken={facts.counts(selected.id).spoken > 0}
         />

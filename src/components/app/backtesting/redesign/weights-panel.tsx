@@ -5,6 +5,7 @@ import { Calendar, ChevronDown, CircleMinus, Play, Plus, RotateCcw, Undo2, X } f
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BENCHMARKS, type Position } from "@/lib/backtesting/engine";
+import { fmtBp, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useQuickTrade } from "../quick-trade";
 import { SaveScenarioFields } from "../saved-scenarios";
@@ -20,11 +21,10 @@ const miniSelect =
   "h-7 appearance-none rounded-lg border-0 bg-card pr-5 pl-2 text-[12.5px] shadow-[0_0_0_1px_var(--border)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
 const noSpin = "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
-/** Signed percentage points with a true minus, e.g. "−1.00 pp"; tiny differences read as unchanged. */
-function changePp(v: number) {
-  const r = Math.round(v * 10_000) / 100;
-  if (Math.abs(r) < 0.005) return null;
-  return `${r > 0 ? "+" : "−"}${Math.abs(r).toFixed(2)} pp`;
+/** A weight change in basis points, e.g. "(100 bp)"; a change under half a basis point reads as unchanged. */
+function changeBp(v: number) {
+  const bp = Math.round(v * 10_000);
+  return bp === 0 ? null : fmtBp(bp);
 }
 
 export function WeightsPanel({
@@ -105,7 +105,7 @@ export function WeightsPanel({
           const empty = weights[p.id]?.trim() === "";
           const d = scenarioWeights[p.id] - p.weight;
           const edited = bt.edited.has(p.id) && (empty || Math.abs(d) > 1e-8);
-          const change = empty ? null : changePp(d);
+          const change = empty ? null : changeBp(d);
           const action =
             p.kind === "scenario"
               ? { label: `Remove ${p.ticker} from the scenario`, icon: <X />, run: () => bt.removeAdded(p.ticker), disabled: lookupBusy }
@@ -137,7 +137,7 @@ export function WeightsPanel({
                   </button>
                 )}
               </span>
-              <span className="text-right font-mono text-[12.5px] text-muted-foreground">{(p.weight * 100).toFixed(2)}%</span>
+              <span className="text-right font-mono text-[12.5px] text-muted-foreground">{fmtPct(p.weight * 100)}</span>
               <span className="flex justify-end">
                 <input
                   aria-label={`${p.ticker} scenario weight`}
@@ -171,7 +171,7 @@ export function WeightsPanel({
         <span aria-live="polite" className="min-w-0 flex-1 text-[12.5px] text-muted-foreground">
           {unchanged} at today&apos;s weights · total{" "}
           <span className={cn("font-mono font-semibold", valid ? "text-foreground" : "text-down")}>
-            {Number.isFinite(sum) ? sum.toFixed(2) : "—"}%
+            {Number.isFinite(sum) ? fmtPct(sum) : "—"}
           </span>
           {!valid && <span className="text-down"> · must total 100%</span>}
         </span>

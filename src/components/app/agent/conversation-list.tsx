@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Loader2, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
+import { fmtDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { startHootChat } from "@/lib/actions/chats";
 import { Button } from "@/components/ui/button";
@@ -33,9 +34,7 @@ export function listWhen(iso: string, now = Date.now()) {
   if (m < 60) return `${m}m ago`;
   const h = Math.round(m / 60);
   if (h < 24) return `${h}h ago`;
-  const d = new Date(t);
-  const sameYear = d.getFullYear() === new Date(now).getFullYear();
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) });
+  return fmtDay(new Date(t), new Date(now));
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -102,12 +101,12 @@ export function ConversationSidebar({
           New
         </Button>
       </div>
-      <nav aria-label="Conversations" className="-mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pt-px pb-1">
-        {boards.length > 0 && <Group label="Holding boards" rows={boards} selectedId={selectedId} onSelect={onSelect} />}
+      <nav aria-label="Chats" className="-mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 pt-px pb-1">
+        {boards.length > 0 && <Group label="By holding" rows={boards} selectedId={selectedId} onSelect={onSelect} />}
         {general.length > 0 && <Group label="General" rows={general} selectedId={selectedId} onSelect={onSelect} />}
         {boards.length === 0 && general.length === 0 && (
           <p className="px-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
-            {f ? `No chats match “${q.trim()}”.` : "No conversations yet. Ask Hoot a question, or open a holding's research board, to start one."}
+            {f ? `No chats match “${q.trim()}”.` : "No chats yet. Ask Hoot a question, or open a holding's research, to start one."}
           </p>
         )}
       </nav>

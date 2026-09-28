@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
+
   agendaWeek,
   isFriday,
   isValidIsoDate,
@@ -12,6 +13,15 @@ import {
   weekRangeLabel,
   weekdayLabel,
 } from "./weeks";
+
+// Dates this year print without the year ("Tue 22 Sep"); pin the clock so these stay 2026's.
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-28T12:00:00Z"));
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 describe("lastFriday", () => {
   it("returns the Friday that just passed from any day of the week", () => {
@@ -94,7 +104,7 @@ describe("labels", () => {
   });
 
   it("writes a week range, collapsing a shared month", () => {
-    expect(weekRangeLabel("2026-09-21", "2026-09-25")).toBe("September 21–25, 2026");
-    expect(weekRangeLabel("2026-09-28", "2026-10-02")).toBe("September 28–October 2, 2026");
+    expect(weekRangeLabel("2026-09-21", "2026-09-25")).toBe("Mon 21 Sep – Fri 25 Sep");
+    expect(weekRangeLabel("2026-09-28", "2026-10-02")).toBe("Mon 28 Sep – Fri 2 Oct");
   });
 });

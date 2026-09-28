@@ -23,7 +23,7 @@ describe("activeRiskBreakdown", () => {
   it("writes a sentence for the biggest gap and the sizing number", () => {
     expect(a.sentences.length).toBeGreaterThan(0);
     expect(a.sentences.some((s) => /of active risk\.$/.test(s))).toBe(true);
-    expect(a.sentences.some((s) => s.startsWith("Adding 1 pp of"))).toBe(true);
+    expect(a.sentences.some((s) => s.startsWith("Adding 100 bp of"))).toBe(true);
   });
 
   it("returns nothing without a benchmark", () => {

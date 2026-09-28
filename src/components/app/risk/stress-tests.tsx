@@ -6,7 +6,7 @@ import type { StressOk, StressResult } from "@/lib/risk/stress";
 import { cn } from "@/lib/utils";
 import { Explained } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "./explainers";
-import { rpct, rsigned, rusd, rusdFull } from "./format";
+import { rbp, rpct, rusd, rusdFull } from "./format";
 import { StressPathChart } from "./stress-path-chart";
 import { SectionHead } from "./section-head";
 import { backtestHref, stressAnchor, stressDates } from "./stress-panel";
@@ -117,12 +117,12 @@ function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, bac
               <div className="font-mono text-[11px] text-muted-foreground">{stressDates(r.start, r.end)}</div>
             </div>
             <div className="text-right">
-              <div className={cn("font-mono text-base font-semibold md:text-[12.5px]", tone(r.fund))}>{rsigned(r.fund)}</div>
+              <div className={cn("font-mono text-base font-semibold md:text-[12.5px]", tone(r.fund))}>{rpct(r.fund)}</div>
               <div className={small}>{fundLabel}</div>
             </div>
-            <Figure label="S&P 500" value={rsigned(r.market)} className={tone(r.market)} />
-            <Figure label="Sector bench." value={rsigned(r.benchmark)} className={tone(r.benchmark)} />
-            <Figure label="Active" value={r.active === null ? "—" : `${r.active > 0 ? "+" : ""}${(r.active * 100).toFixed(1)} pp`} className={tone(r.active)} />
+            <Figure label="S&P 500" value={rpct(r.market)} className={tone(r.market)} />
+            <Figure label="Sector bench." value={rpct(r.benchmark)} className={tone(r.benchmark)} />
+            <Figure label="Active" value={rbp(r.active)} className={tone(r.active)} />
             <Figure label={`On ${scopeLabel}`} value={rusd(r.dollars)} className={cn("font-medium", tone(r.dollars))} />
             <div className="col-span-4 min-w-0 text-xs md:col-span-1">
               <span className="text-muted-foreground md:hidden">Worst: </span>
@@ -130,7 +130,7 @@ function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, bac
                 <span key={h.ticker}>
                   {i > 0 && ", "}
                   <span className="whitespace-nowrap">
-                    {h.ticker} <span className={tone(h.contribution)}>{rsigned(h.contribution, 2)}</span>
+                    {h.ticker} <span className={tone(h.contribution)}>{rpct(h.contribution, 2)}</span>
                   </span>
                 </span>
               ))}
@@ -213,8 +213,8 @@ function ContributionTable({ r }: { r: StressOk }) {
                 {h.proxied && <span className="ml-1.5 rounded border px-1 py-px text-[10px] text-muted-foreground" title={h.proxyReason ?? undefined}>via {h.series}</span>}
               </td>
               <td className="px-2 py-1 text-right">{rpct(h.weight)}</td>
-              <td className={cn("px-2 py-1 text-right", tone(h.ret))}>{rsigned(h.ret)}</td>
-              <td className={cn("px-2 py-1 text-right font-medium", tone(h.contribution))}>{rsigned(h.contribution, 2)}</td>
+              <td className={cn("px-2 py-1 text-right", tone(h.ret))}>{rpct(h.ret)}</td>
+              <td className={cn("px-2 py-1 text-right font-medium", tone(h.contribution))}>{rpct(h.contribution, 2)}</td>
               <td className={cn("px-2 py-1 text-right", tone(h.dollars))}>{rusd(h.dollars)}</td>
             </tr>
           ))}
@@ -233,7 +233,7 @@ function ContributionTable({ r }: { r: StressOk }) {
             <td className="px-2 py-1.5">Total</td>
             <td className="px-2 py-1.5 text-right">{rpct(r.cashWeight + r.holdings.reduce((s, h) => s + h.weight, 0))}</td>
             <td />
-            <td className={cn("px-2 py-1.5 text-right", tone(r.fund))}>{rsigned(r.fund, 2)}</td>
+            <td className={cn("px-2 py-1.5 text-right", tone(r.fund))}>{rpct(r.fund, 2)}</td>
             <td className={cn("px-2 py-1.5 text-right", tone(r.dollars))}>{rusd(r.dollars)}</td>
           </tr>
         </tfoot>
@@ -243,22 +243,22 @@ function ContributionTable({ r }: { r: StressOk }) {
 }
 
 function StressWorking({ r }: { r: StressOk }) {
-  const pp = (v: number) => `${v < 0 ? "−" : ""}${Math.abs(v * 100).toFixed(3)}%`;
+  const pct3 = (v: number) => rpct(v, 3);
   const sum = r.holdings.reduce((s, h) => s + h.contribution, 0);
   const nav = r.fund === 0 ? null : r.dollars / r.fund;
   return (
     <Working>
-      <Step label="Portfolio">Σ wᵢ × (Gᵢ − 1) over {r.holdings.length} holdings = {pp(sum)}{r.cashWeight > 0 ? ` + cash ${rpct(r.cashWeight)} × 0` : ""} = <b className="whitespace-nowrap">{pp(r.fund)}</b></Step>
-      <Step label="Largest terms">{r.holdings.slice(0, 5).map((h) => `${h.ticker} ${rpct(h.weight, 2)} × ${pp(h.ret)}`).join(" + ")} + …</Step>
-      {nav !== null && <Step label="On today's value">{pp(r.fund)} × {rusdFull(nav)} = <b className="whitespace-nowrap">{rusdFull(r.dollars)}</b></Step>}
+      <Step label="Portfolio">Σ wᵢ × (Gᵢ − 1) over {r.holdings.length} holdings = {pct3(sum)}{r.cashWeight > 0 ? ` + cash ${rpct(r.cashWeight)} × 0` : ""} = <b className="whitespace-nowrap">{pct3(r.fund)}</b></Step>
+      <Step label="Largest terms">{r.holdings.slice(0, 5).map((h) => `${h.ticker} ${rpct(h.weight, 2)} × ${pct3(h.ret)}`).join(" + ")} + …</Step>
+      {nav !== null && <Step label="On today's value">{pct3(r.fund)} × {rusdFull(nav)} = <b className="whitespace-nowrap">{rusdFull(r.dollars)}</b></Step>}
       {r.benchmark !== null && (
         <Step label="Sector benchmark">
-          {r.benchmarkLegs.map((l) => `${l.etf} ${rpct(l.weight, 1)} × ${pp(l.ret)}`).join(" + ")} = <b className="whitespace-nowrap">{pp(r.benchmark)}</b>
+          {r.benchmarkLegs.map((l) => `${l.etf} ${rpct(l.weight, 1)} × ${pct3(l.ret)}`).join(" + ")} = <b className="whitespace-nowrap">{pct3(r.benchmark)}</b>
         </Step>
       )}
-      {r.active !== null && <Step label="Active">{pp(r.fund)} − {pp(r.benchmark!)} = <b className="whitespace-nowrap">{pp(r.active)}</b></Step>}
-      <Step label="S&P 500">SPY growth of $1 {fmtDate(r.start)} → {fmtDate(r.end)}, dividends reinvested, − 1 = <b className="whitespace-nowrap">{pp(r.market)}</b></Step>
-      <Step label="Rebalanced daily instead">Π (1 + Σ wᵢ rᵢ,ₜ) − 1 = {pp(r.rebalanced)} (buy-and-hold minus rebalanced: {((r.fund - r.rebalanced) * 100).toFixed(2)} pp). <span className="text-muted-foreground">{RISK_EXPLAIN.stressRebalanced}</span></Step>
+      {r.active !== null && <Step label="Active">{pct3(r.fund)} − {pct3(r.benchmark!)} = <b className="whitespace-nowrap">{rbp(r.active, 1)}</b></Step>}
+      <Step label="S&P 500">SPY growth of $1 {fmtDate(r.start)} → {fmtDate(r.end)}, dividends reinvested, − 1 = <b className="whitespace-nowrap">{pct3(r.market)}</b></Step>
+      <Step label="Rebalanced daily instead">Π (1 + Σ wᵢ rᵢ,ₜ) − 1 = {pct3(r.rebalanced)} (buy-and-hold minus rebalanced: {rbp(r.fund - r.rebalanced)}). <span className="text-muted-foreground">{RISK_EXPLAIN.stressRebalanced}</span></Step>
       <Source>Gᵢ = Π (closeₜ + dividendₜ) ÷ closeₜ₋₁ from stored Yahoo Finance closes (split-adjusted) and dividends on ex-dates; the Stress results CSV has every term, the Daily paths CSV each series.</Source>
     </Working>
   );

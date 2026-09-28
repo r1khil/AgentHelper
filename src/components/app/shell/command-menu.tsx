@@ -11,7 +11,7 @@ import { startHootChat } from "@/lib/actions/chats";
 import { boardHref, holdingHref } from "@/lib/scope";
 import { markScopeIntent } from "./scope-intent";
 import type { CommandHolding } from "@/lib/nav-data";
-import { fmtCurrency, fmtPct } from "@/lib/format";
+import { fmtBp, fmtCurrency, fmtDay, fmtPct, ppToBp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useHootCommand } from "../hoot/use-hoot-command";
 import { leaveHootQuestion } from "../hoot/handoff";
@@ -28,7 +28,7 @@ type Item =
   | { kind: "scope"; id: string; scope: CommandScope }
   | { kind: "theme"; id: string; theme: "dark" | "light" };
 
-const shortDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const shortDate = (iso: string) => fmtDay(iso);
 
 /**
  * ⌘K: jump to a holding or page, run a quick action, or turn the text into a question for Hoot (Tab).
@@ -305,8 +305,8 @@ function HoldingPreview({ holding: h }: { holding: CommandHolding }) {
   }, [h.ticker]);
   const q = quoteCache.get(h.ticker);
   const rows: [string, React.ReactNode, string?][] = [
-    ["Weight", h.weightPct != null ? `${h.weightPct.toFixed(1)}% of NAV` : "—"],
-    ["vs S&P, last session", q?.relativePp != null ? `${q.relativePp > 0 ? "+" : ""}${q.relativePp.toFixed(1)} pp` : "—", q?.relativePp == null ? undefined : q.relativePp >= 0 ? "text-up" : "text-down"],
+    ["Weight", h.weightPct != null ? `${fmtPct(h.weightPct, 1)} of NAV` : "—"],
+    ["vs S&P, last session", q?.relativePp != null ? fmtBp(ppToBp(q.relativePp)) : "—", q?.relativePp == null ? undefined : q.relativePp >= 0 ? "text-up" : "text-down"],
     ["Next report", h.nextReport ? `${shortDate(h.nextReport)}${h.nextReportEstimated ? " (est.)" : ""}` : "—"],
     ["Open items", h.openMovement ? "Movement write-up open" : "None", h.openMovement ? "text-hoot-foreground" : undefined],
   ];
@@ -377,7 +377,7 @@ function buildGroups({
   if (top) {
     // In the scope in view: the fund shows every team's holdings, a team its own (⌘K lists only those).
     go.push(
-      { kind: "page", id: `go:board:${top.ticker}`, page: { label: `${top.ticker} research board`, href: boardHref(scopeSlug, top.teamSlug, top.ticker), hint: "Hoot's chats about this holding" } },
+      { kind: "page", id: `go:board:${top.ticker}`, page: { label: `${top.ticker} research`, href: boardHref(scopeSlug, top.teamSlug, top.ticker), hint: "Hoot's chats about this holding" } },
       { kind: "page", id: `go:earnings:${top.ticker}`, page: { label: `${top.ticker} earnings`, href: holdingHref(scopeSlug, top.teamSlug, top.ticker, "?tab=earnings"), hint: top.nextReport ? `${shortDate(top.nextReport)}${top.nextReportEstimated ? " est." : ""}` : "No report scheduled" } },
     );
   }

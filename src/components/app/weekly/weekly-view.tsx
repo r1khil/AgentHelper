@@ -1,9 +1,9 @@
-import { DateTime } from "luxon";
 import { CalendarRange } from "lucide-react";
 import { buildWeeklyNow } from "@/lib/actions/weekly";
 import { EmptyState } from "@/components/app/empty-state";
 import { Panel, PanelFooter, PanelHeader } from "@/components/app/panel";
 import { Button } from "@/components/ui/button";
+import { fmtDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { PackStatusPill } from "./status-pill";
 import { WeeklyPack } from "./weekly-pack";
@@ -11,8 +11,7 @@ import { whenBuilt } from "./when";
 import type { PackListItem, WeeklyPackProps } from "./types";
 import { RowLink } from "@/components/app/row-link";
 
-const NY = "America/New_York";
-const short = (iso: string) => DateTime.fromISO(iso, { zone: NY }).toFormat("LLL d");
+const short = (iso: string) => fmtDay(iso);
 
 export type WeeklyViewProps = {
   packs: PackListItem[];
@@ -61,7 +60,7 @@ export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyView
           {packs.map((p) => {
             const on = p.weekEnding === selected;
             const meta =
-              p.state === "sent" ? `Sent ${short(p.sentAt ?? p.emailedAt ?? p.weekEnding)}` : p.builtAt ? `Built ${whenBuilt(p.builtAt, p.weekEnding)}` : "Not built yet";
+              p.state === "sent" ? `Sent ${short(p.sentAt ?? p.emailedAt ?? p.weekEnding)}` : p.builtAt ? `Built ${whenBuilt(p.builtAt)}` : "Not built yet";
             return (
               <RowLink
                 key={p.weekEnding}
@@ -90,7 +89,7 @@ export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyView
           <WeeklyPack key={pack.weekEnding} {...pack} />
         ) : selected ? (
           <Panel className="flex-1 items-center justify-center p-10 text-center">
-            <div className="text-[15px] font-semibold">Week ending {DateTime.fromISO(selected, { zone: NY }).toFormat("cccc, MMMM d")}</div>
+            <div className="text-[15px] font-semibold">Week ending {fmtDay(selected)}</div>
             <p className="mx-auto mt-1 mb-4 max-w-md text-[13.5px] text-muted-foreground">This pack has not been built yet.</p>
             {buildForm(selected, "Build this pack")}
           </Panel>

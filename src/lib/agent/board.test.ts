@@ -1,8 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { UIMessage } from "ai";
 import { collectSources } from "./citations";
 import { citedIds, marketFigure, pairTurns, traceLine, turnSources } from "./board";
 import { hiddenPromptMessage } from "./hidden-prompt";
+
+// Dates this year print without the year ("Tue 22 Sep"); pin the clock so these stay 2026's.
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-28T12:00:00Z"));
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 const src = (id: string, title = id) => ({ id, title, url: `https://example.com/${id}`, publisher: "Example", retrievedAt: "2026-09-21" });
 const tool = (name: string, callId: string, sources: ReturnType<typeof src>[], data?: unknown) => ({
@@ -100,12 +109,12 @@ describe("turnSources", () => {
 describe("marketFigure", () => {
   it("renders a quote as a price with its day move", () => {
     const rows = turnSources(pairTurns(messages)[0], collectSources(messages));
-    expect(marketFigure(rows[0])).toEqual({ big: "362.14", tone: "down", sub: "-4.81% · USD · closed" });
+    expect(marketFigure(rows[0])).toEqual({ big: "362.14", tone: "down", sub: "(4.81%) · USD · closed" });
     expect(marketFigure(rows[1])).toBeNull();
   });
   it("renders the latest relative move", () => {
     const row = { n: 1, cited: 0, source: src("yr-1"), data: { sessions: [{ date: "2026-09-18", holdingReturnPct: -4.81, spxReturnPct: -0.62, relativePp: -4.19, qualifies: true }] } };
-    expect(marketFigure(row)).toEqual({ big: "-4.19 pp", tone: "down", sub: "-4.81% vs -0.62% · 4 pp rule met · 2026-09-18" });
+    expect(marketFigure(row)).toEqual({ big: "(419 bp)", tone: "down", sub: "(4.81%) vs (0.62%) · 400 bp rule met · Fri 18 Sep" });
   });
 });
 

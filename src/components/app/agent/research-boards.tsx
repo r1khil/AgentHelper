@@ -3,7 +3,7 @@
 import { Suspense, use, useMemo, useState } from "react";
 import { ChevronRight, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fixed, fmtDate, fmtDateTime, relativeTime } from "@/lib/format";
+import { fmtBp, fmtDateTime, fmtDay, fmtPct, ppToBp, relativeTime } from "@/lib/format";
 import { CountChip, Panel, Pill, Segmented } from "@/components/app/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowLink } from "@/components/app/row-link";
@@ -86,9 +86,9 @@ export function ResearchBoards({ holdings, market, showTeam }: { holdings: Holdi
   });
 
   return (
-    <Panel className="min-h-[420px] flex-1 lg:min-h-0" aria-label="Research boards">
+    <Panel className="min-h-[420px] flex-1 lg:min-h-0" aria-label="By holding">
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-2.5">
-        <h2 className="text-[14.5px] font-semibold whitespace-nowrap">Research boards</h2>
+        <h2 className="text-[14.5px] font-semibold whitespace-nowrap">By holding</h2>
         {counts.attention > 0 && (
           <CountChip hot>{counts.attention}</CountChip>
         )}
@@ -185,7 +185,7 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
   const has = h.chats > 0;
   const who = showTeam ? h.teamName : null;
   return (
-    <RowLink href={h.href} className={cn(ROW, "group min-h-[54px] py-2 transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")} title={has ? `Open ${h.ticker}'s research board` : `Start researching ${h.ticker}`}>
+    <RowLink href={h.href} className={cn(ROW, "group min-h-[54px] py-2 transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")} title={has ? `Open ${h.ticker} research` : `Start researching ${h.ticker}`}>
       <div className="min-w-0">
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-[13px] font-semibold">{h.ticker}</span>
@@ -203,7 +203,7 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
       <div className="min-w-0 text-[13px]">
         {h.earnings ? (
           <>
-            <div className="font-mono text-[12.5px]">{fmtDate(h.earnings.reportDate).replace(/, \d{4}$/, "")}</div>
+            <div className="font-mono text-[12.5px]">{fmtDay(h.earnings.reportDate)}</div>
             <div className="truncate text-xs text-muted-foreground">
               {inDays(daysUntil(h.earnings.reportDate, now))} · {h.earnings.dateStatus}
             </div>
@@ -291,23 +291,14 @@ function StatusCell({ h, flags }: { h: HoldingCardData; flags: ReturnType<typeof
   );
 }
 
-const pct = (v: number) => {
-  const s = fixed(Math.abs(v), 2);
-  return Number(s) === 0 ? `${s}%` : v < 0 ? `(${s}%)` : `+${s}%`;
-};
-const bps = (pp: number) => {
-  const n = Math.round(Math.abs(pp) * 100);
-  return n === 0 ? "0 bps" : pp < 0 ? `(${n} bps)` : `+${n} bps`;
-};
-
 function QuoteCell({ ticker, market, alert }: { ticker: string; market: Promise<MarketByTicker>; alert: boolean }) {
   const m = use(market)[ticker];
   if (!m || m.changePct === undefined) return <span className="text-right text-xs text-muted-foreground">No quote</span>;
   const tone = m.changePct > 0.005 ? "text-up" : m.changePct < -0.005 ? "text-down" : "text-muted-foreground";
   return (
-    <div className="text-right font-mono tabular-nums" title={m.relativePp !== undefined ? `${bps(m.relativePp)} vs S&P 500` : undefined}>
-      <div className={cn("text-[13px] font-medium", tone)}>{pct(m.changePct)}</div>
-      {m.relativePp !== undefined && <div className={cn("text-[11.5px]", alert ? "text-down" : "text-muted-foreground")}>{bps(m.relativePp)}</div>}
+    <div className="text-right font-mono tabular-nums" title={m.relativePp !== undefined ? `${fmtBp(ppToBp(m.relativePp))} vs S&P 500` : undefined}>
+      <div className={cn("text-[13px] font-medium", tone)}>{fmtPct(m.changePct)}</div>
+      {m.relativePp !== undefined && <div className={cn("text-[11.5px]", alert ? "text-down" : "text-muted-foreground")}>{fmtBp(ppToBp(m.relativePp))}</div>}
     </div>
   );
 }

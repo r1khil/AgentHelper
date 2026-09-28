@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { Acct } from "./acct";
+import { Acct } from "@/components/app/accounting";
 import { Panel, PanelHeader } from "@/components/app/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fmtAccounting, fmtCurrency } from "@/lib/format";
@@ -146,7 +146,7 @@ function TeamHoldings({ team, live }: { team: TeamRowData; live: boolean }) {
               <>
                 <span role="cell" className="text-right font-mono tabular-nums">{fmtCurrency(h.price, h.currency)}</span>
                 <span role="cell" className={cn("text-right font-mono tabular-nums", tone(h.changePct))}><Acct value={h.changePct} unit="%" /></span>
-                <span role="cell" className="text-right font-mono text-muted-foreground tabular-nums"><Acct value={h.relativePp} unit=" pp" /></span>
+                <span role="cell" className="text-right font-mono text-muted-foreground tabular-nums"><Acct value={h.relativePp == null ? null : h.relativePp * 100} digits={0} unit=" bp" /></span>
               </>
             ) : (
               <>

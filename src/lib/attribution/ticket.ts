@@ -1,4 +1,5 @@
 import { IMPORT_COLUMNS, parseDate, parseNumber } from "./csv";
+import { fmtUsd } from "@/lib/format";
 
 /**
  * The Fund's Word trade ticket: one labeled line per field ("Price: $280.13"), then the sign-off block.
@@ -118,7 +119,7 @@ export function parseTicket(text: string, file: string): TicketRead {
   };
 
   if (ticket.marketValue !== null && Math.abs(ticket.shares * ticket.price - ticket.marketValue) > 1) {
-    warnings.push(`Shares × price is $${money(ticket.shares * ticket.price)}, but the ticket says $${money(ticket.marketValue)}. One of them is a typo.`);
+    warnings.push(`Shares × price is ${fmtUsd(ticket.shares * ticket.price)}, but the ticket says ${fmtUsd(ticket.marketValue)}. One of them is a typo.`);
   }
   const hint = ticketFileHints(file);
   if (hint.ticker && hint.ticker !== ticket.ticker) warnings.push(`The file name says ${hint.ticker}, the ticket says ${ticket.ticker}.`);
@@ -165,8 +166,4 @@ export function ticketsToCsv(tickets: TradeTicket[]): string {
   const q = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
   const rows = tickets.map((t) => [t.date, t.side, t.ticker, String(t.shares), String(t.price), "", "", q(ticketNote(t))].join(","));
   return [IMPORT_COLUMNS.join(","), ...rows].join("\n");
-}
-
-function money(n: number) {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
