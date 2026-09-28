@@ -377,7 +377,7 @@ function buildGroups({
   if (top) {
     // In the scope in view: the fund shows every team's holdings, a team its own (⌘K lists only those).
     go.push(
-      { kind: "page", id: `go:board:${top.ticker}`, page: { label: `${top.ticker} research board`, href: boardHref(scopeSlug, top.teamSlug, top.ticker), hint: "Hoot's chats about this holding" } },
+      { kind: "page", id: `go:board:${top.ticker}`, page: { label: `${top.ticker} research`, href: boardHref(scopeSlug, top.teamSlug, top.ticker), hint: "Hoot's chats about this holding" } },
       { kind: "page", id: `go:earnings:${top.ticker}`, page: { label: `${top.ticker} earnings`, href: holdingHref(scopeSlug, top.teamSlug, top.ticker, "?tab=earnings"), hint: top.nextReport ? `${shortDate(top.nextReport)}${top.nextReportEstimated ? " est." : ""}` : "No report scheduled" } },
     );
   }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { canOpenChat, isFundWide, listAccessibleTeams, requireUser, transparencyEnabled } from "@/lib/auth";
@@ -15,17 +16,25 @@ import { TraceToggle } from "@/components/app/chat/trace-toggle";
 import { ConversationSidebar } from "@/components/app/agent/conversation-list";
 import { loadResearchSidebar } from "@/components/app/agent/load-sidebar";
 
-export const metadata: Metadata = { title: "Hoot" };
+// One read per request, shared by the title and the page.
+const loadChat = cache(getChat);
+
+export async function generateMetadata({ params }: { params: Promise<{ chatId: string }> }): Promise<Metadata> {
+  const { chatId } = await params;
+  const [user, chat] = await Promise.all([requireUser(), loadChat(chatId)]);
+  // A chat this member can't open gets no title of its own (the page 404s).
+  return { title: chat && canOpenChat(user, chat) ? `${chat.title} · Research` : "Research" };
+}
 
 /**
- * A general Hoot conversation (not about one holding). It lives outside /t/<team> on purpose: the team it is filed
- * under is bookkeeping, so opening it never changes the sector in the sidebar and changing the sector never closes it.
- * Holding chats open on the holding's research board instead.
+ * A general chat with Hoot (not about one holding), under Research. It lives outside /t/<team> on purpose: the team
+ * it is filed under is bookkeeping, so opening it never changes the sector in the sidebar and changing the sector
+ * never closes it. Holding chats open on the holding's research instead.
  */
 export default async function HootChatPage({ params }: { params: Promise<{ chatId: string }> }) {
   const { chatId } = await params;
   const user = await requireUser();
-  const chat = await getChat(chatId);
+  const chat = await loadChat(chatId);
   if (!chat || !canOpenChat(user, chat)) notFound();
   const team = await getTeam(chat.teamId);
   if (!team) notFound();

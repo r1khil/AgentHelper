@@ -75,7 +75,7 @@ export function useCurrentTeam(teams: Team[], user: SidebarUser, fundWide: boole
 /** The list page under /t/<slug>/ being viewed ("" for Holdings), so switching scope keeps the reader on it. */
 export function useTeamSection() {
   const pathname = usePathname();
-  // A general Hoot conversation isn't under any team; switching scope from one lands on that scope's Hoot page.
+  // A general chat isn't under any team; switching scope from one lands on that scope's Research page.
   if (/^\/hoot(\/|$)/.test(pathname)) return "/agent";
   // The fund's own Attribution, Risk and Exposure pages have team versions under /t/<slug>/.
   const book = pathname.match(/^\/(attribution|risk|exposure)(\/|$)/);
@@ -139,7 +139,7 @@ function SidebarBody({ user, teams, signOut, dock }: Props & { dock?: React.Reac
   const research: NavLink[] = base
     ? [
         { href: base, label: "Holdings", icon: Briefcase, exact: true },
-        { href: `${base}/agent`, label: "Hoot", icon: HootIcon, also: "/hoot" },
+        { href: `${base}/agent`, label: "Research", icon: HootIcon, also: "/hoot" },
         { href: `${base}/sell-side`, label: "Sell-side analyzer", icon: Mic },
         { href: `${base}/models`, label: "Models", icon: Table2 },
       ]

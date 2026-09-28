@@ -3,7 +3,8 @@ export type HootCommand = { kind: "theme"; theme: "light" | "dark" | "system" | 
 
 const destinations: Record<string, string> = {
   home: "Today", dashboard: "Today", today: "Today", portfolio: "Holdings", holdings: "Holdings",
-  hoot: "Hoot", chat: "Hoot", research: "Hoot", "sell side": "Sell-side analyzer", "sell side analyzer": "Sell-side analyzer",
+  research: "Research", hoot: "Research", chat: "Research", chats: "Research", conversations: "Research", agent: "Research",
+  boards: "Research", "research boards": "Research", "sell side": "Sell-side analyzer", "sell side analyzer": "Sell-side analyzer",
   models: "Models", movements: "Movements", earnings: "Earnings", calendar: "Economic calendar",
   "economic calendar": "Economic calendar", attribution: "Attribution", risk: "Risk", exposure: "Exposure",
   backtesting: "Backtesting", backtest: "Backtesting", "weekly update": "Weekly update", changelog: "Changelog",

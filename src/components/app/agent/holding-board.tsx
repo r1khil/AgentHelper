@@ -68,9 +68,9 @@ type ChatState = { messages: UIMessage[]; runStatus: RunStatus };
 type SideTab = "sources" | "board";
 
 /**
- * The research board for one holding, in Research › Conversations: the list on the left (this board's chats switch
- * on the client; the URL's `chat` param follows the selection), the thread in the middle, and on the right the sources
- * behind the selected answer, with the board's research log and prep pack a tab away.
+ * One holding's research, in Research › Chats: the list on the left (this holding's chats switch on the client; the
+ * URL's `chat` param follows the selection), the thread in the middle, and on the right the sources behind the
+ * selected answer, with the holding's research log and prep pack a tab away.
  */
 export function HoldingBoard(props: Props) {
   const { team, holding, configured, transparency, canTrace, userName, memories, canManage } = props;
@@ -303,7 +303,7 @@ function BoardQuote({ market }: { market: Promise<BoardMarket> }) {
   );
 }
 
-/** The side column: Sources (for the selected answer) and Board (research log, prep pack, the holding at a glance). */
+/** The side column: Sources (for the selected answer) and Research log (the log, prep pack, the holding at a glance). */
 function SideTabs({ tab, setTab, sourceCount, boardCount, sources, board }: { tab: SideTab; setTab: (t: SideTab) => void; sourceCount: number; boardCount: number; sources: ReactNode; board: ReactNode }) {
   const item = (key: SideTab, label: string, count: number) => (
     <button
@@ -319,9 +319,9 @@ function SideTabs({ tab, setTab, sourceCount, boardCount, sources, board }: { ta
   );
   return (
     <>
-      <div role="tablist" aria-label="Board side panel" className="flex shrink-0 items-baseline gap-4">
+      <div role="tablist" aria-label="Sources and research log" className="flex shrink-0 items-baseline gap-4">
         {item("sources", "Sources", sourceCount)}
-        {item("board", "Board", boardCount)}
+        {item("board", "Research log", boardCount)}
       </div>
       <div role="tabpanel" className="-mx-1 mt-2.5 min-h-0 flex-1 overflow-y-auto px-1 pt-px pb-1">
         {tab === "sources" ? sources : board}
@@ -397,7 +397,7 @@ function EmptyBoard({ header, loadError, holding, configured, busy, hasChats, on
           }}
           disabled={busy || !configured}
           placeholder={configured ? "Ask about a holding, a filing, a move…" : "Hoot isn't set up yet: an admin needs to turn it on"}
-          sees={`${holding.ticker} research board`}
+          sees={`${holding.ticker} research`}
         />
       </CenterColumn>
       <SideColumn>
@@ -600,7 +600,7 @@ function BoardThread({
           streaming={streaming}
           disabled={!configured || catchingUp}
           placeholder={!configured ? "Hoot isn't set up yet: an admin needs to turn it on" : catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…"}
-          sees={`${holding.ticker} research board`}
+          sees={`${holding.ticker} research`}
         />
       </CenterColumn>
       <SideColumn>

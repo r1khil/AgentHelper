@@ -15,9 +15,9 @@ import { ConversationSidebar } from "@/components/app/agent/conversation-list";
 import { loadResearchSidebar } from "@/components/app/agent/load-sidebar";
 import { HomeMain, ListColumn, ResearchHomeGrid } from "@/components/app/agent/research-columns";
 
-export const metadata: Metadata = { title: "Hoot" };
+export const metadata: Metadata = { title: "Research" };
 
-/** Hoot's home: ask a general question, pick up an earlier conversation, or open a holding's research board. */
+/** Research: ask Hoot a general question, pick up an earlier chat, or open one holding's research. */
 export default async function AgentIndex({ params }: { params: Promise<{ team: string }> }) {
   const { team: slug } = await params;
   const scope = await loadScope(slug);
@@ -80,9 +80,9 @@ export default async function AgentIndex({ params }: { params: Promise<{ team: s
         <AskPanel ticker={suggestFor?.ticker} configured={configured} teamSlug={teamSlug} scopeName={scopeName} />
         {rows.length === 0 ? (
           <Panel className="flex-1">
-            <PanelHeader title="Research boards" />
+            <PanelHeader title="By holding" />
             <p className="px-4 py-4 text-[13px] leading-relaxed text-muted-foreground">
-              No holdings yet. Add the tickers {scope.kind === "fund" ? "each team covers on its" : "this team covers on the"} Holdings page. Each one gets its own research board here.
+              No holdings yet. Add the tickers {scope.kind === "fund" ? "each team covers on its" : "this team covers on the"} Holdings page. Each one gets its own research here.
             </p>
           </Panel>
         ) : (

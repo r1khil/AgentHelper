@@ -86,9 +86,9 @@ export function ResearchBoards({ holdings, market, showTeam }: { holdings: Holdi
   });
 
   return (
-    <Panel className="min-h-[420px] flex-1 lg:min-h-0" aria-label="Research boards">
+    <Panel className="min-h-[420px] flex-1 lg:min-h-0" aria-label="By holding">
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-2.5">
-        <h2 className="text-[14.5px] font-semibold whitespace-nowrap">Research boards</h2>
+        <h2 className="text-[14.5px] font-semibold whitespace-nowrap">By holding</h2>
         {counts.attention > 0 && (
           <CountChip hot>{counts.attention}</CountChip>
         )}
@@ -185,7 +185,7 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
   const has = h.chats > 0;
   const who = showTeam ? h.teamName : null;
   return (
-    <Link href={h.href} className={cn(ROW, "group min-h-[54px] py-2 transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")} title={has ? `Open ${h.ticker}'s research board` : `Start researching ${h.ticker}`}>
+    <Link href={h.href} className={cn(ROW, "group min-h-[54px] py-2 transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")} title={has ? `Open ${h.ticker} research` : `Start researching ${h.ticker}`}>
       <div className="min-w-0">
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-[13px] font-semibold">{h.ticker}</span>

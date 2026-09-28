@@ -29,7 +29,7 @@ export function AskPanel({ ticker, configured, teamSlug, scopeName }: { ticker?:
               teamSlug={teamSlug}
               configured={configured}
               className="mt-3.5"
-              hint={`A general question for ${scopeName}. For one holding, open its board below.`}
+              hint={`A general question for ${scopeName}. For one holding, pick it from By holding below.`}
             />
           </div>
         </div>

@@ -76,7 +76,7 @@ export function DocumentUploadForm({ holdingId, disabledReason }: { holdingId: s
           {busy ?? "Upload"}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">Filed under the team and company folder in the Fund&rsquo;s Drive; the agent can read it right away. Up to 50MB.</p>
+      <p className="text-xs text-muted-foreground">Filed under the team and company folder in the Fund&rsquo;s Drive; Hoot can read it right away. Up to 50MB.</p>
     </form>
   );
 }

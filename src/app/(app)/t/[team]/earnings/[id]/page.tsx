@@ -39,7 +39,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
   const rebuild = canManage && !reported && agentConfigured() ? (
     <form action={rebuildPrepPack}>
       <input type="hidden" name="id" value={e.id} />
-      <Button type="submit" size="sm" variant="outline" title="Gather the evidence again with the agent (one model run)">
+      <Button type="submit" size="sm" variant="outline" title="Have Hoot gather the evidence again (one model run)">
         <RefreshCw />
         {e.prepPack ? "Rebuild" : "Build prep pack"}
       </Button>
