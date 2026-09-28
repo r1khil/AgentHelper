@@ -21,7 +21,6 @@ type Props = {
   user: SidebarUser;
   teams: Team[];
   signOut: () => Promise<void>;
-  firstName: string;
   hoot: boolean;
   backtestingLayout: BacktestingLayout;
   /** The scope remembered from the last visit (a cookie), for a page outside /t/ loaded directly. */
@@ -51,7 +50,7 @@ function useDesktop() {
  * bottom of the rail, so he never covers the page (on a phone, with no rail, he floats in a corner).
  * The classic Backtesting layout (a per-member preference) keeps the previous sidebar and look.
  */
-export function AppShell({ user, teams, signOut, firstName, hoot, backtestingLayout, initialScope, children }: Props) {
+export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initialScope, children }: Props) {
   const pathname = usePathname();
   const fundWide = user.role === "exec" || user.role === "admin";
   // Pages outside /t/ (Today, a Hoot chat) keep the scope the member was last in rather than falling back to the fund.
@@ -103,6 +102,11 @@ export function AppShell({ user, teams, signOut, firstName, hoot, backtestingLay
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [scopeSlug, load]);
+  // The companion's "Ask Hoot" row opens the same ⌘K: one place to ask.
+  const openCommand = useCallback(() => {
+    setCommandOpen(true);
+    if (scopeSlug) void load(scopeSlug);
+  }, [scopeSlug, load]);
 
   const section = useTeamSection();
   const scopes = useMemo(() => {
@@ -115,7 +119,7 @@ export function AppShell({ user, teams, signOut, firstName, hoot, backtestingLay
   const counts = data && data.scope === scopeSlug ? data.counts : {};
   // One companion at a time: docked in whichever menu is on screen, or floating when there's none.
   const desktop = useDesktop();
-  const companion = (dock: HootDock | null) => hoot && <HootCompanion firstName={firstName} suppressed={commandOpen} dock={dock} />;
+  const companion = (dock: HootDock | null) => hoot && <HootCompanion onAsk={openCommand} suppressed={commandOpen} dock={dock} />;
   const command = (
     <CommandMenu
       open={commandOpen}
