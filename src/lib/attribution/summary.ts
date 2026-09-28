@@ -1,6 +1,7 @@
 import type { AttributionResult, HoldingRow } from "./attribution";
 import { PERIOD_LABELS, type ResolvedPeriod } from "./periods";
 import { bucketLabel, SECTOR_LABELS } from "./sectors";
+import { fmtBp, fmtPct } from "@/lib/format";
 
 // The agent reads attribution in the page's own units: returns and weights in percent, effects in basis points.
 const pct = (x: number | null | undefined) => (x === null || x === undefined ? null : +(x * 100).toFixed(2));
@@ -134,10 +135,10 @@ export type AttributionSummary = ReturnType<typeof summarizeAttribution>;
 /** One line for the source card and the answer's headline. */
 export function attributionHeadline(s: AttributionSummary): string {
   const h = s.headline as AttributionSummary["headline"] & { spxPriceReturnPct?: number | null; activeVsSpxBps?: number | null };
-  const parts = [`${s.scope}, ${s.period.label} (${s.period.baseClose} close to ${s.period.end} close): return ${h.returnPct}%`];
-  if (h.spxPriceReturnPct !== undefined && h.spxPriceReturnPct !== null) parts.push(`S&P 500 ${h.spxPriceReturnPct}%, active ${h.activeVsSpxBps} bps`);
-  if (h.activeVsSectorBenchmarkBps !== null) parts.push(`vs sector benchmark ${h.activeVsSectorBenchmarkBps} bps (allocation ${h.allocationBps}, selection ${h.selectionBps}, interaction ${h.interactionBps})`);
-  const movers = (rows: { ticker: string; contributionBps: number | null }[]) => rows.slice(0, 3).map((r) => `${r.ticker} ${r.contributionBps} bps`).join(", ");
+  const parts = [`${s.scope}, ${s.period.label} (${s.period.baseClose} close to ${s.period.end} close): return ${fmtPct(h.returnPct)}`];
+  if (h.spxPriceReturnPct !== undefined && h.spxPriceReturnPct !== null) parts.push(`S&P 500 ${fmtPct(h.spxPriceReturnPct)}, active ${fmtBp(h.activeVsSpxBps)}`);
+  if (h.activeVsSectorBenchmarkBps !== null) parts.push(`vs sector benchmark ${fmtBp(h.activeVsSectorBenchmarkBps)} (allocation ${fmtBp(h.allocationBps)}, selection ${fmtBp(h.selectionBps)}, interaction ${fmtBp(h.interactionBps)})`);
+  const movers = (rows: { ticker: string; contributionBps: number | null }[]) => rows.slice(0, 3).map((r) => `${r.ticker} ${fmtBp(r.contributionBps)}`).join(", ");
   if (s.bottomContributors.length) parts.push(`biggest detractors ${movers(s.bottomContributors)}`);
   if (s.topContributors.length) parts.push(`top contributors ${movers(s.topContributors)}`);
   return parts.join("; ");

@@ -9,7 +9,8 @@ import { ContributorsTable, type TeamLookup } from "./contributors-table";
 import { CompactCumulativeChart, CumulativeDetails, type CumulativeChartPoint } from "./cumulative-active-chart";
 import { DataNoticesButton, type QualityNotice } from "./data-quality-notice";
 import { EXPLAIN } from "./explainers";
-import { fmtBpsShort, fmtSigned, fmtWeight } from "./format";
+import { fmtAccounting, fmtBp, fmtPct } from "@/lib/format";
+import { bps, pct } from "./format";
 import { HoldingsColumn } from "./holdings-columns";
 import { Tip } from "./info-tip";
 import { INTERACTION_CLASS } from "./interaction-toggle";
@@ -154,7 +155,7 @@ export function EffectsPanel({ items, total, aside, note, empty, className }: { 
                     />
                   </div>
                   <span className={cn("text-right font-mono text-[13px]", isTotal ? "font-semibold text-foreground" : shown > 0 ? "text-up" : shown < 0 ? "text-down" : "text-muted-foreground")}>
-                    {fmtBpsShort(e.value)}
+                    {fmtAccounting(v, 0)}
                   </span>
                 </div>
               );
@@ -188,9 +189,9 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
         const cells = (
           <>
             <span className="truncate">{team?.name ?? "No team"}</span>
-            <span className={cn(num, "text-muted-foreground")}>{fmtWeight(t.avgWeight)}</span>
-            <span className={cn(num, tone(t.ret, 10_000))}>{fmtSigned(t.ret)}</span>
-            <span className={cn(num, "font-semibold", tone(t.contribution, 10_000))}>{fmtBpsShort(t.contribution)} bp</span>
+            <span className={cn(num, "text-muted-foreground")}>{fmtPct(pct(t.avgWeight), 1)}</span>
+            <span className={cn(num, tone(t.ret, 10_000))}>{fmtPct(pct(t.ret))}</span>
+            <span className={cn(num, "font-semibold", tone(t.contribution, 10_000))}>{fmtBp(bps(t.contribution))}</span>
           </>
         );
         const cls = cn("grid max-h-16 min-h-10 flex-1 items-center gap-2.5 border-b border-row px-4 text-[13.5px]", TEAM_COLS);
@@ -205,8 +206,8 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
       {showCash && (
         <div className="mt-auto flex min-h-10 shrink-0 items-center bg-band-2 px-4 text-[12.5px] text-muted-foreground">
           <span className="truncate">
-            Cash, fees and interest{cashWeight !== undefined && ` · ${fmtWeight(cashWeight)} average weight`} ·{" "}
-            <span className={cn("font-mono", tone(cashContribution, 10_000))}>{fmtBpsShort(cashContribution)} bp</span>
+            Cash, fees and interest{cashWeight !== undefined && ` · ${fmtPct(pct(cashWeight), 1)} average weight`} ·{" "}
+            <span className={cn("font-mono", tone(cashContribution, 10_000))}>{fmtBp(bps(cashContribution))}</span>
           </span>
         </div>
       )}

@@ -19,7 +19,7 @@ export const RISK_EXPLAIN = {
   stressMarket: "SPY's total return over the same closes, dividends reinvested: the investable S&P 500.",
   stressBenchmark:
     "The sector benchmark over the window: the S&P 500 sector weights the Risk page uses today (for a team, its own sectors rescaled to 100%), each invested in its Select Sector SPDR ETF and held without rebalancing.",
-  stressActive: "Portfolio return minus the sector benchmark's return over the window, in percentage points. Positive means today's bets would have held up better than the benchmark.",
+  stressActive: "Portfolio return minus the sector benchmark's return over the window, in basis points (100 bp = 1 percentage point). Positive means today's bets would have held up better than the benchmark.",
   stressDollars: "The window's return applied to today's value (NAV for the Fund, the team's holdings for a team): what the same move would cost or add now.",
   stressWorst: "The three holdings with the most negative contribution: weight × the holding's return over the window. Contributions add up to the portfolio's return.",
   stressProxy:
@@ -42,7 +42,7 @@ export const RISK_EXPLAIN = {
   exposure:
     "Where the portfolio's money is today compared with its benchmark, from the same positions and benchmark weights as the Risk page. Weights don't depend on the lookback window; the share of active risk does.",
   largestActiveBet:
-    "The sector whose weight differs most from the benchmark's, in percentage points (portfolio weight minus benchmark weight; an underweight counts too). It is measured by sector because the benchmark is the Select Sector SPDR ETFs: against it every single stock counts as fully active, so a stock-level answer needs the index's own holdings.",
+    "The sector whose weight differs most from the benchmark's, in basis points (portfolio weight minus benchmark weight; an underweight counts too). It is measured by sector because the benchmark is the Select Sector SPDR ETFs: against it every single stock counts as fully active, so a stock-level answer needs the index's own holdings.",
   top10: "Share of the portfolio's value in its ten largest positions, from the ledger's latest positions at the last close.",
 
   // ETF look-through.
@@ -90,7 +90,7 @@ export const RISK_EXPLAIN = {
     "The benchmark's sector ETFs at their S&P 500 weights, held short in the tracking-error calculation. Their share is the part of active risk from how the portfolio differs from the index sector by sector, including sectors it holds little or none of. It is negative when the portfolio's own holdings in those sectors cancel it out.",
   teContribution: "Points of annualized tracking error from this position: its share of active risk × tracking error. The column adds up to the tracking error.",
   marginalTe:
-    "Marginal tracking error: ∂TE/∂wᵢ = (Σa)ᵢ ÷ TE, annualized. It is how many percentage points tracking error would change if 1 percentage point more of this holding were bought with cash (cash has no risk). Positive adds to tracking error, negative reduces it. It is a first-order estimate; the exact recomputation is in the working.",
+    "Marginal tracking error: ∂TE/∂wᵢ = (Σa)ᵢ ÷ TE, annualized. It is how many basis points tracking error would change if 100 bp (one percentage point) more of this holding were bought with cash (cash has no risk). Positive adds to tracking error, negative reduces it. It is a first-order estimate; the exact recomputation is in the working.",
 
   holdingVol: "The holding's own annualized volatility over the window: standard deviation of daily total returns × √252.",
   holdingBeta: "cov(holding, SPY) ÷ var(SPY) on daily total returns over the window.",

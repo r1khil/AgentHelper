@@ -6,6 +6,7 @@ import { getDailyBars, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { isTradingDay, movementDueAt, todayNY, formatNY } from "@/lib/providers/calendar";
 import { qualifies, relativeMovePp, returnPct } from "@/lib/movement/math";
 import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
+import { fmtBp, fmtPct } from "@/lib/format";
 import { gatherMovementEvidence } from "./evidence";
 import { queueNotification, sendPendingNotifications } from "./notify";
 import { upsertCloses } from "@/lib/prices";
@@ -136,13 +137,13 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
     // Factual alert to owner and lead. Dedupe key ties it to the movement.
     const recipients = await alertRecipients(h.teamId, owner);
     const link = `${process.env.APP_URL ?? ""}/t/${teamSlug}/movements/${id}`;
-    const subject = `${h.ticker} moved ${rel >= 0 ? "+" : ""}${rel.toFixed(1)} pp vs S&P 500 on ${sessionDate}`;
+    const subject = `${h.ticker} moved ${fmtBp(rel * 100)} vs S&P 500 on ${sessionDate}`;
     const body = [
       `Major movement: ${h.ticker} (${h.companyName})`,
       `Session: ${sessionDate} (official close)`,
-      `Holding return: ${returnPct(b.close, b.prevClose).toFixed(2)}%`,
-      `S&P 500 return: ${returnPct(spx.close, spx.prevClose).toFixed(2)}%`,
-      `Relative move: ${rel >= 0 ? "+" : ""}${rel.toFixed(2)} pp (rule: |move| >= ${MOVEMENT_THRESHOLD_PP} pp)`,
+      `Holding return: ${fmtPct(returnPct(b.close, b.prevClose))}`,
+      `S&P 500 return: ${fmtPct(returnPct(spx.close, spx.prevClose))}`,
+      `Relative move: ${fmtBp(rel * 100)} (rule: ${fmtBp(MOVEMENT_THRESHOLD_PP * 100)} or more either way)`,
       `Due: ${formatNY(movementDueAt(sessionDate), "cccc MMM d, h:mm a")} ET`,
       `Workspace: ${link}`,
       "",

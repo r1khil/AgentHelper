@@ -7,6 +7,7 @@ import { Panel, PanelHeader, Segmented, StatStrip, type StatCell } from "@/compo
 import { PerformanceChart } from "@/components/charts/performance-chart";
 import type { BacktestResult } from "@/lib/backtesting/engine";
 import type { SavedScenarioSummary } from "@/lib/backtesting/saved";
+import { fmtBp, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Explained } from "../../attribution/info-tip";
 import { LayoutSwitch } from "../layout-switch";
@@ -34,10 +35,7 @@ import { WeightsPanel } from "./weights-panel";
 /** The redesign's names for the two replays. */
 const NAMES = { original: "Today's weights", modified: "Scenario" } as const;
 
-const signedPct = (v: number, d = 2) => {
-  const r = shown(v) * 100;
-  return `${r > 0 ? "+" : r < 0 ? "−" : ""}${Math.abs(r).toFixed(d)}%`;
-};
+const shownPct = (v: number) => fmtPct(shown(v) * 100);
 const toneOf = (v: number): StatCell["tone"] => (v > 1e-12 ? "up" : v < -1e-12 ? "down" : null);
 const day = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const savedOn = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" });
@@ -123,14 +121,14 @@ function Stats({ result, stale }: { result?: BacktestResult; stale: boolean }) {
     );
   const period = periodFigures(result);
   const bp = Math.round(period.delta * 10_000);
-  const vol = (v: number | null) => (v === null ? "—" : `${(v * 100).toFixed(1)}%`);
+  const vol = (v: number | null) => fmtPct(v === null ? null : v * 100, 1);
   return (
     <StatStrip
       className={cn(stale && "opacity-60")}
       cells={[
-        { label: "Scenario", value: signedPct(period.modified), tone: toneOf(period.modified), note: `${day(result.from)} – ${day(result.days.at(-1)!.date)}` },
-        { label: NAMES.original, value: signedPct(period.current), tone: toneOf(period.current), note: "Same window" },
-        { label: "Difference", value: `${bp > 0 ? "+" : bp < 0 ? "−" : ""}${Math.abs(bp)} bp`, tone: bp > 0 ? "up" : bp < 0 ? "down" : null, note: "Scenario minus today" },
+        { label: "Scenario", value: shownPct(period.modified), tone: toneOf(period.modified), note: `${day(result.from)} – ${day(result.days.at(-1)!.date)}` },
+        { label: NAMES.original, value: shownPct(period.current), tone: toneOf(period.current), note: "Same window" },
+        { label: "Difference", value: fmtBp(bp), tone: bp > 0 ? "up" : bp < 0 ? "down" : null, note: "Scenario minus today" },
         { label: "Volatility", value: vol(result.modified.volatility), note: `vs ${vol(result.original.volatility)} today` },
       ]}
     />

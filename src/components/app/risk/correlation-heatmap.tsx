@@ -35,7 +35,7 @@ export function CorrelationHeatmap({ tickers, matrix }: { tickers: string[]; mat
                   const label = `${row} / ${col}: ${rnum(c)}`;
                   return (
                     <td key={col} title={label} aria-label={label} className="tnum size-8 rounded-sm text-center" style={{ background: i === j ? "var(--muted)" : shade(c), color: Math.abs(c) > 0.55 && i !== j ? "white" : undefined }}>
-                      {i === j ? "" : c.toFixed(1)}
+                      {i === j ? "" : rnum(c, 1)}
                     </td>
                   );
                 })}
@@ -50,7 +50,7 @@ export function CorrelationHeatmap({ tickers, matrix }: { tickers: string[]; mat
         <span className="inline-flex items-center gap-1"><span className="inline-block size-3 rounded-sm" style={{ background: shade(0.9) }} />high</span>
         {high.length > 0 && (
           <span>
-            · Moves together (≥ 0.8): {high.slice(0, 6).map((p) => `${p.a}–${p.b} ${p.c.toFixed(2)}`).join(", ")}
+            · Moves together (≥ 0.8): {high.slice(0, 6).map((p) => `${p.a}–${p.b} ${rnum(p.c)}`).join(", ")}
             {high.length > 6 ? `, +${high.length - 6} more` : ""}
           </span>
         )}

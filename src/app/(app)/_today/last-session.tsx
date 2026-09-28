@@ -2,8 +2,8 @@ import Link from "next/link";
 import { DateTime } from "luxon";
 import { NY } from "@/lib/providers/calendar";
 import { sessionStamp } from "@/lib/today";
-import { fmtAccounting } from "@/lib/format";
-import { Acct } from "./acct";
+import { fmtAccounting, fmtBp } from "@/lib/format";
+import { Acct } from "@/components/app/accounting";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { BriefDialog, Cited } from "./brief-dialog";
@@ -61,7 +61,7 @@ export function LastSessionCard({ book }: { book: Book }) {
 
 /** Where the gap to the sector benchmark came from, in bp. The Attribution page shows it in full. */
 function effectsText(e: Effects | null) {
-  return e ? `Against the sector benchmark: allocation ${fmtAccounting(bps(e.allocation), 0)}, selection ${fmtAccounting(bps(e.selection), 0)}, interaction ${fmtAccounting(bps(e.interaction), 0)} bp` : undefined;
+  return e ? `Against the sector benchmark: allocation ${fmtBp(bps(e.allocation))}, selection ${fmtBp(bps(e.selection))}, interaction ${fmtBp(bps(e.interaction))}` : undefined;
 }
 
 function MoverList({ title, rows }: { title: string; rows: { ticker: string; contribution: number }[] }) {

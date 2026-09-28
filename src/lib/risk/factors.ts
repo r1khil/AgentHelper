@@ -8,6 +8,7 @@
  */
 import { FACTOR_ETFS } from "./factor-symbols";
 import { TRADING_DAYS, mean, sum } from "./math";
+import { fmtAccounting } from "@/lib/format";
 
 export { FACTOR_ETFS };
 
@@ -286,20 +287,17 @@ export function describeFactorBeta(key: FactorKey, beta: number, opts: { t?: num
   const basis = opts.basis ?? "NAV";
   const noun = PLAIN[key].none;
   if (!finite(beta)) return `No ${noun} estimate`;
-  const b = formatBeta(beta, 2, { signed: true });
-  if (finite(opts.t) && Math.abs(opts.t) < T_STAT_THRESHOLD) return `No clear ${noun} exposure (β ${b}, t ${formatBeta(opts.t, 1, { signed: true })}; not statistically significant)`;
+  const b = formatBeta(beta, 2);
+  if (finite(opts.t) && Math.abs(opts.t) < T_STAT_THRESHOLD) return `No clear ${noun} exposure (β ${b}, t ${formatBeta(opts.t, 1)}; not statistically significant)`;
   const pct = Math.round(Math.abs(beta) * 100);
   if (pct === 0) return `Essentially no ${noun} exposure (β ${b})`;
   const long = beta > 0;
   return `Moves like being ${pct}% of ${basis} ${PLAIN[key].instrument(long)} (${factorMeaning(key, beta)})`;
 }
 
-/** "−0.12" with a true minus sign, the way the page prints betas; `signed` adds "+" to positive ones. */
-export function formatBeta(beta: number, digits = 2, opts: { signed?: boolean } = {}) {
-  if (!finite(beta)) return "—";
-  const s = Math.abs(beta).toFixed(digits);
-  if (Number(s) === 0) return s;
-  return beta < 0 ? `−${s}` : opts.signed ? `+${s}` : s;
+/** A beta or t-statistic in the app's accounting style: -0.12 → "(0.12)", 0.055 → "0.06". */
+export function formatBeta(beta: number, digits = 2) {
+  return fmtAccounting(finite(beta) ? beta : null, digits);
 }
 
 const labelOf = (key: FactorKey) => FACTORS.find((f) => f.key === key)!.label;
@@ -324,7 +322,7 @@ export function factorReadings(f: FactorReport, opts: { basis?: string } = {}) {
   const active: FactorReading[] = f.active
     ? FACTOR_KEYS.filter((k) => isClearExposure(k, f.active!.betas[k])).map((k) => {
         const c = f.active!.betas[k];
-        return { key: k, label: labelOf(k), beta: c.beta, t: c.t, clear: true, text: `${labelOf(k)} ${formatBeta(c.beta, 2, { signed: true })} (t ${formatBeta(c.t, 1, { signed: true })}): ${activeMeaning(k, c.beta)}` };
+        return { key: k, label: labelOf(k), beta: c.beta, t: c.t, clear: true, text: `${labelOf(k)} ${formatBeta(c.beta, 2)} (t ${formatBeta(c.t, 1)}): ${activeMeaning(k, c.beta)}` };
       })
     : [];
   return { fund, clear: fund.filter((r) => r.clear), unclear: fund.filter((r) => !r.clear), active };

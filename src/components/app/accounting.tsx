@@ -1,18 +1,16 @@
 import { fmtAccounting } from "@/lib/format";
-import { cn } from "@/lib/utils";
 
 /**
- * A number in accounting style, colored by direction. Positives carry a hidden ")" so a column of
- * mixed signs lines up on its digits.
+ * A figure in accounting style (see `fmtAccounting`): losses in parentheses, no plus sign. With `align`, positives
+ * carry a hidden ")" so a right-aligned column of mixed signs lines up on its digits. The caller picks the color;
+ * `Move` is the colored version.
  */
-export function Accounting({ value, digits = 2, unit = "", tone = true, className }: { value: number | null | undefined; digits?: number; unit?: string; tone?: boolean; className?: string }) {
+export function Acct({ value, digits = 2, unit = "", align = true }: { value: number | string | null | undefined; digits?: number; unit?: string; align?: boolean }) {
   const text = fmtAccounting(value, digits, unit);
-  const negative = text.startsWith("(");
-  const color = !tone || value === null || value === undefined || text === "—" ? "" : negative ? "text-down" : Number(value.toFixed(digits)) > 0 ? "text-up" : "";
   return (
-    <span className={cn("font-mono tnum", color, className)}>
+    <>
       {text}
-      {!negative && text !== "—" && <span className="invisible" aria-hidden>)</span>}
-    </span>
+      {align && !text.startsWith("(") && text !== "—" && <span className="invisible" aria-hidden>)</span>}
+    </>
   );
 }

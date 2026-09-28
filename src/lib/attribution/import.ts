@@ -12,6 +12,7 @@ import type { CashFlow, Trade } from "./types";
 import { runPricesJob } from "@/lib/jobs/prices";
 import { syncPrices } from "@/lib/prices";
 import { isTradingDay, todayNY } from "@/lib/providers/calendar";
+import { fmtNumber, fmtUsd } from "@/lib/format";
 
 /**
  * The ledger's write path shared by the Ledger page's server actions and Hoot's emailed trade tickets.
@@ -32,9 +33,9 @@ export async function checkLedgerEdit(next: { trades: Trade[]; cashFlows: CashFl
   if (issue) return { error: issue.message };
   const replay = await loadSeries(db, next);
   const over = replay.quality.ledger.oversold[0];
-  if (over) return { error: `That would sell ${over.shares.toFixed(4)} more ${over.ticker} shares than the Fund held on ${over.date}.` };
+  if (over) return { error: `That would sell ${fmtNumber(over.shares)} more ${over.ticker} shares than the Fund held on ${over.date}.` };
   const cash = replay.series.portfolio.at(-1)?.cashEnd ?? 0;
-  return cash < -0.005 ? { warning: `Cash is ${cash.toLocaleString("en-US", { style: "currency", currency: "USD" })} after this. Record the deposit or sale that funded it.` } : {};
+  return cash < -0.005 ? { warning: `Cash is ${fmtUsd(cash)} after this. Record the deposit or sale that funded it.` } : {};
 }
 
 async function currentOpening() {

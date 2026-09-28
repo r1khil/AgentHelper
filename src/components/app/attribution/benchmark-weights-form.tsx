@@ -9,6 +9,7 @@ import { ETF_BY_SECTOR, GICS_SECTORS, SECTOR_LABELS, type GicsSector } from "@/l
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type Weights = Record<GicsSector, string>;
@@ -87,7 +88,7 @@ export function BenchmarkWeightsForm({ today, initial }: { today: string; initia
 
       <div className="flex items-center justify-between gap-3 border-t pt-3">
         <span className={cn("tnum text-sm", balanced ? "text-muted-foreground" : "text-down")}>
-          Total {total.toFixed(2)}%{!balanced && " · must equal 100%"}
+          Total {fmtPct(total)}{!balanced && " · must equal 100%"}
         </span>
         <Button type="submit" size="sm" disabled={pending || !balanced}>{pending ? "Saving…" : "Save weights"}</Button>
       </div>

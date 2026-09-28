@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { fmtBp, fmtPct } from "@/lib/format";
 import { isTradingDay, nextTradingDay, NY } from "@/lib/providers/calendar";
 
 export type UpcomingReport = { ticker: string; reportDate: string; reportHour: string | null; dateStatus: "confirmed" | "estimated" };
@@ -123,16 +124,6 @@ export function marketLine(now: Date = new Date()) {
   return `${date} · MARKET CLOSED · OPENS ${when} 9:30`;
 }
 
-const MINUS = "−";
-
-/** "+0.84%", "−2 bp": signed, with a true minus, for mono figures. */
-export function signed(n: number | null | undefined, digits = 2, unit = "") {
-  if (n === null || n === undefined || !Number.isFinite(n)) return "—";
-  const body = Math.abs(n).toFixed(digits);
-  if (Number(body) === 0) return `${(0).toFixed(digits)}${unit}`;
-  return `${n < 0 ? MINUS : "+"}${body}${unit}`;
-}
-
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
 const word = (n: number) => WORDS[n] ?? String(n);
 
@@ -144,18 +135,18 @@ export function listNudges<T extends { kind: string; priority: number }>(nudges:
 export const isOverdue = (n: { id: string }) => n.id.endsWith(":overdue");
 
 /**
- * The first sentence of Hoot's line under the greeting, from the last session: "We beat the S&P 500 by 25 bps on
+ * The first sentence of Hoot's line under the greeting, from the last session: "We beat the S&P 500 by 25 bp on
  * Friday." `vs` names the benchmark; a lead reads their team against its sectors.
  */
 export function sessionSentence(r: { subject: string; vs: string; diffBps: number | null; ret: number | null; weekday: string }) {
   const we = r.subject === "We";
   if (r.diffBps === null) {
     if (r.ret === null) return null;
-    return `${we ? "The Fund" : r.subject} ${r.ret >= 0 ? "made" : "lost"} ${Math.abs(r.ret).toFixed(2)}% on ${r.weekday}.`;
+    return `${we ? "The Fund" : r.subject} ${r.ret >= 0 ? "made" : "lost"} ${fmtPct(Math.abs(r.ret))} on ${r.weekday}.`;
   }
   const bps = Math.abs(r.diffBps);
   if (bps === 0) return `${r.subject} matched ${r.vs} on ${r.weekday}.`;
-  return `${r.subject} ${r.diffBps > 0 ? "beat" : "trailed"} ${r.vs} by ${bps} ${bps === 1 ? "bp" : "bps"} on ${r.weekday}.`;
+  return `${r.subject} ${r.diffBps > 0 ? "beat" : "trailed"} ${r.vs} by ${fmtBp(bps)} on ${r.weekday}.`;
 }
 
 export type ScoreCell = { label: string; value: number | null; unit: "%" | " bp"; tone: boolean };
@@ -283,7 +274,7 @@ export function nudgeAction(n: NudgeLike): string {
   }
 }
 
-/** A brief paragraph split into text and numbered citations: "added 14 bps [1]." → ["added 14 bps ", 1, "."]. */
+/** A brief paragraph split into text and numbered citations: "added 14 bp [1]." → ["added 14 bp ", 1, "."]. */
 export function citationParts(text: string): (string | number)[] {
   const out: (string | number)[] = [];
   let last = 0;

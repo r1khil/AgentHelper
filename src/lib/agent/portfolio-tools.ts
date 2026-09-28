@@ -26,6 +26,7 @@ import { loadLookthrough } from "@/lib/risk/lookthrough-load";
 import { summarizeLookthrough, summarizeRisk, summarizeStress } from "@/lib/risk/summary";
 import { sourceId, type Source } from "@/lib/providers/types";
 import type { ToolResult } from "./tools";
+import { fmtAccounting, fmtBp, fmtPct, fmtUsd, ppToBp } from "@/lib/format";
 
 const iso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const appUrl = (path: string) => `${(process.env.APP_URL ?? "").replace(/\/$/, "")}${path}`;
@@ -244,7 +245,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
             publishedAt: loaded.report.asOf,
             retrievedAt: new Date().toISOString(),
             sourceType: "Fund risk",
-            excerpt: `Volatility ${summary.annualizedVolatilityPct}% (S&P 500 ${summary.sp500VolatilityPct}%), beta ${summary.beta}, tracking error ${summary.trackingErrorPct ?? "n/a"}%, 1-day 95% VaR ${summary.var95OneDay.pct}% ($${summary.var95OneDay.usd.toLocaleString("en-US")}).${summary.largestActiveSectorBet ? ` Largest active sector bet ${summary.largestActiveSectorBet.sector} ${summary.largestActiveSectorBet.activePct}%.` : ""}${summary.activeRisk?.readings[0] ? ` ${summary.activeRisk.readings[0]}` : ""}${lookthrough.state === "ok" && lookthrough.report.active ? ` Active Share ${(lookthrough.report.active.activeShare * 100).toFixed(1)}% vs ${lookthrough.benchmarkLabel ?? "the benchmark"}'s holdings.` : ""}`,
+            excerpt: `Volatility ${fmtPct(summary.annualizedVolatilityPct)} (S&P 500 ${fmtPct(summary.sp500VolatilityPct)}), beta ${fmtAccounting(summary.beta)}, tracking error ${summary.trackingErrorPct === null ? "n/a" : fmtPct(summary.trackingErrorPct)}, 1-day 95% VaR ${fmtPct(summary.var95OneDay.pct)} (${fmtUsd(summary.var95OneDay.usd, 0)}).${summary.largestActiveSectorBet ? ` Largest active sector bet ${summary.largestActiveSectorBet.sector} ${fmtBp(ppToBp(summary.largestActiveSectorBet.activePct))}.` : ""}${summary.activeRisk?.readings[0] ? ` ${summary.activeRisk.readings[0]}` : ""}${lookthrough.state === "ok" && lookthrough.report.active ? ` Active Share ${fmtPct(lookthrough.report.active.activeShare * 100, 1)} vs ${lookthrough.benchmarkLabel ?? "the benchmark"}'s holdings.` : ""}`,
           };
           return { data: { ...summary, sourceId: source.id }, sources: [source] };
         } catch (e) {

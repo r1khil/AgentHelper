@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Download, FileDown } from "lucide-react";
 import { approveAllProposed, deleteMapping, generateProposals, writeApproved } from "@/lib/actions/models";
+import { fmtNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { CountChip, Panel, PanelFooter, PanelHeader } from "@/components/app/panel";
 import { Button } from "@/components/ui/button";
@@ -448,7 +449,7 @@ function MappingsPanel({ d }: { d: ModelDetailData }) {
                   </TableCell>
                   <TableCell className="font-mono text-[11.5px]">{mm.concept}</TableCell>
                   <TableCell className="text-xs">
-                    {mm.unit} · ÷{mm.scale.toLocaleString()}
+                    {mm.unit} · ÷{fmtNumber(mm.scale)}
                     {mm.sign === -1 ? " · sign flipped" : ""} · {mm.periodType}
                   </TableCell>
                   <TableCell className="font-mono text-[11.5px]">
@@ -497,5 +498,5 @@ function periodLabel(d: string) {
 }
 
 function fmtValue(v: number | null) {
-  return v === null ? "—" : v.toLocaleString("en-US", { maximumFractionDigits: 4 });
+  return fmtNumber(v);
 }

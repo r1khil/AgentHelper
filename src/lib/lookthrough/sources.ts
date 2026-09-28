@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { BENCHMARK_REFERENCE, ETF_BY_SECTOR, type GicsSector } from "@/lib/attribution/sectors";
 import { coveragePct, fromYahooTop, parseFirstTrustHtml, parseIsharesCsv, parseRoundhillCsv, parseSsgaXlsx, type ParsedHoldings } from "./parse";
+import { fmtPct } from "@/lib/format";
 
 /**
  * Where each ETF's full daily holdings file lives. All are public issuer pages fetched with an ordinary
@@ -103,7 +104,7 @@ export async function fetchIssuerHoldings(etf: string, opts: { fetcher?: Fetcher
 /** A list that parses but looks wrong (a changed layout) is treated as a failure, not stored. */
 export function plausible(list: ParsedHoldings): string | null {
   if (list.constituents.length < 3) return `only ${list.constituents.length} constituents`;
-  if (coveragePct(list) < 20) return `constituents cover only ${coveragePct(list).toFixed(1)}%`;
+  if (coveragePct(list) < 20) return `constituents cover only ${fmtPct(coveragePct(list), 1)}`;
   return null;
 }
 

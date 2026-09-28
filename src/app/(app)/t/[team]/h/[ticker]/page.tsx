@@ -9,7 +9,7 @@ import { getBarsRange, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { listFilings } from "@/lib/providers/edgar";
 import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
 import { NY, todayNY } from "@/lib/providers/calendar";
-import { fmtCurrency } from "@/lib/format";
+import { fmtCurrency, fmtPct, fmtNumber } from "@/lib/format";
 import { canManageTeam, isFundWide } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { effectiveRunStatus, listHoldingChats } from "@/lib/chats";
@@ -206,8 +206,8 @@ type HoldingRow = NonNullable<Awaited<ReturnType<typeof getHolding>>>;
 type Activity = Awaited<ReturnType<typeof loadHoldingActivity>>;
 
 function glanceRows({ h, ownerName, owner, next, moves, base, now }: { h: HoldingRow["h"]; ownerName: string | null; owner: OwnerChoice; next: Activity["reports"][number] | undefined; moves: Activity["moves"]; base: string; now: number }): GlanceRow[] {
-  const shares = h.shares != null ? `${Number(h.shares).toLocaleString("en-US", { maximumFractionDigits: 2 })} sh` : null;
-  const weight = h.weightPct != null ? `${Number(h.weightPct).toFixed(1)}% of NAV` : null;
+  const shares = h.shares != null ? `${fmtNumber(h.shares, 2)} sh` : null;
+  const weight = h.weightPct != null ? `${fmtPct(h.weightPct, 1)} of NAV` : null;
   const open = moves.filter((mv) => mv.status !== "completed");
   const overdue = open.find((mv) => mv.dueAt && mv.dueAt.getTime() < now);
   const last = moves[0];

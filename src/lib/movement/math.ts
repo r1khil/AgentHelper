@@ -13,9 +13,3 @@ export function qualifies(relativePp: number, threshold = MOVEMENT_THRESHOLD_PP)
   const r = Math.round(relativePp * 10000) / 10000;
   return Math.abs(r) >= threshold;
 }
-
-export function fmtPp(v: number | string | null | undefined, digits = 1) {
-  if (v === null || v === undefined) return "";
-  const n = Number(v);
-  return `${n > 0 ? "+" : ""}${n.toFixed(digits)}`;
-}

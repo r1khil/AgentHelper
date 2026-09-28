@@ -10,9 +10,8 @@ import type { LookbackKey } from "@/lib/risk/model";
 import { cn } from "@/lib/utils";
 import { DivergingBar, MagnitudeBar } from "../attribution/bars";
 import { Explained } from "../attribution/info-tip";
-import { rpp } from "../risk/active-risk";
 import { RISK_EXPLAIN } from "../risk/explainers";
-import { rpct } from "../risk/format";
+import { rnum, rpct } from "../risk/format";
 import { Source, Step, Working } from "../risk/working";
 import type { SectorBet } from "@/lib/risk/exposure";
 import { Move } from "../move";
@@ -56,7 +55,6 @@ export function SectorViewToggle({ basePath, lookback, throughEtfs, available, e
   );
 }
 
-const pp = (v: number) => rpp(v * 100, 1);
 const shortDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 /**
@@ -110,7 +108,7 @@ export function LookthroughSections({ state, scope, transparency, download, sect
               {lt.active.largestBet && (
                 <>
                   Largest bet by company: <span className="font-mono font-semibold text-foreground">{lt.active.largestBet.key}</span>{" "}
-                  <Move value={lt.active.largestBet.active * 100} unit=" pp" digits={1} /> ({rpct(lt.active.largestBet.fund)} vs {rpct(lt.active.largestBet.benchmark)}).{" "}
+                  <Move value={lt.active.largestBet.active * 10_000} unit=" bp" digits={0} /> ({rpct(lt.active.largestBet.fund)} vs {rpct(lt.active.largestBet.benchmark)}).{" "}
                 </>
               )}
               <Explained label="Active Share">{RISK_EXPLAIN.activeShare}</Explained> {rpct(lt.active.activeShare)} vs {state.benchmarkLabel}&apos;s {lt.active.rows.filter((r) => r.benchmark > 0).length} companies; {rpct(lt.active.overlapWithBenchmark)} of the portfolio is in index names.
@@ -305,7 +303,7 @@ function StockActiveTables({ rows, benchmarkLabel }: { rows: ActiveName[]; bench
           <TableRow>
             <TableHead>{title}</TableHead>
             <TableHead className="text-right">Portfolio · {benchmarkLabel}</TableHead>
-            <TableHead className="text-right">Active</TableHead>
+            <TableHead className="text-right">Active, bp</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -321,7 +319,7 @@ function StockActiveTables({ rows, benchmarkLabel }: { rows: ActiveName[]; bench
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
                   <DivergingBar value={r.active} max={max} className="hidden w-12 sm:flex" />
-                  <span className="w-14 text-right font-mono text-xs sm:w-16">{pp(r.active)}</span>
+                  <span className="w-14 text-right font-mono text-xs sm:w-16">{rnum(r.active * 10_000, 0)}</span>
                 </div>
               </TableCell>
             </TableRow>

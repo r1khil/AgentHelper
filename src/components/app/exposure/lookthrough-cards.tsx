@@ -1,9 +1,8 @@
-import { fmtDate } from "@/lib/format";
+import { fixed, fmtDate } from "@/lib/format";
 import { SOURCE_LABELS } from "@/lib/lookthrough/parse";
 import type { SectorBet } from "@/lib/risk/exposure";
 import type { LookthroughReport } from "@/lib/risk/lookthrough";
-import { rpp } from "../risk/active-risk";
-import { rpct } from "../risk/format";
+import { rbp, rpct } from "../risk/format";
 import { Source, Step, Working } from "../risk/working";
 
 /**
@@ -19,14 +18,14 @@ export function StockBetWorking({ lt, sectorBet, benchmarkLabel }: { lt: Lookthr
   return (
     <Working title="Largest active bet: working">
       <Step label={bet.key}>
-        portfolio {rpct(bet.fund, 2)} − {benchmarkLabel} {rpct(bet.benchmark, 2)} = <b>{rpp(bet.active * 100, 2)}</b>
+        portfolio {rpct(bet.fund, 2)} − {benchmarkLabel} {rpct(bet.benchmark, 2)} = <b>{rbp(bet.active)}</b>
       </Step>
       {nextBets.map((r) => (
-        <Step key={r.key} label="Next">{r.key} {rpp(r.active * 100, 2)}</Step>
+        <Step key={r.key} label="Next">{r.key} {rbp(r.active)}</Step>
       ))}
       {sectorBet && sectorBet.active !== null && (
         <Step label={`${sectorBet.label} (sector)`}>
-          {rpct(sectorBet.weight, 2)} − {rpct(sectorBet.benchWeight, 2)} = {rpp(sectorBet.active * 100, 2)}
+          {rpct(sectorBet.weight, 2)} − {rpct(sectorBet.benchWeight, 2)} = {rbp(sectorBet.active)}
         </Step>
       )}
       <Source>the largest absolute difference in the stock-level tables; the sector bet is the sector table&apos;s largest.</Source>
@@ -43,8 +42,8 @@ export function ActiveShareWorking({ lt }: { lt: LookthroughReport }) {
     <Working title="Active Share: working">
       <Step label="Portfolio stocks">{rpct(fundTotal, 2)} (left out: {rpct(a.excluded, 2)} cash and not looked through)</Step>
       <Step label="Benchmark stocks">{rpct(benchTotal, 2)} of {a.benchmark.etf}</Step>
-      <Step label="Σ |w_p − w_b|">over {a.rows.length} companies, each side scaled to 100% = {diff.toFixed(4)}</Step>
-      <Step>½ × {diff.toFixed(4)} = <b>{rpct(a.activeShare, 1)}</b></Step>
+      <Step label="Σ |w_p − w_b|">over {a.rows.length} companies, each side scaled to 100% = {fixed(diff, 4)}</Step>
+      <Step>½ × {fixed(diff, 4)} = <b>{rpct(a.activeShare, 1)}</b></Step>
       <Source>{a.benchmark.etf} holdings as of {fmtDate(a.benchmark.asOf)} ({SOURCE_LABELS[a.benchmark.source]}); the look-through download lists both weights for every company.</Source>
     </Working>
   );

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { fmtNumber } from "@/lib/format";
 import { NativeSelect } from "../native-select";
 
 export function TradeDialog({ today, positions }: { today: string; positions: { ticker: string; shares: number }[] }) {
@@ -55,7 +56,7 @@ export function TradeDialog({ today, positions }: { today: string; positions: { 
           <div className="grid gap-1.5">
             <Label htmlFor="trade-ticker">Ticker</Label>
             <Input id="trade-ticker" name="ticker" placeholder="NVDA" autoCapitalize="characters" value={ticker} onChange={(e) => setTicker(e.target.value)} required />
-            <p className="tnum text-xs text-muted-foreground">{held ? `Fund holds ${held.shares.toLocaleString("en-US", { maximumFractionDigits: 4 })} shares` : ticker ? "Not currently held" : " "}</p>
+            <p className="tnum text-xs text-muted-foreground">{held ? `Fund holds ${fmtNumber(held.shares)} shares` : ticker ? "Not currently held" : " "}</p>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="grid gap-1.5">

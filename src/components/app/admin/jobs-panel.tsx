@@ -32,7 +32,7 @@ type JobDef = { key: JobKey; name: string; when: string; run: (fd: FormData) => 
 
 function jobs(weeklyTo: string): JobDef[] {
   return [
-    { key: "close", name: "Close check", when: "Weekdays 5:00 pm · 4 pp movement rule", runs: "close", run: runCloseNow, options: true, detail: "Supabase pg_cron at 5:00 p.m. New York, with a 7 p.m. Vercel backstop. Opens a movement for any holding that moved 4 pp or more against the S&P 500." },
+    { key: "close", name: "Close check", when: "Weekdays 5:00 pm · 400 bp movement rule", runs: "close", run: runCloseNow, options: true, detail: "Supabase pg_cron at 5:00 p.m. New York, with a 7 p.m. Vercel backstop. Opens a movement for any holding that moved 4 pp or more against the S&P 500." },
     { key: "prices", name: "Price history", when: "Weekdays 5:00 pm · closes, dividends, splits", runs: "prices", run: runPricesNow, detail: "Attribution closes, dividends and splits. Vercel backstop at 7:30 p.m." },
     {
       key: "brief",

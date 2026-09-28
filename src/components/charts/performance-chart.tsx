@@ -38,10 +38,9 @@ import {
   TimeRangeSelector,
   chartTick,
   exactDate,
-  percent,
-  signed,
   tone,
 } from "./primitives";
+import { fmtAccounting, fmtBp, fmtPct } from "@/lib/format";
 
 import {
   emptySelection,
@@ -73,13 +72,13 @@ type Props = {
 function price(value: number | null | undefined, unit?: string) {
   return value == null
     ? "Unavailable"
-    : `${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${unit ? ` ${unit}` : ""}`;
+    : fmtAccounting(value, 2, unit ? ` ${unit}` : "");
 }
 
 function formatChange(value: number | null, unit?: string) {
   return value === null
     ? "Unavailable"
-    : `${signed(value)}${unit ? ` ${unit}` : ""}`;
+    : fmtAccounting(value, 2, unit ? ` ${unit}` : "");
 }
 
 /** Daily-price comparisons and cumulative-return indices share one interaction contract. */
@@ -193,14 +192,14 @@ function ChartSession({
           value={
             change === null
               ? "Unavailable"
-              : `${signed(change)}${kind === "price" && primary.unit ? ` ${primary.unit}` : ""}`
+              : fmtAccounting(change, 2, kind === "price" && primary.unit ? ` ${primary.unit}` : "")
           }
           change={change}
         />
         <Metric
           label={metric(bounds ? "Selected interval return" : "Period return")}
           value={
-            selectedReturn === null ? "Unavailable" : percent(selectedReturn)
+            selectedReturn === null ? "Unavailable" : fmtPct(selectedReturn)
           }
           change={selectedReturn}
         />
@@ -258,7 +257,7 @@ function ChartSession({
               tickLine={false}
             />
             <YAxis
-              tickFormatter={(v: number) => `${signed(v, 1)}%`}
+              tickFormatter={(v: number) => fmtPct(v, 1)}
               tick={chartTick}
               width={58}
               axisLine={false}
@@ -338,7 +337,7 @@ function ChartSession({
                     <span className={tone(returns[s.key])}>
                       {returns[s.key] == null
                         ? "Unavailable"
-                        : percent(returns[s.key]!)}
+                        : fmtPct(returns[s.key]!)}
                     </span>
                   </span>
                 </div>
@@ -347,7 +346,7 @@ function ChartSession({
                 <div className="border-t pt-1.5 text-muted-foreground">
                   Active return{" "}
                   <span className={tone(activeReturn)}>
-                    {signed(activeReturn, 1)} bps
+                    {fmtBp(activeReturn, 1)}
                   </span>
                 </div>
               )}
@@ -399,7 +398,7 @@ function ChartSession({
                       )}
                       {p.returns[s.key] == null
                         ? "Unavailable"
-                        : percent(p.returns[s.key]!)}
+                        : fmtPct(p.returns[s.key]!)}
                     </td>
                   ))}
                 </tr>
@@ -584,7 +583,7 @@ function ScrubLayer({
         aria-valuetext={`${bounds ? `${exactDate(baseline.date)} to ` : ""}${exactDate(end.date)}; ${series
           .map((s) => {
             const value = intervalPerformance(baseline, end, s.key).returnPct;
-            return `${s.label}: ${value == null ? "unavailable" : percent(value)}`;
+            return `${s.label}: ${value == null ? "unavailable" : fmtPct(value)}`;
           })
           .join("; ")}`}
         className="outline-none focus-visible:stroke-ring focus-visible:stroke-2"

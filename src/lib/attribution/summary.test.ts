@@ -36,7 +36,7 @@ describe("summarizeAttribution", () => {
     notices: [],
   });
 
-  it("reports the headline in percent and bps against the S&P 500", () => {
+  it("reports the headline in percent and bp against the S&P 500, in accounting style", () => {
     expect(s.headline).toMatchObject({ returnPct: -1.2, spxPriceReturnPct: 1, activeVsSpxBps: -220, activeVsSectorBenchmarkBps: -80, selectionBps: -65 });
   });
   it("lists the best and worst contributors with team names", () => {
@@ -49,7 +49,7 @@ describe("summarizeAttribution", () => {
     expect(s.daily?.[1].returnPct).toBeCloseTo(((1 - 0.012) / 1.01 - 1) * 100, 2);
   });
   it("summarizes in one line", () => {
-    expect(attributionHeadline(s)).toContain("Whole fund, 7D (2026-09-18 close to 2026-09-22 close): return -1.2%; S&P 500 1%, active -220 bps");
-    expect(attributionHeadline(s)).toContain("biggest detractors NVDA -40 bps; top contributors JPM 8 bps");
+    expect(attributionHeadline(s)).toContain("Whole fund, 7D (2026-09-18 close to 2026-09-22 close): return (1.20%); S&P 500 1.00%, active (220 bp)");
+    expect(attributionHeadline(s)).toContain("biggest detractors NVDA (40 bp); top contributors JPM 8 bp");
   });
 });

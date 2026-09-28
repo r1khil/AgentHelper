@@ -1,6 +1,7 @@
 import { GICS_SECTORS, bucketLabel, type BucketKey, type GicsSector } from "@/lib/attribution/sectors";
 import type { ConstituentSource } from "@/lib/lookthrough/parse";
 import { issuerKey } from "@/lib/lookthrough/symbols";
+import { fmtPct } from "@/lib/format";
 
 /**
  * ETF look-through: what the Fund owns once each ETF is replaced by its holdings. Pure; an exposure report,
@@ -287,7 +288,7 @@ export function activeWeights(names: NameExposure[], benchmark: EtfList, exclude
   };
 }
 
-const pctText = (x: number) => `${(x * 100).toFixed(1)}%`;
+const pctText = (x: number) => fmtPct(x * 100, 1);
 
 /** "NVDA 4.1% = 3.0% direct + 0.9% SOXX + 0.2% SKYY". */
 export function describeExposure(n: NameExposure): string {
@@ -299,5 +300,5 @@ export function describeExposure(n: NameExposure): string {
 export function describeCoverage(e: EtfCoverage, sourceLabel: (s: ConstituentSource) => string): string {
   if (!e.source || !e.asOf) return `${e.etf} not looked through (no holdings list)`;
   const date = new Date(`${e.asOf}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-  return `${e.etf} ${(e.coverage * 100).toFixed(1)}% looked through, as of ${date}, ${sourceLabel(e.source)}`;
+  return `${e.etf} ${fmtPct(e.coverage * 100, 1)} looked through, as of ${date}, ${sourceLabel(e.source)}`;
 }

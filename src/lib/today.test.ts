@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agendaDate, analystSentence, citationParts, daysAway, greeting, greetingWord, inDays, listNudges, listSentence, marketLine, nextReportByTicker, nextSunday, nudgeAction, nudgeWhen, owedSentence, reportDays, reportsLine, scoreboard, sessionHeading, sessionSentence, sessionStamp, signed, type UpcomingReport } from "./today";
+import { agendaDate, analystSentence, citationParts, daysAway, greeting, greetingWord, inDays, listNudges, listSentence, marketLine, nextReportByTicker, nextSunday, nudgeAction, nudgeWhen, owedSentence, reportDays, reportsLine, scoreboard, sessionHeading, sessionSentence, sessionStamp, type UpcomingReport } from "./today";
 
 const r = (ticker: string, reportDate: string, reportHour: string | null, dateStatus: "confirmed" | "estimated" = "confirmed"): UpcomingReport => ({ ticker, reportDate, reportHour, dateStatus });
 
@@ -76,15 +76,8 @@ describe("Today v2", () => {
     expect(daysAway("2026-09-28", "2026-09-29")).toBe("tomorrow");
   });
 
-  it("signs figures with a true minus", () => {
-    expect(signed(0.84, 2, "%")).toBe("+0.84%");
-    expect(signed(-2, 0, " bp")).toBe("\u22122 bp");
-    expect(signed(-0.001, 2, "%")).toBe("0.00%");
-    expect(signed(null)).toBe("—");
-  });
-
   it("writes Hoot's sentence", () => {
-    expect(sessionSentence({ subject: "We", vs: "the S&P 500", diffBps: 25, ret: 0.84, weekday: "Friday" })).toBe("We beat the S&P 500 by 25 bps on Friday.");
+    expect(sessionSentence({ subject: "We", vs: "the S&P 500", diffBps: 25, ret: 0.84, weekday: "Friday" })).toBe("We beat the S&P 500 by 25 bp on Friday.");
     expect(sessionSentence({ subject: "Healthcare", vs: "its sectors", diffBps: -1, ret: -0.5, weekday: "Friday" })).toBe("Healthcare trailed its sectors by 1 bp on Friday.");
     expect(sessionSentence({ subject: "We", vs: "the S&P 500", diffBps: null, ret: -0.3, weekday: "Friday" })).toBe("The Fund lost 0.30% on Friday.");
     expect(listSentence(4, 1)).toBe("I found four things for you, one of them overdue.");
@@ -97,7 +90,7 @@ describe("Today v2", () => {
   it("leads the scoreboard with the result against the benchmark", () => {
     const benchmark = { label: "S&P 500", value: 0.51, unit: "%" as const, tone: false };
     const third = { label: "vs sectors", value: 5, unit: " bp" as const, tone: true };
-    // Sep 25: the fund made 0.49% but trailed by 2 bps, so the big figure is (2) bp, not a green 0.49%.
+    // Sep 25: the fund made 0.49% but trailed by 2 bp, so the big figure is (2 bp), not a green 0.49%.
     expect(scoreboard({ name: "Owl Fund", vs: "the S&P 500", ret: 0.49, diffBps: -2, benchmark, third })).toEqual({
       hero: { label: "Owl Fund vs the S&P 500", value: -2, unit: " bp" },
       cells: [{ label: "Owl Fund", value: 0.49, unit: "%", tone: true }, benchmark, third],

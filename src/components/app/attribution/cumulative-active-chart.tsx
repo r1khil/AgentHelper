@@ -5,7 +5,8 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PerformanceChart } from "@/components/charts/performance-chart";
-import { ChartTooltip, chartGrid, chartTick, exactDate, signed, tone } from "@/components/charts/primitives";
+import { ChartTooltip, chartGrid, chartTick, exactDate, tone } from "@/components/charts/primitives";
+import { fmtBp, fmtPct } from "@/lib/format";
 
 /** Percent points: `portfolio` and `benchmark` are cumulative returns in percent from the period's base close. */
 export type CumulativeChartPoint = { date: string; portfolio: number; benchmark: number | null };
@@ -52,7 +53,7 @@ export function CompactCumulativeChart({ data, portfolioLabel, benchmarkLabel }:
         <LineChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 0 }} accessibilityLayer={false}>
           <CartesianGrid vertical={false} stroke={chartGrid} />
           <XAxis dataKey="date" tick={chartTick} tickLine={false} axisLine={false} minTickGap={28} interval="preserveStartEnd" tickFormatter={(d: string) => label(d)} dy={6} />
-          <YAxis tick={chartTick} tickLine={false} axisLine={false} width={44} domain={["auto", "auto"]} tickFormatter={(v: number) => `${signed(v, 1)}%`} />
+          <YAxis tick={chartTick} tickLine={false} axisLine={false} width={44} domain={["auto", "auto"]} tickFormatter={(v: number) => fmtPct(v, 1)} />
           <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.35} />
           <Tooltip
             cursor={{ stroke: "var(--border)" }}
@@ -63,10 +64,10 @@ export function CompactCumulativeChart({ data, portfolioLabel, benchmarkLabel }:
               const gap = p.benchmark === null ? null : (p.portfolio - p.benchmark) * 100;
               return (
                 <ChartTooltip label={exactDate(p.date)}>
-                  <div className="flex justify-between gap-4"><span>{portfolioLabel}</span><span className={tone(p.portfolio)}>{signed(p.portfolio)}%</span></div>
-                  <div className="flex justify-between gap-4"><span>{benchmarkLabel}</span><span className={tone(p.benchmark)}>{p.benchmark === null ? "—" : `${signed(p.benchmark)}%`}</span></div>
+                  <div className="flex justify-between gap-4"><span>{portfolioLabel}</span><span className={tone(p.portfolio)}>{fmtPct(p.portfolio)}</span></div>
+                  <div className="flex justify-between gap-4"><span>{benchmarkLabel}</span><span className={tone(p.benchmark)}>{fmtPct(p.benchmark)}</span></div>
                   {gap !== null && (
-                    <div className="flex justify-between gap-4 border-t pt-1.5 text-muted-foreground"><span>Gap</span><span className={tone(gap)}>{signed(gap, 0)} bp</span></div>
+                    <div className="flex justify-between gap-4 border-t pt-1.5 text-muted-foreground"><span>Gap</span><span className={tone(gap)}>{fmtBp(gap)}</span></div>
                   )}
                 </ChartTooltip>
               );

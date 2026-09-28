@@ -11,7 +11,7 @@ import { startHootChat } from "@/lib/actions/chats";
 import { boardHref, holdingHref } from "@/lib/scope";
 import { markScopeIntent } from "./scope-intent";
 import type { CommandHolding } from "@/lib/nav-data";
-import { fmtCurrency, fmtPct } from "@/lib/format";
+import { fmtBp, fmtCurrency, fmtPct, ppToBp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useHootCommand } from "../hoot/use-hoot-command";
 import { leaveHootQuestion } from "../hoot/handoff";
@@ -306,8 +306,8 @@ function HoldingPreview({ holding: h }: { holding: CommandHolding }) {
   const q = quoteCache.get(h.ticker);
   const rows: [string, React.ReactNode, string?][] = [
     ["Owner", h.owner ?? "Unassigned", h.owner ? undefined : "text-caution-foreground"],
-    ["Weight", h.weightPct != null ? `${h.weightPct.toFixed(1)}% of NAV` : "—"],
-    ["vs S&P, last session", q?.relativePp != null ? `${q.relativePp > 0 ? "+" : ""}${q.relativePp.toFixed(1)} pp` : "—", q?.relativePp == null ? undefined : q.relativePp >= 0 ? "text-up" : "text-down"],
+    ["Weight", h.weightPct != null ? `${fmtPct(h.weightPct, 1)} of NAV` : "—"],
+    ["vs S&P, last session", q?.relativePp != null ? fmtBp(ppToBp(q.relativePp)) : "—", q?.relativePp == null ? undefined : q.relativePp >= 0 ? "text-up" : "text-down"],
     ["Next report", h.nextReport ? `${shortDate(h.nextReport)}${h.nextReportEstimated ? " (est.)" : ""}` : "—"],
     ["Open items", h.openMovement ? "Movement write-up open" : "None", h.openMovement ? "text-hoot-foreground" : undefined],
   ];

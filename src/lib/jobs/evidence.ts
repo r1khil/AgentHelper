@@ -7,6 +7,7 @@ import { listFilings } from "@/lib/providers/edgar";
 import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
 import { NY } from "@/lib/providers/calendar";
 import { SPX_SYMBOL } from "@/lib/providers/yahoo";
+import { fmtBp, fmtPct } from "@/lib/format";
 
 /** Attach news, 8-Ks, peer moves, and upcoming earnings to a movement. Idempotent: clears and rewrites the movement's evidence. */
 export async function gatherMovementEvidence(movementId: string) {
@@ -68,7 +69,7 @@ export async function gatherMovementEvidence(movementId: string) {
       const e = by.get(p.ticker);
       if (!e?.cur || !e.prev || spxRet === null) continue;
       const ret = (e.cur / e.prev - 1) * 100;
-      items.push({ movementId, kind: "peer_move", title: `${p.ticker} ${ret >= 0 ? "+" : ""}${ret.toFixed(2)}% (${(ret - spxRet) >= 0 ? "+" : ""}${(ret - spxRet).toFixed(1)} pp vs S&P)`, publisher: "Yahoo Finance", payload: { ticker: p.ticker, returnPct: +ret.toFixed(4), relativePp: +(ret - spxRet).toFixed(4) } });
+      items.push({ movementId, kind: "peer_move", title: `${p.ticker} ${fmtPct(ret)} (${fmtBp((ret - spxRet) * 100)} vs S&P)`, publisher: "Yahoo Finance", payload: { ticker: p.ticker, returnPct: +ret.toFixed(4), relativePp: +(ret - spxRet).toFixed(4) } });
     }
   }
 

@@ -32,7 +32,7 @@ export type Book =
       teams: Record<string, { ret: number; contribution: number }>;
       href: string;
       brief: Brief | null;
-      /** Hoot's first sentence under the greeting, e.g. "We beat the S&P 500 by 25 bps on Friday." */
+      /** Hoot's first sentence under the greeting, e.g. "We beat the S&P 500 by 25 bp on Friday." */
       sentence: string | null;
     }
   | { kind: "none"; message: string };

@@ -109,7 +109,7 @@ function exposureClause(factors: FactorKey[], exposure: BookExposure) {
   for (const f of factors) {
     const b = exposure.betas[f];
     if (!b || !Number.isFinite(b.beta)) continue;
-    const beta = formatBeta(b.beta, 2, { signed: true });
+    const beta = formatBeta(b.beta, 2);
     if (isClearExposure(f, b)) clear.push(`${factorMeaning(f, b.beta)} (β ${beta})`);
     else if (Number.isFinite(b.t) && Math.abs(b.t) >= T_STAT_THRESHOLD) negligible.push({ noun: factorNoun(f), beta });
     else weak.push({ noun: factorNoun(f), beta });
@@ -129,7 +129,7 @@ export type FactorLine = {
   factors: FactorKey[];
   /** "CPI Thu 8:30 · rates- and dollar-sensitive" */
   head: string;
-  /** "the book is net short duration (β −0.12)", or null without an exposure. */
+  /** "the book is net short duration (β (0.12))", or null without an exposure. */
   clause: string | null;
   text: string;
 };

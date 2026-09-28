@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { Panel, PanelHeader, Pill, StatStrip } from "@/components/app/panel";
 import { deleteBenchmarkWeights, voidCashFlow, voidTrade } from "@/lib/actions/ledger";
 import { GICS_SECTORS, SECTOR_LABELS, type GicsSector } from "@/lib/attribution/sectors";
-import { fmtDate, fmtMoney } from "@/lib/format";
+import { fmtAccounting, fmtDate, fmtMoney, fmtPct, fmtNumber, fmtUsd } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { BenchmarkWeightsForm } from "./benchmark-weights-form";
 import { CashFlowDialog } from "./cash-flow-dialog";
@@ -77,8 +77,8 @@ export function LedgerView({
       {summary && (
         <StatStrip
           cells={[
-            { label: "NAV", value: `$${fmtMoney(summary.navEnd)}`, note: `As of ${fmtDate(summary.date)} close` },
-            { label: "Cash", value: `$${fmtMoney(summary.cashEnd)}`, note: summary.navEnd ? `${((summary.cashEnd / summary.navEnd) * 100).toFixed(1)}% of NAV` : undefined },
+            { label: "NAV", value: fmtUsd(summary.navEnd), note: `As of ${fmtDate(summary.date)} close` },
+            { label: "Cash", value: fmtUsd(summary.cashEnd), note: summary.navEnd ? `${fmtPct((summary.cashEnd / summary.navEnd) * 100, 1)} of NAV` : undefined },
             { label: "Positions", value: summary.positions, note: "Held at the latest close" },
             { label: "Entries", value: liveTrades + liveFlows, note: `${liveTrades} trades · ${liveFlows} cash` },
           ]}
@@ -140,7 +140,7 @@ export function LedgerView({
                             <span className={cn("font-medium", !t.voidedAt && (t.side === "buy" ? "text-up" : "text-down"))}>{t.side === "buy" ? "Buy" : "Sell"}</span>
                           )}
                         </TableCell>
-                        <TableCell className={num}>{Number(t.shares).toLocaleString("en-US", { maximumFractionDigits: 4 })}</TableCell>
+                        <TableCell className={num}>{fmtNumber(t.shares)}</TableCell>
                         <TableCell className={num}>{fmtMoney(t.price)}</TableCell>
                         <TableCell className={num}>{fmtMoney(Number(t.shares) * Number(t.price))}</TableCell>
                         <TableCell className={cn(num, "text-muted-foreground")}>{Number(t.fees) ? fmtMoney(t.fees) : ""}</TableCell>
@@ -181,10 +181,10 @@ export function LedgerView({
                         <TableRow key={f.id} className={f.voidedAt ? voided : undefined}>
                           <TableCell className="pl-4 font-mono text-[12.5px] whitespace-nowrap">{fmtDate(f.flowDate)}</TableCell>
                           <TableCell>{CASH_LABELS[f.kind]}</TableCell>
-                          <TableCell className={cn(num, !f.voidedAt && (inflow ? "text-up" : "text-down"))}>{inflow ? "" : "−"}${fmtMoney(f.amount)}</TableCell>
+                          <TableCell className={cn(num, !f.voidedAt && (inflow ? "text-up" : "text-down"))}>{fmtUsd(inflow ? Number(f.amount) : -Number(f.amount))}</TableCell>
                           <TableCell className="max-w-72 truncate text-muted-foreground">{f.note}</TableCell>
                           <TableCell className="pr-4 text-right">
-                            {f.voidedAt ? <Pill>Void</Pill> : <VoidButton id={f.id} action={voidCashFlow} what={`${CASH_LABELS[f.kind]} of $${fmtMoney(f.amount)} on ${fmtDate(f.flowDate)}.`} />}
+                            {f.voidedAt ? <Pill>Void</Pill> : <VoidButton id={f.id} action={voidCashFlow} what={`${CASH_LABELS[f.kind]} of ${fmtUsd(f.amount)} on ${fmtDate(f.flowDate)}.`} />}
                           </TableCell>
                         </TableRow>
                       );
@@ -224,7 +224,7 @@ export function LedgerView({
                     {weightSets.map((set) => (
                       <TableRow key={set.asOf}>
                         <TableCell className="pl-4 font-mono text-[12.5px] whitespace-nowrap">{fmtDate(set.asOf)}</TableCell>
-                        {GICS_SECTORS.map((s) => <TableCell key={s} className={num}>{(set.weights[s] ?? 0).toFixed(1)}</TableCell>)}
+                        {GICS_SECTORS.map((s) => <TableCell key={s} className={num}>{fmtAccounting(set.weights[s] ?? 0, 1)}</TableCell>)}
                         <TableCell className="max-w-48 truncate text-muted-foreground">{set.source}</TableCell>
                         <TableCell className="pr-4 text-right">
                           <form action={deleteBenchmarkWeights}>

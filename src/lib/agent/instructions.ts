@@ -5,6 +5,7 @@ import { holdingNotes, holdings, movements, profiles, teams } from "@/db/schema"
 import { listPendingProposals } from "@/lib/holdings";
 import { summaryToPromptLines } from "@/lib/drive/summary";
 import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
+import { fmtBp } from "@/lib/format";
 import { documentLabel } from "@/lib/drive/labels";
 import { driveStatus, listHoldingFiles, type DriveFileMeta } from "@/lib/drive/index";
 import { listHoldingFilings, type FilingDoc } from "@/lib/documents/index";
@@ -109,7 +110,7 @@ export async function buildInstructions(teamId: string, opts: { holdingId?: stri
         .join("\n")
     : "- (no holdings yet)";
   const openList = open.length
-    ? open.map((o) => `- ${o.ticker} on ${o.m.sessionDate}: ${o.m.relativeMovePp ?? "?"} pp vs S&P, status ${o.m.status}`).join("\n")
+    ? open.map((o) => `- ${o.ticker} on ${o.m.sessionDate}: ${o.m.relativeMovePp === null ? "?" : fmtBp(Number(o.m.relativeMovePp) * 100)} vs S&P, status ${o.m.status}`).join("\n")
     : "- (none)";
   const driveLine = !drive?.configured
     ? "Analyst Drive: not configured on this deployment."
@@ -178,7 +179,7 @@ ANSWER FORMAT:
 - Then short bullets grouped under small headings (Results, Margins, Guidance and outlook, Risks or notable items). One idea per bullet, every number with its unit and period, e.g. "Q2 FY2026 revenue $17.9B [src:xbrl-abc]".
 - Separate reported figures from your own calculations; label calculations (e.g. "net margin 15.2%, calculated from the reported lines").
 - End with "Not retrieved:" listing anything you could not get, and, when useful, one or two questions the analyst might look into. Omit the section if nothing is missing.
-- Plain English, no filler, no summary of what you did. Percent moves vs the S&P 500 are expressed in percentage points (pp). The Fund's major-movement rule is an absolute difference of at least ${MOVEMENT_THRESHOLD_PP} pp between a holding's daily return and the S&P 500's daily return, using official closes.
+- Plain English, no filler, no summary of what you did. Write figures the way the app shows them: accounting style, a negative in parentheses such as (0.29%) or (40 bp), no plus sign on a positive. Returns and weights are in %; a move against the S&P 500, active return and contributions are in basis points, written bp (tools report some of these in percentage points: 1 pp = 100 bp). The Fund's major-movement rule is an absolute difference of at least ${MOVEMENT_THRESHOLD_PP * 100} bp between a holding's daily return and the S&P 500's daily return, using official closes.
 
 TEAM CONTEXT
 ${driveLine}
