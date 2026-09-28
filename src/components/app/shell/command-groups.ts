@@ -2,6 +2,7 @@
 // arrowed to another, so the order is the Enter rule: a holding, page, scope or theme the query names comes first,
 // and asking Hoot comes second. ⌘/Ctrl+Enter (or Tab) always asks Hoot.
 import type { CommandHolding } from "@/lib/nav-data";
+import { fmtDay } from "@/lib/format";
 import { boardHref, holdingHref } from "@/lib/scope";
 
 /** `hoot` is the name Hoot's "take me to …" command knows the page by; it counts as a name here too. */
@@ -29,14 +30,14 @@ export type CommandInput = {
   /** The scope in view (the fund's slug or a team's); holdings and boards open there. */
   scopeSlug: string | null;
   dark: boolean;
-  /** On a holding page: its ticker and the scope in its URL. A typed question goes to that holding's research board. */
+  /** On a holding page: its ticker and the scope in its URL. A typed question goes to that holding's research. */
   pageTicker?: string | null;
   pageTeamSlug?: string | null;
   /** Starting questions for the page in view, listed while nothing is typed. */
   suggestions?: string[];
 };
 
-const shortDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const shortDate = (iso: string) => fmtDay(iso);
 
 /** Lowercase, hyphens as spaces ("sell side" finds "Sell-side calls"), single spaces. */
 export const normalize = (s: string) => s.toLowerCase().replace(/[-–]/g, " ").replace(/\s+/g, " ").trim();
@@ -105,7 +106,7 @@ export function commandGroups({ query, holdings, pages, scopes, teamSlug, scopeS
   if (top) {
     // In the scope in view: the fund shows every team's holdings, a team its own (⌘K lists only those).
     go.push(
-      { kind: "page", id: `go:board:${top.ticker}`, page: { label: `${top.ticker} research board`, href: boardHref(scopeSlug, top.teamSlug, top.ticker), hint: "Hoot's chats about this holding" } },
+      { kind: "page", id: `go:board:${top.ticker}`, page: { label: `${top.ticker} research`, href: boardHref(scopeSlug, top.teamSlug, top.ticker), hint: "Hoot's chats about this holding" } },
       { kind: "page", id: `go:earnings:${top.ticker}`, page: { label: `${top.ticker} earnings`, href: holdingHref(scopeSlug, top.teamSlug, top.ticker, "?tab=earnings"), hint: top.nextReport ? `${shortDate(top.nextReport)}${top.nextReportEstimated ? " est." : ""}` : "No report scheduled" } },
     );
   }
@@ -149,7 +150,7 @@ export function enterItem(groups: CommandGroup[]): CommandItem | null {
   return groups[0]?.items[0] ?? null;
 }
 
-/** Where a typed question goes: on a holding page, that holding's research board; anywhere else a general chat. */
+/** Where a typed question goes: on a holding page, that holding's research; anywhere else a general chat. */
 export function typedQuestionTarget({ teamSlug, pageTicker = null, pageTeamSlug = null }: Pick<CommandInput, "teamSlug" | "pageTicker" | "pageTeamSlug">): { ticker: string | null; teamSlug: string | null } {
   return pageTicker ? { ticker: pageTicker, teamSlug: pageTeamSlug } : { ticker: null, teamSlug };
 }

@@ -1,14 +1,14 @@
 import { FilterChip } from "@/components/app/panel";
+import { fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export const HOLDING_FILTERS = ["all", "attention", "reporting", "unassigned"] as const;
+export const HOLDING_FILTERS = ["all", "attention", "reporting"] as const;
 export type HoldingFilter = (typeof HOLDING_FILTERS)[number];
 
 const LABELS: Record<HoldingFilter, string> = {
   all: "All holdings",
   attention: "Needs attention",
   reporting: "Reporting in 2 weeks",
-  unassigned: "Unassigned",
 };
 
 export function parseHoldingFilter(v: string | string[] | undefined): HoldingFilter {
@@ -36,15 +36,14 @@ export function HoldingsToolbar({ basePath, active, counts, aside }: { basePath:
   );
 }
 
-/** "S&P 500 +0.59% Friday · market closed". */
+/** "S&P 500 0.59% Friday · market closed". */
 export function MarketLine({ changePct, day, closed, error }: { changePct?: number; day?: string; closed?: boolean; error?: string }) {
   if (changePct == null) return <span className="text-[13px] whitespace-nowrap text-muted-foreground">{error ?? "S&P 500 quote unavailable"}</span>;
   return (
     <span className="text-[13px] whitespace-nowrap text-muted-foreground">
       S&amp;P 500{" "}
       <span className={cn("font-mono", changePct > 0.005 ? "text-up" : changePct < -0.005 ? "text-down" : "")}>
-        {changePct > 0 ? "+" : ""}
-        {changePct.toFixed(2)}%
+        {fmtPct(changePct)}
       </span>{" "}
       {day}
       {closed ? " · market closed" : ""}

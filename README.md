@@ -10,9 +10,9 @@ The agent pulls prices, SEC filings, XBRL financials, news, and earnings dates, 
 
 | Area | What the app does | What the student does |
 | --- | --- | --- |
-| Holdings | Live quote and day move vs the S&P 500, filings, news, notes, owner, documents (uploads are filed into the Fund's Google Drive) | Writes and maintains the thesis |
+| Holdings | Live quote and day move vs the S&P 500, filings, news, notes, documents (uploads are filed into the Fund's Google Drive) | Writes and maintains the thesis |
 | Research agent | Chat with tools for quotes, price history, relative moves, EDGAR filings and documents, XBRL facts, news, earnings calendar, team context, and the team's own documents in the Fund's Google Drive (initiating reports, earnings updates, models). Every claim carries a `[src:ID]` chip | Asks questions, judges the evidence |
-| Major movements | Nightly close check: any holding whose daily return differs from the S&P 500 by 4 pp or more opens an investigation with evidence and a noon-next-day deadline, and emails the owner and lead | Writes the update, asks for feedback, marks it complete |
+| Major movements | Nightly close check: any holding whose daily return differs from the S&P 500 by 4 pp or more opens an investigation with evidence and a noon-next-day deadline, and emails the team's lead analysts (or the whole team when it has no lead); anyone on the team writes it | Writes the update, asks for feedback, marks it complete |
 | Earnings | Tracks the next report date (confirmed vs estimated); locks the student's expectations at the report; gathers the 8-K, press release and XBRL actuals with sources | Records expectations before, writes the reflection after |
 | Model historicals | Reads an uploaded Excel model, maps line items to XBRL concepts, proposes the other periods with period, unit, filing and derivation, and writes approved values into a new file version without touching formulas | Maps the anchor period, approves or rejects each proposal |
 

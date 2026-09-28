@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { ArrowUp, ChevronRight, Eye, Loader2, Wrench } from "lucide-react";
+import { fmtDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Source } from "@/lib/providers/types";
 import { resolveSource } from "@/lib/agent/source-resolution";
@@ -353,13 +354,10 @@ export function SendButton({ disabled, label = "Send" }: { disabled: boolean; la
   );
 }
 
-/** "Sep 24" (with the year when it isn't this year). */
+/** "Thu 24 Sep" ("24 Sep 2025" in another year); an unreadable date is shown as given. */
 export function shortDate(iso: string | undefined | null) {
   if (!iso) return null;
-  const d = new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso);
-  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
-  const sameYear = d.getUTCFullYear() === new Date().getUTCFullYear();
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC", ...(sameYear ? {} : { year: "numeric" }) });
+  return fmtDay(iso) || iso.slice(0, 10);
 }
 
 /** Hoot's pink footnote number. */

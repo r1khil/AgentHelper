@@ -15,6 +15,11 @@ import {
   buildMiniMonth,
   buildMonthGrid,
   calendarHref,
+  calendarPeriod,
+  countKinds,
+  dayKinds,
+  hiddenKinds,
+  kindOf,
   marketDayNote,
   toggleKind,
   weekDays,
@@ -26,7 +31,7 @@ import {
 import type { CalendarFactorContext } from "@/lib/economic-calendar/factor-lines";
 import type { EconomicEvent } from "@/lib/economic-calendar/types";
 import { nextRelease, todayIn } from "@/lib/economic-calendar/view";
-import { fmtCurrency, fmtDate } from "@/lib/format";
+import { fmtCurrency, fmtDay, fmtTime } from "@/lib/format";
 import { NY } from "@/lib/providers/calendar";
 import { cn } from "@/lib/utils";
 import { earningsHref } from "@/lib/scope";
@@ -71,8 +76,6 @@ export type CalendarViewProps = {
   industries: string[];
   /** Holdings and bellwethers on the month's grid, already narrowed to the scope. */
   events: CalendarEvent[];
-  /** Owner id to name. */
-  ownerNames: Record<string, string>;
   accessibleTeamIds: string[];
   /** Notes about the data (missing bellwethers, sectors, industries). */
   notices: ReactNode[];
@@ -99,10 +102,10 @@ const KIND: Record<Item["type"], { label: string; dot: string }> = {
   bellwether: { label: "Bellwether", dot: "var(--series-neutral)" },
   economic: { label: "Economic", dot: "var(--series-2)" },
 };
-const SHOW: { kind: CalendarKind; label: string; dot: string }[] = [
-  { kind: "holdings", label: "Fund holdings", dot: KIND.holding.dot },
-  { kind: "bellwethers", label: "Sector bellwethers", dot: KIND.bellwether.dot },
-  { kind: "economic", label: "Economic releases", dot: KIND.economic.dot },
+const SHOW: { kind: CalendarKind; label: string; dot: string; one: string }[] = [
+  { kind: "holdings", label: "Fund reports", dot: KIND.holding.dot, one: "Fund report" },
+  { kind: "bellwethers", label: "Sector bellwethers", dot: KIND.bellwether.dot, one: "bellwether" },
+  { kind: "economic", label: "Economic releases", dot: KIND.economic.dot, one: "release" },
 ];
 const HOUR_SORT: Record<string, number> = { bmo: 7 * 60, dmh: 12 * 60, amc: 16 * 60 + 5 };
 const HOUR_LABEL: Record<string, string> = { bmo: "Before open", amc: "After close", dmh: "During market" };
@@ -114,7 +117,7 @@ const EXPECTATIONS: Record<ExpectationsState, { pill: string; row: string; tone:
 const ROW_GRID = "grid grid-cols-[52px_110px_minmax(0,1fr)_220px_180px] items-center gap-3 px-5";
 
 const dt = (d: string) => DateTime.fromISO(d, { zone: NY });
-const monoDay = (d: string) => dt(d).toFormat("ccc d LLL").toUpperCase();
+const monoDay = (d: string) => fmtDay(d);
 const minutesOf = (iso: string) => {
   const t = DateTime.fromISO(iso).setZone(NY);
   return t.hour * 60 + t.minute;
@@ -169,8 +172,9 @@ export function CalendarView(props: CalendarViewProps) {
   const weekEcon = weekInMonth ? monthEcon.filter((e) => inWeek(e.date)) : (weekFeed.feed?.events ?? []);
   const q = search.toLowerCase().trim();
   const keep = IMPORTANCE.find((i) => i.id === importance)!.keep;
-  const econFilter = (list: EconomicEvent[]) => (show.has("economic") ? list.filter((e) => keep(e) && `${e.name} ${e.category ?? ""} ${e.source ?? ""}`.toLowerCase().includes(q)) : []);
-  const earnFilter = (list: CalendarEvent[]) => list.filter((ev) => (ev.kind === "holding" ? show.has("holdings") : show.has("bellwethers")));
+  const matches = (list: EconomicEvent[]) => list.filter((e) => `${e.name} ${e.category ?? ""} ${e.source ?? ""}`.toLowerCase().includes(q));
+  const econFilter = (list: EconomicEvent[]) => (show.has("economic") ? matches(list).filter(keep) : []);
+  const earnFilter = (list: CalendarEvent[]) => list.filter((ev) => show.has(kindOf(ev)));
 
   const weekEvents = events.filter((ev) => inWeek(ev.date));
   const weekItems = toItems(earnFilter(weekEvents), econFilter(weekEcon));
@@ -198,18 +202,17 @@ export function CalendarView(props: CalendarViewProps) {
     ) : null;
   const rowProps = { now, today, nextId: next?.id ?? null, openRow, onRow: (id: string) => setOpenRow((r) => (r === id ? null : id)), accessible, askable, teamSlug, factorText, reportHref };
 
-  const counts = {
-    holdings: weekEvents.filter((ev) => ev.kind === "holding").length,
-    bellwethers: weekEvents.filter((ev) => ev.kind === "bellwether").length,
-    economic: weekEcon.length,
-  };
-  const scopeItems = query.layout === "week" ? weekItems : monthItems;
-  const meta = [
-    show.has("holdings") && plural(scopeItems.filter((i) => i.type === "holding").length, "Fund report"),
-    show.has("bellwethers") && plural(scopeItems.filter((i) => i.type === "bellwether").length, "bellwether"),
-    show.has("economic") && (primary.feed || query.layout !== "week" ? plural(scopeItems.filter((i) => i.type === "economic").length, "release") : "loading releases…"),
-  ].filter(Boolean);
-  const title = query.layout === "week" ? `Week of ${dt(week[0]).toFormat("LLLL d")}` : mini.label;
+  // Every count on the page is of the period on screen (the week, or the month in Month and List), in the
+  // scope, with the releases narrowed by importance and search: the rows each Show box lists when ticked.
+  const period = calendarPeriod(query.layout, selectedDay, query.month);
+  const periodFeed = query.layout === "week" ? primary : monthFeed;
+  const periodEcon = matches(query.layout === "week" ? weekEcon : monthEcon);
+  const counts = countKinds(events, periodEcon.filter(keep), period);
+  const loaded = { holdings: true, bellwethers: true, economic: !!periodFeed.feed };
+  const periodText = query.layout === "week" ? "this week" : `in ${dt(mini.first).toFormat("LLLL")}`;
+  const meta = SHOW.filter((s) => show.has(s.kind)).map((s) => (loaded[s.kind] ? plural(counts[s.kind], s.one) : periodFeed.error ? "releases unavailable" : "loading releases…"));
+  const hidden = hiddenKinds(counts, query.show).filter((h) => loaded[h.kind]);
+  const title = query.layout === "week" ? `Week of ${fmtDay(week[0])}` : mini.label;
   const expectations = weekEvents.filter((ev) => ev.kind === "holding" && ev.teamId && accessible.has(ev.teamId));
   const coverage = primary.feed?.coverage;
 
@@ -224,8 +227,7 @@ export function CalendarView(props: CalendarViewProps) {
           nextHref={href({ month: dt(mini.first).plus({ months: 1 }).toFormat("yyyy-LL"), day: undefined })}
           todayHref={week.includes(today) ? null : href({ month: today.slice(0, 7), day: today })}
           dayHref={(d) => href({ day: d })}
-          earnings={new Set(earnFilter(events).map((ev) => ev.date))}
-          econ={new Set(show.has("economic") ? monthEcon.map((e) => e.date) : [])}
+          marks={dayKinds(events, matches(monthEcon).filter(keep), query.show)}
         />
         <Panel className="shrink-0 px-3.5 pt-3.5 pb-3.5">
           <h2 className="text-[14.5px] font-semibold">Show</h2>
@@ -238,7 +240,9 @@ export function CalendarView(props: CalendarViewProps) {
                     <span className={cn("grid size-4 shrink-0 place-items-center rounded-[5px]", on ? "bg-primary text-primary-foreground" : "shadow-[inset_0_0_0_1.5px_var(--border-strong)]")}>{on && <Check className="size-[11px]" strokeWidth={3} />}</span>
                     <span className="size-2 shrink-0 rounded-full" style={{ background: s.dot }} />
                     <span className="flex-1">{s.label}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{counts[s.kind]}</span>
+                    <span className="font-mono text-xs text-muted-foreground" title={`${loaded[s.kind] ? plural(counts[s.kind], s.one) : "Loading releases"} ${periodText}`}>
+                      {loaded[s.kind] ? counts[s.kind] : "…"}
+                    </span>
                   </Link>
                   {s.kind === "economic" && on && (
                     <div className="mt-2.5 flex flex-col gap-2 pl-[26px]">
@@ -250,7 +254,7 @@ export function CalendarView(props: CalendarViewProps) {
                           label: (
                             <>
                               {i.label}
-                              <span className="ml-1.5 font-mono text-[11px] font-normal text-muted-foreground">{weekEcon.filter(i.keep).length}</span>
+                              <span className="ml-1.5 font-mono text-[11px] font-normal text-muted-foreground">{periodEcon.filter(i.keep).length}</span>
                             </>
                           ),
                           active: importance === i.id,
@@ -268,6 +272,11 @@ export function CalendarView(props: CalendarViewProps) {
               );
             })}
           </ul>
+          {hidden.length > 0 && (
+            <p className="mt-2.5 text-[12px] leading-[17px] text-muted-foreground">
+              Nothing is left out: {hidden.map((h) => plural(h.count, SHOW.find((s) => s.kind === h.kind)!.one)).join(" and ")} {periodText} {hidden.length === 1 && hidden[0].count === 1 ? "is" : "are"} a tick away.
+            </p>
+          )}
           {props.canScope && <ScopeControl query={query} href={href} base={base} industries={props.industries} defaultShow={defaultShow} />}
           {props.notices.length > 0 && (
             <ul className="mt-3 flex flex-col gap-1.5 border-t border-row pt-2.5 text-[12px] leading-[17px] text-muted-foreground">
@@ -288,12 +297,11 @@ export function CalendarView(props: CalendarViewProps) {
           <ul className="mt-2.5 flex flex-col">
             {expectations.map((ev) => {
               const st = EXPECTATIONS[ev.expectations ?? "not_started"];
-              const owner = ev.ownerId ? props.ownerNames[ev.ownerId] : null;
               return (
                 <li key={ev.earningsId} className="border-t border-row">
                   <Link href={reportHref(ev.teamSlug, ev.earningsId)} className="-mx-1.5 flex h-10 items-center gap-2.5 rounded-lg px-1.5 text-[13.5px] hover:bg-band">
                     <span className="w-11 shrink-0 font-mono text-[13px] font-semibold">{ev.ticker}</span>
-                    <span className={cn("min-w-0 flex-1 truncate", owner ? "text-ink-2" : "text-caution-foreground")}>{owner ?? "No owner"}</span>
+                    <span className="min-w-0 flex-1 truncate text-ink-2">{ev.teamName ?? ev.name}</span>
                     <Pill tone={st.tone}>{st.pill}</Pill>
                   </Link>
                 </li>
@@ -355,8 +363,7 @@ function MiniMonth({
   nextHref,
   todayHref,
   dayHref,
-  earnings,
-  econ,
+  marks,
 }: {
   mini: ReturnType<typeof buildMiniMonth>;
   today: string;
@@ -365,8 +372,8 @@ function MiniMonth({
   nextHref: string;
   todayHref: string | null;
   dayHref: (d: string) => string;
-  earnings: Set<string>;
-  econ: Set<string>;
+  /** The kinds each day has among what's shown; a day with none gets no dot. */
+  marks: Map<string, Set<CalendarKind>>;
 }) {
   const nav = "grid size-6 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground";
   const cells = mini.weeks.flat();
@@ -399,12 +406,13 @@ function MiniMonth({
           const first = inWeek && (col === 0 || !cells[i - 1]);
           const last = inWeek && (col === 6 || !cells[i + 1]);
           const note = marketDayNote(d);
+          const kinds = SHOW.filter((s) => marks.get(d)?.has(s.kind));
           return (
             <Link
               key={d}
               href={dayHref(d)}
               scroll={false}
-              aria-label={`Week of ${d}`}
+              aria-label={`Week of ${d}${kinds.length ? ` · ${kinds.map((s) => `${s.one}s`).join(", ")}` : ""}`}
               aria-current={inWeek ? "date" : undefined}
               title={note ?? undefined}
               className={cn(
@@ -419,8 +427,9 @@ function MiniMonth({
             >
               <span className={cn("grid size-[20px] place-items-center rounded-full leading-none", d === today && "shadow-[inset_0_0_0_1.5px_var(--foreground)]")}>{Number(d.slice(8))}</span>
               <span className="flex h-1 gap-0.5">
-                <span className="size-1 rounded-full" style={{ background: earnings.has(d) ? "var(--series-1)" : "transparent" }} />
-                <span className="size-1 rounded-full" style={{ background: econ.has(d) ? "var(--series-2)" : "transparent" }} />
+                {kinds.map((s) => (
+                  <span key={s.kind} className="size-1 rounded-full" style={{ background: s.dot }} />
+                ))}
               </span>
             </Link>
           );
@@ -532,7 +541,7 @@ function Row({ item, rowProps: r, wide = false }: { item: Item; rowProps: RowPro
         onClick={() => r.onRow(e.id)}
         className={cn(ROW_GRID, "h-9 w-full text-left text-[13.5px] outline-none hover:bg-band focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset", (open || isNext) && "bg-band")}
       >
-        <span className="truncate font-mono text-[12.5px] text-muted-foreground" title={e.time}>
+        <span className="truncate font-mono text-[12.5px] text-muted-foreground" title={e.timestamp ? fmtTime(e.timestamp) : e.time}>
           {releaseClock(e)}
         </span>
         {kind}
@@ -571,7 +580,7 @@ function WeekLayout({ week, items, rowProps }: { week: string[]; items: Item[]; 
         const weekday = day === today ? "today" : `on ${dt(day).toFormat("cccc")}`;
         const nowAt = day === today && nowMinutes !== null ? rows.findIndex((it) => it.sort > nowMinutes) : -2;
         return (
-          <section key={day} aria-label={dt(day).toFormat("cccc, LLL d")} className={cn("flex flex-col border-b border-border pb-2 last:border-b-0", rows.length ? "flex-1" : "flex-none")}>
+          <section key={day} aria-label={fmtDay(day)} className={cn("flex flex-col border-b border-border pb-2 last:border-b-0", rows.length ? "flex-1" : "flex-none")}>
             <div className="flex items-baseline gap-2 px-5 pt-2.5 pb-1">
               <span className={cn("font-mono text-[12.5px] font-semibold", day < today && "text-muted-foreground")}>{monoDay(day)}</span>
               {day === today && <Pill tone="ink" className="h-[18px] px-[7px] text-[11px]">Today</Pill>}
@@ -624,7 +633,8 @@ function MonthLayout({
 }) {
   const grid = buildMonthGrid(month);
   const MAX = 4;
-  // A month cell lists the Fund's and bellwethers' reports and the high-importance releases; the rest are counted.
+  // A month cell lists the Fund's reports first, then bellwethers, then the high-importance releases; the rest are counted.
+  const rank = { holding: 0, bellwether: 1, economic: 2 };
   const label = (it: Item) => (it.type === "economic" ? it.e.name : it.ev.ticker);
   return (
     <div className="flex flex-1 flex-col">
@@ -639,7 +649,10 @@ function MonthLayout({
         <div key={row[0].date} className="grid min-h-[104px] flex-1 grid-cols-5 border-b border-row last:border-b-0">
           {row.map((day, i) => {
             const all = items.filter((it) => it.date === day.date);
-            const shown = all.filter((it) => it.type !== "economic" || it.e.importance === 3).slice(0, MAX);
+            const shown = all
+              .filter((it) => it.type !== "economic" || it.e.importance === 3)
+              .sort((a, b) => rank[a.type] - rank[b.type])
+              .slice(0, MAX);
             const more = all.length - shown.length;
             const note = marketDayNote(day.date);
             return (
@@ -695,7 +708,7 @@ function ListLayout({ items, rowProps, reports, showTeam, today }: { items: Item
     <div className="flex flex-col">
       {days.length === 0 && <p className="px-5 py-6 text-[13.5px] text-muted-foreground">Nothing on the calendar this month.</p>}
       {days.map((day) => (
-        <section key={day} aria-label={dt(day).toFormat("cccc, LLL d")} className="border-b border-border pb-2">
+        <section key={day} aria-label={fmtDay(day)} className="border-b border-border pb-2">
           <div className="flex items-baseline gap-2 px-5 pt-2.5 pb-1">
             <span className={cn("font-mono text-[12.5px] font-semibold", day < today && "text-muted-foreground")}>{monoDay(day)}</span>
             {marketDayNote(day) && <span className="text-[12.5px] text-muted-foreground">{marketDayNote(day)}</span>}
@@ -749,7 +762,7 @@ function ReportTable({ title, rows, showTeam, reportHref }: { title: string; row
                 </TableCell>
                 {showTeam && <TableCell className="text-ink-2">{r.teamName}</TableCell>}
                 <TableCell className="font-mono text-[12.5px]">
-                  {fmtDate(r.reportDate)}
+                  {fmtDay(r.reportDate)}
                   {r.reportHour ? <span className="ml-1.5 text-muted-foreground">{r.reportHour.toUpperCase()}</span> : null}
                 </TableCell>
                 <TableCell className="text-ink-2">{r.dateStatus ?? "—"}</TableCell>

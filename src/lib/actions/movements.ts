@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { holdings, movements, teams } from "@/db/schema";
-import { canManageTeam, requireTeamAccess } from "@/lib/auth";
+import { requireTeamAccess } from "@/lib/auth";
+import { fmtBp, fmtPct, ppToBp } from "@/lib/format";
 import { gatherMovementEvidence } from "@/lib/jobs/evidence";
 
 async function load(movementId: string) {
@@ -40,15 +41,6 @@ export async function reopenMovement(fd: FormData) {
   revalidatePath(r.path);
 }
 
-export async function claimMovement(fd: FormData) {
-  const r = await load(String(fd.get("id") ?? ""));
-  if (!r) return;
-  const ownerId = String(fd.get("ownerId") ?? "") || r.user.id;
-  if (ownerId !== r.user.id && !canManageTeam(r.user, r.h.teamId)) return;
-  await db.update(movements).set({ ownerId }).where(eq(movements.id, r.m.id));
-  revalidatePath(r.path);
-}
-
 export async function rerunEvidence(fd: FormData) {
   const r = await load(String(fd.get("id") ?? ""));
   if (!r) return;
@@ -65,7 +57,7 @@ export async function requestMovementFeedback(fd: FormData) {
   const { reasoningFeedback } = await import("@/lib/agent/feedback");
   const evidence = await listEvidence(r.m.id);
   const evidenceText = [
-    `Session ${r.m.sessionDate}: ${r.h.ticker} ${r.m.holdingReturnPct}% vs S&P ${r.m.spxReturnPct}% (relative ${r.m.relativeMovePp} pp).`,
+    `Session ${r.m.sessionDate}: ${r.h.ticker} ${fmtPct(r.m.holdingReturnPct)} vs S&P ${fmtPct(r.m.spxReturnPct)} (relative ${fmtBp(ppToBp(r.m.relativeMovePp))}).`,
     ...evidence.map((e) => `- [${e.kind}] ${e.title}${e.publishedAt ? ` (${e.publishedAt.toISOString().slice(0, 10)})` : ""}${e.url ? ` ${e.url}` : ""}`),
   ].join("\n");
   const feedback = await reasoningFeedback({ kind: "movement", ticker: r.h.ticker, studentText: text, thesis: r.h.thesis, evidence: evidenceText });

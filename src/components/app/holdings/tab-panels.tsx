@@ -19,12 +19,12 @@ function Empty({ children }: { children: React.ReactNode }) {
 
 export type ResearchChat = { id: string; title: string; author: string | null; questions: number; updatedAt: Date; running: boolean; href: string };
 
-/** Every Hoot conversation pinned to this holding (its research board), newest first. */
+/** Every chat with Hoot pinned to this holding (its research), newest first. */
 export function ResearchTab({ ticker, chats, boardHref }: { ticker: string; chats: ResearchChat[]; boardHref: string }) {
   return (
     <section className="panel flex min-h-0 flex-1 flex-col overflow-hidden">
       <PanelHeader
-        title="Research board"
+        title="Chats"
         count={chats.length}
         aside={
           <Button size="sm" nativeButton={false} render={<Link href={boardHref} />}>
@@ -34,7 +34,7 @@ export function ResearchTab({ ticker, chats, boardHref }: { ticker: string; chat
         }
       />
       {chats.length === 0 ? (
-        <Empty>No questions about {ticker} yet. Conversations started from the research board, a movement or an earnings prep pack show up here.</Empty>
+        <Empty>No questions about {ticker} yet. Chats started from {ticker} research, a movement or an earnings prep pack show up here.</Empty>
       ) : (
         <ul className="min-h-0 flex-1">
           {chats.map((c) => (

@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 import type { Bellwether } from "@/db/schema";
 import {
+  EARNINGS_DEFAULT_SHOW,
+  ECONOMIC_DEFAULT_SHOW,
   buildMiniMonth,
   buildMonthGrid,
   calendarHref,
+  calendarPeriod,
+  countKinds,
+  dayKinds,
   defaultSelectedDay,
   expectationsState,
   filterCalendarEvents,
   groupByDate,
+  hiddenKinds,
   industryOptions,
   marketDayNote,
   parseCalendarQuery,
@@ -227,5 +233,75 @@ describe("industryOptions", () => {
       { sector: "information_technology", industry: null },
     ] as const;
     expect(industryOptions(["Software—Infrastructure"], [...bells], ["information_technology"])).toEqual(["Semiconductors", "Software—Infrastructure"]);
+  });
+});
+
+describe("route defaults", () => {
+  it("opens the Calendar on the Fund's reports and the economic calendar on the releases", () => {
+    expect(parseCalendarQuery({}, "2026-09-28", EARNINGS_DEFAULT_SHOW).show).toEqual(["holdings"]);
+    expect(parseCalendarQuery({}, "2026-09-28", ECONOMIC_DEFAULT_SHOW).show).toEqual(["economic"]);
+  });
+  it("keeps a chosen Show filter in the URL, and a bare link reads as the default", () => {
+    const q = { scope: "fund", layout: "week", month: "2026-09", show: ["holdings"] } as const;
+    expect(calendarHref("/t/fund/earnings", { ...q, show: [...q.show] }, EARNINGS_DEFAULT_SHOW)).toBe("/t/fund/earnings?scope=fund&month=2026-09");
+    const all = calendarHref("/t/fund/earnings", { ...q, show: ["holdings", "bellwethers", "economic"] }, EARNINGS_DEFAULT_SHOW);
+    expect(all).toBe("/t/fund/earnings?scope=fund&month=2026-09&show=holdings%2Cbellwethers%2Ceconomic");
+    expect(parseCalendarQuery(Object.fromEntries(new URL(all, "http://x").searchParams), "2026-09-28", EARNINGS_DEFAULT_SHOW).show).toEqual(["holdings", "bellwethers", "economic"]);
+  });
+});
+
+describe("calendarPeriod", () => {
+  it("is the selected week, Monday to Sunday, in the Week layout", () => {
+    expect(calendarPeriod("week", "2026-09-30", "2026-09")).toEqual({ from: "2026-09-28", to: "2026-10-04" });
+  });
+  it("is the calendar month in Month and List, whatever day is selected", () => {
+    expect(calendarPeriod("month", "2026-09-30", "2026-09")).toEqual({ from: "2026-09-01", to: "2026-09-30" });
+    expect(calendarPeriod("list", "2026-02-10", "2026-02")).toEqual({ from: "2026-02-01", to: "2026-02-28" });
+  });
+});
+
+describe("countKinds", () => {
+  const events = [
+    holding({ ticker: "NVDA", date: "2026-09-29" }),
+    holding({ ticker: "JPM", date: "2026-10-01" }),
+    holding({ ticker: "UNH", date: "2026-09-15" }),
+    bell({ ticker: "AAPL", date: "2026-09-30" }),
+    bell({ ticker: "MSFT", date: "2026-09-08" }),
+  ];
+  const releases = [{ date: "2026-09-28" }, { date: "2026-09-28" }, { date: "2026-10-02" }, { date: "2026-09-10" }];
+  it("counts each kind in the week on screen, including the days that spill into the next month", () => {
+    expect(countKinds(events, releases, calendarPeriod("week", "2026-09-28", "2026-09"))).toEqual({ holdings: 2, bellwethers: 1, economic: 3 });
+  });
+  it("counts the month in Month and List, so the header and the Show boxes agree", () => {
+    expect(countKinds(events, releases, calendarPeriod("month", "2026-09-28", "2026-09"))).toEqual({ holdings: 2, bellwethers: 2, economic: 3 });
+  });
+  it("counts only the releases it is given, i.e. after importance and search", () => {
+    expect(countKinds(events, [], calendarPeriod("week", "2026-09-28", "2026-09")).economic).toBe(0);
+  });
+  it("lists what an unticked box holds back, skipping kinds with nothing", () => {
+    expect(hiddenKinds({ holdings: 2, bellwethers: 1, economic: 99 }, ["holdings"])).toEqual([
+      { kind: "bellwethers", count: 1 },
+      { kind: "economic", count: 99 },
+    ]);
+    expect(hiddenKinds({ holdings: 0, bellwethers: 0, economic: 4 }, ["economic"])).toEqual([]);
+  });
+});
+
+describe("dayKinds", () => {
+  const events = [holding({ ticker: "NVDA", date: "2026-09-29" }), bell({ ticker: "AAPL", date: "2026-09-29" }), bell({ ticker: "MSFT", date: "2026-09-30" })];
+  const releases = [{ date: "2026-09-28" }, { date: "2026-09-29" }];
+  it("marks only days with something shown", () => {
+    const marks = dayKinds(events, releases, ["holdings"]);
+    expect([...marks.keys()]).toEqual(["2026-09-29"]);
+    expect([...marks.get("2026-09-29")!]).toEqual(["holdings"]);
+  });
+  it("tells a Fund report day from a day with only releases or bellwethers", () => {
+    const marks = dayKinds(events, releases, ["holdings", "bellwethers", "economic"]);
+    expect([...marks.get("2026-09-29")!].sort()).toEqual(["bellwethers", "economic", "holdings"]);
+    expect([...marks.get("2026-09-28")!]).toEqual(["economic"]);
+    expect([...marks.get("2026-09-30")!]).toEqual(["bellwethers"]);
+  });
+  it("marks nothing when nothing is shown", () => {
+    expect(dayKinds(events, releases, []).size).toBe(0);
   });
 });

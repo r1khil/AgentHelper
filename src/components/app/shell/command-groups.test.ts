@@ -9,7 +9,6 @@ const holding = (ticker: string, company: string, team = "Technology", teamSlug 
   team,
   teamSlug,
   weightPct: 3,
-  owner: null,
   nextReport: null,
   nextReportEstimated: false,
   openMovement: false,
@@ -105,7 +104,7 @@ describe("⌘K with nothing typed", () => {
 });
 
 describe("where a typed question goes", () => {
-  it("goes to the holding's research board on a holding page", () => {
+  it("goes to the holding's research on a holding page", () => {
     expect(enter("what changed since earnings", { pageTicker: "NVDA", pageTeamSlug: "fund" })).toMatchObject({ kind: "ask", ticker: "NVDA", teamSlug: "fund" });
     expect(typedQuestionTarget({ teamSlug: "tech", pageTicker: "NVDA", pageTeamSlug: "fund" })).toEqual({ ticker: "NVDA", teamSlug: "fund" });
   });

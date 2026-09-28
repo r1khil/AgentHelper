@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DateTime } from "luxon";
-import { loadScope } from "@/lib/teams";
+import { getTeamBySlug, loadScope } from "@/lib/teams";
 import { holdingHref, scopeFor } from "@/lib/scope";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
-import { listHoldingSignals, listRecentCloses, listTeamHoldings, listTeamMembers } from "@/lib/holdings";
+import { listHoldingSignals, listRecentCloses, listTeamHoldings } from "@/lib/holdings";
 import { marketSnapshot, type MarketSnapshot } from "@/lib/market";
 import { NY, todayNY } from "@/lib/providers/calendar";
 import { EmptyState } from "@/components/app/empty-state";
@@ -12,31 +12,34 @@ import { AddHoldingDialog } from "@/components/app/add-holding-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HoldingsTable, type HoldingGroup, type HoldingListRow, type QuoteCells } from "@/components/app/holdings/holdings-table";
 import { HoldingsToolbar, MarketLine, parseHoldingFilter, type HoldingFilter } from "@/components/app/holdings/holdings-toolbar";
-import { attentionFlags, reportsWithin, shortDate } from "@/components/app/holdings/attention";
+import { attentionFlags, reportsWithin } from "@/components/app/holdings/attention";
+import { fmtDayMonth } from "@/lib/format";
 
 export async function generateMetadata({ params }: { params: Promise<{ team: string }> }): Promise<Metadata> {
-  const { team } = await params;
-  return { title: team === FUND_SCOPE_SLUG ? "Fund holdings" : team };
+  const { team: slug } = await params;
+  if (slug === FUND_SCOPE_SLUG) return { title: "Fund holdings" };
+  // The team's name, not its URL slug ("Consumer holdings", not "consumer"). The page itself checks access.
+  const team = await getTeamBySlug(slug);
+  return { title: team ? `${team.name} holdings` : "Holdings" };
 }
 
 export default async function TeamHoldingsPage({ params, searchParams }: { params: Promise<{ team: string }>; searchParams: Promise<{ filter?: string | string[] }> }) {
   const [{ team: slug }, sp] = await Promise.all([params, searchParams]);
   const filter = parseHoldingFilter(sp.filter);
   const scope = await loadScope(slug);
-  const { team, user, teamById } = scope;
+  const { team, teamById } = scope;
   const today = todayNY();
-  const [rows, members] = await Promise.all([listTeamHoldings(scope.teamIds), team ? listTeamMembers(team.id) : []]);
+  const rows = await listTeamHoldings(scope.teamIds);
   const [signals, closes] = await Promise.all([
     listHoldingSignals(rows.map((r) => r.h.id), today),
     listRecentCloses(rows.map((r) => r.h.ticker), 6).catch(() => new Map<string, number[]>()),
   ]);
   // Not awaited: the holdings render from the database at once and the quotes stream in when Yahoo answers.
   const market = marketSnapshot(rows.map((r) => r.h.ticker));
-  const isMember = user.teamId === team?.id;
   const fund = scope.kind === "fund";
   const now = nowMs();
 
-  const listRows: (HoldingListRow & { teamId: string; reporting: boolean })[] = rows.map(({ h, ownerName }) => {
+  const listRows: (HoldingListRow & { teamId: string; reporting: boolean })[] = rows.map(({ h }) => {
     const t = teamById.get(h.teamId);
     const s = signals.get(h.id);
     const next = s?.nextReport ?? null;
@@ -49,13 +52,12 @@ export default async function TeamHoldingsPage({ params, searchParams }: { param
       weightPct: h.weightPct == null ? null : Number(h.weightPct),
       shares: h.shares == null ? null : Number(h.shares),
       spark: closes.get(h.ticker) ?? [],
-      nextReport: next ? `${shortDate(next.reportDate)}${next.estimated ? " est." : ""}` : null,
+      nextReport: next ? `${fmtDayMonth(next.reportDate)}${next.estimated ? " est." : ""}` : null,
       flags: attentionFlags(
-        { openMovement: s?.openMovement ?? null, nextReport: next, modelUpdates: s?.modelUpdates ?? 0, thesisProposed: s?.thesisProposed ?? false, hasOwner: !!h.ownerId },
+        { openMovement: s?.openMovement ?? null, nextReport: next, modelUpdates: s?.modelUpdates ?? 0, thesisProposed: s?.thesisProposed ?? false },
         // Flags link within the scope in view, like the row itself.
         { teamSlug: scopeFor(slug, t?.slug ?? slug), ticker: h.ticker, today, now },
       ),
-      owner: ownerName,
       reporting: reportsWithin(next?.reportDate, today),
     };
   });
@@ -64,9 +66,8 @@ export default async function TeamHoldingsPage({ params, searchParams }: { param
     all: listRows.length,
     attention: listRows.filter((r) => r.flags.length > 0).length,
     reporting: listRows.filter((r) => r.reporting).length,
-    unassigned: listRows.filter((r) => !r.owner).length,
   };
-  const shown = listRows.filter((r) => (filter === "attention" ? r.flags.length > 0 : filter === "reporting" ? r.reporting : filter === "unassigned" ? !r.owner : true));
+  const shown = listRows.filter((r) => (filter === "attention" ? r.flags.length > 0 : filter === "reporting" ? r.reporting : true));
 
   // Group by team in the teams' own order. Weight is the team's share of NAV across all its holdings, not just the filtered ones.
   const teams = [...teamById.values()].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
@@ -75,7 +76,7 @@ export default async function TeamHoldingsPage({ params, searchParams }: { param
     const weights = all.map((r) => r.weightPct).filter((w): w is number => w != null);
     return { id: t.id, name: t.name, navPct: weights.length ? weights.reduce((a, b) => a + b, 0) : null, rows: shown.filter((r) => r.teamId === t.id) };
   });
-  const emptyText = filter === "attention" ? "Nothing needs attention right now." : filter === "reporting" ? "No holding reports in the next two weeks." : filter === "unassigned" ? "Every holding has an owner." : "No holdings.";
+  const emptyText = filter === "attention" ? "Nothing needs attention right now." : filter === "reporting" ? "No holding reports in the next two weeks." : "No holdings.";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
@@ -89,7 +90,7 @@ export default async function TeamHoldingsPage({ params, searchParams }: { param
               <LiveMarketLine market={market} today={today} />
             </Suspense>
             {/* Adding needs a team to own the holding, so the fund view leaves it to the sector pages. */}
-            {team && <AddHoldingDialog teamId={team.id} members={members} defaultOwnerId={isMember ? user.id : null} />}
+            {team && <AddHoldingDialog teamId={team.id} />}
           </>
         }
       />

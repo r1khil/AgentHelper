@@ -1,4 +1,5 @@
 import { earningsHref, holdingHref, modelHref, movementHref, scopedHref, sellSideHref } from "@/lib/scope";
+import { fmtDateTime } from "@/lib/format";
 import type { HootNudge } from "./types";
 
 // Plain rows, so the ranking is testable without a database. The loader in nudges.ts fills these.
@@ -10,16 +11,17 @@ export type NudgeInput = {
   today: string;
   /** The next few trading days after today, New York dates. */
   soon: string[];
+  /** Unfinished write-ups on this member's own team. A write-up belongs to the whole team, so each one is theirs. */
   myMovements: { id: string; ticker: string; teamSlug: string; dueAt: Date | null }[];
-  /** Unfinished write-ups on the teams this member runs that have no owner, or are overdue with someone else. */
-  teamMovements: { id: string; ticker: string; teamSlug: string; dueAt: Date | null; ownerName: string | null }[];
-  /** Active holdings with no owner on the teams this member runs, and where Holdings lists just those. */
-  unownedHoldings: { count: number; href: string } | null;
+  /** Unfinished write-ups on the other teams this member runs (an exec or admin runs every team, and has none of their own). */
+  teamMovements: { id: string; ticker: string; teamSlug: string; teamName: string; dueAt: Date | null }[];
+  /** `mine`: the holding is on this member's own team. */
   earnings: { id: string; ticker: string; teamSlug: string; reportDate: string; reportHour: string | null; expectationsLocked: boolean; mine: boolean }[];
   mySellSide: { id: string; ticker: string; teamSlug: string; status: string; updatedAt: Date }[];
   thesisProposals: { ticker: string; teamSlug: string }[];
   modelProposals: { modelId: string; ticker: string; teamSlug: string; count: number }[];
-  weeklyDraft: { weekEnding: string } | null;
+  /** This week's pack while it is not Sent yet. */
+  weeklyPack: { weekEnding: string; state: "draft" | "scheduled" | "failed" } | null;
   latestChangelog: { prNumber: number; headline: string; mergedAt: Date } | null;
   dismissed: Record<string, string>;
 };
@@ -48,31 +50,27 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
     const href = movementHref(i.scope, m.teamSlug, m.id);
     const at = m.dueAt.toISOString();
     if (left < 0) {
-      out.push({ id: `movement:${m.id}:overdue`, kind: "movement", priority: 1, mood: "concerned", href, at, title: `Your ${m.ticker} write-up is overdue`, detail: "The team is waiting on why it moved. A short update with sources is enough." });
+      out.push({ id: `movement:${m.id}:overdue`, kind: "movement", priority: 1, mood: "concerned", href, at, title: `Your team's ${m.ticker} write-up is overdue`, detail: "Anyone on the team can write it. A short update on why it moved, with sources, is enough." });
     } else if (left < 48 * HOUR) {
       const hours = Math.max(1, Math.round(left / HOUR));
-      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 2, mood: "alert", href, at, title: `Your ${m.ticker} write-up is due in ${hours}h`, detail: "I can pull the filings and news from that session. Open it and ask the agent." });
+      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 2, mood: "alert", href, at, title: `Your team's ${m.ticker} write-up is due in ${hours}h`, detail: "I can pull the filings and news from that session. Open it and ask me." });
     } else {
       // Due after a weekend or holiday: still owed, just not pressing yet.
       const day = m.dueAt.toLocaleDateString("en-US", { weekday: "long", timeZone: "America/New_York" });
-      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `Your ${m.ticker} write-up is due ${day}`, detail: "I can pull the filings and news from that session. Open it and ask the agent." });
+      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `Your team's ${m.ticker} write-up is due ${day}`, detail: "I can pull the filings and news from that session. Open it and ask me." });
     }
   }
 
   for (const m of i.teamMovements) {
+    if (!m.dueAt) continue;
     const href = movementHref(i.scope, m.teamSlug, m.id);
-    const overdue = !!m.dueAt && m.dueAt.getTime() < i.now.getTime();
-    const at = m.dueAt?.toISOString();
-    if (!m.ownerName) {
-      out.push({ id: `movement:${m.id}:unassigned${overdue ? ":overdue" : ""}`, kind: "movement", priority: overdue ? 2 : 3, mood: overdue ? "concerned" : "alert", href, at, title: `${m.ticker} write-up has no owner`, detail: "Assign someone on the movement page so it gets written." });
-    } else if (overdue) {
-      out.push({ id: `movement:${m.id}:team:overdue`, kind: "movement", priority: 3, mood: "concerned", href, at, title: `${m.ticker} write-up is overdue`, detail: `${m.ownerName} owns it. Check in, or reassign it on the movement page.` });
+    const at = m.dueAt.toISOString();
+    if (m.dueAt.getTime() < i.now.getTime()) {
+      out.push({ id: `movement:${m.id}:team:overdue`, kind: "movement", priority: 3, mood: "concerned", href, at, title: `${m.ticker} write-up is overdue`, detail: `${m.teamName} hasn't finished it yet. Check in with the team.` });
+    } else {
+      // Not late yet: worth knowing about, not worth a speech bubble.
+      out.push({ id: `movement:${m.id}:team:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `${m.ticker} write-up is due ${fmtDateTime(at, i.now)}`, detail: `${m.teamName} is on it.` });
     }
-  }
-
-  if (i.unownedHoldings?.count) {
-    const n = i.unownedHoldings.count;
-    out.push({ id: `holdings:unowned:${n}`, kind: "holdings", priority: 6, mood: "idle", href: i.unownedHoldings.href, title: `${n} ${n === 1 ? "holding has" : "holdings have"} no owner`, detail: "Assign owners so their movement write-ups reach someone." });
   }
 
   const upcoming = i.earnings.filter((e) => e.reportDate === i.today || i.soon.includes(e.reportDate));
@@ -124,8 +122,17 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
     out.push({ id: `proposal:model:${m.modelId}:${m.count}`, kind: "proposal", priority: 6, mood: "idle", href: modelHref(i.scope, m.teamSlug, m.modelId), title: `${m.count} model ${m.count === 1 ? "update" : "updates"} to review for ${m.ticker}`, detail: "From the latest filing. Nothing is written until you approve it." });
   }
 
-  if (i.weeklyDraft) {
-    out.push({ id: `weekly:${i.weeklyDraft.weekEnding}`, kind: "weekly", priority: 6, mood: "idle", href: `/weekly/${i.weeklyDraft.weekEnding}`, at: i.weeklyDraft.weekEnding, title: "This week's update pack is drafted", detail: "Review the figures and agenda before it goes out." });
+  if (i.weeklyPack) {
+    // Same words as the Weekly page. Only a Scheduled pack has `at`, which the list shows as "Sends Sun 12:00".
+    // A failure gets its own id, so it shows even after the scheduled nudge was dismissed.
+    const { weekEnding, state } = i.weeklyPack;
+    const base = { kind: "weekly", priority: 6, href: `/weekly/${weekEnding}` } as const;
+    const byState: Record<typeof state, HootNudge> = {
+      scheduled: { ...base, id: `weekly:${weekEnding}`, mood: "idle", at: weekEnding, title: "This week's update pack is scheduled", detail: "Review the figures and agenda before it goes out." },
+      draft: { ...base, id: `weekly:${weekEnding}`, mood: "idle", title: "This week's update pack is a draft", detail: "It has not been sent. Review it, then send it from the pack." },
+      failed: { ...base, id: `weekly:${weekEnding}:failed`, mood: "concerned", title: "This week's update pack failed to send", detail: "The Email tab says why. Send it again from there." },
+    };
+    out.push(byState[state]);
   }
 
   if (i.latestChangelog && i.now.getTime() - i.latestChangelog.mergedAt.getTime() < 14 * DAY) {

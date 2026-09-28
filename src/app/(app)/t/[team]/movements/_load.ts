@@ -4,7 +4,6 @@ import { loadScope } from "@/lib/teams";
 import { boardHref, holdingHref } from "@/lib/scope";
 import { getMovement, listEvidence, listTeamMovements } from "@/lib/movements";
 import { listTeamMembers } from "@/lib/holdings";
-import { canManageTeam } from "@/lib/auth";
 import { agentConfigured } from "@/lib/agent/model";
 import { isOverdue } from "@/components/app/movements/format";
 import type { MovementDetailData, MovementListItem } from "@/components/app/movements/types";
@@ -19,7 +18,7 @@ export async function loadMovementsView(slug: string, selectedId: string | null)
   const scope = await loadScope(slug);
   const rows = await listTeamMovements(scope.teamIds);
   const now = Date.now();
-  const items: MovementListItem[] = rows.map(({ m, h, ownerName }) => ({
+  const items: MovementListItem[] = rows.map(({ m, h, completedByName }) => ({
     id: m.id,
     href: `/t/${scope.slug}/movements/${m.id}`,
     ticker: h.ticker,
@@ -28,7 +27,7 @@ export async function loadMovementsView(slug: string, selectedId: string | null)
     status: m.status,
     overdue: isOverdue(m.status, m.dueAt, now),
     sessionDate: m.sessionDate,
-    ownerName,
+    completedByName: m.status === "completed" ? completedByName : null,
     teamName: scope.teamById.get(h.teamId)?.name ?? null,
   }));
 
@@ -41,10 +40,9 @@ export async function loadMovementsView(slug: string, selectedId: string | null)
 
   const row = await getMovement(id);
   if (!row || !scope.teamById.has(row.h.teamId)) notFound();
-  const { m, h, ownerName } = row;
+  const { m, h, completedByName } = row;
   const team = scope.teamById.get(h.teamId)!;
   const [evidence, members] = await Promise.all([listEvidence(m.id), listTeamMembers(h.teamId)]);
-  const manage = canManageTeam(scope.user, h.teamId);
 
   const selected: MovementDetailData = {
     id: m.id,
@@ -61,8 +59,8 @@ export async function loadMovementsView(slug: string, selectedId: string | null)
     overdue: isOverdue(m.status, m.dueAt, now),
     dueAt: m.dueAt,
     completedAt: m.completedAt,
-    ownerId: m.ownerId,
-    ownerName,
+    completedByName: m.status === "completed" ? completedByName : null,
+    teamName: team.name,
     leadNames: members.filter((p) => p.role === "lead_analyst").map((p) => p.fullName),
     updateText: m.updateText,
     feedback: m.feedback,
@@ -77,8 +75,6 @@ export async function loadMovementsView(slug: string, selectedId: string | null)
       retrievedAt: e.retrievedAt,
       failed: Boolean((e.payload as { error?: boolean })?.error),
     })),
-    members: members.map((p) => ({ id: p.id, fullName: p.fullName })),
-    ownerLocked: !manage && m.ownerId !== null && m.ownerId !== scope.user.id,
     agentConfigured: agentConfigured(),
   };
   return { scope, items, selected };

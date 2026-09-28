@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { applyTradeTickets, previewTradeTickets, type TicketPreview } from "@/lib/actions/tickets";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { fmtDate, fmtMoney } from "@/lib/format";
+import { fmtDate, fmtMoney, fmtNumber, fmtUsd } from "@/lib/format";
 import { PositionChanges } from "./import-dialog";
 
 type Ready = Extract<TicketPreview, { ok: true }>;
@@ -116,7 +116,7 @@ export function TicketDialog({ emailTo }: { emailTo?: string }) {
                         <>
                           <td className="tnum whitespace-nowrap px-3 py-1.5">{fmtDate(r.ticket.date)}</td>
                           <td className="px-3 py-1.5">{r.ticket.side === "buy" ? "Buy" : "Sell"}</td>
-                          <td className="tnum px-3 py-1.5 text-right">{r.ticket.shares.toLocaleString("en-US")}</td>
+                          <td className="tnum px-3 py-1.5 text-right">{fmtNumber(r.ticket.shares)}</td>
                           <td className="tnum px-3 py-1.5 text-right">{fmtMoney(r.ticket.price)}</td>
                           <td className="tnum px-3 py-1.5 text-right">{fmtMoney(r.ticket.shares * r.ticket.price)}</td>
                         </>
@@ -147,7 +147,7 @@ export function TicketDialog({ emailTo }: { emailTo?: string }) {
                   {skipped > 0 && <li>{skipped} skipped above.</li>}
                   {ledger.newTickers.length > 0 && <li>New tickers: {ledger.newTickers.join(", ")}. Sector and team are set automatically where possible.</li>}
                   {ledger.errors.length === 0 && toRecord > 0 && (
-                    <li>After recording: {ledger.positionsAfter} positions{ledger.cashAfter !== null && `, cash $${fmtMoney(ledger.cashAfter)}`}.</li>
+                    <li>After recording: {ledger.positionsAfter} positions{ledger.cashAfter !== null && `, cash ${fmtUsd(ledger.cashAfter)}`}.</li>
                   )}
                 </ul>
               </div>

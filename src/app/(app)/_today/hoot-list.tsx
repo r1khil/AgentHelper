@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { DateTime } from "luxon";
-import { Activity, CalendarDays, CalendarRange, FileText, Mic, Sparkles, Table2, UserX, X } from "lucide-react";
+import { Activity, CalendarDays, CalendarRange, FileText, Mic, Sparkles, Table2, X } from "lucide-react";
 import { dismissHootNudge } from "@/lib/actions/preferences";
 import type { HootFeed, HootNudge } from "@/lib/hoot/types";
-import { NY } from "@/lib/providers/calendar";
 import { analystSentence, isOverdue, listNudges, listSentence, nudgeAction, nudgeWhen } from "@/lib/today";
 import { Panel, PanelHeader, PanelFooter } from "@/components/app/panel";
 import { Button } from "@/components/ui/button";
+import { fmtTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const REFRESH_MS = 5 * 60_000;
@@ -81,7 +80,7 @@ export function TodayFeed({ initial, loadedAt, children }: { initial: HootNudge[
 }
 
 /**
- * "I found four things for you, one of them overdue.", or for an analyst "You owe 1 write-up, due 12:00 ET Monday."
+ * "I found four things for you, one of them overdue.", or for an analyst "Your team owes 1 write-up, due 12:00 ET Monday."
  * Follows the list as it refreshes.
  */
 export function ListSentence({ analyst }: { analyst: boolean }) {
@@ -91,7 +90,7 @@ export function ListSentence({ analyst }: { analyst: boolean }) {
 
 function iconFor(n: HootNudge) {
   if (n.kind === "proposal" && n.id.startsWith("proposal:model:")) return Table2;
-  return { movement: Activity, holdings: UserX, earnings: CalendarDays, sell_side: Mic, proposal: FileText, weekly: CalendarRange, changelog: Sparkles, tip: Sparkles }[n.kind];
+  return { movement: Activity, earnings: CalendarDays, sell_side: Mic, proposal: FileText, weekly: CalendarRange, changelog: Sparkles, tip: Sparkles }[n.kind];
 }
 
 /** Hoot's list for you: the "For you" feed from his panel, most urgent first. */
@@ -107,7 +106,7 @@ export function HootList() {
         title="Hoot's list for you"
         count={nudges.length ? nudges.length : undefined}
         hot
-        aside={<span suppressHydrationWarning>Updated {DateTime.fromISO(updatedAt).setZone(NY).toFormat("h:mm")} · refreshes every 5 min</span>}
+        aside={<span suppressHydrationWarning>Updated {fmtTime(updatedAt)} · refreshes every 5 min</span>}
       />
       {nudges.length === 0 ? (
         <p className="flex h-[58px] items-center px-4 text-[14px] text-muted-foreground">Nothing needs you right now. I&rsquo;ll put things here as they come up.</p>

@@ -1,7 +1,7 @@
 import { Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { fmtDate } from "@/lib/format";
+import { fixed, fmtDate } from "@/lib/format";
 import {
   FACTORS,
   T_STAT_THRESHOLD,
@@ -27,9 +27,9 @@ export const FACTORS_ANCHOR = "factors";
 /** The full factor section below the fold. */
 export const FACTOR_DETAIL_ANCHOR = "factor-detail";
 
-const beta = (c: Coefficient) => formatBeta(c.beta, 2, { signed: true });
-const tText = (c: Coefficient) => `t ${formatBeta(c.t, 1, { signed: true })}`;
-const title = (c: Coefficient) => `β ${formatBeta(c.beta, 4, { signed: true })}, standard error ${c.se.toFixed(4)}, t ${c.t.toFixed(2)}${c.significant ? "" : ` (|t| < ${T_STAT_THRESHOLD}: not statistically significant)`}`;
+const beta = (c: Coefficient) => formatBeta(c.beta, 2);
+const tText = (c: Coefficient) => `t ${formatBeta(c.t, 1)}`;
+const title = (c: Coefficient) => `β ${formatBeta(c.beta, 4)}, standard error ${fixed(c.se, 4)}, t ${formatBeta(c.t, 2)}${c.significant ? "" : ` (|t| < ${T_STAT_THRESHOLD}: not statistically significant)`}`;
 
 /** A beta with its t-stat under it; greyed when |t| < 2. */
 function BetaCell({ c, className }: { c: Coefficient; className?: string }) {
@@ -81,7 +81,7 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
           <ul className="grid gap-1">
             {read.clear.map((x) => (
               <li key={x.key}>
-                <span className="font-medium">{x.label}</span> <span className="font-mono text-xs text-muted-foreground">β {formatBeta(x.beta, 2, { signed: true })}</span> · {x.text}
+                <span className="font-medium">{x.label}</span> <span className="font-mono text-xs text-muted-foreground">β {formatBeta(x.beta, 2)}</span> · {x.text}
               </li>
             ))}
           </ul>
@@ -92,7 +92,7 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
           <p className="text-muted-foreground">
             No clear exposure (|t| &lt; {T_STAT_THRESHOLD}):{" "}
             {read.unclear.map((x, i) => (
-              <span key={x.key} className="tnum">{i ? ", " : ""}{x.label.toLowerCase()} β {formatBeta(x.beta, 2, { signed: true })}</span>
+              <span key={x.key} className="tnum">{i ? ", " : ""}{x.label.toLowerCase()} β {formatBeta(x.beta, 2)}</span>
             ))}
             .
           </p>
@@ -135,9 +135,9 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
           <TableFooter>
             <TableRow>
               <TableCell className="text-xs font-medium"><Explained label="R²">{RISK_EXPLAIN.factorR2}</Explained></TableCell>
-              <TableCell className="text-right font-mono text-[12.5px]">{f.fund.r2.toFixed(2)}</TableCell>
-              <TableCell className="text-right font-mono text-[12.5px]">{f.benchmark ? f.benchmark.r2.toFixed(2) : "—"}</TableCell>
-              <TableCell className="text-right font-mono text-[12.5px]">{f.active ? f.active.r2.toFixed(2) : "—"}</TableCell>
+              <TableCell className="text-right font-mono text-[12.5px]">{fixed(f.fund.r2, 2)}</TableCell>
+              <TableCell className="text-right font-mono text-[12.5px]">{f.benchmark ? fixed(f.benchmark.r2, 2) : "—"}</TableCell>
+              <TableCell className="text-right font-mono text-[12.5px]">{f.active ? fixed(f.active.r2, 2) : "—"}</TableCell>
             </TableRow>
           </TableFooter>
         </Table>
@@ -201,7 +201,7 @@ function HoldingBetas({ f }: { f: FactorReport }) {
                     </TableCell>
                   );
                 })}
-                <TableCell className="text-right font-mono text-muted-foreground">{h.r2.toFixed(2)}</TableCell>
+                <TableCell className="text-right font-mono text-muted-foreground">{fixed(h.r2, 2)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -220,20 +220,20 @@ function FactorWorking({ f, downloads, fund }: { f: FactorReport; downloads: Rea
   const shown = terms.slice(0, 4);
   const bottomUp = weightedBetas(f.holdings)[key];
   const c = f.fund.betas[key];
-  const fmtTerm = (w: number, b: number) => `${w.toFixed(3)} × ${formatBeta(b, 3)}`;
-  const fit = (x: FactorFit | null) => (x ? formatBeta(x.betas[key].beta, 4, { signed: true }) : "—");
+  const fmtTerm = (w: number, b: number) => `${fixed(w, 3)} × ${formatBeta(b, 3)}`;
+  const fit = (x: FactorFit | null) => (x ? formatBeta(x.betas[key].beta, 4) : "—");
   return (
     <Working className="mt-2" title="Factor working">
       <Step label="Model">
-        rᵢ = α + β<sub>market</sub>·SPY + β<sub>size</sub>·(IWM − SPY) + β<sub>value</sub>·(IVE − IVW) + β<sub>momentum</sub>·(MTUM − SPY) + β<sub>rates</sub>·TLT + β<sub>dollar</sub>·UUP + β<sub>oil</sub>·USO + ε, daily total returns, OLS over {f.sample.n} days ({f.sample.from} to {f.sample.to}), {f.fund.df} degrees of freedom
+        rᵢ = α + β<sub>market</sub>·SPY + β<sub>size</sub>·(IWM − SPY) + β<sub>value</sub>·(IVE − IVW) + β<sub>momentum</sub>·(MTUM − SPY) + β<sub>rates</sub>·TLT + β<sub>dollar</sub>·UUP + β<sub>oil</sub>·USO + ε, daily total returns, OLS over {f.sample.n} days ({fmtDate(f.sample.from)} to {fmtDate(f.sample.to)}), {f.fund.df} degrees of freedom
       </Step>
       <Step label={`${fund ? "Fund" : "Team"} ${label} β = Σ wᵢ βᵢ`}>
         {shown.map((h) => fmtTerm(h.weight, h.betas[key].beta)).join(" + ")}
-        {terms.length > shown.length ? ` + … (${terms.length - shown.length} more)` : ""} = <b>{formatBeta(bottomUp, 4, { signed: true })}</b>
+        {terms.length > shown.length ? ` + … (${terms.length - shown.length} more)` : ""} = <b>{formatBeta(bottomUp, 4)}</b>
       </Step>
-      <Step label="Check">regressing the weighted portfolio&apos;s own daily return gives {formatBeta(c.beta, 4, { signed: true })}: the same number, because least squares is linear in the returns</Step>
+      <Step label="Check">regressing the weighted portfolio&apos;s own daily return gives {formatBeta(c.beta, 4)}: the same number, because least squares is linear in the returns</Step>
       <Step label="t-stat">
-        β ÷ standard error = {formatBeta(c.beta, 4, { signed: true })} ÷ {rsci(c.se, 4)} = <b>{c.t.toFixed(2)}</b>
+        β ÷ standard error = {formatBeta(c.beta, 4)} ÷ {rsci(c.se, 4)} = <b>{formatBeta(c.t, 2)}</b>
         {Math.abs(c.t) < T_STAT_THRESHOLD ? " (below 2, so greyed out and described as no clear exposure)" : ""}
       </Step>
       {f.active && (
@@ -241,7 +241,7 @@ function FactorWorking({ f, downloads, fund }: { f: FactorReport; downloads: Rea
           {fit(f.fund)} − benchmark {fit(f.benchmark)} = <b>{fit(f.active)}</b>
         </Step>
       )}
-      <Step label="R²">1 − residual sum of squares ÷ total sum of squares = {f.fund.r2.toFixed(4)}; residual volatility {rpct(f.fund.residualVol)} a year</Step>
+      <Step label="R²">1 − residual sum of squares ÷ total sum of squares = {fixed(f.fund.r2, 4)}; residual volatility {rpct(f.fund.residualVol)} a year</Step>
       <Source>
         stored daily closes with dividends. In Excel, LINEST(portfolio column, the seven factor columns, TRUE, TRUE) on the returns download reproduces the {fund ? "Fund" : "team"} row, standard errors included: {downloads}
       </Source>

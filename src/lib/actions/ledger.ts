@@ -14,6 +14,7 @@ import { runPricesJob } from "@/lib/jobs/prices";
 import { todayNY } from "@/lib/providers/calendar";
 import { getFundSectorWeights } from "@/lib/providers/yahoo";
 import type { ActionResult } from "./holdings";
+import { fmtDate, fmtNumber, fmtPct } from "@/lib/format";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a date");
 const sectorEnum = z.enum(GICS_SECTORS);
@@ -112,7 +113,7 @@ export async function saveBenchmarkWeights(_prev: ActionResult | null, fd: FormD
     rows.push({ sector, weight: w });
   }
   const total = rows.reduce((s, r) => s + r.weight, 0);
-  if (Math.abs(total - 100) > 0.1) return { ok: false, error: `Weights add up to ${total.toFixed(2)}%. They need to total 100%.` };
+  if (Math.abs(total - 100) > 0.1) return { ok: false, error: `Weights add up to ${fmtPct(total)}. They need to total 100%.` };
   const source = String(fd.get("source") ?? "").trim().slice(0, 200) || null;
   await db.transaction(async (tx) => {
     await tx.delete(benchmarkSectorWeights).where(eq(benchmarkSectorWeights.asOf, asOf.data));
@@ -222,7 +223,7 @@ export async function previewLedgerImport(text: string, replaceOpening: boolean)
       loadSeries(db),
       loadSeries(db, { trades: [...keptTrades, ...fresh.trades], cashFlows: [...keptFlows, ...fresh.cashFlows] }),
     ]);
-    for (const o of after.quality.ledger.oversold) errors.push({ line: 0, message: `Sells ${o.shares.toFixed(4)} more ${o.ticker} than held on ${o.date}. A buy or opening row is probably missing.` });
+    for (const o of after.quality.ledger.oversold) errors.push({ line: 0, message: `Sells ${fmtNumber(o.shares)} more ${o.ticker} than held on ${fmtDate(o.date)}. A buy or opening row is probably missing.` });
     const a = shareCounts(now.series.portfolio);
     const b = shareCounts(after.series.portfolio);
     positionsAfter = b.size;

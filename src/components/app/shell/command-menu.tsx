@@ -9,7 +9,7 @@ import { useTheme } from "next-themes";
 import { holdingHref, scopeSlugFromPath } from "@/lib/scope";
 import { markScopeIntent } from "./scope-intent";
 import type { CommandHolding } from "@/lib/nav-data";
-import { fmtCurrency, fmtPct } from "@/lib/format";
+import { fmtBp, fmtCurrency, fmtDay, fmtPct, ppToBp } from "@/lib/format";
 import { parseHootCommand } from "@/lib/hoot/commands";
 import { suggestionsFor, tickerFromPath } from "@/lib/hoot/policy";
 import { isMac } from "@/lib/hoot/shortcuts";
@@ -21,7 +21,7 @@ import { pageContextFor } from "../hoot/page-context";
 import { OwlMark } from "../owl-mark";
 import { commandGroups, typedQuestionTarget, type CommandItem as Item, type CommandPage, type CommandScope } from "./command-groups";
 
-const shortDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const shortDate = (iso: string) => fmtDay(iso);
 
 /**
  * ⌘K, the one place to ask Hoot outside Research: jump to a holding or page, run a quick action, or send the text to
@@ -67,7 +67,7 @@ export function CommandMenu({
     }
   }
 
-  // On a holding page a typed question goes to that holding's research board, as it did from the companion.
+  // On a holding page a typed question goes to that holding's research, as it did from the companion.
   const pageTicker = tickerFromPath(pathname);
   const pageTeamSlug = scopeSlugFromPath(pathname);
   const groups = useMemo(
@@ -285,7 +285,7 @@ function Preview({ item, seeing }: { item: Item; seeing: string | null }) {
   const [title, body] = command
     ? ["Hoot", "Does this right away. No chat is opened."]
     : item.kind === "ask"
-      ? ["Ask Hoot", `Opens ${item.ticker ? `a chat on ${item.ticker}'s research board` : "a research chat"} and sends this question. Hoot cites a source for every fact.`]
+      ? ["Ask Hoot", `Opens ${item.ticker ? `a chat in ${item.ticker} research` : "a research chat"} and sends this question. Hoot cites a source for every fact.`]
       : item.kind === "suggest"
         ? ["Suggested question", "Puts it in the box so you can edit it. Enter then asks Hoot."]
         : item.kind === "page"
@@ -335,9 +335,8 @@ function HoldingPreview({ holding: h }: { holding: CommandHolding }) {
   }, [h.ticker]);
   const q = quoteCache.get(h.ticker);
   const rows: [string, React.ReactNode, string?][] = [
-    ["Owner", h.owner ?? "Unassigned", h.owner ? undefined : "text-caution-foreground"],
-    ["Weight", h.weightPct != null ? `${h.weightPct.toFixed(1)}% of NAV` : "—"],
-    ["vs S&P, last session", q?.relativePp != null ? `${q.relativePp > 0 ? "+" : ""}${q.relativePp.toFixed(1)} pp` : "—", q?.relativePp == null ? undefined : q.relativePp >= 0 ? "text-up" : "text-down"],
+    ["Weight", h.weightPct != null ? `${fmtPct(h.weightPct, 1)} of NAV` : "—"],
+    ["vs S&P, last session", q?.relativePp != null ? fmtBp(ppToBp(q.relativePp)) : "—", q?.relativePp == null ? undefined : q.relativePp >= 0 ? "text-up" : "text-down"],
     ["Next report", h.nextReport ? `${shortDate(h.nextReport)}${h.nextReportEstimated ? " (est.)" : ""}` : "—"],
     ["Open items", h.openMovement ? "Movement write-up open" : "None", h.openMovement ? "text-hoot-foreground" : undefined],
   ];

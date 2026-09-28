@@ -1,16 +1,15 @@
 import { DriveNotConnected } from "@/lib/drive/auth";
-import { fmtDateTime } from "@/lib/format";
+import { fmtDateTime, fmtNumber } from "@/lib/format";
 import { compareWithLedger, POSITIONS_TAB, sheetQuantities, type QuantityCheck } from "@/lib/pt-sheet/reconcile";
 import { ptSheetConfigured, readPtSheet } from "@/lib/pt-sheet/read";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Panel, PanelHeader, Pill } from "@/components/app/panel";
 
-const shares = (n: number | null) => (n === null ? "—" : n.toLocaleString("en-US", { maximumFractionDigits: 4 }));
 
 function meaning(c: QuantityCheck): string {
   if (c.status === "sheet_only") return "In the sheet but not the ledger: a buy may be missing from the ledger.";
   if (c.status === "ledger_only") return "In the ledger but not the sheet: a sale may be missing from the ledger, or the sheet dropped it.";
-  const n = shares(Math.abs(c.diff));
+  const n = fmtNumber(Math.abs(c.diff));
   return c.diff > 0 ? `The sheet has ${n} more: a buy may be missing from the ledger.` : `The ledger has ${n} more: a sale may be missing from the ledger, or the sheet is behind.`;
 }
 
@@ -87,11 +86,11 @@ export async function SheetCheck({ positions }: { positions: { ticker: string; s
                   <TableRow key={c.ticker}>
                     <TableCell className="pl-4 font-mono font-semibold">{c.ticker}</TableCell>
                     <TableCell className="text-right font-mono text-[12.5px]">
-                      {shares(c.sheet)}
+                      {fmtNumber(c.sheet)}
                       {c.ref && <span className="ml-1 text-xs text-muted-foreground">({c.ref})</span>}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-[12.5px]">{shares(c.ledger)}</TableCell>
-                    <TableCell className="text-right font-mono text-[12.5px]">{c.diff > 0 ? `+${shares(c.diff)}` : shares(c.diff)}</TableCell>
+                    <TableCell className="text-right font-mono text-[12.5px]">{fmtNumber(c.ledger)}</TableCell>
+                    <TableCell className="text-right font-mono text-[12.5px]">{fmtNumber(c.diff)}</TableCell>
                     <TableCell className="pr-4 whitespace-normal text-muted-foreground">{meaning(c)}</TableCell>
                   </TableRow>
                 ))}

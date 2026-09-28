@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { Acct } from "./acct";
+import { Acct } from "@/components/app/accounting";
 import { Panel, PanelHeader } from "@/components/app/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fmtAccounting, fmtCurrency } from "@/lib/format";
@@ -18,12 +18,12 @@ const tone = (v: number | null | undefined) => (v === null || v === undefined ||
 
 const COLS_BOOK = "grid-cols-[minmax(0,1fr)_76px_84px_160px_132px]";
 const COLS_PLAIN = "grid-cols-[minmax(0,1fr)_160px]";
-const HOLDING_COLS = "grid grid-cols-[minmax(0,1fr)_96px_80px_80px_104px_minmax(0,140px)] items-center gap-3";
+const HOLDING_COLS = "grid grid-cols-[minmax(0,1fr)_96px_80px_80px_104px] items-center gap-3";
 
 /**
  * Teams on the last session: return, what each added to the fund, a diverging bar and the biggest mover. Readers
  * without the book see their teams and today's biggest mover. A row opens to its holdings: price, today's move,
- * move against the S&P 500, next earnings and owner.
+ * move against the S&P 500 and next earnings.
  */
 export function TeamsPanel({
   title,
@@ -132,20 +132,20 @@ function TeamHoldings({ team, live }: { team: TeamRowData; live: boolean }) {
           <span role="columnheader" className="text-right">Day</span>
           <span role="columnheader" className="text-right">vs S&amp;P</span>
           <span role="columnheader" className="text-right">Next earnings</span>
-          <span role="columnheader">Owner</span>
         </div>
         {team.holdings.map((h) => (
           <div role="row" key={h.id} className={cn(HOLDING_COLS, "h-9 border-t border-row")}>
-            <span role="cell">
-              <Link href={h.href} className="font-mono font-semibold hover:underline">
+            <span role="cell" className="flex min-w-0 items-baseline gap-2">
+              <Link href={h.href} className="shrink-0 font-mono font-semibold hover:underline">
                 {h.ticker}
               </Link>
+              <span className="truncate text-muted-foreground">{h.company}</span>
             </span>
             {live ? (
               <>
                 <span role="cell" className="text-right font-mono tabular-nums">{fmtCurrency(h.price, h.currency)}</span>
                 <span role="cell" className={cn("text-right font-mono tabular-nums", tone(h.changePct))}><Acct value={h.changePct} unit="%" /></span>
-                <span role="cell" className="text-right font-mono text-muted-foreground tabular-nums"><Acct value={h.relativePp} unit=" pp" /></span>
+                <span role="cell" className="text-right font-mono text-muted-foreground tabular-nums"><Acct value={h.relativePp == null ? null : h.relativePp * 100} digits={0} unit=" bp" /></span>
               </>
             ) : (
               <>
@@ -155,7 +155,6 @@ function TeamHoldings({ team, live }: { team: TeamRowData; live: boolean }) {
               </>
             )}
             <span role="cell" className="text-right font-mono text-muted-foreground">{h.nextReport ?? "—"}</span>
-            <span role="cell" className="truncate text-muted-foreground">{h.owner ?? "Unassigned"}</span>
           </div>
         ))}
       </div>

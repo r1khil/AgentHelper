@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { AttributionBreakdown, SectorBreakdown, SectorDayBreakdown, SectorRow } from "@/lib/attribution/attribution";
 import type { SectorLineage } from "@/lib/attribution/lineage";
 import { bucketLabel, type BucketKey } from "@/lib/attribution/sectors";
-import { fixed, fmtDate } from "@/lib/format";
+import { fixed, fmtBp, fmtDate, fmtMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Move } from "../move";
 import { EXPLAIN } from "./explainers";
@@ -24,9 +24,10 @@ type Payload = {
 };
 
 const DEFAULT_ROWS = 20;
+// The working keeps a true minus on operands, since parentheses in a formula group terms; results use accounting style.
 const w = (v: number) => `${fixed(v * 100, 2)}%`;
 const r = (v: number) => `${fixed(v * 100, 3)}%`;
-const bps = (v: number, d = 2) => `${fixed(v * 10_000, d)} bps`;
+const bps = (v: number, d = 2) => `${fixed(v * 10_000, d)} bp`;
 const f = (v: number, d = 4) => fixed(v, d);
 const PRICED: Record<string, { label: string; warn: boolean }> = {
   close: { label: "close", warn: false },
@@ -103,15 +104,15 @@ function FormulaBlock({ row, days }: { row: SectorRow; days: SectorDayBreakdown[
       <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[auto_1fr]">
         <dt className="font-medium">Allocation</dt>
         <dd className="tnum">
-          Σ<sub>t</sub> coef<sub>t</sub> · (wp<sub>t</sub> − wb<sub>t</sub>)(rb<sub>t</sub> − Rb<sub>t</sub>) = <Move value={row.allocation * 10_000} unit=" bps" digits={1} />
+          Σ<sub>t</sub> coef<sub>t</sub> · (wp<sub>t</sub> − wb<sub>t</sub>)(rb<sub>t</sub> − Rb<sub>t</sub>) = <Move value={row.allocation * 10_000} unit=" bp" digits={1} />
         </dd>
         <dt className="font-medium">Selection</dt>
         <dd className="tnum">
-          Σ<sub>t</sub> coef<sub>t</sub> · wb<sub>t</sub> (rp<sub>t</sub> − rb<sub>t</sub>) = <Move value={row.selection * 10_000} unit=" bps" digits={1} />
+          Σ<sub>t</sub> coef<sub>t</sub> · wb<sub>t</sub> (rp<sub>t</sub> − rb<sub>t</sub>) = <Move value={row.selection * 10_000} unit=" bp" digits={1} />
         </dd>
         <dt className="font-medium">Interaction</dt>
         <dd className="tnum">
-          Σ<sub>t</sub> coef<sub>t</sub> · (wp<sub>t</sub> − wb<sub>t</sub>)(rp<sub>t</sub> − rb<sub>t</sub>) = <Move value={row.interaction * 10_000} unit=" bps" digits={1} />
+          Σ<sub>t</sub> coef<sub>t</sub> · (wp<sub>t</sub> − wb<sub>t</sub>)(rp<sub>t</sub> − rb<sub>t</sub>) = <Move value={row.interaction * 10_000} unit=" bp" digits={1} />
         </dd>
       </dl>
       {example && b && (
@@ -123,13 +124,13 @@ function FormulaBlock({ row, days }: { row: SectorRow; days: SectorDayBreakdown[
           </div>
           <ul className="grid gap-0.5 tnum">
             <li>
-              ({w(example.wp)} − {w(b.wb)}) × ({r(b.rb)} − {r(b.Rb)}) = {bps(b.raw.allocation)} × {f(b.coef, 5)} = <Move value={b.scaled.allocation * 10_000} unit=" bps" digits={2} />
+              ({w(example.wp)} − {w(b.wb)}) × ({r(b.rb)} − {r(b.Rb)}) = {bps(b.raw.allocation)} × {f(b.coef, 5)} = <Move value={b.scaled.allocation * 10_000} unit=" bp" digits={2} />
             </li>
             <li>
-              {w(b.wb)} × ({r(example.rp)} − {r(b.rb)}) = {bps(b.raw.selection)} × {f(b.coef, 5)} = <Move value={b.scaled.selection * 10_000} unit=" bps" digits={2} />
+              {w(b.wb)} × ({r(example.rp)} − {r(b.rb)}) = {bps(b.raw.selection)} × {f(b.coef, 5)} = <Move value={b.scaled.selection * 10_000} unit=" bp" digits={2} />
             </li>
             <li>
-              ({w(example.wp)} − {w(b.wb)}) × ({r(example.rp)} − {r(b.rb)}) = {bps(b.raw.interaction)} × {f(b.coef, 5)} = <Move value={b.scaled.interaction * 10_000} unit=" bps" digits={2} />
+              ({w(example.wp)} − {w(b.wb)}) × ({r(example.rp)} − {r(b.rb)}) = {bps(b.raw.interaction)} × {f(b.coef, 5)} = <Move value={b.scaled.interaction * 10_000} unit=" bp" digits={2} />
             </li>
           </ul>
         </div>
@@ -147,7 +148,7 @@ function CarinoBlock({ linking }: { linking: AttributionBreakdown["linking"] }) 
       </p>
       <p className="text-muted-foreground">
         Each day&apos;s coefficient is k<sub>t</sub> / K with k<sub>t</sub> from that day&apos;s rp and rb. Check: Σ coef<sub>t</sub> (rp<sub>t</sub> − rb<sub>t</sub>) ={" "}
-        <span className="tnum">{bps(linked, 2)}</span>, the period&apos;s active return.
+        <span className="tnum">{fmtBp(linked * 10_000, 2)}</span>, the period&apos;s active return.
       </p>
     </Block>
   );
@@ -220,18 +221,18 @@ function DayRows({ d, flags, open, hasBench, cols, onToggle }: { d: SectorDayBre
         <TableCell className="tnum whitespace-nowrap">{fmtDate(d.date)}</TableCell>
         <TableCell className="tnum text-right">{w(d.wp)}</TableCell>
         {hasBench && <TableCell className="tnum text-right">{b ? w(b.wb) : "—"}</TableCell>}
-        <TableCell className="text-right"><Move value={d.rp * 100} unit="%" digits={3} /></TableCell>
-        {hasBench && <TableCell className="text-right">{b ? <Move value={b.rb * 100} unit="%" digits={3} /> : "—"}</TableCell>}
-        {hasBench && <TableCell className="text-right">{b ? <Move value={b.Rb * 100} unit="%" digits={3} /> : "—"}</TableCell>}
-        {hasBench && <TableCell className="text-right">{b ? <Move value={b.raw.allocation * 100} digits={4} /> : "—"}</TableCell>}
-        {hasBench && <TableCell className="text-right">{b ? <Move value={b.raw.selection * 100} digits={4} /> : "—"}</TableCell>}
-        {hasBench && <TableCell className="text-right">{b ? <Move value={b.raw.interaction * 100} digits={4} /> : "—"}</TableCell>}
+        <TableCell className="text-right"><Move value={d.rp * 100} unit="%" digits={3} align /></TableCell>
+        {hasBench && <TableCell className="text-right">{b ? <Move value={b.rb * 100} unit="%" digits={3} align /> : "—"}</TableCell>}
+        {hasBench && <TableCell className="text-right">{b ? <Move value={b.Rb * 100} unit="%" digits={3} align /> : "—"}</TableCell>}
+        {hasBench && <TableCell className="text-right">{b ? <Move value={b.raw.allocation * 100} digits={4} align /> : "—"}</TableCell>}
+        {hasBench && <TableCell className="text-right">{b ? <Move value={b.raw.selection * 100} digits={4} align /> : "—"}</TableCell>}
+        {hasBench && <TableCell className="text-right">{b ? <Move value={b.raw.interaction * 100} digits={4} align /> : "—"}</TableCell>}
         {hasBench && <TableCell className="tnum text-right">{b ? f(b.coef, 5) : "—"}</TableCell>}
-        {hasBench && <TableCell className="text-right">{b ? <Move value={b.scaled.allocation * 100} digits={4} /> : "—"}</TableCell>}
-        {hasBench && <TableCell className="text-right">{b ? <Move value={b.scaled.selection * 100} digits={4} /> : "—"}</TableCell>}
-        {hasBench && <TableCell className="text-right">{b ? <Move value={b.scaled.interaction * 100} digits={4} /> : "—"}</TableCell>}
+        {hasBench && <TableCell className="text-right">{b ? <Move value={b.scaled.allocation * 100} digits={4} align /> : "—"}</TableCell>}
+        {hasBench && <TableCell className="text-right">{b ? <Move value={b.scaled.selection * 100} digits={4} align /> : "—"}</TableCell>}
+        {hasBench && <TableCell className="text-right">{b ? <Move value={b.scaled.interaction * 100} digits={4} align /> : "—"}</TableCell>}
         <TableCell className="tnum text-right">{f(d.growth, 5)}</TableCell>
-        <TableCell className="text-right"><Move value={d.contributionScaled * 100} digits={4} /></TableCell>
+        <TableCell className="text-right"><Move value={d.contributionScaled * 100} digits={4} align /></TableCell>
         <TableCell className="whitespace-nowrap">
           {flags.length > 0 && (
             <span className="inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/10 px-1 text-warning-foreground">
@@ -259,9 +260,9 @@ function DayRows({ d, flags, open, hasBench, cols, onToggle }: { d: SectorDayBre
                   <tr key={p.ticker}>
                     <td className="pr-4 font-medium">{p.ticker}</td>
                     <td className="tnum pr-4 text-right">{w(p.weight)}</td>
-                    <td className="pr-4 text-right"><Move value={p.ret * 100} unit="%" digits={3} /></td>
-                    <td className="pr-4 text-right"><Move value={p.contribution * 100} digits={4} /></td>
-                    <td className="tnum pr-4 text-right">{p.pnl === null ? "—" : p.pnl.toLocaleString("en-US", { maximumFractionDigits: 2 })}</td>
+                    <td className="pr-4 text-right"><Move value={p.ret * 100} unit="%" digits={3} align /></td>
+                    <td className="pr-4 text-right"><Move value={p.contribution * 100} digits={4} align /></td>
+                    <td className="tnum pr-4 text-right">{fmtMoney(p.pnl)}</td>
                     <td className={cn(p.priced && PRICED[p.priced].warn && "text-warning-foreground")}>{p.priced ? PRICED[p.priced].label : "—"}</td>
                   </tr>
                 ))}

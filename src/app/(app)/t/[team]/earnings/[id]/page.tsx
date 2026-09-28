@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Lock, RefreshCw } from "lucide-react";
+import { Lock, RefreshCw } from "lucide-react";
 import { itemTeam, loadScope } from "@/lib/teams";
 import { holdingHref } from "@/lib/scope";
 import { getEarnings, listEarningsEvidence, type Actuals } from "@/lib/earnings";
@@ -9,7 +9,7 @@ import { gatherResults, lockChecklist, markReviewed, rebuildPrepPack, requestEar
 import { canManageTeam } from "@/lib/auth";
 import { PrepPackCard } from "@/components/app/agent/prep-pack-card";
 import { agentConfigured } from "@/lib/agent/model";
-import { fmtCurrency, fmtDate, fmtDateTime, relativeTime } from "@/lib/format";
+import { fmtCurrency, fmtDateTime, fmtDay, relativeTime } from "@/lib/format";
 import { todayNY } from "@/lib/providers/calendar";
 import { Panel, Pill } from "@/components/app/panel";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -39,7 +39,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
   const rebuild = canManage && !reported && agentConfigured() ? (
     <form action={rebuildPrepPack}>
       <input type="hidden" name="id" value={e.id} />
-      <Button type="submit" size="sm" variant="outline" title="Gather the evidence again with the agent (one model run)">
+      <Button type="submit" size="sm" variant="outline" title="Have Hoot gather the evidence again (one model run)">
         <RefreshCw />
         {e.prepPack ? "Rebuild" : "Build prep pack"}
       </Button>
@@ -56,22 +56,15 @@ export default async function EarningsDetail({ params, searchParams }: { params:
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5">
+      {/* The way back up to the Calendar is in the app header (nav.ts backFor), so there's no breadcrumb here. */}
       <div className="flex flex-col gap-3">
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-          <Link href={`/t/${scope.slug}/earnings`} className="inline-flex items-center gap-1 hover:text-foreground">
-            <ArrowLeft className="size-3.5" />
-            Calendar
-          </Link>
-          <span aria-hidden="true">/</span>
-          <span className="text-foreground">{h.ticker} earnings</span>
-        </nav>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Link href={holdingHref(scope.slug, team.slug, h.ticker)} className="font-mono text-[28px] leading-none font-semibold tracking-[-0.02em] hover:underline">
             {h.ticker}
           </Link>
           <span className="text-[15px] text-ink-2">{h.companyName}</span>
           <span className="font-mono text-[13px] text-muted-foreground">
-            {e.fiscalPeriod ?? "Earnings"} · {fmtDate(e.reportDate)}
+            {e.fiscalPeriod ? `${e.fiscalPeriod} earnings` : "Earnings"} · {fmtDay(e.reportDate)}
             {e.reportHour ? ` ${e.reportHour.toUpperCase()}` : ""}
           </span>
           <Pill tone={e.dateStatus === "estimated" ? "caution" : "neutral"}>{e.dateStatus} date</Pill>
@@ -154,7 +147,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
           )}
           <div className="flex flex-1 flex-col">
             {!reported ? (
-              <p className="p-4 text-[13.5px] text-muted-foreground">Results can be gathered from {fmtDate(e.reportDate)}. The morning sweep also does this automatically.</p>
+              <p className="p-4 text-[13.5px] text-muted-foreground">Results can be gathered from {fmtDay(e.reportDate)}. The morning sweep also does this automatically.</p>
             ) : !actuals ? (
               <p className="p-4 text-[13.5px] text-muted-foreground">Not gathered yet. Click &ldquo;Gather results&rdquo; to pull the 8-K and press release from EDGAR.</p>
             ) : (

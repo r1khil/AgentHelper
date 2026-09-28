@@ -56,7 +56,7 @@ export function SectorExposure({ sectors, benchmarkLabel, activeFirst = false, b
       <TableCell key="active">
         <div className="flex items-center justify-end gap-2.5">
           <DivergingBar value={s.active} max={maxActive} className="w-12" />
-          <Move value={s.active === null ? null : s.active * 100} unit=" pp" digits={1} className="w-16 text-right" />
+          <Move value={s.active === null ? null : s.active * 10_000} unit=" bp" digits={0} align className="w-16 text-right" />
         </div>
       </TableCell>
     );
@@ -107,8 +107,8 @@ export function SectorExposure({ sectors, benchmarkLabel, activeFirst = false, b
                 <TableCell key="weight" className="font-mono text-xs text-muted-foreground">{rpct(sectors.reduce((s, x) => s + x.weight, 0))} · {rpct(sectors.reduce((s, x) => s + (x.benchWeight ?? 0), 0))}</TableCell>,
                 <TableCell key="active" className="text-right text-xs">
                   <div className="grid justify-end gap-0.5 whitespace-nowrap">
-                    <span>overweights <Move value={balance.overweight * 100} unit=" pp" digits={1} /></span>
-                    <span>underweights <Move value={(balance.underweight ?? 0) * 100} unit=" pp" digits={1} /></span>
+                    <span>overweights <Move value={balance.overweight * 10_000} unit=" bp" digits={0} /></span>
+                    <span>underweights <Move value={(balance.underweight ?? 0) * 10_000} unit=" bp" digits={0} /></span>
                   </div>
                 </TableCell>,
               )}

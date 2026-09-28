@@ -12,6 +12,7 @@ import { loadSnapshot } from "@/lib/backtesting/load";
 import { NY } from "@/lib/providers/calendar";
 import { getAdjustedBarsRange, getDailyBars } from "@/lib/providers/yahoo";
 import { sourceId, type Source } from "@/lib/providers/types";
+import { fmtPct } from "@/lib/format";
 
 /**
  * Named inputs for run_python. Each loader fetches through the same provider or loader the matching
@@ -128,7 +129,7 @@ async function loadHoldings(ctx: DatasetContext): Promise<Omit<Dataset, "name" |
       publishedAt: asOf,
       retrievedAt: new Date().toISOString(),
       sourceType: "Fund holdings",
-      excerpt: positions.map((p) => `${p.ticker} ${(p.weight * 100).toFixed(2)}%`).join(", ").slice(0, 360),
+      excerpt: positions.map((p) => `${p.ticker} ${fmtPct(p.weight * 100)}`).join(", ").slice(0, 360),
     },
   };
 }
@@ -190,7 +191,7 @@ async function loadReturns(ctx: DatasetContext, which: "fund" | "team" | null, r
       publishedAt: period.end,
       retrievedAt: new Date().toISOString(),
       sourceType: "Fund attribution",
-      excerpt: `${label} return ${(result.portfolioReturn * 100).toFixed(2)}% over ${rows.length} sessions, ${period.start} to ${period.end}.`,
+      excerpt: `${label} return ${fmtPct(result.portfolioReturn * 100)} over ${rows.length} sessions, ${period.start} to ${period.end}.`,
     },
   };
 }

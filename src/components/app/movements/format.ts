@@ -1,36 +1,20 @@
 import type { PillTone } from "@/components/app/panel";
 import type { MovementStatus } from "./types";
+import { fmtDateTime, fmtDay } from "@/lib/format";
 
-const NY = "America/New_York";
-
-function sessionDay(d: string) {
-  // Session dates are calendar dates; noon UTC keeps them on the same day in every US zone.
-  return new Date(`${d}T12:00:00Z`);
-}
-
-/** "Tue Sep 22" (with the year when it isn't this year). */
+/** A session (a calendar date): "Tue 22 Sep", or "22 Sep 2025" in another year. */
 export function sessionShort(d: string, now = new Date()) {
-  const dt = sessionDay(d);
-  const base = dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).replace(",", "");
-  return dt.getUTCFullYear() === now.getUTCFullYear() ? base : `${base}, ${dt.getUTCFullYear()}`;
+  return fmtDay(d, now);
 }
 
-/** "Tuesday, September 22" (with the year when it isn't this year). */
+/** The session as the movement's heading; the same day format as everywhere else. */
 export function sessionLong(d: string, now = new Date()) {
-  const dt = sessionDay(d);
-  const sameYear = dt.getUTCFullYear() === now.getUTCFullYear();
-  return dt.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: sameYear ? undefined : "numeric", timeZone: "UTC" });
+  return fmtDay(d, now);
 }
 
-/** "Wed Sep 23, 12:00 ET" */
-export function dueLabel(d: Date | null) {
-  if (!d) return "—";
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: NY })
-      .formatToParts(d)
-      .map((p) => [p.type, p.value]),
-  );
-  return `${parts.weekday} ${parts.month} ${parts.day}, ${parts.hour}:${parts.minute} ET`;
+/** "Wed 23 Sep, 12:00 ET" */
+export function dueLabel(d: Date | null, now = new Date()) {
+  return d ? fmtDateTime(d, now) : "—";
 }
 
 /** "5 days overdue", "3 hours overdue". */
@@ -55,16 +39,9 @@ export function movementPill(status: MovementStatus, overdue: boolean): { tone: 
   return { tone: "neutral", label: "Open" };
 }
 
-/** "6:04 pm Tue" */
+/** "Tue 22 Sep, 18:04 ET" */
 export function gatheredAt(d: Date) {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: NY }).formatToParts(d).map((p) => [p.type, p.value]),
-  );
-  return `${parts.hour}:${parts.minute} ${String(parts.dayPeriod ?? "").toLowerCase()} ${parts.weekday}`;
-}
-
-export function firstName(name: string | null) {
-  return name ? name.split(" ")[0] || name : null;
+  return fmtDateTime(d);
 }
 
 export function wordCount(text: string | null) {
@@ -73,7 +50,7 @@ export function wordCount(text: string | null) {
 
 export const KIND_LABEL: Record<string, string> = { news: "News", filing: "SEC filing", peer_move: "Peer move, same session", financial: "Calendar", price: "Prices", release: "Company release" };
 
-/** "Sep 21, 6:04 pm" in New York time. */
+/** "Mon 21 Sep, 18:04 ET" in New York time. */
 export function sessionShortDateTime(d: Date) {
-  return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: NY }).replace(/ (AM|PM)$/, (m) => m.toLowerCase());
+  return fmtDateTime(d);
 }

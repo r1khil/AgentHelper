@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { DateTime } from "luxon";
 import { CalendarView } from "@/components/app/earnings/calendar-view";
-import { buildMonthGrid, defaultSelectedDay, groupByDate, inGrid, parseCalendarQuery, type CalendarEvent } from "@/lib/earnings-calendar";
+import { EARNINGS_DEFAULT_SHOW, buildMonthGrid, defaultSelectedDay, groupByDate, inGrid, kindOf, parseCalendarQuery, type CalendarEvent } from "@/lib/earnings-calendar";
 import { bookExposure, type CalendarFactorContext } from "@/lib/economic-calendar/factor-lines";
 import { calendarPreviewEnabled } from "@/lib/economic-calendar/preview";
 import { NY, todayNY } from "@/lib/providers/calendar";
@@ -52,7 +52,6 @@ function previewEarnings(start: string, end: string): CalendarEvent[] {
       teamId: "preview-team",
       teamSlug: "preview",
       teamName,
-      ownerId: i % 4 ? "preview-owner" : null,
       status: "upcoming",
       expectations: (["locked", "draft", "not_started"] as const)[i % 3],
     });
@@ -69,22 +68,22 @@ export default async function Preview({ searchParams }: { searchParams: Promise<
   const live = sp.live === "1";
   const audience = typeof sp.audience === "string" ? sp.audience : undefined;
   const today = todayNY();
-  const query = { ...parseCalendarQuery(sp, today), scope: "fund" as const };
+  // Opens like /t/[team]/earnings: the Fund's reports, with bellwethers and releases under Show (or ?show=).
+  const query = { ...parseCalendarQuery(sp, today, EARNINGS_DEFAULT_SHOW), scope: "fund" as const };
   const grid = buildMonthGrid(query.month);
   const events = previewEarnings(grid.start, grid.end);
-  const selectedDay = query.day && inGrid(grid, query.day) ? query.day : defaultSelectedDay(grid, groupByDate(events), today);
+  const selectedDay = query.day && inGrid(grid, query.day) ? query.day : defaultSelectedDay(grid, groupByDate(events.filter((ev) => query.show.includes(kindOf(ev)))), today);
   return (
     <main className="flex min-h-dvh flex-col bg-background p-6">
       <CalendarView
         base="/dev/economic-calendar"
-        defaultShow={["holdings", "bellwethers", "economic"]}
+        defaultShow={[...EARNINGS_DEFAULT_SHOW]}
         query={query}
         today={today}
         selectedDay={selectedDay}
         canScope={false}
         industries={[]}
         events={events}
-        ownerNames={{ "preview-owner": "Preview Analyst" }}
         accessibleTeamIds={["preview-team"]}
         notices={["Earnings here are synthetic fixtures, not the Fund's."]}
         reports={[]}

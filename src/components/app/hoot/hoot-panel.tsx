@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Activity, ArrowLeftRight, CalendarDays, CalendarRange, EyeOff, FileText, Mic, Search, Sparkles, UserX, X } from "lucide-react";
+import { Activity, ArrowLeftRight, CalendarDays, CalendarRange, EyeOff, FileText, Mic, Search, Sparkles, X } from "lucide-react";
 import type { HootNudge, NudgeKind } from "@/lib/hoot/types";
 import { hootShortcutLabel, isMac } from "@/lib/hoot/shortcuts";
 import { cn } from "@/lib/utils";
 
 const KIND_ICON: Record<NudgeKind, React.ComponentType<{ className?: string }>> = {
   movement: Activity,
-  holdings: UserX,
   earnings: CalendarDays,
   sell_side: Mic,
   proposal: FileText,

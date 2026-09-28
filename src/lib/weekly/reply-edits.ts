@@ -176,10 +176,13 @@ export function editReplyText(opts: { name: string; result: ApplyResult; unhandl
   return lines.join("\n");
 }
 
-/** "Re: Weekly update data for the week ended September 25, 2026" → "2026-09-25". Null for any other subject. */
+/**
+ * "Re: Weekly update data for the week ended 25 Sep 2026" → "2026-09-25", and the "September 25, 2026" subjects sent
+ * before that. Null for any other subject.
+ */
 export function weekFromReplySubject(subject: string | undefined): string | null {
-  const m = /Weekly update data for the week ended (\w+ \d{1,2}, \d{4})/i.exec(subject ?? "");
+  const m = /Weekly update data for the week ended (\d{1,2} \w{3} \d{4}|\w+ \d{1,2}, \d{4})/i.exec(subject ?? "");
   if (!m) return null;
-  const d = DateTime.fromFormat(m[1], "LLLL d, yyyy", { zone: NY });
+  const d = DateTime.fromFormat(m[1], /^\d/.test(m[1]) ? "d LLL yyyy" : "LLLL d, yyyy", { zone: NY });
   return d.isValid && d.weekday === 5 ? d.toISODate() : null;
 }

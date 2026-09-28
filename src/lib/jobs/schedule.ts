@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
 import { NY } from "@/lib/providers/calendar";
+import { fmtTime } from "@/lib/format";
 
 /** How long after its New York slot a scheduled call still counts as on time. */
 export const SLOT_TOLERANCE_MIN = 10;
@@ -18,7 +19,7 @@ export function slotSkipReason(at: string | null, now: Date = new Date()): strin
   const slot = ny.set({ hour: Number(m[1]), minute: Number(m[2]), second: 0, millisecond: 0 });
   const late = ny.diff(slot, "minutes").minutes;
   if (late >= 0 && late < SLOT_TOLERANCE_MIN) return null;
-  return `not the ${at} New York slot (it is ${ny.toFormat("HH:mm")} in New York)`;
+  return `not the ${at} ET slot (it is ${fmtTime(now)})`;
 }
 
 /** Response for a call that fired at the other daylight-saving time's UTC hour. */

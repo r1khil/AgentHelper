@@ -1,8 +1,8 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { fmtDate } from "@/lib/format";
+import { fixed, fmtDate } from "@/lib/format";
 import { TRADING_DAYS, Z95 } from "@/lib/risk/math";
 import type { RiskReport } from "@/lib/risk/model";
-import { rnum, rpct, rsci, rsigned, rusdFull } from "./format";
+import { rnum, rpct, rsci, rusdFull } from "./format";
 import { Source, Step, Working } from "./working";
 
 // Transparency mode: each headline number's formula with this page's inputs substituted.
@@ -15,7 +15,7 @@ export function VolWorking({ r }: { r: RiskReport }) {
     <Working title="Volatility working">
       <Step label="Daily variance">wᵀΣw = {rsci(p.dailyVariance, 8)}</Step>
       <Step label="Daily volatility">√{rsci(p.dailyVariance, 8)} = {rsci(p.dailySigma)} ({rpct(p.dailySigma, 3)})</Step>
-      <Step label="Annualized">{rsci(p.dailySigma)} × √252 ({sqrt252.toFixed(4)}) = <b>{rpct(p.vol, 2)}</b></Step>
+      <Step label="Annualized">{rsci(p.dailySigma)} × √252 ({fixed(sqrt252, 4)}) = <b>{rpct(p.vol, 2)}</b></Step>
       <Step label="Check">the holdings table&apos;s Contribution column adds up to the same {rpct(p.vol, 2)}.</Step>
       <Source>w = today&apos;s ledger weights ({r.holdings.length} holdings{r.cash.weight > 0 ? `, ${rpct(r.cash.weight)} cash at zero risk` : ""}); Σ = sample covariance (COVARIANCE.S) of {r.window.days} daily total returns. Both are in the downloads below.</Source>
     </Working>
@@ -48,7 +48,7 @@ export function TeWorking({ r }: { r: RiskReport }) {
   return (
     <Working title="Tracking error working">
       <Step label="Active weights a">holdings at their weights ({rpct(r.portfolio.invested, 1)} in total), minus the benchmark&apos;s sector ETFs:</Step>
-      <div className="tnum text-muted-foreground">{r.benchmarkLegs.map((l) => `${l.etf} ${rsigned(l.weight, 2)}`).join(" · ")}</div>
+      <div className="tnum text-muted-foreground">{r.benchmarkLegs.map((l) => `${l.etf} ${rpct(l.weight, 2)}`).join(" · ")}</div>
       <Step label="Daily">√(aᵀΣa) = {rsci(r.portfolio.dailyTe)}</Step>
       <Step label="Annualized">{rsci(r.portfolio.dailyTe)} × √252 = <b>{rpct(r.portfolio.trackingError, 2)}</b></Step>
       <Source>benchmark weights are the saved S&amp;P 500 sector weights drifted to today; ETF returns are Select Sector SPDR total returns.</Source>
@@ -63,20 +63,20 @@ export function VarWorking({ r }: { r: RiskReport }) {
   return (
     <Working title="VaR working">
       <Step label="Simulate">each of the {v.observations} days: Σ wᵢ × rᵢ,day with today&apos;s weights.</Step>
-      <Step label="Percentile">PERCENTILE.INC at 5%: rank = 0.05 × ({v.observations} − 1) = {v.rank.toFixed(2)}, between sorted days #{lo + 1} and #{lo + 2}.</Step>
+      <Step label="Percentile">PERCENTILE.INC at 5%: rank = 0.05 × ({v.observations} − 1) = {fixed(v.rank, 2)}, between sorted days #{lo + 1} and #{lo + 2}.</Step>
       <div className="max-h-40 overflow-y-auto">
         <table className="tnum w-full">
           <thead className="text-muted-foreground"><tr><th className="text-left font-normal">#</th><th className="text-left font-normal">Day</th><th className="text-right font-normal">Simulated return</th></tr></thead>
           <tbody>
             {sorted.map((d, i) => (
-              <tr key={d.date} className={i === lo || i === lo + 1 ? "font-semibold" : undefined}><td>{i + 1}</td><td>{fmtDate(d.date)}</td><td className="text-right">{rsigned(d.ret, 3)}</td></tr>
+              <tr key={d.date} className={i === lo || i === lo + 1 ? "font-semibold" : undefined}><td>{i + 1}</td><td>{fmtDate(d.date)}</td><td className="text-right">{rpct(d.ret, 3)}</td></tr>
             ))}
           </tbody>
         </table>
       </div>
       <Step label="VaR">{rpct(v.pct, 3)} × NAV {rusdFull(r.nav)} = <b>{rusdFull(v.dollars)}</b></Step>
       <Step label="Expected shortfall">average of the days at or below the cutoff = {rpct(v.es, 3)} = {rusdFull(v.esDollars)}</Step>
-      <Step label="Parametric check">{Z95.toFixed(3)} × daily σ {rpct(r.portfolio.dailySigma, 3)} = {rpct(v.parametricPct, 3)}</Step>
+      <Step label="Parametric check">{fixed(Z95, 3)} × daily σ {rpct(r.portfolio.dailySigma, 3)} = {rpct(v.parametricPct, 3)}</Step>
     </Working>
   );
 }
@@ -85,8 +85,8 @@ export function StressWorking({ r }: { r: RiskReport }) {
   const s = r.portfolio.stress;
   return (
     <Working title="Stress test working">
-      <Step>β {rnum(r.portfolio.beta, 3)} × S&amp;P 500 {rsigned(s.shock, 0)} = {rsigned(s.move, 2)}</Step>
-      <Step>{rsigned(s.move, 2)} × NAV {rusdFull(r.nav)} = <b>{rusdFull(s.dollars)}</b></Step>
+      <Step>β {rnum(r.portfolio.beta, 3)} × S&amp;P 500 {rpct(s.shock, 0)} = {rpct(s.move, 2)}</Step>
+      <Step>{rpct(s.move, 2)} × NAV {rusdFull(r.nav)} = <b>{rusdFull(s.dollars)}</b></Step>
     </Working>
   );
 }

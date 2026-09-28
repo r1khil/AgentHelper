@@ -1,6 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { SOURCE_LABELS } from "@/lib/lookthrough/parse";
 import { activeWeights, buildLookthrough, buildSectorResolver, describeCoverage, describeExposure, type EtfList, type LookthroughInput } from "./lookthrough";
+
+// Dates this year print without the year ("Tue 22 Sep"); pin the clock so these stay 2026's.
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-28T12:00:00Z"));
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 const list = (etf: string, source: EtfList["source"], rows: [string, number, EtfList["constituents"][number]["sector"]?][], asOf = "2026-09-23"): EtfList => ({
   etf,
@@ -93,7 +102,7 @@ describe("buildLookthrough", () => {
     expect(by.KRE).toMatchObject({ status: "top-holdings", coverage: 0.25 });
     expect(by.KRE.notLookedThrough).toBeCloseTo(0.03, 12);
     expect(by.XYZ).toMatchObject({ status: "none", coverage: 0, source: null, asOf: null, notLookedThrough: 0.02 });
-    expect(describeCoverage(by.SKYY, (s) => SOURCE_LABELS[s])).toBe("SKYY 100.0% looked through, as of Sep 23, First Trust");
+    expect(describeCoverage(by.SKYY, (s) => SOURCE_LABELS[s])).toBe("SKYY 100.0% looked through, as of Wed 23 Sep, First Trust");
     expect(describeCoverage(by.XYZ, (s) => SOURCE_LABELS[s])).toBe("XYZ not looked through (no holdings list)");
   });
 

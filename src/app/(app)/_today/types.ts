@@ -32,7 +32,7 @@ export type Book =
       teams: Record<string, { ret: number; contribution: number }>;
       href: string;
       brief: Brief | null;
-      /** Hoot's first sentence under the greeting, e.g. "We beat the S&P 500 by 25 bps on Friday." */
+      /** Hoot's first sentence under the greeting, e.g. "We beat the S&P 500 by 25 bp on Friday." */
       sentence: string | null;
     }
   | { kind: "none"; message: string };
@@ -40,6 +40,7 @@ export type Book =
 export type TeamHolding = {
   id: string;
   ticker: string;
+  company: string;
   href: string;
   price: number | null;
   /** The quote's ISO currency code. */
@@ -48,7 +49,6 @@ export type TeamHolding = {
   relativePp: number | null;
   /** "Oct 15" or "Oct 15 est.", or null. */
   nextReport: string | null;
-  owner: string | null;
 };
 
 export type TeamRowData = {

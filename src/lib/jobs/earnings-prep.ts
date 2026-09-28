@@ -6,14 +6,14 @@ import { db } from "@/db/client";
 import { earnings, holdings, teams } from "@/db/schema";
 import type { Source } from "@/lib/providers/types";
 import { nextTradingDay, todayNY } from "@/lib/providers/calendar";
-import { fmtDate } from "@/lib/format";
+import { fmtDay } from "@/lib/format";
 import { agentConfigured } from "@/lib/agent/model";
 import { buildAgentDefinition, prepareAgentStep } from "@/lib/agent/definition";
 import { bulletCount, extractJsonObject, prepAttempts, selectPrepCandidates, validatePrepPack, type PrepValidation } from "@/lib/agent/prep-pack";
 import type { PrepPack } from "@/lib/agent/prep-types";
 import { rememberMemory } from "@/lib/agent/memory/store";
 import { queueNotification } from "./notify";
-import { recipientsFor } from "./morning";
+import { teamRecipients } from "./recipients";
 
 /** Reports this many NY trading days ahead get a pack. */
 export const PREP_HORIZON_DAYS = 5;
@@ -83,15 +83,15 @@ export async function buildPrepPack(earningsId: string): Promise<{ ok: true; pac
     const appUrl = process.env.APP_URL ?? "";
     const boardUrl = `${appUrl}/t/${row.teamSlug}/agent/h/${h.ticker}`;
     const earningsUrl = `${appUrl}/t/${row.teamSlug}/earnings/${e.id}`;
-    for (const r of await recipientsFor(h.teamId, h.ownerId)) {
+    for (const r of await teamRecipients(h.teamId)) {
       await queueNotification({
         kind: "earnings",
         recipientId: r.id,
         recipientEmail: r.email,
         refId: e.id,
         dedupeKey: `prep:${e.id}:${r.id}`,
-        subject: `Earnings prep pack ready: ${h.ticker} reports ${fmtDate(e.reportDate)}`,
-        body: `The agent gathered ${bulletCount(pack)} sourced evidence bullets for ${h.ticker}'s ${e.fiscalPeriod ?? ""} report on ${fmtDate(e.reportDate)}: last quarter's figures, guidance on record, consensus, the team's own questions, and items to watch.\n\nIt contains no expectations; those are yours to write before the report.\n\nResearch board: ${boardUrl}\nEarnings page: ${earningsUrl}`,
+        subject: `Earnings prep pack ready: ${h.ticker} reports ${fmtDay(e.reportDate)}`,
+        body: `The agent gathered ${bulletCount(pack)} sourced evidence bullets for ${h.ticker}'s ${e.fiscalPeriod ?? ""} report on ${fmtDay(e.reportDate)}: last quarter's figures, guidance on record, consensus, the team's own questions, and items to watch.\n\nIt contains no expectations; those are yours to write before the report.\n\n${h.ticker} research: ${boardUrl}\nEarnings page: ${earningsUrl}`,
       }).catch((err) => console.error("[prep] notify failed", err));
     }
     await rememberMemory({ scope: "holding", teamId: h.teamId, holdingId: h.id, kind: "log", body: `Built the earnings prep pack for the ${e.reportDate} report: ${bulletCount(pack)} sourced bullets across ${pack.sections.filter((s) => s.key !== "not_retrieved").length} sections.`, meta: { earningsId: e.id }, model: def.modelId }).catch(() => {});

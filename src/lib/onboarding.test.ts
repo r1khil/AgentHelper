@@ -39,6 +39,6 @@ describe("onboarding copy", () => {
 
   it("states the movement threshold from constants", () => {
     const movements = TOUR_CARDS.find((c) => c.id === "movements");
-    expect(movements?.body).toContain(`${MOVEMENT_THRESHOLD_PP.toFixed(1)} pp`);
+    expect(movements?.body).toContain(`${MOVEMENT_THRESHOLD_PP * 100} bp (${MOVEMENT_THRESHOLD_PP} percentage points)`);
   });
 });

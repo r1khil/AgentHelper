@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { and, asc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
-import { earnings, holdings, profiles, teams, type Team } from "@/db/schema";
+import { earnings, holdings, teams, type Team } from "@/db/schema";
 import { canManageTeam, isFundWide, type CurrentUser } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { loadHootFeed } from "@/lib/hoot/nudges";
@@ -53,10 +53,9 @@ export async function TodayView({ user, myTeams }: { user: CurrentUser; myTeams:
 
   const [activeHoldings, upcoming, feed] = await Promise.all([
     db
-      .select({ h: holdings, teamSlug: teams.slug, ownerName: profiles.fullName })
+      .select({ h: holdings, teamSlug: teams.slug })
       .from(holdings)
       .innerJoin(teams, eq(teams.id, holdings.teamId))
-      .leftJoin(profiles, eq(profiles.id, holdings.ownerId))
       .where(and(inArray(holdings.teamId, teamIds), eq(holdings.status, "active")))
       .orderBy(asc(teams.sortOrder), asc(holdings.ticker)),
     db
@@ -131,7 +130,7 @@ async function LastSession({ book }: { book: Promise<Book> }) {
 
 /* ----------------------------------------------------------------------------------------------- Teams */
 
-type HoldingListRow = { h: typeof holdings.$inferSelect; teamSlug: string; ownerName: string | null };
+type HoldingListRow = { h: typeof holdings.$inferSelect; teamSlug: string };
 type TeamInput = { teams: Team[]; rows: HoldingListRow[]; upcoming: UpcomingReport[]; scope: string };
 
 async function LiveTeams({ input, market, book, holdingsHref }: { input: TeamInput; market: Promise<MarketSnapshot>; book: Promise<Book> | null; holdingsHref: string }) {
@@ -172,19 +171,19 @@ function teamRows({ teams: teamList, rows, upcoming, scope }: TeamInput, market?
       name: team.name,
       stats: s,
       mover,
-      holdings: mine.map(({ h, teamSlug, ownerName }) => {
+      holdings: mine.map(({ h, teamSlug }) => {
         const q = market?.rows[h.ticker];
         const report = next.get(h.ticker);
         return {
           id: h.id,
           ticker: h.ticker,
+          company: h.companyName,
           href: holdingHref(scope, teamSlug, h.ticker),
           price: q?.quote?.price ?? null,
           currency: q?.quote?.currency ?? null,
           changePct: q?.quote?.changePct ?? null,
           relativePp: q?.relativePp ?? null,
           nextReport: report ? `${monthDay(report.reportDate)}${report.dateStatus === "estimated" ? " est." : ""}` : null,
-          owner: ownerName,
         };
       }),
     };

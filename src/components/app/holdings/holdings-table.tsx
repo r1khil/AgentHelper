@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney, fmtPct, fmtNumber, ppToBp } from "@/lib/format";
 import { Move } from "@/components/app/move";
 import { Pill } from "@/components/app/panel";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,7 +23,6 @@ export type HoldingListRow = {
   /** "Nov 18 est.", or null when no report is scheduled. */
   nextReport: string | null;
   flags: AttentionFlag[];
-  owner: string | null;
 };
 
 export type HoldingGroup = { id: string; name: string; navPct: number | null; rows: HoldingListRow[] };
@@ -31,7 +30,9 @@ export type HoldingGroup = { id: string; name: string; navPct: number | null; ro
 /** Streamed quotes by ticker; absent while Yahoo is still answering (the cells show skeletons). */
 export type QuoteCells = Record<string, { price?: number; changePct?: number; relativePp?: number }>;
 
-const GRID = "grid grid-cols-[64px_minmax(0,1fr)_72px_64px_84px_76px_76px_104px_176px_112px] items-center gap-3 px-4";
+// Desktop only. Company takes what is left; the minimum width fits a ~920 px content area (a 1,045 px window less the
+// rail and padding) without scrolling sideways.
+const GRID = "grid grid-cols-[64px_minmax(0,1fr)_64px_64px_80px_76px_76px_96px_168px] items-center gap-3 px-4";
 
 /** The Holdings table: one panel, team group rows that collapse, rows that open the holding. */
 export function HoldingsTable({ groups, quotes, grouped = true, empty }: { groups: HoldingGroup[]; quotes?: QuoteCells; grouped?: boolean; empty?: React.ReactNode }) {
@@ -47,7 +48,7 @@ export function HoldingsTable({ groups, quotes, grouped = true, empty }: { group
 
   return (
     <section data-tour="holdings-table" className="panel flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-hidden">
-      <div className="flex min-w-[1100px] flex-1 flex-col">
+      <div className="flex min-w-[920px] flex-1 flex-col">
         <div role="row" className={cn(GRID, "h-9 shrink-0 border-b text-xs text-muted-foreground")}>
           <span>Ticker</span>
           <span>Company</span>
@@ -58,7 +59,6 @@ export function HoldingsTable({ groups, quotes, grouped = true, empty }: { group
           <span className="text-right">vs S&amp;P</span>
           <span>Next report</span>
           <span>Needs attention</span>
-          <span>Owner</span>
         </div>
         {!any && <div className="px-4 py-10 text-center text-sm text-muted-foreground">{empty ?? "Nothing here."}</div>}
         {groups.map((g) => {
@@ -77,7 +77,7 @@ export function HoldingsTable({ groups, quotes, grouped = true, empty }: { group
                   <span className="text-[13.5px] font-semibold">{g.name}</span>
                   <span className="text-[12.5px] whitespace-nowrap text-muted-foreground">
                     {g.rows.length} holding{g.rows.length === 1 ? "" : "s"}
-                    {g.navPct != null && ` · ${g.navPct.toFixed(1)}% of NAV`}
+                    {g.navPct != null && ` · ${fmtPct(g.navPct, 1)} of NAV`}
                   </span>
                   <span className="flex-1" />
                   {quotes ? <Move value={teamDay(g.rows, quotes)} unit="%" digits={2} className="text-[13px] font-medium" /> : <Skeleton className="h-4 w-14" />}
@@ -94,7 +94,7 @@ export function HoldingsTable({ groups, quotes, grouped = true, empty }: { group
 
 function Row({ r, q, loading }: { r: HoldingListRow; q?: QuoteCells[string]; loading: boolean }) {
   const [first, ...rest] = r.flags;
-  const shares = r.shares != null ? `${r.shares.toLocaleString("en-US", { maximumFractionDigits: 2 })} shares` : "No shares recorded";
+  const shares = r.shares != null ? `${fmtNumber(r.shares, 2)} shares` : "No shares recorded";
   return (
     <div role="row" className={cn(GRID, "relative h-10 border-b border-row text-sm transition-colors hover:bg-band")}>
       {/* The ticker link stretches over the whole row; the pills sit above it and keep their own links. */}
@@ -103,8 +103,8 @@ function Row({ r, q, loading }: { r: HoldingListRow; q?: QuoteCells[string]; loa
       </Link>
       <span className="truncate text-ink-2">{r.company}</span>
       <Sparkline values={r.spark} />
-      <span className="text-right font-mono text-[13px] tabular-nums" title={`${shares}${r.weightPct != null ? ` · ${r.weightPct.toFixed(2)}% of NAV` : ""}`}>
-        {r.weightPct != null ? `${r.weightPct.toFixed(1)}%` : <span className="text-muted-foreground">—</span>}
+      <span className="text-right font-mono text-[13px] tabular-nums" title={`${shares}${r.weightPct != null ? ` · ${fmtPct(r.weightPct)} of NAV` : ""}`}>
+        {r.weightPct != null ? fmtPct(r.weightPct, 1) : <span className="text-muted-foreground">—</span>}
       </span>
       {loading ? (
         <>
@@ -115,8 +115,8 @@ function Row({ r, q, loading }: { r: HoldingListRow; q?: QuoteCells[string]; loa
       ) : (
         <>
           <span className="text-right font-mono text-[13px] tabular-nums">{q?.price != null ? fmtMoney(q.price) : <span className="text-muted-foreground">—</span>}</span>
-          <Move value={q?.changePct} unit="%" digits={2} className="text-right text-[13px]" />
-          <Move value={q?.relativePp} unit=" pp" digits={1} className="text-right text-[13px]" />
+          <Move value={q?.changePct} unit="%" digits={2} align className="text-right text-[13px]" />
+          <Move value={ppToBp(q?.relativePp)} unit=" bp" digits={0} align className="text-right text-[13px]" />
         </>
       )}
       <span className="truncate text-[13px] text-ink-2">{r.nextReport ?? <span className="text-muted-foreground">—</span>}</span>
@@ -124,7 +124,6 @@ function Row({ r, q, loading }: { r: HoldingListRow; q?: QuoteCells[string]; loa
         {first ? <FlagPill f={first} /> : <span className="text-muted-foreground">—</span>}
         {rest.length > 0 && <span className="font-mono text-[11px] text-muted-foreground">+{rest.length}</span>}
       </span>
-      <span className={cn("truncate text-[13.5px]", !r.owner && "text-caution-foreground")}>{r.owner ?? "Unassigned"}</span>
     </div>
   );
 }

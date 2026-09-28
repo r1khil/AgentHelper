@@ -1,11 +1,13 @@
 import "server-only";
-import { and, asc, count, desc, eq, gte, inArray, ne } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, ne } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
-import { earnings, holdings, modelProposals, models, movements, profiles, sellSideCalls, weeklyUpdates } from "@/db/schema";
+import { earnings, holdings, modelProposals, models, movements, sellSideCalls } from "@/db/schema";
 import { isFundWide, listAccessibleTeams, type CurrentUser } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { todayNY } from "@/lib/providers/calendar";
+import { latestPackStatus } from "@/lib/weekly/latest";
+import { PACK_STATUS_LABELS } from "@/lib/weekly/status";
 
 /** A count on a header tab. `hot` means something needs action (pink); otherwise it's a plain count. */
 export type TabCount = { value: string; hot?: boolean };
@@ -16,7 +18,6 @@ export type CommandHolding = {
   team: string;
   teamSlug: string;
   weightPct: number | null;
-  owner: string | null;
   nextReport: string | null;
   nextReportEstimated: boolean;
   openMovement: boolean;
@@ -39,9 +40,8 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
 
   const [rows, openMoves, proposals, calls, reports, weekly] = await Promise.all([
     db
-      .select({ ticker: holdings.ticker, company: holdings.companyName, teamId: holdings.teamId, weightPct: holdings.weightPct, owner: profiles.fullName })
+      .select({ ticker: holdings.ticker, company: holdings.companyName, teamId: holdings.teamId, weightPct: holdings.weightPct })
       .from(holdings)
-      .leftJoin(profiles, eq(profiles.id, holdings.ownerId))
       .where(and(inArray(holdings.teamId, teamIds), eq(holdings.status, "active")))
       .orderBy(asc(holdings.ticker)),
     db
@@ -66,9 +66,7 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
       .innerJoin(holdings, eq(holdings.id, earnings.holdingId))
       .where(and(inArray(holdings.teamId, teamIds), eq(earnings.status, "upcoming"), gte(earnings.reportDate, today)))
       .orderBy(asc(earnings.reportDate)),
-    isFundWide(user)
-      ? db.select({ weekEnding: weeklyUpdates.weekEnding }).from(weeklyUpdates).where(eq(weeklyUpdates.status, "draft")).orderBy(desc(weeklyUpdates.weekEnding)).limit(1)
-      : Promise.resolve([]),
+    isFundWide(user) ? latestPackStatus() : Promise.resolve(null),
   ]);
 
   const teamById = new Map(inScope.map((t) => [t.id, t]));
@@ -82,7 +80,8 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
   if (openMoves.length) counts.movements = { value: String(openMoves.length), hot: overdue };
   if (proposals[0]?.n) counts.models = { value: String(proposals[0].n) };
   if (calls[0]?.n) counts["sell-side"] = { value: String(calls[0].n), hot: true };
-  if (weekly.length) counts.weekly = { value: "Draft", hot: true };
+  // The newest pack's status, in the words the Weekly page uses; nothing once it is Sent.
+  if (weekly && weekly.state !== "sent") counts.weekly = { value: PACK_STATUS_LABELS[weekly.state], hot: true };
 
   return {
     counts,
@@ -95,7 +94,6 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
         team: t?.name ?? "",
         teamSlug: t?.slug ?? scope,
         weightPct: r.weightPct == null ? null : Number(r.weightPct),
-        owner: r.owner,
         nextReport: n?.date ?? null,
         nextReportEstimated: n?.estimated ?? false,
         openMovement: moving.has(r.ticker),

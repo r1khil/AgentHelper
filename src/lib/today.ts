@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { fmtBp, fmtDateTime, fmtDay, fmtDayMonth, fmtPct, fmtTime } from "@/lib/format";
 import { isTradingDay, nextTradingDay, NY } from "@/lib/providers/calendar";
 
 export type UpcomingReport = { ticker: string; reportDate: string; reportHour: string | null; dateStatus: "confirmed" | "estimated" };
@@ -71,12 +72,10 @@ export function greeting(now: Date = new Date()) {
   return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 }
 
-/** "Friday, September 25". */
-export const longDate = (iso: string) => day(iso).toFormat("cccc, LLLL d");
-/** "Thu, Oct 15". */
-export const shortDate = (iso: string) => day(iso).toFormat("ccc, LLL d");
-/** "Oct 15". */
-export const monthDay = (iso: string) => day(iso).toFormat("LLL d");
+/** "Fri 25 Sep" (the app's day format). */
+export const longDate = (iso: string) => fmtDay(iso);
+/** "15 Oct", for tight columns. */
+export const monthDay = (iso: string) => fmtDayMonth(iso);
 
 /* --------------------------------------------------------------------------------- Today, Direction B v2 */
 
@@ -87,10 +86,10 @@ export function greetingWord(now: Date = new Date()) {
 
 /** "Friday". */
 export const weekdayName = (iso: string) => day(iso).toFormat("cccc");
-/** "FRI 25 SEP", the mono session stamp. */
-export const sessionStamp = (iso: string) => day(iso).toFormat("ccc d LLL").toUpperCase();
-/** "Tue 13 Oct", the mono agenda date. */
-export const agendaDate = (iso: string) => day(iso).toFormat("ccc d LLL");
+/** "Fri 25 Sep", the session stamp. */
+export const sessionStamp = (iso: string) => fmtDay(iso);
+/** "Tue 13 Oct", the agenda date. */
+export const agendaDate = (iso: string) => fmtDay(iso);
 
 /** "today", "tomorrow" or "15 days". */
 export function daysAway(today: string, date: string) {
@@ -104,33 +103,23 @@ const CLOSE_MIN = 16 * 60;
 function span(minutes: number) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return h ? `${h}H ${m}M` : `${m}M`;
+  return h ? `${h}h ${m}m` : `${m}m`;
 }
 
 /**
- * The mono line over the greeting: "MON 28 SEP · MARKET OPENS IN 1H 12M" before the bell, "… · MARKET CLOSES IN
- * 2H 5M" during the session, "… · MARKET CLOSED · OPENS TUE 9:30" after it and on weekends and holidays.
+ * The mono line over the greeting: "Mon 28 Sep · Market opens in 1h 12m" before the bell, "… · Market closes in
+ * 2h 5m" during the session, "… · Market closed · opens Tue 29 Sep, 9:30 ET" after it and on weekends and holidays.
  */
 export function marketLine(now: Date = new Date()) {
   const t = DateTime.fromJSDate(now).setZone(NY);
-  const date = t.toFormat("ccc d LLL").toUpperCase();
   const iso = t.toISODate()!;
+  const date = fmtDay(iso, now);
   const minutes = t.hour * 60 + t.minute;
-  if (isTradingDay(iso) && minutes < OPEN_MIN) return `${date} · MARKET OPENS IN ${span(OPEN_MIN - minutes)}`;
-  if (isTradingDay(iso) && minutes < CLOSE_MIN) return `${date} · MARKET CLOSES IN ${span(CLOSE_MIN - minutes)}`;
-  const next = nextTradingDay(iso);
-  const when = day(next).diff(day(iso), "days").days === 1 ? "TOMORROW" : day(next).toFormat("ccc").toUpperCase();
-  return `${date} · MARKET CLOSED · OPENS ${when} 9:30`;
-}
-
-const MINUS = "−";
-
-/** "+0.84%", "−2 bp": signed, with a true minus, for mono figures. */
-export function signed(n: number | null | undefined, digits = 2, unit = "") {
-  if (n === null || n === undefined || !Number.isFinite(n)) return "—";
-  const body = Math.abs(n).toFixed(digits);
-  if (Number(body) === 0) return `${(0).toFixed(digits)}${unit}`;
-  return `${n < 0 ? MINUS : "+"}${body}${unit}`;
+  if (isTradingDay(iso) && minutes < OPEN_MIN) return `${date} · Market opens in ${span(OPEN_MIN - minutes)}`;
+  if (isTradingDay(iso) && minutes < CLOSE_MIN) return `${date} · Market closes in ${span(CLOSE_MIN - minutes)}`;
+  const next = day(nextTradingDay(iso)).set({ hour: 9, minute: 30 });
+  const when = next.diff(day(iso), "days").days < 2 ? `tomorrow ${fmtTime(next.toJSDate())}` : fmtDateTime(next.toJSDate(), now);
+  return `${date} · Market closed · opens ${when}`;
 }
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
@@ -144,18 +133,18 @@ export function listNudges<T extends { kind: string; priority: number }>(nudges:
 export const isOverdue = (n: { id: string }) => n.id.endsWith(":overdue");
 
 /**
- * The first sentence of Hoot's line under the greeting, from the last session: "We beat the S&P 500 by 25 bps on
+ * The first sentence of Hoot's line under the greeting, from the last session: "We beat the S&P 500 by 25 bp on
  * Friday." `vs` names the benchmark; a lead reads their team against its sectors.
  */
 export function sessionSentence(r: { subject: string; vs: string; diffBps: number | null; ret: number | null; weekday: string }) {
   const we = r.subject === "We";
   if (r.diffBps === null) {
     if (r.ret === null) return null;
-    return `${we ? "The Fund" : r.subject} ${r.ret >= 0 ? "made" : "lost"} ${Math.abs(r.ret).toFixed(2)}% on ${r.weekday}.`;
+    return `${we ? "The Fund" : r.subject} ${r.ret >= 0 ? "made" : "lost"} ${fmtPct(Math.abs(r.ret))} on ${r.weekday}.`;
   }
   const bps = Math.abs(r.diffBps);
   if (bps === 0) return `${r.subject} matched ${r.vs} on ${r.weekday}.`;
-  return `${r.subject} ${r.diffBps > 0 ? "beat" : "trailed"} ${r.vs} by ${bps} ${bps === 1 ? "bp" : "bps"} on ${r.weekday}.`;
+  return `${r.subject} ${r.diffBps > 0 ? "beat" : "trailed"} ${r.vs} by ${fmtBp(bps)} on ${r.weekday}.`;
 }
 
 export type ScoreCell = { label: string; value: number | null; unit: "%" | " bp"; tone: boolean };
@@ -184,8 +173,11 @@ export function listSentence(count: number, overdue: number) {
 
 type NudgeLike = { id: string; kind: string; title: string; detail?: string; at?: string };
 
-/** "Fri 12:00 ET" in New York, from an ISO time. */
-const dueStamp = (iso: string) => DateTime.fromISO(iso).setZone(NY).toFormat("ccc H:mm 'ET'");
+/** "12:00 ET" when it is due today, else "Mon 28 Sep". */
+export function dueStamp(iso: string, now: Date = new Date()) {
+  const due = DateTime.fromISO(iso).setZone(NY);
+  return due.hasSame(DateTime.fromJSDate(now).setZone(NY), "day") ? fmtTime(iso) : fmtDay(iso, now);
+}
 
 /** "2 days overdue", "3 hours overdue". */
 function overdueFor(iso: string, now: Date) {
@@ -194,31 +186,33 @@ function overdueFor(iso: string, now: Date) {
   return days >= 1 ? `${days} ${days === 1 ? "day" : "days"} overdue` : `${hours} ${hours === 1 ? "hour" : "hours"} overdue`;
 }
 
-/** "12:00 ET today", "12:00 ET Monday": when a write-up is due, as said in a sentence. */
+/** "12:00 ET today", "12:00 ET Monday" within the week, else "Mon 12 Oct, 12:00 ET": when a write-up is due, in a sentence. */
 function dueSpoken(iso: string, now: Date) {
   const due = DateTime.fromISO(iso).setZone(NY);
   const days = Math.round(due.startOf("day").diff(DateTime.fromJSDate(now).setZone(NY).startOf("day"), "days").days);
-  return `${due.toFormat("H:mm")} ET ${days <= 0 ? "today" : days === 1 ? "tomorrow" : days < 7 ? due.toFormat("cccc") : due.toFormat("LLL d")}`;
+  if (days >= 7) return fmtDateTime(iso, now);
+  return `${fmtTime(iso)} ${days <= 0 ? "today" : days === 1 ? "tomorrow" : due.toFormat("cccc")}`;
 }
 
-// Movement nudges about a write-up with no owner, or someone else's overdue one, say so in their id.
-const isUnassigned = (n: { id: string }) => n.id.includes(":unassigned");
-const isOwnWriteUp = (n: NudgeLike) => n.kind === "movement" && !!n.at && !isUnassigned(n) && !n.id.includes(":team:");
+// A write-up belongs to the whole team, so every one on the member's own team is theirs. Another team's overdue one,
+// which a lead or exec is shown, says so in its id.
+const isOwnWriteUp = (n: NudgeLike) => n.kind === "movement" && !!n.at && !n.id.includes(":team:");
 
 /**
- * What an analyst owes, from their own write-ups on the list: "You owe 1 write-up, due 12:00 ET Monday.", "You owe
- * 1 write-up, 2 days overdue.", "You owe 2 write-ups; the next is due 12:00 ET today." Null when they owe none.
+ * What the analyst's team owes, from its write-ups on the list: "Your team owes 1 write-up, due 12:00 ET Monday.",
+ * "Your team owes 1 write-up, 2 days overdue.", "Your team owes 2 write-ups; the next is due 12:00 ET today." Null
+ * when it owes none.
  */
 export function owedSentence(nudges: NudgeLike[], now: Date = new Date()): string | null {
   const owed = nudges.filter(isOwnWriteUp).sort((a, b) => a.at!.localeCompare(b.at!));
   if (!owed.length) return null;
   const late = owed.filter(isOverdue).length;
-  if (owed.length === 1) return `You owe 1 write-up, ${late ? overdueFor(owed[0].at!, now) : `due ${dueSpoken(owed[0].at!, now)}`}.`;
-  if (!late) return `You owe ${owed.length} write-ups; the next is due ${dueSpoken(owed[0].at!, now)}.`;
-  return `You owe ${owed.length} write-ups; ${late === owed.length ? (late === 2 ? "both are" : "all are") : `${word(late)} ${late === 1 ? "is" : "are"}`} overdue.`;
+  if (owed.length === 1) return `Your team owes 1 write-up, ${late ? overdueFor(owed[0].at!, now) : `due ${dueSpoken(owed[0].at!, now)}`}.`;
+  if (!late) return `Your team owes ${owed.length} write-ups; the next is due ${dueSpoken(owed[0].at!, now)}.`;
+  return `Your team owes ${owed.length} write-ups; ${late === owed.length ? (late === 2 ? "both are" : "all are") : `${word(late)} ${late === 1 ? "is" : "are"}`} overdue.`;
 }
 
-/** An analyst's line under the greeting: what they owe first, then the rest of the list. */
+/** An analyst's line under the greeting: what their team owes first, then the rest of the list. */
 export function analystSentence(nudges: NudgeLike[], now: Date = new Date()): string {
   const owed = owedSentence(nudges, now);
   if (!owed) return listSentence(nudges.length, nudges.filter(isOverdue).length);
@@ -226,15 +220,14 @@ export function analystSentence(nudges: NudgeLike[], now: Date = new Date()): st
   return rest ? `${owed} I found ${word(rest)} more ${rest === 1 ? "thing" : "things"} for you.` : owed;
 }
 
-/** "Sep 24" in New York, from an ISO time or date. */
-const sinceStamp = (iso: string) => (iso.length === 10 ? day(iso) : DateTime.fromISO(iso).setZone(NY)).toFormat("LLL d");
+/** "Thu 24 Sep" in New York, from an ISO time or date. */
+const sinceStamp = (iso: string, now: Date) => fmtDay(iso, now);
 
 /** The mono "when" beside a list item, from the nudge's time or, without one, what its id and copy say. */
 export function nudgeWhen(n: NudgeLike, now: Date = new Date()): string {
   if (n.kind === "movement") {
-    if (n.at) return isOverdue(n) ? overdueFor(n.at, now) : `Due ${dueStamp(n.at)}`;
+    if (n.at) return isOverdue(n) ? overdueFor(n.at, now) : `Due ${dueStamp(n.at, now)}`;
     if (isOverdue(n)) return "Overdue";
-    if (isUnassigned(n)) return "No owner";
     const h = /due in (\d+)h/i.exec(n.title)?.[1];
     return h ? `Due in ${h}h` : "Due soon";
   }
@@ -244,20 +237,19 @@ export function nudgeWhen(n: NudgeLike, now: Date = new Date()): string {
     if (wd) return `Reports ${wd.slice(0, 3)}`;
     return "Next few days";
   }
-  if (n.kind === "sell_side") return n.at ? `Since ${sinceStamp(n.at)}` : n.id.endsWith(":error") ? "Failed" : "Brief ready";
+  if (n.kind === "sell_side") return n.at ? `Since ${sinceStamp(n.at, now)}` : n.id.endsWith(":error") ? "Failed" : "Brief ready";
   if (n.kind === "proposal") return "Awaiting review";
   if (n.kind === "weekly") {
     // The pack goes out at noon New York time on the Sunday after the week ends.
-    if (n.at && /^\d{4}-\d{2}-\d{2}$/.test(n.at)) return `Sends ${day(n.at).plus({ days: 2 }).toFormat("ccc")} 12:00`;
+    if (n.at && /^\d{4}-\d{2}-\d{2}$/.test(n.at)) return `Sends ${fmtDay(day(n.at).plus({ days: 2 }).toISODate()!, now)}`;
     const week = n.id.split(":")[1];
-    return week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? `Week to ${monthDay(week)}` : "This week";
+    return week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? `Week to ${fmtDay(week, now)}` : "This week";
   }
   if (n.kind === "changelog") {
-    if (n.at) return `Since ${sinceStamp(n.at)}`;
+    if (n.at) return `Since ${sinceStamp(n.at, now)}`;
     const pr = n.id.split(":")[1];
     return pr ? `PR #${pr}` : "New";
   }
-  if (n.kind === "holdings") return "No owner";
   return "";
 }
 
@@ -265,9 +257,7 @@ export function nudgeWhen(n: NudgeLike, now: Date = new Date()): string {
 export function nudgeAction(n: NudgeLike): string {
   switch (n.kind) {
     case "movement":
-      return isUnassigned(n) ? "Assign owner" : "Open write-up";
-    case "holdings":
-      return "Assign owners";
+      return "Open write-up";
     case "earnings":
       return n.id.endsWith(":expectations") ? "Write them" : "Open";
     case "sell_side":
@@ -283,7 +273,7 @@ export function nudgeAction(n: NudgeLike): string {
   }
 }
 
-/** A brief paragraph split into text and numbered citations: "added 14 bps [1]." → ["added 14 bps ", 1, "."]. */
+/** A brief paragraph split into text and numbered citations: "added 14 bp [1]." → ["added 14 bp ", 1, "."]. */
 export function citationParts(text: string): (string | number)[] {
   const out: (string | number)[] = [];
   let last = 0;

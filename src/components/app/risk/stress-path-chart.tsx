@@ -1,7 +1,8 @@
 "use client";
 
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ChartLegend, chartGrid, chartTick, exactDate } from "@/components/charts/primitives";
+import { ChartLegend, chartGrid, chartTick, exactDate, tickDate } from "@/components/charts/primitives";
+import { fmtPct } from "@/lib/format";
 
 export type StressPathPoint = { date: string; fund: number; market: number; benchmark: number | null };
 
@@ -18,11 +19,11 @@ export function StressPathChart({ data, fundLabel, benchmarkLabel }: { data: Str
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data.map((d) => ({ date: d.date, fund: d.fund * 100, market: d.market * 100, benchmark: d.benchmark === null ? null : d.benchmark * 100 }))} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} stroke={chartGrid} />
-            <XAxis dataKey="date" tick={chartTick} tickLine={false} axisLine={false} minTickGap={40} tickFormatter={(d: string) => exactDate(d).replace(/, \d{4}$/, "")} />
-            <YAxis tick={chartTick} tickLine={false} axisLine={false} width={44} domain={[lo, hi]} tickFormatter={(v: number) => `${v.toFixed(0)}%`} />
+            <XAxis dataKey="date" tick={chartTick} tickLine={false} axisLine={false} minTickGap={40} tickFormatter={(d: string) => tickDate(d)} />
+            <YAxis tick={chartTick} tickLine={false} axisLine={false} width={44} domain={[lo, hi]} tickFormatter={(v: number) => fmtPct(v, 0)} />
             <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.4} />
             <Tooltip
-              formatter={(v, name) => [`${Number(v) > 0 ? "+" : ""}${Number(v).toFixed(2)}%`, names[String(name)] ?? String(name)]}
+              formatter={(v, name) => [fmtPct(Number(v)), names[String(name)] ?? String(name)]}
               labelFormatter={(d) => exactDate(String(d))}
               contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
             />
