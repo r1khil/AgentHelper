@@ -21,6 +21,7 @@ export const ETF_SOURCES: Record<string, EtfSourceSpec> = {
   ...Object.fromEntries(Object.values(ETF_BY_SECTOR).map((etf) => [etf, { kind: "ssga" } as EtfSourceSpec])),
   SOXX: { kind: "ishares", productId: "239705", slug: "ishares-semiconductor-etf" },
   RING: { kind: "ishares", productId: "239654", slug: "ishares-msci-global-gold-miners-etf" },
+  IYK: { kind: "ishares", productId: "239505", slug: "ishares-us-consumer-staples-etf" },
   SKYY: { kind: "first-trust" },
   CIBR: { kind: "first-trust" },
   TDIV: { kind: "first-trust" },

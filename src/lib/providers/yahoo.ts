@@ -2,7 +2,7 @@ import YahooFinance from "yahoo-finance2";
 import { DateTime } from "luxon";
 import { NY } from "./calendar";
 import { retry, spaced } from "./limiter";
-import { cached } from "./cache";
+import { cached, readCached, storeCached } from "./cache";
 import type { Bar, EarningsDate, Quote } from "./types";
 
 export const SPX_SYMBOL = "^GSPC";
@@ -80,6 +80,43 @@ export async function getQuotes(symbols: string[]): Promise<Record<string, Quote
     }
     return out;
   });
+}
+
+/** A security's type never changes, so each answer is kept a month; an unknown symbol is asked about again the next day. */
+const QUOTE_TYPE_TTL = 60 * 60 * 24 * 30;
+const QUOTE_TYPE_DOWN = "yahoo:quote-type:down";
+
+/**
+ * Yahoo's quote type per symbol ("EQUITY", "ETF", "MUTUALFUND", …), or null when Yahoo has no quote for it. Cached per
+ * symbol, so only symbols never seen before cost a call, and those share one batch.
+ */
+export async function getQuoteTypes(symbols: string[]): Promise<Record<string, string | null>> {
+  const unique = [...new Set(symbols.map((s) => s.toUpperCase()))];
+  const out: Record<string, string | null> = {};
+  const hits = await Promise.all(unique.map((s) => readCached<{ type: string | null }>(`yahoo:quote-type:${s}`)));
+  const missing = unique.filter((s, i) => {
+    if (hits[i]) out[s] = hits[i]!.type;
+    return !hits[i];
+  });
+  if (!missing.length) return out;
+  // After a failure, pages don't wait out Yahoo's retries again for a few minutes.
+  if (await readCached(QUOTE_TYPE_DOWN, { db: false })) throw new Error("Yahoo quote types failed recently");
+  let res;
+  try {
+    res = await spaced(HOST, GAP_MS, () => yf().quote(missing));
+  } catch (e) {
+    await storeCached(QUOTE_TYPE_DOWN, 5 * 60, true, { db: false });
+    throw e;
+  }
+  const found = new Map(res.map((q) => [q.symbol.toUpperCase(), q.quoteType ?? null]));
+  await Promise.all(
+    missing.map((s) => {
+      const type = found.get(s) ?? null;
+      out[s] = type;
+      return storeCached(`yahoo:quote-type:${s}`, type ? QUOTE_TYPE_TTL : 60 * 60 * 24, { type });
+    }),
+  );
+  return out;
 }
 
 /**

@@ -12,14 +12,35 @@ export const MAX_AGE_DAYS = 7;
 const KEEP_ISSUER_LIST_DAYS = 30;
 const BATCH = 500;
 
-/** Tickers the app knows are ETFs: those with an issuer source, and those with a default sector. */
+/** Tickers the app knows are ETFs without asking: those with an issuer source, and those with a default sector. */
 export function isKnownEtf(ticker: string): boolean {
   const t = ticker.toUpperCase();
   return t in ETF_SOURCES || t in DEFAULT_ETF_SECTOR;
 }
 
+export type QuoteTypes = (symbols: string[]) => Promise<Record<string, string | null>>;
+
+/**
+ * Which of these tickers are ETFs: the ones the app knows, plus any Yahoo reports as an ETF, so a newly bought fund is
+ * looked through without a code change. If Yahoo can't be reached, the known ones still are.
+ */
+export async function etfsAmong(tickers: string[], opts: { quoteTypes?: QuoteTypes } = {}): Promise<Set<string>> {
+  const all = [...new Set(tickers.map((t) => t.toUpperCase()))];
+  const out = new Set(all.filter(isKnownEtf));
+  const rest = all.filter((t) => !out.has(t));
+  if (!rest.length) return out;
+  try {
+    const quoteTypes = opts.quoteTypes ?? (async (s: string[]) => (await import("@/lib/providers/yahoo")).getQuoteTypes(s));
+    const types = await quoteTypes(rest);
+    for (const t of rest) if (types[t] === "ETF") out.add(t);
+  } catch (e) {
+    console.error("[lookthrough] quote types failed; using the known ETF list", e);
+  }
+  return out;
+}
+
 /** ETFs the ledger currently holds (net shares above zero). Splits don't change the sign, so raw shares do. */
-export async function heldEtfs(db: Db): Promise<string[]> {
+export async function heldEtfs(db: Db, opts: { quoteTypes?: QuoteTypes } = {}): Promise<string[]> {
   const rows = await db
     .select({
       ticker: trades.ticker,
@@ -28,7 +49,9 @@ export async function heldEtfs(db: Db): Promise<string[]> {
     .from(trades)
     .where(isNull(trades.voidedAt))
     .groupBy(trades.ticker);
-  return rows.filter((r) => Number(r.net) > 1e-9 && isKnownEtf(r.ticker)).map((r) => r.ticker.toUpperCase()).sort();
+  const held = rows.filter((r) => Number(r.net) > 1e-9).map((r) => r.ticker.toUpperCase());
+  const etfs = await etfsAmong(held, opts);
+  return held.filter((t) => etfs.has(t)).sort();
 }
 
 /** Every list the look-through needs: held ETFs, SPY and the sector SPDRs. */
@@ -112,7 +135,7 @@ export async function refreshEtfConstituents(
 ): Promise<EtfRefreshResult> {
   const log = opts.log ?? ((m: string) => console.log(`[lookthrough] ${m}`));
   const result: EtfRefreshResult = { status: "ok", refreshed: [], fresh: [], kept: [], failed: {}, remaining: [] };
-  const started = Date.now();
+  let started = Date.now();
   const budget = opts.budgetMs ?? 60_000;
   const write = opts.write ?? true;
   try {
@@ -122,6 +145,8 @@ export async function refreshEtfConstituents(
     }
     const today = opts.today ?? DateTime.now().setZone("America/New_York").toISODate()!;
     const targets = (opts.etfs ?? (await lookthroughTargets(db))).map((e) => e.toUpperCase());
+    // Working out the targets can wait on Yahoo; the time budget is for fetching lists.
+    started = Date.now();
     const stored = await storedMeta(db, targets);
     const cutoff = DateTime.fromISO(today).minus({ days: opts.maxAgeDays ?? MAX_AGE_DAYS }).toISODate()!;
     const keepCutoff = DateTime.fromISO(today).minus({ days: KEEP_ISSUER_LIST_DAYS }).toISODate()!;

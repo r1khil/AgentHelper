@@ -112,6 +112,18 @@ describe("refreshEtfConstituents", () => {
       ('KRE', 'buy', 50, null), ('KRE', 'sell', 50, null),
       ('XLF', 'buy', 10, now()),
       ('NVDA', 'buy', 5, null)`);
-    expect(await heldEtfs(db)).toEqual(["SOXX"]);
+    const noneAreEtfs = async (s: string[]) => Object.fromEntries(s.map((t) => [t, "EQUITY"]));
+    expect(await heldEtfs(db, { quoteTypes: noneAreEtfs })).toEqual(["SOXX"]);
+  });
+
+  it("recognises an ETF the app has no source for from Yahoo's quote type, and falls back to the known list", async () => {
+    const { sql } = await import("drizzle-orm");
+    await db.execute(sql`insert into trades (ticker, side, shares, voided_at) values ('SOXX', 'buy', 10, null), ('IYZ', 'buy', 10, null), ('AAPL', 'buy', 5, null)`);
+    const types = async (s: string[]) => Object.fromEntries(s.map((t) => [t, t === "IYZ" ? "ETF" : "EQUITY"]));
+    expect(await heldEtfs(db, { quoteTypes: types })).toEqual(["IYZ", "SOXX"]);
+    const down = async () => {
+      throw new Error("yahoo down");
+    };
+    expect(await heldEtfs(db, { quoteTypes: down })).toEqual(["SOXX"]);
   });
 });
