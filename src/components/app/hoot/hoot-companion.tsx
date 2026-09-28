@@ -1,23 +1,18 @@
 "use client";
 
-import { useHootCommand } from "@/components/app/hoot/use-hoot-command";
-import { hootShortcut, isMac } from "@/lib/hoot/shortcuts";
+import { hootShortcut } from "@/lib/hoot/shortcuts";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
-import { startHootChat } from "@/lib/actions/chats";
 import { dismissHootNudge, setHootEnabled } from "@/lib/actions/preferences";
-import { BUBBLE_VISIBLE_MS, companionHiddenOn, greeting, pickBubble, restingMood, suggestionsFor, teamSlugFromPath, tickerFromPath, tipFor, type BubbleSession } from "@/lib/hoot/policy";
+import { BUBBLE_VISIBLE_MS, companionHiddenOn, pickBubble, restingMood, tipFor, type BubbleSession } from "@/lib/hoot/policy";
 import type { HootFeed, HootMood, HootNudge } from "@/lib/hoot/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { leaveHootQuestion } from "./handoff";
-import { pageContextFor } from "./page-context";
 import { useHootOnPage, usePageMood } from "./presence";
-import { pageContextLabel } from "@/lib/agent/page-context";
 import { HootPanel } from "./hoot-panel";
 import { HootSprite, preloadHoot, usePrefersReducedMotion } from "./hoot-sprite";
 import { useTourActive } from "@/components/app/tour/tour-store";
@@ -110,13 +105,13 @@ export type HootDock = "rail" | "sidebar";
  * Hoot, the companion. On a desktop he sits at the bottom of the menu (`dock`), so he never covers the page; his
  * speech bubbles and the panel open beside the menu, over the page, and close with a click away or Escape. With no
  * menu on screen (phones) he floats in a bottom corner. His face tells you the state of things at a glance (dozing
- * after the close, alert on earnings day, worried about an overdue write-up); a click opens a quick ask to research
- * and everything that needs you. He speaks up on his own rarely: a few times a session at most.
+ * after the close, alert on earnings day, worried about an overdue write-up); a click opens everything that needs you,
+ * with one row into ⌘K for asking him something (`onAsk`): there's one place to ask, not one per Hoot. He speaks up
+ * on his own rarely: a few times a session at most.
  */
-export function HootCompanion({ firstName, suppressed = false, dock = null }: { firstName: string; suppressed?: boolean; dock?: HootDock | null }) {
+export function HootCompanion({ onAsk, suppressed = false, dock = null }: { onAsk: () => void; suppressed?: boolean; dock?: HootDock | null }) {
   const pathname = usePathname();
   const router = useRouter();
-  const runCommand = useHootCommand();
   const [feed, setFeed] = useState<HootFeed | null>(null);
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(() => new Set());
   const [open, setOpen] = useState(false);
@@ -140,8 +135,6 @@ export function HootCompanion({ firstName, suppressed = false, dock = null }: { 
   const swallowClick = useRef(false);
   const firstPage = useRef(true);
   const knownUrgent = useRef<Set<string> | null>(null);
-  const [asking, setAsking] = useState(false);
-  const [askError, setAskError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const loadedAt = useRef(0);
   const pageAt = useRef(0);
@@ -248,16 +241,15 @@ export function HootCompanion({ firstName, suppressed = false, dock = null }: { 
     return () => window.clearTimeout(id);
   }, [bubble, hovered, setBubble]);
 
-  // Option/Alt+S and Mac Command+S open Hoot. Keep Command/Ctrl+J as the existing toggle.
+  // Option/Alt+S opens and closes his panel. It never shadows a browser shortcut (see hootShortcut).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const action = hootShortcut(e, isMac());
-      if (!action || touring) return;
+      if (!hootShortcut(e) || touring) return;
       // Option+S types a character (ß on Mac) in text fields; leave it to the field.
-      if (action === "open" && e.altKey && memberIsTyping()) return;
+      if (memberIsTyping()) return;
       e.preventDefault();
       setBubble(null);
-      setOpen((o) => action === "open" || !o);
+      setOpen((o) => !o);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -269,18 +261,9 @@ export function HootCompanion({ firstName, suppressed = false, dock = null }: { 
     body.current?.animate(frames, { duration, easing: "cubic-bezier(0.3, 0.7, 0.4, 1)" });
   }, []);
 
-  const ticker = tickerFromPath(pathname);
-  const teamSlug = teamSlugFromPath(pathname);
-
   const resting = pageMood ?? (feed ? restingMood(feed.marketOpen, nudges) : "idle");
   const awake = resting === "sleepy" ? "idle" : resting;
-  const mood: HootMood = drag
-    ? "alert"
-    : asking
-      ? "thinking"
-      : bubble
-        ? bubble.mood
-        : (flash ?? (petting ? "happy" : open || hovered ? awake : resting));
+  const mood: HootMood = drag ? "alert" : bubble ? bubble.mood : (flash ?? (petting ? "happy" : open || hovered ? awake : resting));
 
   const showFlash = useCallback((m: HootMood, ms: number) => {
     window.clearTimeout(flashTimer.current);
@@ -355,35 +338,6 @@ export function HootCompanion({ firstName, suppressed = false, dock = null }: { 
     lastMood.current = mood;
   }, [mood, play]);
 
-  const ask = async (text: string) => {
-    if (runCommand(text)) {
-      setAskError(null);
-      setOpen(false);
-      return;
-    }
-    setAsking(true);
-    setAskError(null);
-    try {
-      // Read at the moment of asking, so it reflects the period or scenario on screen right now.
-      const page = pageContextFor(pathname);
-      const res = await startHootChat({ teamSlug, ticker });
-      if ("error" in res) {
-        setAskError(res.error);
-        return;
-      }
-      if (!leaveHootQuestion(res.chatId, text, page)) {
-        // Storage blocked: open the chat and let the member paste it.
-        toast("Your chat is open. Paste your question to send it.");
-      }
-      setOpen(false);
-      router.push(res.href);
-    } catch {
-      setAskError("Couldn't open a chat just now. Try again in a moment.");
-    } finally {
-      setAsking(false);
-    }
-  };
-
   const hide = () => {
     setOpen(false);
     startTransition(async () => {
@@ -404,10 +358,7 @@ export function HootCompanion({ firstName, suppressed = false, dock = null }: { 
   if (touring || (hidden && !open)) return null;
 
   const urgent = nudges.filter((n) => n.priority <= 2).length;
-  // Pages that describe themselves (attribution, backtesting) are attached to the question; say so in the panel.
-  const onScreen = open ? pageContextFor(pathname) : null;
-  const seeing = onScreen && onScreen.kind !== "page" ? pageContextLabel(onScreen) : null;
-  const label = urgent ? `Hoot: ${urgent} ${urgent === 1 ? "thing needs" : "things need"} you` : "Hoot: ask a research question";
+  const label = urgent ? `Hoot: ${urgent} ${urgent === 1 ? "thing needs" : "things need"} you` : "Hoot: what needs you";
 
   return (
     <div
@@ -575,15 +526,12 @@ export function HootCompanion({ firstName, suppressed = false, dock = null }: { 
           className="w-[22rem] max-w-[calc(100vw-1.5rem)] gap-0 overflow-hidden p-0"
         >
           <HootPanel
-            greeting={greeting(new Date(), firstName)}
-            suggestions={suggestionsFor(pathname, ticker)}
-            scopeHint={ticker ? `${ticker}'s research board` : null}
-            seeing={seeing}
             nudges={nudges}
             loading={!feed}
-            asking={asking}
-            askError={askError}
-            onAsk={ask}
+            onAsk={() => {
+              setOpen(false);
+              onAsk();
+            }}
             onOpenNudge={(n) => {
               if (DISMISS_ON_OPEN.has(n.kind)) persistDismiss(n.id);
               setOpen(false);

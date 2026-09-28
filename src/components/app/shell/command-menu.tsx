@@ -4,35 +4,30 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Command } from "cmdk";
-import { toast } from "sonner";
-import { ArrowRight, Briefcase, CalendarDays, ChartColumn, Layers, MessageSquareText, Moon, Search, Sun } from "lucide-react";
+import { ArrowRight, Briefcase, CalendarDays, ChartColumn, Eye, Layers, MessageSquareText, Moon, Search, Sparkles, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { startHootChat } from "@/lib/actions/chats";
-import { boardHref, holdingHref } from "@/lib/scope";
+import { holdingHref, scopeSlugFromPath } from "@/lib/scope";
 import { markScopeIntent } from "./scope-intent";
 import type { CommandHolding } from "@/lib/nav-data";
 import { fmtCurrency, fmtPct } from "@/lib/format";
+import { parseHootCommand } from "@/lib/hoot/commands";
+import { suggestionsFor, tickerFromPath } from "@/lib/hoot/policy";
+import { isMac } from "@/lib/hoot/shortcuts";
+import { pageContextLabel } from "@/lib/agent/page-context";
 import { cn } from "@/lib/utils";
 import { useHootCommand } from "../hoot/use-hoot-command";
-import { leaveHootQuestion } from "../hoot/handoff";
+import { useAskHoot } from "../hoot/use-ask-hoot";
 import { pageContextFor } from "../hoot/page-context";
 import { OwlMark } from "../owl-mark";
-
-export type CommandPage = { label: string; href: string; hint?: string; keywords?: string };
-export type CommandScope = { label: string; href: string };
-
-type Item =
-  | { kind: "holding"; id: string; holding: CommandHolding }
-  | { kind: "ask"; id: string; text: string; ticker: string | null; teamSlug: string | null }
-  | { kind: "page"; id: string; page: CommandPage }
-  | { kind: "scope"; id: string; scope: CommandScope }
-  | { kind: "theme"; id: string; theme: "dark" | "light" };
+import { commandGroups, typedQuestionTarget, type CommandItem as Item, type CommandPage, type CommandScope } from "./command-groups";
 
 const shortDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 /**
- * ⌘K: jump to a holding or page, run a quick action, or turn the text into a question for Hoot (Tab).
- * Hoot's panel keeps its own shortcuts (⌘J, Alt S); this replaces nothing.
+ * ⌘K, the one place to ask Hoot outside Research: jump to a holding or page, run a quick action, or send the text to
+ * Hoot as a question or a command ("take me to holdings", "turn on light mode"). Enter opens what the query names
+ * (a holding, page, scope or theme) and otherwise asks Hoot; ⌘/Ctrl+Enter or Tab always asks. The docked Hoot's
+ * panel opens this too.
  */
 export function CommandMenu({
   open,
@@ -57,10 +52,10 @@ export function CommandMenu({
 }) {
   const router = useRouter();
   const runCommand = useHootCommand();
+  const { asking, ask: askHoot } = useAskHoot();
   const { resolvedTheme } = useTheme();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState("");
-  const [asking, setAsking] = useState(false);
 
   // Start fresh each time it opens.
   const [wasOpen, setWasOpen] = useState(open);
@@ -72,35 +67,48 @@ export function CommandMenu({
     }
   }
 
+  // On a holding page a typed question goes to that holding's research board, as it did from the companion.
+  const pageTicker = tickerFromPath(pathname);
+  const pageTeamSlug = scopeSlugFromPath(pathname);
   const groups = useMemo(
-    () => buildGroups({ query, holdings, pages, scopes, teamSlug, scopeSlug, dark: resolvedTheme === "dark" }),
-    [query, holdings, pages, scopes, teamSlug, scopeSlug, resolvedTheme],
+    () =>
+      commandGroups({
+        query,
+        holdings,
+        pages,
+        scopes,
+        teamSlug,
+        scopeSlug,
+        dark: resolvedTheme === "dark",
+        pageTicker,
+        pageTeamSlug,
+        suggestions: suggestionsFor(pathname, pageTicker),
+      }),
+    [query, holdings, pages, scopes, teamSlug, scopeSlug, resolvedTheme, pageTicker, pageTeamSlug, pathname],
   );
   const all = groups.flatMap((g) => g.items);
+  // Enter runs the first item (the Enter rule lives in commandGroups) until the member arrows elsewhere.
   const current = all.find((i) => i.id === selected) ?? all[0] ?? null;
+  // Pages that describe themselves (attribution, backtesting) go along with the question; say so beside it.
+  const onScreen = open ? pageContextFor(pathname) : null;
+  const seeing = onScreen && onScreen.kind !== "page" ? pageContextLabel(onScreen) : null;
+  const mod = isMac() ? "⌘" : "Ctrl ";
 
   const close = () => onOpenChange(false);
 
   const ask = async (text: string, ticker: string | null, slug: string | null) => {
     const q = text.trim();
     if (!q || asking) return;
+    // Hoot's commands ("take me to holdings", "turn on light mode") run here, without a chat.
     if (runCommand(q)) return close();
-    setAsking(true);
-    try {
-      const page = pageContextFor(pathname);
-      const res = await startHootChat({ teamSlug: slug, ticker });
-      if ("error" in res) {
-        toast.error(res.error);
-        return;
-      }
-      if (!leaveHootQuestion(res.chatId, q, page)) toast("Your chat is open. Paste your question to send it.");
-      close();
-      router.push(res.href);
-    } catch {
-      toast.error("Couldn't open a chat just now. Try again in a moment.");
-    } finally {
-      setAsking(false);
-    }
+    if (await askHoot(q, { teamSlug: slug, ticker })) close();
+  };
+
+  /** ⌘/Ctrl+Enter and Tab: whatever is typed goes to Hoot, about the highlighted holding if there is one. */
+  const askTyped = () => {
+    if (current?.kind === "holding") return void ask(query, current.holding.ticker, current.holding.teamSlug);
+    const to = typedQuestionTarget({ teamSlug, pageTicker, pageTeamSlug });
+    void ask(query, to.ticker, to.teamSlug);
   };
 
   const run = (item: Item) => {
@@ -121,6 +129,11 @@ export function CommandMenu({
       case "theme":
         runCommand(`switch to ${item.theme} mode`);
         close();
+        return;
+      case "suggest":
+        // Fills the box to edit; Enter then asks.
+        setQuery(item.text);
+        setSelected("");
         return;
       case "ask":
         void ask(item.text, item.ticker, item.teamSlug);
@@ -143,11 +156,11 @@ export function CommandMenu({
             onValueChange={setSelected}
             className="flex min-h-0 flex-1 flex-col"
             onKeyDown={(e) => {
-              // Tab turns whatever is typed into a question for Hoot.
-              if (e.key === "Tab" && !e.shiftKey) {
+              // ⌘/Ctrl+Enter or Tab turns whatever is typed into a question for Hoot (preventDefault skips cmdk's Enter).
+              const askKey = (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) || (e.key === "Tab" && !e.shiftKey);
+              if (askKey) {
                 e.preventDefault();
-                const h = current?.kind === "holding" ? current.holding : null;
-                void ask(query, h?.ticker ?? null, h?.teamSlug ?? teamSlug);
+                askTyped();
               }
             }}
           >
@@ -164,7 +177,7 @@ export function CommandMenu({
             </div>
             <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_300px]">
               <Command.List className="max-h-[440px] min-h-0 overflow-y-auto p-2 [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-1.5">
-                <Command.Empty className="px-3 py-8 text-center text-sm text-muted-foreground">Nothing matches. Press Tab to ask Hoot instead.</Command.Empty>
+                <Command.Empty className="px-3 py-8 text-center text-sm text-muted-foreground">Nothing matches. Press {mod}↵ to ask Hoot instead.</Command.Empty>
                 {groups.map((g) => (
                   <Command.Group
                     key={g.label}
@@ -189,13 +202,13 @@ export function CommandMenu({
                 ))}
               </Command.List>
               <aside className="hidden border-l bg-band-2 p-5 md:block" aria-live="polite">
-                {current && <Preview item={current} />}
+                {current && <Preview item={current} seeing={seeing} />}
               </aside>
             </div>
             <div className="flex h-9 shrink-0 items-center gap-5 border-t px-5 text-xs text-muted-foreground">
               <span>↑↓ move</span>
               <span>↵ open</span>
-              <span>Tab ask Hoot instead</span>
+              <span>{mod}↵ ask Hoot</span>
               <span className="flex-1" />
               <span className="hidden sm:inline">{asking ? "Opening a chat with Hoot…" : "Hoot also takes “dark mode” or “switch to FIG”"}</span>
             </div>
@@ -225,6 +238,13 @@ function ItemRow({ item }: { item: Item }) {
         <>
           <MessageSquareText className={icon} />
           <span className="min-w-0 flex-1 truncate">{item.text}</span>
+        </>
+      );
+    case "suggest":
+      return (
+        <>
+          <Sparkles className={icon} />
+          <span className="min-w-0 flex-1 truncate text-muted-foreground">{item.text}</span>
         </>
       );
     case "page":
@@ -259,20 +279,30 @@ function PageIcon({ label }: { label: string }) {
   return <ArrowRight className={cls} />;
 }
 
-function Preview({ item }: { item: Item }) {
+function Preview({ item, seeing }: { item: Item; seeing: string | null }) {
   if (item.kind === "holding") return <HoldingPreview holding={item.holding} />;
-  const [title, body] =
-    item.kind === "ask"
-      ? ["Ask Hoot", "Opens a research chat and sends this question. Hoot cites a source for every fact."]
-      : item.kind === "page"
-        ? [item.page.label, item.page.hint ?? "Open this page."]
-        : item.kind === "scope"
-          ? [item.scope.label, "Every section follows the scope. You stay on the same kind of page."]
-          : [`${item.theme === "dark" ? "Dark" : "Light"} mode`, "Remembered in this browser."];
+  const command = item.kind === "ask" && parseHootCommand(item.text);
+  const [title, body] = command
+    ? ["Hoot", "Does this right away. No chat is opened."]
+    : item.kind === "ask"
+      ? ["Ask Hoot", `Opens ${item.ticker ? `a chat on ${item.ticker}'s research board` : "a research chat"} and sends this question. Hoot cites a source for every fact.`]
+      : item.kind === "suggest"
+        ? ["Suggested question", "Puts it in the box so you can edit it. Enter then asks Hoot."]
+        : item.kind === "page"
+          ? [item.page.label, item.page.hint ?? "Open this page."]
+          : item.kind === "scope"
+            ? [item.scope.label, "Every section follows the scope. You stay on the same kind of page."]
+            : [`${item.theme === "dark" ? "Dark" : "Light"} mode`, "Remembered in this browser."];
   return (
     <div>
       <div className="text-[15px] font-semibold">{title}</div>
       <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{body}</p>
+      {seeing && !command && (item.kind === "ask" || item.kind === "suggest") && (
+        <p className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">
+          <Eye className="size-3 shrink-0" aria-hidden />
+          <span className="truncate">Hoot can see: {seeing}</span>
+        </p>
+      )}
     </div>
   );
 }
@@ -331,71 +361,4 @@ function HoldingPreview({ holding: h }: { holding: CommandHolding }) {
       </dl>
     </div>
   );
-}
-
-function buildGroups({
-  query,
-  holdings,
-  pages,
-  scopes,
-  teamSlug,
-  scopeSlug,
-  dark,
-}: {
-  query: string;
-  holdings: CommandHolding[];
-  pages: CommandPage[];
-  scopes: CommandScope[];
-  teamSlug: string | null;
-  scopeSlug: string | null;
-  dark: boolean;
-}): { label: string; items: Item[] }[] {
-  const q = query.trim().toLowerCase();
-  const words = q.split(/\s+/).filter(Boolean);
-  const matches = (text: string) => words.every((w) => text.toLowerCase().includes(w));
-
-  const holdingHits = q
-    ? holdings
-        .map((h) => ({ h, rank: h.ticker.toLowerCase() === q ? 0 : h.ticker.toLowerCase().startsWith(q) ? 1 : matches(`${h.ticker} ${h.company} ${h.team}`) ? 2 : 9 }))
-        .filter((x) => x.rank < 9)
-        .sort((a, b) => a.rank - b.rank || a.h.ticker.localeCompare(b.h.ticker))
-        .slice(0, 5)
-        .map((x) => x.h)
-    : [];
-  const top = holdingHits[0] && holdingHits[0].ticker.toLowerCase().startsWith(q.split(/\s+/)[0] ?? "") ? holdingHits[0] : null;
-
-  const ask: Item[] = [];
-  if (top) {
-    ask.push(
-      { kind: "ask", id: `ask:moved:${top.ticker}`, text: `What moved ${top.ticker} in the last session vs the S&P 500?`, ticker: top.ticker, teamSlug: top.teamSlug },
-      { kind: "ask", id: `ask:10q:${top.ticker}`, text: `Summarize ${top.ticker}'s last 10-Q, with sources`, ticker: top.ticker, teamSlug: top.teamSlug },
-    );
-  } else if (q.length > 2) {
-    ask.push({ kind: "ask", id: "ask:free", text: query.trim(), ticker: null, teamSlug });
-  }
-
-  const go: Item[] = [];
-  if (top) {
-    // In the scope in view: the fund shows every team's holdings, a team its own (⌘K lists only those).
-    go.push(
-      { kind: "page", id: `go:board:${top.ticker}`, page: { label: `${top.ticker} research board`, href: boardHref(scopeSlug, top.teamSlug, top.ticker), hint: "Hoot's chats about this holding" } },
-      { kind: "page", id: `go:earnings:${top.ticker}`, page: { label: `${top.ticker} earnings`, href: holdingHref(scopeSlug, top.teamSlug, top.ticker, "?tab=earnings"), hint: top.nextReport ? `${shortDate(top.nextReport)}${top.nextReportEstimated ? " est." : ""}` : "No report scheduled" } },
-    );
-  }
-  const pageHits = (q ? pages.filter((p) => matches(`${p.label} ${p.keywords ?? ""} ${p.hint ?? ""}`)) : pages).slice(0, q ? 6 : 8);
-  go.push(...pageHits.map((p): Item => ({ kind: "page", id: `page:${p.href}:${p.label}`, page: p })));
-
-  const doItems: Item[] = [];
-  const scopeHits = q ? scopes.filter((s) => matches(s.label) || (top && s.label === top.team)) : [];
-  doItems.push(...scopeHits.slice(0, 3).map((s): Item => ({ kind: "scope", id: `scope:${s.href}`, scope: s })));
-  if (q && ("dark mode".includes(q) || "light mode".includes(q) || matches("theme mode dark light"))) {
-    doItems.push({ kind: "theme", id: "theme", theme: dark ? "light" : "dark" });
-  }
-
-  return [
-    { label: "Holding", items: holdingHits.map((h): Item => ({ kind: "holding", id: `holding:${h.ticker}`, holding: h })) },
-    { label: "Ask Hoot", items: ask },
-    { label: "Go to", items: go },
-    { label: "Do", items: doItems },
-  ].filter((g) => g.items.length);
 }

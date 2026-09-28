@@ -1,13 +1,9 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { DateTime } from "luxon";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { leaveHootQuestion } from "@/components/app/hoot/handoff";
-import { pageContextFor } from "@/components/app/hoot/page-context";
-import { startHootChat } from "@/lib/actions/chats";
+import { useAskHoot } from "@/components/app/hoot/use-ask-hoot";
 import { isUpcoming, shownActual, surprise, untilText } from "@/lib/economic-calendar/view";
 import type { EconomicEvent } from "@/lib/economic-calendar/types";
 import { NY } from "@/lib/providers/calendar";
@@ -98,30 +94,6 @@ function MarketPrice({ e }: { e: EconomicEvent }) {
   );
 }
 
-/** Opens a Hoot chat with a question already written, from anywhere on the page. */
-function useAskHoot(teamSlug: string | null) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [asking, setAsking] = useState(false);
-  const ask = async (question: string) => {
-    setAsking(true);
-    try {
-      const res = await startHootChat({ teamSlug, ticker: null });
-      if ("error" in res) {
-        toast.error(res.error);
-        return;
-      }
-      if (!leaveHootQuestion(res.chatId, question, pageContextFor(pathname))) toast("Your chat is open. Paste your question to send it.");
-      router.push(res.href);
-    } catch {
-      toast.error("Couldn't open a chat just now. Try again in a moment.");
-    } finally {
-      setAsking(false);
-    }
-  };
-  return { asking, ask };
-}
-
 function hootQuestion(e: EconomicEvent, now: number) {
   const name = `${e.name}${e.period ? ` (${e.period})` : ""}`;
   const actual = shownActual(e, now);
@@ -134,9 +106,10 @@ function hootQuestion(e: EconomicEvent, now: number) {
 }
 
 function AskHoot({ event: e, now, teamSlug, label }: { event: EconomicEvent; now: number; teamSlug: string | null; label: string }) {
-  const { asking, ask } = useAskHoot(teamSlug);
+  // The same way in as ⌘K: a Research conversation with the question already written.
+  const { asking, ask } = useAskHoot();
   return (
-    <Button variant="outline" size="sm" disabled={asking} onClick={() => void ask(hootQuestion(e, now))}>
+    <Button variant="outline" size="sm" disabled={asking} onClick={() => void ask(hootQuestion(e, now), { teamSlug, ticker: null })}>
       {asking ? "Opening Hoot…" : label}
     </Button>
   );
