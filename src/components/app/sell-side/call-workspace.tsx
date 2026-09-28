@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { MessageSquareText, Mic, Pause, Play, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/app/panel";
+import { Tabs } from "@/components/app/tabs";
 import { cn } from "@/lib/utils";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
 import { MODEL_BUCKET } from "@/lib/models/upload";
@@ -554,25 +555,13 @@ export function CallWorkspace({
               </section>
             )
           )}
-          <div role="tablist" aria-label="Call views" className="mt-3.5 flex gap-[22px] border-b text-sm">
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                role="tab"
-                id={`${callId}-tab-${t.key}`}
-                aria-selected={tab === t.key}
-                aria-controls={`${callId}-panel-${t.key}`}
-                onClick={() => (t.key === "chat" ? openChat() : setChosenTab(t.key))}
-                className={cn(
-                  "pb-2.5 whitespace-nowrap outline-none focus-visible:underline",
-                  tab === t.key ? "font-semibold text-foreground shadow-[inset_0_-2px_0_var(--foreground)]" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            label="Call views"
+            idBase={callId}
+            className="mt-3.5"
+            onSelect={(k) => (k === "chat" ? openChat() : setChosenTab(k as Tab))}
+            items={tabs.map((t) => ({ ...t, active: tab === t.key }))}
+          />
         </div>
         <div
           role="tabpanel"

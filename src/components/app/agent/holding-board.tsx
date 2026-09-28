@@ -20,6 +20,7 @@ import { TraceToggle } from "@/components/app/chat/trace-toggle";
 import { headerAction } from "@/components/app/chat/styles";
 import { useResearchChat } from "@/components/app/chat/use-research-chat";
 import { Pill } from "@/components/app/panel";
+import { Tabs, tabPanelProps } from "@/components/app/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { MemoryEntry } from "@/lib/agent/memory/prompt";
 import { ResearchLogCard, suggestionsFor } from "@/components/app/agent/research-log-card";
@@ -305,25 +306,18 @@ function BoardQuote({ market }: { market: Promise<BoardMarket> }) {
 
 /** The side column: Sources (for the selected answer) and Research log (the log, prep pack, the holding at a glance). */
 function SideTabs({ tab, setTab, sourceCount, boardCount, sources, board }: { tab: SideTab; setTab: (t: SideTab) => void; sourceCount: number; boardCount: number; sources: ReactNode; board: ReactNode }) {
-  const item = (key: SideTab, label: string, count: number) => (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={tab === key}
-      onClick={() => setTab(key)}
-      className={cn("inline-flex items-baseline gap-1.5 text-sm transition-colors", tab === key ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground")}
-    >
-      {label}
-      <span className="font-mono text-xs font-normal text-muted-foreground">{count}</span>
-    </button>
-  );
   return (
     <>
-      <div role="tablist" aria-label="Sources and research log" className="flex shrink-0 items-baseline gap-4">
-        {item("sources", "Sources", sourceCount)}
-        {item("board", "Research log", boardCount)}
-      </div>
-      <div role="tabpanel" className="-mx-1 mt-2.5 min-h-0 flex-1 overflow-y-auto px-1 pt-px pb-1">
+      <Tabs
+        label="Sources and research log"
+        idBase="board-side"
+        onSelect={(k) => setTab(k as SideTab)}
+        items={[
+          { key: "sources", label: "Sources", count: sourceCount, active: tab === "sources" },
+          { key: "board", label: "Research log", count: boardCount, active: tab === "board" },
+        ]}
+      />
+      <div {...tabPanelProps("board-side", tab)} className="-mx-1 mt-2.5 min-h-0 flex-1 overflow-y-auto px-1 pt-px pb-1">
         {tab === "sources" ? sources : board}
       </div>
     </>

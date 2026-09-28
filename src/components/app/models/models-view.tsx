@@ -4,6 +4,7 @@ import { approveAllProposed, deleteMapping, generateProposals, writeApproved } f
 import { fmtDate, fmtDay, fmtNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { CountChip, Panel, PanelFooter, PanelHeader } from "@/components/app/panel";
+import { Tabs } from "@/components/app/tabs";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MappingEditor } from "./mapping-editor";
@@ -198,23 +199,7 @@ function ModelDetail({ d, uploadTargets }: { d: ModelDetailData; uploadTargets: 
       {d.ok && <Banner tone="good">{d.ok}</Banner>}
       {d.error && <Banner tone="error">{d.error}</Banner>}
 
-      <nav className="-mb-1 flex gap-5 border-b" aria-label="Model sections">
-        {tabs.map((t) => (
-          <Link
-            key={t.key}
-            href={`${d.href}?tab=${t.key}`}
-            scroll={false}
-            aria-current={d.tab === t.key ? "page" : undefined}
-            className={cn(
-              "flex h-9 items-center gap-1.5 text-sm whitespace-nowrap",
-              d.tab === t.key ? "font-semibold text-foreground shadow-[inset_0_-2px_0_var(--foreground)]" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t.label}
-            {t.count !== undefined && <CountChip hot={t.hot}>{t.count}</CountChip>}
-          </Link>
-        ))}
-      </nav>
+      <Tabs label="Model sections" className="-mb-1" scroll={false} items={tabs.map((t) => ({ ...t, href: `${d.href}?tab=${t.key}`, active: d.tab === t.key }))} />
 
       {d.tab === "proposals" &&
         (mapped ? (

@@ -1,4 +1,4 @@
-import { FilterChip } from "@/components/app/panel";
+import { FilterChip, FilterChips } from "@/components/app/panel";
 import { fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -20,16 +20,18 @@ export function parseHoldingFilter(v: string | string[] | undefined): HoldingFil
 export function HoldingsToolbar({ basePath, active, counts, aside }: { basePath: string; active: HoldingFilter; counts: Record<HoldingFilter, number>; aside?: React.ReactNode }) {
   return (
     <div data-tour="holdings-filters" className="flex shrink-0 flex-wrap items-center gap-2">
-      {HOLDING_FILTERS.map((f) => (
-        <FilterChip
-          key={f}
-          href={f === "all" ? basePath : `${basePath}?filter=${f}`}
-          active={active === f}
-          count={<span className={cn(f === "attention" && active !== f && counts.attention > 0 && "text-hoot-foreground")}>{counts[f]}</span>}
-        >
-          {LABELS[f]}
-        </FilterChip>
-      ))}
+      <FilterChips label="Filter holdings">
+        {HOLDING_FILTERS.map((f) => (
+          <FilterChip
+            key={f}
+            href={f === "all" ? basePath : `${basePath}?filter=${f}`}
+            active={active === f}
+            count={<span className={cn(f === "attention" && active !== f && counts.attention > 0 && "text-hoot-foreground")}>{counts[f]}</span>}
+          >
+            {LABELS[f]}
+          </FilterChip>
+        ))}
+      </FilterChips>
       <span className="flex-1" />
       {aside}
     </div>

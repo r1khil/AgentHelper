@@ -35,7 +35,7 @@ import { fmtCurrency, fmtDay, fmtTime } from "@/lib/format";
 import { NY } from "@/lib/providers/calendar";
 import { cn } from "@/lib/utils";
 import { earningsHref } from "@/lib/scope";
-import { Panel, Pill, Segmented, type PillTone } from "@/components/app/panel";
+import { FilterChip, FilterChips, Panel, Pill, Segmented, type PillTone } from "@/components/app/panel";
 import { NativeSelect } from "@/components/app/native-select";
 import { StatusBadge } from "@/components/app/status-badge";
 import { HootSprite } from "@/components/app/hoot/hoot-sprite";
@@ -248,21 +248,13 @@ export function CalendarView(props: CalendarViewProps) {
                   </Link>
                   {s.kind === "economic" && on && (
                     <div className="mt-2.5 flex flex-col gap-2 pl-[26px]">
-                      <Segmented
-                        label="Importance"
-                        className="self-start"
-                        segments={IMPORTANCE.map((i) => ({
-                          key: i.id,
-                          label: (
-                            <>
-                              {i.label}
-                              <span className="ml-1.5 font-mono text-[11px] font-normal text-muted-foreground">{periodEcon.filter(i.keep).length}</span>
-                            </>
-                          ),
-                          active: importance === i.id,
-                          onClick: () => setImportance(i.id),
-                        }))}
-                      />
+                      <FilterChips label="Importance">
+                        {IMPORTANCE.map((i) => (
+                          <FilterChip key={i.id} active={importance === i.id} count={periodEcon.filter(i.keep).length} onClick={() => setImportance(i.id)}>
+                            {i.label}
+                          </FilterChip>
+                        ))}
+                      </FilterChips>
                       <label className="flex h-8 items-center gap-2 rounded-lg bg-card px-2.5 text-muted-foreground shadow-[0_0_0_1px_var(--border)] focus-within:ring-2 focus-within:ring-ring">
                         <Search className="size-3.5 shrink-0" />
                         <span className="sr-only">Find a release</span>

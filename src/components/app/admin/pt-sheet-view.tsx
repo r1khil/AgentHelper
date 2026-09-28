@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { DriveNotConnected } from "@/lib/drive/auth";
 import { fmtDateTime } from "@/lib/format";
 import { displayValue, renderTab, tabColumns, type PtTab } from "@/lib/pt-sheet/parse";
@@ -29,13 +29,10 @@ export function PtSheetBody({ sheet, error }: { sheet: PtSheet | null; error: st
     <div className="flex min-h-0 flex-1 flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="min-w-0 flex-1">
-          <h2 className="text-[19px] font-semibold tracking-[-0.015em]">PT sheet read test</h2>
+          {/* The way back up to Admin is in the app header (nav.ts backFor), so this is the page's h1. */}
+          <h1 className="text-[19px] font-semibold tracking-[-0.015em]">PT sheet read test</h1>
           <p className="mt-0.5 text-[13px] text-muted-foreground">Exactly what Hoot will see from the price target sheet. The app only reads it; nothing here is saved.</p>
         </div>
-        <Button nativeButton={false} render={<Link href="/admin" />} size="lg" variant="outline">
-          <ArrowLeft data-icon="inline-start" />
-          Back to Admin
-        </Button>
         <Button nativeButton={false} render={<Link href="/admin/pt-sheet?fresh=1" prefetch={false} />} size="lg">
           <RefreshCw data-icon="inline-start" />
           Read again

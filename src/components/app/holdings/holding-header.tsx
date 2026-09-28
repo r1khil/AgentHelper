@@ -1,8 +1,6 @@
-import Link from "next/link";
-import { cn } from "@/lib/utils";
 import { fmtCurrency, ppToBp } from "@/lib/format";
 import { Move } from "@/components/app/move";
-import { CountChip, Pill } from "@/components/app/panel";
+import { Pill } from "@/components/app/panel";
 
 export type HeaderQuote = { price: number; currency?: string; changePct?: number; relativePp?: number; when: string } | { error: string };
 
@@ -52,30 +50,5 @@ export function HoldingHeader({
       <span className="flex-1" />
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
-  );
-}
-
-export type HoldingTab = { key: string; label: string; count?: React.ReactNode; href: string; active: boolean };
-
-/** Underlined in-page tabs (links, `?tab=`): 14px, the active one 600 with a 2px ink underline. */
-export function HoldingTabs({ tabs }: { tabs: HoldingTab[] }) {
-  return (
-    <nav aria-label="Holding sections" className="flex shrink-0 gap-[22px] overflow-x-auto border-b">
-      {tabs.map((t) => (
-        <Link
-          key={t.key}
-          href={t.href}
-          scroll={false}
-          aria-current={t.active ? "page" : undefined}
-          className={cn(
-            "flex items-center gap-1.5 pb-2.5 text-sm whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            t.active ? "font-semibold text-foreground shadow-[inset_0_-2px_0_var(--foreground)]" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {t.label}
-          {t.count !== undefined && t.count !== null && t.count !== "" && <CountChip className="font-normal">{t.count}</CountChip>}
-        </Link>
-      ))}
-    </nav>
   );
 }

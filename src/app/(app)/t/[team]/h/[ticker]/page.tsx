@@ -20,7 +20,8 @@ import { DocumentSummary } from "@/components/app/document-summary";
 import { ThesisProposal } from "@/components/app/thesis-proposal";
 import { PriceChart } from "@/components/app/price-chart";
 import { alignPrices } from "@/lib/charts/series";
-import { HoldingHeader, HoldingTabs, type HeaderQuote } from "@/components/app/holdings/holding-header";
+import { HoldingHeader, type HeaderQuote } from "@/components/app/holdings/holding-header";
+import { Tabs } from "@/components/app/tabs";
 import { HoldingActions } from "@/components/app/holdings/holding-actions";
 import { ThesisPanel } from "@/components/app/holdings/thesis-panel";
 import { NotesPanel, NotesTab, monthDay, type NoteItem } from "@/components/app/holdings/notes";
@@ -134,7 +135,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
         quote={quote}
         actions={<HoldingActions ticker={h.ticker} holdingId={h.id} boardHref={boardHref} canUpload={active} uploadDisabledReason={driveNote} canExit={manage && active} links={menuLinks} />}
       />
-      <HoldingTabs tabs={tabs} />
+      <Tabs label="Holding sections" items={tabs} scroll={false} />
 
       {tab === "overview" && (
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">

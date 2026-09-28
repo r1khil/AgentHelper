@@ -10,7 +10,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CountChip, Panel, PanelFooter, PanelHeader, Pill, StatStrip, type StatCell } from "@/components/app/panel";
+import { Panel, PanelFooter, PanelHeader, Pill, StatStrip, type StatCell } from "@/components/app/panel";
+import { Tabs, tabPanelProps } from "@/components/app/tabs";
 import { Move } from "@/components/app/move";
 import { HootMoodFor } from "@/components/app/hoot/presence";
 import { CopyButton } from "./copy-button";
@@ -160,40 +161,36 @@ export function WeeklyPack(props: WeeklyPackProps) {
 
       <StatStrip cells={cells} />
 
-      <nav aria-label="Pack sections" className="-mt-1 flex shrink-0 gap-5 border-b">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            aria-current={tab === t ? "page" : undefined}
-            className={cn(
-              "flex h-9 items-center gap-1.5 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-              tab === t ? "font-semibold text-foreground shadow-[inset_0_-2px_0_var(--foreground)]" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {TAB_LABELS[t]}
-            {t === "checks" && checkCount > 0 && <CountChip>{checkCount}</CountChip>}
-            {t === "agenda" && <CountChip>{agendaCount}</CountChip>}
-          </button>
-        ))}
-      </nav>
+      <Tabs
+        label="Pack sections"
+        idBase="weekly-pack"
+        className="-mt-1"
+        onSelect={(k) => setTab(k as Tab)}
+        items={TABS.map((t) => ({
+          key: t,
+          label: TAB_LABELS[t],
+          active: tab === t,
+          count: t === "checks" ? (checkCount > 0 ? checkCount : undefined) : t === "agenda" ? agendaCount : undefined,
+        }))}
+      />
 
-      {tab === "summary" && <SummaryGrid {...props} />}
-      {tab === "email" && (email ? <EmailPanel week={props.weekEnding} state={props.state} sentAt={props.sentAt} email={email} name={name} /> : <Banner>The email can be written once the pack is built.</Banner>)}
-      {tab === "highlights" && (
-        <HighlightsPanel
-          week={props.weekEnding}
-          figures={props.figures}
-          sent={sent}
-          carried={carried}
-          values={{ aumK, ytdPct, benchmarkYtdPct }}
-          setters={{ setAumK, setYtdPct, setBenchmarkYtdPct }}
-          highlights={highlights}
-        />
-      )}
-      {tab === "agenda" && <AgendaPanels {...props} sent={sent} />}
-      {tab === "checks" && <ChecksPanel {...props} checks={checks} missing={missing} carried={carried} />}
+      <div {...tabPanelProps("weekly-pack", tab)} className="flex min-h-0 flex-1 flex-col gap-5">
+        {tab === "summary" && <SummaryGrid {...props} />}
+        {tab === "email" && (email ? <EmailPanel week={props.weekEnding} state={props.state} sentAt={props.sentAt} email={email} name={name} /> : <Banner>The email can be written once the pack is built.</Banner>)}
+        {tab === "highlights" && (
+          <HighlightsPanel
+            week={props.weekEnding}
+            figures={props.figures}
+            sent={sent}
+            carried={carried}
+            values={{ aumK, ytdPct, benchmarkYtdPct }}
+            setters={{ setAumK, setYtdPct, setBenchmarkYtdPct }}
+            highlights={highlights}
+          />
+        )}
+        {tab === "agenda" && <AgendaPanels {...props} sent={sent} />}
+        {tab === "checks" && <ChecksPanel {...props} checks={checks} missing={missing} carried={carried} />}
+      </div>
     </div>
   );
 }

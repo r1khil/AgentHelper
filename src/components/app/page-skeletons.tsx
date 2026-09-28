@@ -1,7 +1,7 @@
 import { LastSessionSkeleton } from "@/app/(app)/_today/last-session";
 import { StressPanelFallback } from "@/components/app/risk/stress-panel";
 import { cn } from "@/lib/utils";
-import { Bone, SkeletonChart, SkeletonPage, SkeletonPanel, SkeletonPanelHeader, SkeletonPill, SkeletonRows, SkeletonStatStrip, TextBone } from "./skeletons";
+import { Bone, SkeletonChart, SkeletonPage, SkeletonPanel, SkeletonPanelHeader, SkeletonPill, SkeletonRows, SkeletonStatStrip, SkeletonTabs, TextBone } from "./skeletons";
 
 // One loading skeleton per page, used by the route's loading.tsx. Each copies its page's outer layout classes
 // (grids, column widths, gaps, panel and row heights) from the component named above it, so the page streams in
@@ -161,11 +161,7 @@ export function HoldingSkeleton() {
           <SkeletonPill className="size-9" />
         </div>
       </div>
-      <div className="flex shrink-0 gap-[22px] border-b">
-        {["w-16", "w-16", "w-36", "w-16", "w-12"].map((w, i) => (
-          <TextBone key={i} className="pb-2.5 text-sm" w={w} />
-        ))}
-      </div>
+      <SkeletonTabs widths={["w-16", "w-16", "w-36", "w-16", "w-12"]} />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
         <div className="flex min-h-0 min-w-0 flex-col gap-5">
           {/* Price chart */}
@@ -176,7 +172,7 @@ export function HoldingSkeleton() {
               <TextBone className="text-xs" w="w-24" />
               <span className="flex-1" />
               <TextBone className="text-xs" w="w-20" />
-              <Bone className="h-[28.5px] w-40 rounded-full" />
+              <SkeletonPill className="w-52" />
             </div>
             <SkeletonChart className="mt-2.5 h-[200px]" />
           </section>
@@ -686,11 +682,7 @@ export function SellSideSkeleton() {
             <TextBone className="text-[19px] leading-tight font-semibold" w="w-80" />
             <TextBone className="mt-1 text-[13px]" w="w-56" />
             <Bone className="mt-3.5 h-9 w-full rounded-[10px]" />
-            <div className="mt-3.5 flex gap-[22px] border-b">
-              {["w-12", "w-20", "w-20"].map((w, i) => (
-                <TextBone key={i} className="pb-2.5 text-sm" w={w} />
-              ))}
-            </div>
+            <SkeletonTabs className="mt-3.5" widths={["w-12", "w-20", "w-20"]} />
           </div>
           <div className="grid min-h-0 flex-1 lg:grid-cols-2">
             {range(2).map((c) => (
@@ -758,13 +750,7 @@ export function ModelsSkeleton() {
             <SkeletonPill className="h-[34px] w-36" />
           </div>
         </div>
-        <div className="-mb-1 flex gap-5 border-b">
-          {["w-28", "w-20", "w-20"].map((w, i) => (
-            <div key={i} className="flex h-9 items-center">
-              <TextBone className="text-sm" w={w} />
-            </div>
-          ))}
-        </div>
+        <SkeletonTabs className="-mb-1" widths={["w-28", "w-20", "w-20"]} />
         <SkeletonPanel>
           <SkeletonPanelHeader w="w-32" />
           <div className="flex flex-col">
@@ -906,19 +892,18 @@ export function AttributionSkeleton() {
   );
 }
 
-/** The ledger (attribution/ledger-view.tsx, Trades tab): the toolbar, the strip, the PT sheet check, the trades table. */
+/** The ledger (attribution/ledger-view.tsx, Trades tab): the title line, the strip, the PT sheet check, the tabs, the trades table. */
 export function LedgerSkeleton() {
   return (
     <SkeletonPage className="flex min-h-0 flex-1 flex-col gap-5">
       <div className="flex shrink-0 flex-wrap items-center gap-3">
-        <SkeletonPill className="w-[118px]" />
         <TextBone className="text-[17px] font-semibold" w="w-16" />
         <TextBone className="text-[13px]" w="w-72" />
       </div>
       <SkeletonStatStrip cells={4} />
       <TextBone className="text-xs" w="w-72" />
       <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <SkeletonPill className="w-[340px]" />
+        <SkeletonTabs widths={["w-12", "w-10", "w-32", "w-16"]} />
         <SkeletonPanel className="flex-1">
           <div className="flex h-11 shrink-0 items-center gap-2 border-b px-4">
             <TextBone className="text-[14.5px] font-semibold" w="w-16" />
@@ -1121,13 +1106,7 @@ export function WeeklySkeleton() {
             <SkeletonPill className="size-9" />
           </div>
           <SkeletonStatStrip cells={4} notes={false} />
-          <div className="-mt-1 flex shrink-0 gap-5 border-b">
-            {["w-16", "w-16", "w-14", "w-16", "w-14"].map((w, i) => (
-              <div key={i} className="flex h-9 items-center">
-                <TextBone className="text-sm" w={w} />
-              </div>
-            ))}
-          </div>
+          <SkeletonTabs className="-mt-1" widths={["w-16", "w-16", "w-14", "w-16", "w-14"]} />
           {/* Summary: four plain sections of 40px rows, no dividers, each as tall as its rows. */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             {[3, 3, 5, 5].map((rows, p) => (

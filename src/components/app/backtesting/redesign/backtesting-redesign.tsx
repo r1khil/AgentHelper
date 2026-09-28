@@ -3,7 +3,8 @@
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
-import { Panel, PanelHeader, Segmented, StatStrip, type StatCell } from "@/components/app/panel";
+import { Panel, PanelHeader, StatStrip, type StatCell } from "@/components/app/panel";
+import { Tabs, tabPanelProps } from "@/components/app/tabs";
 import { PerformanceChart } from "@/components/charts/performance-chart";
 import type { BacktestResult } from "@/lib/backtesting/engine";
 import type { SavedScenarioSummary } from "@/lib/backtesting/saved";
@@ -224,11 +225,10 @@ function ResultDetails({ result, bt }: { result: BacktestResult; bt: Backtesting
   ];
   return (
     <Panel className="shrink-0">
-      <PanelHeader
-        title="Replay in detail"
-        aside={<Segmented label="Replay detail" segments={tabs.map((t) => ({ key: t.key, label: t.label, active: tab === t.key, onClick: () => setTab(t.key) }))} />}
-      />
-      <div className={cn("p-4 text-sm", bt.dirty && "opacity-60")}>
+      <PanelHeader title="Replay in detail">
+        <Tabs label="Replay detail" idBase="replay-detail" rule={false} className="ml-4 self-stretch" onSelect={(k) => setTab(k as DetailTab)} items={tabs.map((t) => ({ ...t, active: tab === t.key }))} />
+      </PanelHeader>
+      <div {...tabPanelProps("replay-detail", tab)} className={cn("p-4 text-sm", bt.dirty && "opacity-60")}>
         {tab === "daily" && (
           <div className="space-y-6">
             <DailyDifferences result={result} Frame={DetailFrame} names={NAMES} />

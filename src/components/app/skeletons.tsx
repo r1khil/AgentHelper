@@ -104,3 +104,16 @@ export function SkeletonChart({ className }: { className?: string }) {
 export function SkeletonPill({ className }: { className?: string }) {
   return <Bone className={cn("h-8 shrink-0 rounded-full", className)} />;
 }
+
+/** A row of Tabs (components/app/tabs.tsx): 36px, 20px apart, over a 1px rule; pass each label's width. */
+export function SkeletonTabs({ widths, className }: { widths: string[]; className?: string }) {
+  return (
+    <div aria-hidden className={cn("flex min-h-9 shrink-0 gap-5 border-b", className)}>
+      {widths.map((w, i) => (
+        <div key={i} className="flex items-center">
+          <TextBone className="text-sm" w={w} />
+        </div>
+      ))}
+    </div>
+  );
+}

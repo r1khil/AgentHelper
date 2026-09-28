@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, Search } from "lucide-react";
+import { Search } from "lucide-react";
+import { BackLink } from "@/components/app/panel";
+import { Tabs } from "@/components/app/tabs";
 import type { NavModel } from "@/lib/nav";
 import type { TabCount } from "@/lib/nav-data";
 import { isMac } from "@/lib/hoot/shortcuts";
 import { useSyncExternalStore } from "react";
-import { cn } from "@/lib/utils";
 
 const noSubscribe = () => () => {};
 
@@ -20,49 +20,18 @@ export function AppHeader({ nav, counts, onOpenCommand }: { nav: NavModel; count
     <header className="sticky top-0 z-30 hidden h-14 shrink-0 items-center gap-6 border-b bg-background px-6 md:flex">
       {nav.back ? (
         // The page's own title is its h1; this is its one "where am I / go up" line, above the page's tabs.
-        <nav aria-label="Breadcrumb">
-          <Link
-            href={nav.back.href}
-            className="group flex items-center gap-1.5 text-[17px] font-semibold tracking-[-0.015em] whitespace-nowrap focus-visible:underline focus-visible:outline-none"
-          >
-            <ArrowLeft className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
-            <span className="sr-only">Back to </span>
-            {nav.back.label}
-          </Link>
-        </nav>
+        <BackLink href={nav.back.href} label={nav.back.label} />
       ) : (
         <h1 className="text-[17px] font-semibold tracking-[-0.015em] whitespace-nowrap">{nav.title}</h1>
       )}
       {nav.tabs.length > 0 && (
-        <nav data-tour="section-tabs" aria-label={`${nav.title} pages`} className="flex gap-5 self-stretch">
-          {nav.tabs.map((t) => {
-            const c = counts[t.key];
-            return (
-              <Link
-                key={t.key}
-                href={t.href}
-                data-tour={`nav-${t.key}`}
-                aria-current={t.active ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-1.5 text-sm whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:[&>span:first-child]:underline",
-                  t.active ? "font-semibold text-foreground shadow-[inset_0_-2px_0_var(--foreground)]" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <span>{t.label}</span>
-                {c && (
-                  <span
-                    className={cn(
-                      "rounded-full px-1.5 font-mono text-[11px] leading-[17px] font-medium",
-                      c.hot ? "bg-hoot text-hoot-foreground" : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {c.value}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+        <Tabs
+          data-tour="section-tabs"
+          label={`${nav.title} pages`}
+          rule={false}
+          className="self-stretch"
+          items={nav.tabs.map((t) => ({ key: t.key, label: t.label, href: t.href, active: t.active, count: counts[t.key]?.value, hot: counts[t.key]?.hot, tour: `nav-${t.key}` }))}
+        />
       )}
       <div className="flex-1" />
       <button
