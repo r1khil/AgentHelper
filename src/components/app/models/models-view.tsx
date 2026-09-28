@@ -30,16 +30,16 @@ export function ModelsView({
   error?: string | null;
 }) {
   return (
-    <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+    <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
       <ModelList items={items} uploadTargets={uploadTargets} selectedHoldingId={selectedHoldingId} />
       {selected ? (
         <ModelDetail d={selected} uploadTargets={uploadTargets} />
       ) : (
         <div className="flex min-w-0 flex-col gap-4">
           {error && <Banner tone="error">{error}</Banner>}
-          <div className="flex min-h-64 flex-1 items-center justify-center rounded-[14px] border border-dashed px-6 text-center text-sm text-muted-foreground">
+          <p className="py-2.5 text-sm text-muted-foreground">
             Select a model to review its proposed values. Nothing is waiting for review right now.
-          </div>
+          </p>
         </div>
       )}
     </div>
@@ -218,7 +218,7 @@ function ModelDetail({ d, uploadTargets }: { d: ModelDetailData; uploadTargets: 
         (mapped ? (
           <ProposalsPanels d={d} counts={counts} />
         ) : (
-          <div className="flex min-h-48 flex-1 flex-col items-center justify-center gap-3 rounded-[14px] border border-dashed px-6 text-center text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-1 text-sm text-muted-foreground">
             Map at least one line item first. You enter its first period by hand; Hoot checks the other periods against that number.
             <Button nativeButton={false} render={<Link href={`${d.href}?tab=map`} scroll={false} />} size="sm">
               Map a line item
@@ -244,18 +244,18 @@ function ProposalsPanels({ d, counts }: { d: ModelDetailData; counts: Record<Mod
   const exceptions = d.proposals.filter((p) => p.status === "exception");
   return (
     <>
-      <Panel className="flex-1">
+      <Panel>
         <PanelHeader title="Proposed values">
           <span className="truncate text-[12.5px] text-muted-foreground">Straight from SEC filings, not written by AI · formula cells are never touched</span>
         </PanelHeader>
         {d.proposals.length === 0 ? (
-          <div className="flex flex-1 flex-col items-start gap-3 px-4 py-4 text-[13.5px] text-muted-foreground">
+          <div className="flex flex-col items-start gap-3 px-4 py-4 text-[13.5px] text-muted-foreground">
             Generate proposals to fill the other mapped periods from the figures the company reported to the SEC. Each proposal carries its period, unit, reported label, filing, and derivation.
             <GenerateButton d={d} label="Generate proposals" primary />
           </div>
         ) : (
-          <div className="flex flex-1 flex-col overflow-x-auto">
-            <div className="flex min-w-[760px] flex-1 flex-col">
+          <div className="flex flex-col overflow-x-auto">
+            <div className="flex min-w-[760px] flex-col">
               <div className={cn(GRID, "h-[34px] shrink-0 border-b px-4 text-xs text-muted-foreground")}>
                 <span>Line item · cell</span>
                 <span title="The XBRL tag the company used for this figure in its SEC filing">Reported figure</span>
@@ -301,7 +301,7 @@ function ProposalRow({ p }: { p: ModelProposalRow }) {
     <div
       className={cn(
         GRID,
-        "min-h-12 flex-1 border-b border-row px-4 py-1.5 text-[13.5px]",
+        "min-h-12 border-b border-row px-4 py-1.5 text-[13.5px]",
         p.status === "approved" && "bg-good-tint",
         p.status === "rejected" && "text-muted-foreground [&_.value]:line-through",
       )}
@@ -420,7 +420,7 @@ function ExceptionsPanel({ rows }: { rows: ModelProposalRow[] }) {
 
 function MappingsPanel({ d }: { d: ModelDetailData }) {
   return (
-    <Panel className="flex-1">
+    <Panel>
       <PanelHeader title="Mappings" count={d.mappings.length} aside="Carried forward to each new version" />
       {d.mappings.length === 0 ? (
         <p className="px-4 py-3 text-[13.5px] text-muted-foreground">No line items mapped yet.</p>

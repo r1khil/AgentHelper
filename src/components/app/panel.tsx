@@ -1,19 +1,27 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-// Building blocks for the redesigned pages. A panel is card-colored with a 1px ring, radius 14, no shadow;
-// its header is 44px with a divider; rows are split by lighter row dividers. See the design handoff README.
+// Building blocks for the redesigned pages. An outlined panel is card-colored with a 1px ring, radius 14, no
+// shadow; its header is 44px with a divider. A plain panel is a section of the page: no ring, no fill, no header
+// divider, set apart by its title and the space around it. Rows in dense tables are split by row dividers.
 
-/** A panel. Add `flex-1 min-h-0` to let it fill the rest of a column. */
-export function Panel({ className, children, ...props }: React.ComponentProps<"section">) {
+export type PanelVariant = "outlined" | "plain";
+
+/**
+ * A panel. Outlined (the default) is for something that is its own object: a table whose frame groups its rows,
+ * a card you act on, an editor. Plain is for a section of the page that only needs its title.
+ * A panel takes its content's height. Only a full-height workspace (a list that scrolls inside the viewport) should
+ * add `flex-1 min-h-0` to fill the rest of a column.
+ */
+export function Panel({ className, children, variant = "outlined", ...props }: React.ComponentProps<"section"> & { variant?: PanelVariant }) {
   return (
-    <section className={cn("panel flex min-w-0 flex-col overflow-hidden", className)} {...props}>
+    <section data-variant={variant} className={cn("group/panel flex min-w-0 flex-col overflow-hidden", variant === "outlined" ? "panel" : "panel-plain", className)} {...props}>
       {children}
     </section>
   );
 }
 
-/** The 44px panel header: a 14.5px title, an optional count, and whatever sits on the right. */
+/** The panel header: a 14.5px title, an optional count, and whatever sits on the right. 44px over a divider on an outlined panel, 40px and no divider on a plain one. */
 export function PanelHeader({
   title,
   count,
@@ -32,7 +40,7 @@ export function PanelHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <div className={cn("flex h-11 shrink-0 items-center gap-2 border-b px-4", className)}>
+    <div className={cn("flex h-11 shrink-0 items-center gap-2 border-b px-4 group-data-[variant=plain]/panel:h-10 group-data-[variant=plain]/panel:border-b-0", className)}>
       <h2 className="text-[14.5px] font-semibold whitespace-nowrap">{title}</h2>
       {count !== undefined && count !== null && <CountChip hot={hot}>{count}</CountChip>}
       {children}
@@ -42,9 +50,9 @@ export function PanelHeader({
   );
 }
 
-/** A panel's footer band. */
+/** A panel's footer band (no divider or fill on a plain panel). */
 export function PanelFooter({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={cn("flex min-h-10 shrink-0 items-center gap-3 border-t bg-band-2 px-4 py-2 text-[12.5px] text-muted-foreground", className)}>{children}</div>;
+  return <div className={cn("flex min-h-10 shrink-0 items-center gap-3 border-t bg-band-2 px-4 py-2 text-[12.5px] text-muted-foreground group-data-[variant=plain]/panel:border-t-0 group-data-[variant=plain]/panel:bg-transparent", className)}>{children}</div>;
 }
 
 /** A small mono count chip: pink when it's Hoot's or needs action, neutral otherwise. */

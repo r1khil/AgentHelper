@@ -42,7 +42,7 @@ export function StressPanel({ results, fundLabel, className }: { results: Stress
   // The footer link replays the window where today's positions fell furthest.
   const worst = [...ok].sort((a, b) => a.fund - b.fund)[0];
   return (
-    <Panel aria-label="Historical stress tests" className={className}>
+    <Panel aria-label="Historical stress tests" variant="plain" className={className}>
       <PanelHeader
         title="Stress tests"
         aside={
@@ -55,7 +55,7 @@ export function StressPanel({ results, fundLabel, className }: { results: Stress
       <Head />
       {results.map((r) =>
         r.status === "ok" ? (
-          <div key={r.key} className={cn(COLS, "min-h-11 flex-1 border-t border-row text-[13.5px]")}>
+          <div key={r.key} className={cn(COLS, "min-h-11 border-t border-row text-[13.5px]")}>
             <a href={`#${stressAnchor(r.key)}`} className="truncate font-medium hover:underline" title={`${r.note} Open the day-by-day path and each holding's contribution.`}>
               {r.label}
             </a>
@@ -65,7 +65,7 @@ export function StressPanel({ results, fundLabel, className }: { results: Stress
             <span className={cn("text-right font-mono text-[12.5px] font-semibold", tone(r.fund - r.market))}>{pp(r.fund - r.market)}</span>
           </div>
         ) : (
-          <div key={r.key} className={cn(COLS, "min-h-11 flex-1 border-t border-row text-[13.5px]")}>
+          <div key={r.key} className={cn(COLS, "min-h-11 border-t border-row text-[13.5px]")}>
             <span className="truncate font-medium">{r.label}</span>
             <span className="col-span-4 truncate text-xs text-muted-foreground" title={r.reason}>{stressDates(r.from, r.to)} · {r.reason}</span>
           </div>
@@ -86,11 +86,11 @@ export function StressPanel({ results, fundLabel, className }: { results: Stress
 
 export function StressPanelFallback({ className }: { className?: string }) {
   return (
-    <Panel aria-label="Historical stress tests" aria-busy className={className}>
+    <Panel aria-label="Historical stress tests" aria-busy variant="plain" className={className}>
       <PanelHeader title="Stress tests" aside="today's positions, buy and hold" />
       <Head />
       {STRESS_WINDOWS.map((w) => (
-        <div key={w.key} className={cn(COLS, "min-h-11 flex-1 border-t border-row text-[13.5px]")}>
+        <div key={w.key} className={cn(COLS, "min-h-11 border-t border-row text-[13.5px]")}>
           <span className="truncate font-medium">{w.label}</span>
           <span className="truncate font-mono text-[11.5px] text-muted-foreground">{stressDates(w.from, w.to)}</span>
           <span className="col-span-3 text-right text-xs text-muted-foreground">loading…</span>

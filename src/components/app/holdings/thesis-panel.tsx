@@ -13,7 +13,7 @@ export function ThesisPanel({ holdingId, thesis, meta, flash, proposal }: { hold
   const [editing, setEditing] = useState(false);
   const text = thesis?.trim() ?? "";
   return (
-    <section className="panel shrink-0 px-4 py-3.5">
+    <section className="panel-plain shrink-0 px-4 py-2">
       <div className="flex items-baseline gap-2">
         <h2 className="text-[14.5px] font-semibold">Thesis</h2>
         {meta && <span className="text-[12.5px] whitespace-nowrap text-muted-foreground">{meta}</span>}

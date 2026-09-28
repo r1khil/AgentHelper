@@ -57,7 +57,7 @@ function SectorDetail({ row, hasBench, breakdownQuery }: { row: SectorRow; hasBe
 }
 
 /**
- * Sectors, one row each, filling the panel. A row expands to its contribution and effects; in transparency
+ * Sectors, one row each. A row expands to its contribution and effects; in transparency
  * mode (`breakdownQuery`) the expansion also loads the daily Brinson-Fachler working and stored rows.
  */
 export function SectorsPanel({ rows, hasBench, own = "Fund", breakdownQuery, className }: { rows: SectorRow[]; hasBench: boolean; own?: string; breakdownQuery?: BreakdownQuery; className?: string }) {
@@ -77,7 +77,7 @@ export function SectorsPanel({ rows, hasBench, own = "Fund", breakdownQuery, cla
         {hasBench && <span className="text-right"><Tip label="Bench ret" side="bottom">{EXPLAIN.benchReturn}</Tip></span>}
         <span className="text-right">{hasBench ? <Tip label="Total" side="bottom">{EXPLAIN.totalEffect}</Tip> : <Tip label="Contrib." side="bottom">{EXPLAIN.contribution}</Tip>}</span>
       </div>
-      {sorted.length === 0 && <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">No sectors held in this period.</div>}
+      {sorted.length === 0 && <div className="px-4 py-3 text-sm text-muted-foreground">No sectors held in this period.</div>}
       {sorted.map((r) => {
         const isOpen = open.has(r.key);
         const figure = hasBench ? r.total : r.contribution;
@@ -89,9 +89,9 @@ export function SectorsPanel({ rows, hasBench, own = "Fund", breakdownQuery, cla
               onClick={() => toggle(r.key)}
               aria-expanded={isOpen}
               className={cn(
-                "group/row relative grid max-h-16 min-h-10 flex-1 items-center gap-2.5 border-b border-row px-4 text-left text-[13.5px] transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none",
+                "group/row relative grid h-10 items-center gap-2.5 border-b border-row px-4 text-left text-[13.5px] transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none",
                 cols,
-                isOpen && "flex-none bg-band",
+                isOpen && "bg-band",
               )}
             >
               <ChevronRight

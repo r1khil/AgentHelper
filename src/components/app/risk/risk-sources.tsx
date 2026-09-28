@@ -30,7 +30,7 @@ export function RiskSources({ report: r, teams, className }: { report: RiskRepor
     : [...r.holdings].sort((a, b) => b.riskShare - a.riskShare).slice(0, ROWS).map((h) => ({ ticker: h.ticker, teamId: h.teamId, weight: h.weight, share: h.riskShare }));
   const max = Math.max(...rows.map((h) => Math.abs(h.share)), 0);
   return (
-    <Panel data-tour="risk-sources" className={className}>
+    <Panel data-tour="risk-sources" variant="plain" className={className}>
       <PanelHeader
         title="Where the risk comes from"
         aside={
@@ -51,7 +51,7 @@ export function RiskSources({ report: r, teams, className }: { report: RiskRepor
         const team = h.teamId ? teams.get(h.teamId) : undefined;
         const width = max > 0 ? Math.min(100, (Math.abs(h.share) / max) * 100) : 0;
         return (
-          <div key={h.ticker} className={cn(COLS, "min-h-10 flex-1 border-t border-row text-[13.5px]")}>
+          <div key={h.ticker} className={cn(COLS, "h-10 border-t border-row text-[13.5px]")}>
             {team ? (
               <ScopedLink owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} className="truncate font-mono text-[13px] font-semibold hover:underline">{h.ticker}</ScopedLink>
             ) : (
@@ -76,7 +76,7 @@ export function RiskSources({ report: r, teams, className }: { report: RiskRepor
           </div>
         );
       })}
-      {!rows.length && <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">No modeled holdings.</div>}
+      {!rows.length && <p className="px-4 py-1 text-sm text-muted-foreground">No modeled holdings.</p>}
     </Panel>
   );
 }

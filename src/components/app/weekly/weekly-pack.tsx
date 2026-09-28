@@ -203,7 +203,7 @@ function SummaryGrid(props: WeeklyPackProps) {
   const notes = props.performers?.why ?? [];
   return (
     <>
-    <div className="grid min-h-[520px] flex-1 grid-cols-1 gap-5 lg:grid-cols-2 lg:grid-rows-2">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
       <PerformerPanel title="Best performers" section="Top 3 Performers" list={props.performers?.top ?? []} teamOf={teamOf} why={why} />
       <PerformerPanel title="Worst performers" section="Worst 3 Performers" list={props.performers?.worst ?? []} teamOf={teamOf} why={why} />
       <DayPanel
@@ -221,7 +221,7 @@ function SummaryGrid(props: WeeklyPackProps) {
       // Hoot wrote these from the week's headlines, so each one cites its headline in pink.
       <PanelShell title="Why they moved" aside="Hoot's read of the news, not for the slide">
         {notes.map((w) => (
-          <div key={w.ticker} className="flex items-baseline gap-4 border-b border-row px-4 py-2.5 text-[13.5px] last:border-0">
+          <div key={w.ticker} className="flex items-baseline gap-4 px-4 py-2 text-[13.5px]">
             <span className="w-14 shrink-0 font-mono font-semibold">{w.ticker}</span>
             <span className="min-w-0 flex-1">{w.text}</span>
             <a href={w.url} target="_blank" rel="noreferrer" title={w.headline} className="shrink-0 rounded-full bg-hoot px-2 py-0.5 text-xs text-hoot-foreground hover:underline">
@@ -237,10 +237,9 @@ function SummaryGrid(props: WeeklyPackProps) {
 
 function PanelShell({ title, aside, copy, children }: { title: string; aside: React.ReactNode; copy?: string; children: React.ReactNode }) {
   return (
-    <Panel className="min-h-0">
+    <Panel variant="plain">
       <PanelHeader
         title={title}
-        className="h-[42px]"
         aside={
           <>
             <span className="text-xs">{aside}</span>
@@ -248,7 +247,7 @@ function PanelShell({ title, aside, copy, children }: { title: string; aside: Re
           </>
         }
       />
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
+      <div className="flex flex-col">{children}</div>
     </Panel>
   );
 }
@@ -278,7 +277,7 @@ function CopyIcon({ text, label }: { text: string; label: string }) {
 }
 
 function Row({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("flex min-h-10 flex-1 items-center gap-2.5 border-b border-row px-4 text-[13.5px] last:border-b-0", className)}>{children}</div>;
+  return <div className={cn("flex min-h-10 items-center gap-2.5 px-4 text-[13.5px]", className)}>{children}</div>;
 }
 
 function PerformerPanel({ title, section, list, teamOf, why }: { title: string; section: string; list: Performer[]; teamOf: (t: string) => string | undefined; why: string }) {
@@ -350,7 +349,7 @@ function EmailPanel({ week, email, name }: { week: string; email: EmailView; nam
   const status = emailStatus(email);
   const sentBefore = email.record?.status === "ok";
   return (
-    <Panel className="min-h-[420px] flex-1">
+    <Panel>
       <PanelHeader title="Sunday email" aside={<CopyButton text={email.text} label="Copy email" />} />
       <div className="grid gap-3 border-b border-row px-4 py-3 text-[13.5px]">
         <p className="text-ink-2">

@@ -28,8 +28,8 @@ export type PeriodView = {
   latest: string;
 };
 
-/** Above the fold fills the window under the header (56px) and the content padding (2 × 24px). */
-const FOLD = "flex min-h-[calc(100dvh-104px)] flex-col gap-4";
+/** The page: the toolbar, the headline figures, the chart and effects, then two columns of tables and sections at their own height. */
+const FOLD = "flex flex-col gap-4";
 const GRID = "grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]";
 
 const pctOrDash = (v: number | null) => (v === null ? "—" : fmtSigned(v));
@@ -142,24 +142,24 @@ export function FundAttributionView({
           />
           <EffectsPanel items={effects} total={total} aside="vs sector benchmark, bp" note={note} empty={noWeights} />
         </div>
-        <div className={`${GRID} flex-1`}>
-          <SectorsPanel rows={result.sectors} hasBench={result.effects !== null} own="Fund" breakdownQuery={breakdownQuery} />
-          <TeamsPanel rows={result.teams} teams={teams} cashContribution={result.cashContribution} cashWeight={cashRow?.avgPortfolioWeight} query={view.queryString} />
+        {/* Two columns that each run at their own height, so a short panel never waits for its neighbour's row. */}
+        <div className={`${GRID} lg:items-start`}>
+          <div className="flex min-w-0 flex-col gap-5">
+            <SectorsPanel rows={result.sectors} hasBench={result.effects !== null} own="Fund" breakdownQuery={breakdownQuery} />
+            <HoldingsPanel holdings={result.holdings} teams={teams} basePath={view.basePath} queryString={view.queryString} showAll={showAll} />
+          </div>
+          <div className="flex min-w-0 flex-col gap-5">
+            <TeamsPanel rows={result.teams} teams={teams} cashContribution={result.cashContribution} cashWeight={cashRow?.avgPortfolioWeight} query={view.queryString} />
+            <SectorEffectsPanel data={result.effects ? sectorEffects : null} empty="Add S&P 500 sector weights to see allocation and selection." />
+            <MethodPanel>
+              Headline comparison is against the S&amp;P 500 index on a price-return basis, the same as the major-movement rule. Allocation and selection are Brinson-Fachler by
+              GICS sector, daily, Carino-linked, against a sector benchmark of saved S&amp;P 500 sector weights applied to Select Sector SPDR total returns
+              {weightsAsOf ? ` (weights as of ${fmtDate(weightsAsOf)})` : ""}. Fund dividends reinvest on the ex-date.
+              {transparency && " Transparency mode is on: select a sector row to see the daily working and the stored rows behind it."}
+            </MethodPanel>
+          </div>
         </div>
       </InteractionScope>
-
-      <div className={`${GRID} lg:items-start`}>
-        <HoldingsPanel holdings={result.holdings} teams={teams} basePath={view.basePath} queryString={view.queryString} showAll={showAll} />
-        <div className="flex min-w-0 flex-col gap-5">
-          <SectorEffectsPanel data={result.effects ? sectorEffects : null} empty="Add S&P 500 sector weights to see allocation and selection." />
-          <MethodPanel>
-            Headline comparison is against the S&amp;P 500 index on a price-return basis, the same as the major-movement rule. Allocation and selection are Brinson-Fachler by
-            GICS sector, daily, Carino-linked, against a sector benchmark of saved S&amp;P 500 sector weights applied to Select Sector SPDR total returns
-            {weightsAsOf ? ` (weights as of ${fmtDate(weightsAsOf)})` : ""}. Fund dividends reinvest on the ex-date.
-            {transparency && " Transparency mode is on: select a sector row to see the daily working and the stored rows behind it."}
-          </MethodPanel>
-        </div>
-      </div>
     </div>
   );
 }
@@ -241,20 +241,22 @@ export function TeamAttributionView({
           />
           <EffectsPanel items={effects} total={total} aside={`vs ${benchmarkName}, bp`} note={note} empty="No benchmark for this period." />
         </div>
-        <div className={`${GRID} flex-1`}>
-          <SectorsPanel rows={result.sectors} hasBench={result.effects !== null} own="Team" breakdownQuery={breakdownQuery} />
-          <HoldingsPanel holdings={result.holdings} teams={teams} basePath={view.basePath} queryString={view.queryString} showAll showTeam={false} toggle={false} />
+        {/* Two columns that each run at their own height, so a short panel never waits for its neighbour's row. */}
+        <div className={`${GRID} lg:items-start`}>
+          <div className="flex min-w-0 flex-col gap-5">
+            <SectorsPanel rows={result.sectors} hasBench={result.effects !== null} own="Team" breakdownQuery={breakdownQuery} />
+            <SectorEffectsPanel data={result.effects ? sectorEffects : null} empty="No benchmark for this period." />
+          </div>
+          <div className="flex min-w-0 flex-col gap-5">
+            <HoldingsPanel holdings={result.holdings} teams={teams} basePath={view.basePath} queryString={view.queryString} showAll showTeam={false} toggle={false} />
+            <MethodPanel>
+              The team&apos;s holdings are scaled to 100% and compared with the S&amp;P 500 weights of its sectors, using Select Sector SPDR total returns. Weights and
+              contributions here are shares of the team&apos;s capital; To the Fund is in points of the whole Fund&apos;s return.
+              {transparency && " Transparency mode is on: select a sector row to see the daily working and the stored rows behind it."}
+            </MethodPanel>
+          </div>
         </div>
       </InteractionScope>
-
-      <div className={`${GRID} lg:items-start`}>
-        <SectorEffectsPanel data={result.effects ? sectorEffects : null} empty="No benchmark for this period." />
-        <MethodPanel>
-          The team&apos;s holdings are scaled to 100% and compared with the S&amp;P 500 weights of its sectors, using Select Sector SPDR total returns. Weights and
-          contributions here are shares of the team&apos;s capital; To the Fund is in points of the whole Fund&apos;s return.
-          {transparency && " Transparency mode is on: select a sector row to see the daily working and the stored rows behind it."}
-        </MethodPanel>
-      </div>
     </div>
   );
 }

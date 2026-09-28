@@ -90,7 +90,7 @@ export function MembersPanel({ members, invitations, teams, canMutate, meId, act
   const shownInvites = invitations.filter((i) => match(i.fullName, i.email, i.teamName ?? "Whole fund", ROLE_LABELS[i.role]));
 
   return (
-    <Panel className="min-h-[420px] lg:min-h-0">
+    <Panel>
       <div className="flex h-12 shrink-0 items-center gap-2.5 border-b px-4">
         <h2 className="text-[14.5px] font-semibold">Members</h2>
         <span className="font-mono text-xs text-muted-foreground">{members.length}</span>
@@ -118,12 +118,12 @@ export function MembersPanel({ members, invitations, teams, canMutate, meId, act
         <span>Last active</span>
         <span />
       </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="flex flex-col">
         {shown.map((m) => {
           const last = activityKnown ? lastActiveLabel(m.lastActive, nowDt) : { text: "—", stale: false };
           const fundWide = m.role === "exec" || m.role === "admin";
           return (
-            <div key={m.id} className={cn(GRID, "min-h-11 flex-1 border-b border-row px-4 text-[13.5px] hover:bg-band")}>
+            <div key={m.id} className={cn(GRID, "min-h-11 border-b border-row px-4 text-[13.5px] hover:bg-band")}>
               <span className="flex min-w-0 items-center gap-2.5">
                 <span className={cn("grid size-[26px] shrink-0 place-items-center rounded-full text-[10.5px] font-semibold", fundWide ? "bg-avatar text-cream-foreground" : "bg-muted text-ink-2")}>{initials(m.fullName)}</span>
                 <span className="shrink-0 font-medium">{m.fullName}</span>
@@ -267,7 +267,7 @@ export function MembersPanel({ members, invitations, teams, canMutate, meId, act
 function InvitationRowView({ i, canMutate }: { i: InvitationRow; canMutate: boolean }) {
   const revokeRef = useRef<HTMLFormElement>(null);
   return (
-    <div className={cn(GRID, "min-h-11 flex-1 border-b border-row px-4 text-[13.5px] hover:bg-band")}>
+    <div className={cn(GRID, "min-h-11 border-b border-row px-4 text-[13.5px] hover:bg-band")}>
       <span className="flex min-w-0 items-center gap-2.5">
         <span className="grid size-[26px] shrink-0 place-items-center rounded-full text-[10.5px] font-semibold text-muted-foreground shadow-[inset_0_0_0_1px_var(--border)]">{initials(i.fullName ?? i.email)}</span>
         <span className="shrink-0 font-medium">{i.fullName ?? i.email}</span>

@@ -80,14 +80,14 @@ export function JobsPanel({ canMutate, last, weekly }: JobsPanelProps) {
   const [options, setOptions] = useState<JobKey | null>(null);
   const list = jobs(weekly.to);
   return (
-    <Panel className="min-h-[360px] lg:min-h-0 lg:flex-1">
+    <Panel>
       <PanelHeader title="Scheduled jobs" aside="New York time" />
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="flex flex-col">
         {list.map((j) => {
           const r = j.runs ? last[j.runs] : null;
           const st = status(j.key, r);
           return (
-            <div key={j.key} className="flex min-h-14 flex-1 items-center gap-3 border-b border-row px-4 py-2 last:border-b-0">
+            <div key={j.key} className="flex min-h-14 items-center gap-3 border-b border-row px-4 py-2 last:border-b-0">
               <div className="min-w-0 flex-1" title={j.detail}>
                 <div className="text-[13.5px] font-semibold">{j.name}</div>
                 <div className="line-clamp-2 text-xs text-muted-foreground">{j.when}</div>
