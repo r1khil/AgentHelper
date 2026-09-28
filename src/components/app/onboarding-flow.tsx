@@ -98,7 +98,7 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
         <section className="space-y-5">
           <div>
             <h1 className="text-xl font-semibold tracking-tight">How the workspace works</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Four things you will use most. The app gathers; you decide.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Four things you will use most.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {TOUR_CARDS.map((c) => {
@@ -133,13 +133,13 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
           <input type="hidden" name="acknowledged" value={acknowledged ? "on" : ""} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight">The learning boundary</h1>
-            <p className="mt-1 text-sm text-muted-foreground">One rule shapes every feature. Read it once; it will not be repeated.</p>
+            <p className="mt-1 text-sm text-muted-foreground">One rule shapes every feature.</p>
           </div>
           <blockquote className="rounded-lg border-l-4 border-primary bg-background px-4 py-3 text-sm leading-relaxed ring-1 ring-foreground/10">
             {LEARNING_BOUNDARY}
           </blockquote>
           <div>
-            <div className="mb-2 text-sm font-semibold">What this means for you</div>
+            <div className="mb-2 text-sm font-semibold">How Hoot helps</div>
             <ul className="space-y-1.5 text-sm text-muted-foreground">
               {BOUNDARY_IMPLICATIONS.map((line) => (
                 <li key={line} className="flex gap-2">
@@ -151,7 +151,7 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
           </div>
           <Label htmlFor="ob-ack" className="flex items-start gap-3 rounded-lg border bg-background p-3 text-sm font-normal leading-snug">
             <Checkbox id="ob-ack" checked={acknowledged} onCheckedChange={(c) => setAcknowledged(c === true)} className="mt-0.5" />
-            <span>I understand: the agent prepares the evidence, and I write the interpretation.</span>
+            <span>I understand: Hoot gathers the evidence, and I write the interpretation.</span>
           </Label>
           <div className="flex justify-between">
             <Button type="button" variant="ghost" onClick={() => setStep(1)} disabled={pending}>

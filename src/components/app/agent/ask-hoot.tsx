@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { startHootChat } from "@/lib/actions/chats";
 import { leaveHootQuestion } from "@/components/app/hoot/handoff";
-import { ComposerBox, LEARNING_BOUNDARY, SendButton } from "@/components/app/chat/thread-parts";
+import { ComposerBox, SendButton } from "@/components/app/chat/thread-parts";
 import { cn } from "@/lib/utils";
 
 /** A question that isn't about one holding: starts a general conversation, the same way the floating Hoot does. */
@@ -91,7 +91,7 @@ export function AskHoot({ teamSlug, configured, hint, className }: { teamSlug: s
           <SendButton disabled={!text.trim() || asking || !configured} label="Ask" />
         </div>
       </ComposerBox>
-      {error ? <div className="mt-1.5 text-xs text-destructive">{error}</div> : <div className="mt-1.5 text-[11.5px] text-muted-foreground">{LEARNING_BOUNDARY}</div>}
+      {error && <div className="mt-1.5 text-xs text-destructive">{error}</div>}
     </form>
   );
 }

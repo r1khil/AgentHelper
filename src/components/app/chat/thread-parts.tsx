@@ -14,8 +14,6 @@ import { FetchRows, latestLabel, StepDivider, TraceHeader, type TraceView } from
 
 // The pieces every research conversation is built from (general chats, holding boards, a sell-side call's chat).
 
-export const LEARNING_BOUNDARY = "Hoot gathers evidence with a source on every fact. The update, thesis and conclusion stay yours.";
-
 const TOOL_LABELS: Record<string, string> = {
   get_quote: "Quote",
   get_price_history: "Price history",
@@ -330,7 +328,6 @@ export function Composer({
           )}
         </div>
       </ComposerBox>
-      <div className="mt-1.5 text-[11.5px] text-muted-foreground">{LEARNING_BOUNDARY}</div>
     </form>
   );
 }

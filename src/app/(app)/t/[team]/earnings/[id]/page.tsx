@@ -234,7 +234,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
 
       {reported && (
         <Panel>
-          {header("Post-earnings reflection", e.status === "reviewed" ? <Pill tone="good">Reviewed {relativeTime(e.reflectionAt)}</Pill> : "Your words, against your locked expectations")}
+          {header("Post-earnings reflection", e.status === "reviewed" ? <Pill tone="good">Reviewed {relativeTime(e.reflectionAt)}</Pill> : "Against your locked expectations")}
           <div className="p-4">
             <form className="grid gap-2">
               <input type="hidden" name="id" value={e.id} />

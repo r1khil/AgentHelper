@@ -157,7 +157,7 @@ export function AnalysisBrief({ messages, chatId }: { messages: UIMessage[]; cha
                   })}
                 </ul>
                 <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                  <span className="font-medium text-ink-2">Evidence for analyst review.</span> {analysis.coverage}
+                  <span className="font-medium text-ink-2">Coverage.</span> {analysis.coverage}
                 </p>
               </div>
             </div>
