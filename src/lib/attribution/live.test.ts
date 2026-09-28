@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { marketPhase } from "../providers/calendar";
 import { computeAttribution } from "./attribution";
 import { buildLiveSnapshot, DOW_SYMBOL, intradayPath, withQuotes, type LiveQuote } from "./live";
+import { liveHeadline, summarizeLive } from "./live-summary";
 import { buildSeries, type SeriesInputs } from "./series";
 import type { DateSeries, SecurityMeta, Trade } from "./types";
 
@@ -125,6 +126,11 @@ describe("buildLiveSnapshot", () => {
     expect(s.notes[0]).toContain(`Closes for ${D3}`);
   });
 
+  it("marks ETFs", () => {
+    const s = buildLiveSnapshot({ raw: inputs([D1, D2]), quotes: quotesAt(D3), market: open, now, etfs: new Set(["BBB"]) })!;
+    expect(s.holdings.map((h) => [h.ticker, h.etf])).toEqual(expect.arrayContaining([["AAA", false], ["BBB", true]]));
+  });
+
   it("builds a team's sleeve against its own sectors", () => {
     const s = buildLiveSnapshot({ raw: inputs([D1, D2]), quotes: quotesAt(D3), market: open, now, team: { id: "fig", sectors: ["financials"] } })!;
     expect(s.holdings.map((h) => h.ticker)).toEqual(["BBB"]);
@@ -175,5 +181,23 @@ describe("marketPhase", () => {
     expect(at("2026-11-26T15:00:00.000Z")).toMatchObject({ phase: "closed", session: "2026-11-25" });
     expect(at("2026-11-27T17:59:00.000Z")).toMatchObject({ phase: "open", closesAt: "2026-11-27T18:00:00.000Z" });
     expect(at("2026-11-27T18:00:00.000Z").phase).toBe("closed");
+  });
+});
+
+describe("summarizeLive", () => {
+  it("reports today in the page's units, splits stocks from ETFs, and adds up", () => {
+    const s = buildLiveSnapshot({ raw: inputs([D1, D2]), quotes: quotesAt(D3), market: open, now, etfs: new Set(["BBB"]) })!;
+    const sum = summarizeLive(s, { scope: "fund", teamNames: new Map([["tech", "Tech"]]), holdingsLimit: 5 });
+    expect(sum.status).toMatch(/^Live/);
+    expect(sum.pricesAsOf).toBe("14:00 ET");
+    expect(sum.headline.returnTodayPct).toBe(+(s.ret * 100).toFixed(2));
+    expect(sum.byType.etfs.count).toBe(1);
+    expect(sum.byType.stocks.contributionBps! + sum.byType.etfs.contributionBps!).toBeCloseTo(s.ret * 10_000, 0);
+    expect(sum.bottomContributors.map((h) => h.ticker)).toEqual(["AAA"]);
+    expect(sum.bottomContributors[0]).toMatchObject({ type: "Stock", team: "Tech", priced: "live quote at 14:00 ET" });
+    expect(liveHeadline(sum)).toContain("biggest detractors AAA");
+    expect(liveHeadline(sum)).toContain("(live, prices as of 14:00 ET)");
+    const after2 = summarizeLive(buildLiveSnapshot({ raw: inputs([D1, D2]), quotes: quotesAt(D3), market: after, now })!, { scope: "fund", teamNames: new Map(), holdingsLimit: 5 });
+    expect(liveHeadline(after2)).toContain("(closed, provisional, prices as of 14:00 ET)");
   });
 });

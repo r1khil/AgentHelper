@@ -26,6 +26,18 @@ const attribution = z.object({
   end: iso,
 });
 
+/** The Daily page: today's performance, live during market hours. */
+const daily = z.object({
+  kind: z.literal("daily"),
+  path,
+  title,
+  scope: z.enum(["fund", "team"]),
+  team: z.string().max(60).optional(),
+  /** The session shown and whether it was live, provisional (after the bell) or final. */
+  session: iso,
+  status: z.enum(["live", "provisional", "final"]),
+});
+
 const backtesting = z.object({
   kind: z.literal("backtesting"),
   path,
@@ -56,7 +68,7 @@ const exposure = risk.extend({ kind: z.literal("exposure") });
 
 const page = z.object({ kind: z.literal("page"), path, title });
 
-export const pageContextSchema = z.discriminatedUnion("kind", [attribution, backtesting, risk, exposure, page]);
+export const pageContextSchema = z.discriminatedUnion("kind", [attribution, daily, backtesting, risk, exposure, page]);
 export type PageContext = z.infer<typeof pageContextSchema>;
 
 export function parsePageContext(value: unknown): PageContext | null {
@@ -78,6 +90,7 @@ export function pageContextFromMessages(messages: { role: string; metadata?: unk
 /** A few words for the chip on the question and in Hoot's panel. */
 export function pageContextLabel(ctx: PageContext): string {
   if (ctx.kind === "attribution") return `${ctx.title} · ${ctx.period === "itd" ? "All" : PERIOD_LABELS[ctx.period]}`;
+  if (ctx.kind === "daily") return `${ctx.title} · ${ctx.status === "final" ? ctx.session : ctx.status === "live" ? "live" : "closed, provisional"}`;
   if (ctx.kind === "risk") return `${ctx.title} · ${ctx.lookback} window`;
   if (ctx.kind === "exposure") return `${ctx.title} · ${ctx.asOf} close`;
   if (ctx.kind === "backtesting") return `Backtesting · ${ctx.from} to ${ctx.to}${ctx.changed.length ? ` · ${ctx.changed.length} weight${ctx.changed.length === 1 ? "" : "s"} changed` : ""}`;
@@ -95,7 +108,14 @@ export function pageContextBlock(ctx: PageContext): string {
 - The page shows ${ctx.scope === "fund" ? "whole-fund" : `the ${ctx.team ?? "team"} team's`} attribution for ${PERIOD_LABELS[ctx.period]} (returns from the ${ctx.start} close through the ${ctx.end} close).
 - For questions about it (why the Fund under- or outperformed, what drove a number, which holdings or sectors hurt), call get_attribution with { ${args} } first: it returns the page's numbers. Explain them in plain language: lead with the headline versus the S&P 500, then the sector-benchmark bridge (allocation, selection, interaction), then the holdings and sectors that moved it most. End every line or bullet that uses one of its figures with its [src:ID], table rows included in the table's last column.
 - Attribution shows where the result came from, not why those stocks moved. A question about why or the cause needs both: as soon as get_attribution returns, call get_news (and get_peer_moves when a whole sector moved) for the two or three biggest detractors (or contributors, for outperformance) over that window, then connect the two. Say plainly when the news does not explain a move; do not offer to look it up later instead.
-- Attribution uses closing prices, so "today" before the close means the last completed session (${ctx.end}); say so.`;
+- Attribution uses closing prices, so "today" before the close means the last completed session (${ctx.end}); say so. For today's live numbers during market hours, call get_daily_performance instead.`;
+  }
+  if (ctx.kind === "daily") {
+    const args = [`scope: ${q(ctx.scope)}`, ...(ctx.team ? [`team: ${q(ctx.team)}`] : [])].join(", ");
+    return `${head}
+- The page shows ${ctx.scope === "fund" ? "the whole Fund's" : `the ${ctx.team ?? "team"} team's`} performance for ${ctx.session}, ${ctx.status === "live" ? "live: priced from quotes during the session, refreshed every minute" : ctx.status === "provisional" ? "after the bell, priced from closing quotes until the 5:00 pm price run" : "final, from stored closes"}.
+- For questions about it (how the Fund is doing today, why it is up or down, what is driving it, stocks vs ETFs), call get_daily_performance with { ${args} } first: the numbers move through the day, so never reuse figures from earlier in the chat. Lead with the return and P&L versus the S&P 500, then the sector-benchmark bridge (allocation, selection, interaction), then the holdings that moved it most. Say what time the prices are from while the market is open, and end every line or bullet that uses one of its figures with its [src:ID].
+- For why those holdings moved, call get_news (and get_peer_moves when a whole sector moved) for the two or three biggest detractors (or contributors) as soon as get_daily_performance returns, then connect the two. Say plainly when the news does not explain a move.`;
   }
   if (ctx.kind === "backtesting") {
     const weights = ctx.changed.length ? `{ ${ctx.changed.map((c) => `${q(c.ticker)}: ${c.scenarioPct}`).join(", ")} }` : null;

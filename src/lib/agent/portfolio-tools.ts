@@ -11,6 +11,8 @@ import { PERIOD_KEYS, PERIOD_LABELS, resolvePeriod } from "@/lib/attribution/per
 import type { GicsSector } from "@/lib/attribution/sectors";
 import { loadSeries } from "@/lib/attribution/store";
 import { attributionHeadline, summarizeAttribution } from "@/lib/attribution/summary";
+import { liveHeadline, summarizeLive } from "@/lib/attribution/live-summary";
+import { loadLiveSnapshot } from "@/lib/attribution/live-load";
 import { qualityNotices } from "@/lib/attribution/view";
 import { defaultWindow } from "@/lib/backtesting/default-run";
 import { BENCHMARKS, type Metrics } from "@/lib/backtesting/engine";
@@ -53,6 +55,21 @@ function metricsOut(m: Metrics) {
 export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string }) {
   const { viewer } = ctx;
 
+  /** The Attribution pages' access rule: the whole Fund for execs and admins, a team's sleeve for its lead too. */
+  async function resolveSleeve(scope: "fund" | "team", team: string | undefined, what: string) {
+    const teamRows = await db.select({ id: teams.id, slug: teams.slug, name: teams.name }).from(teams);
+    const teamNames = new Map(teamRows.map((t) => [t.id, t.name]));
+    if (scope === "fund") {
+      if (!isFundWide(viewer)) throw new Error(`Whole-fund ${what} is visible to execs and admins only. Ask about your team's sleeve instead (scope 'team').`);
+      return { sleeve: undefined, teamNames };
+    }
+    const q = team?.trim().toLowerCase();
+    const sleeve = q ? teamRows.find((t) => t.slug === q || t.name.toLowerCase() === q) : teamRows.find((t) => t.id === ctx.teamId);
+    if (!sleeve) throw new Error(`No team matches "${team}". Teams: ${teamRows.map((t) => t.slug).join(", ")}.`);
+    if (!canManageTeam(viewer, sleeve.id)) throw new Error(`Team ${what} is visible to the team's lead analyst, execs and admins.`);
+    return { sleeve, teamNames };
+  }
+
   return {
     get_attribution: tool({
       description:
@@ -67,17 +84,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
       }),
       execute: async ({ scope, team, period: key, from, to, holdingsLimit }): Promise<ToolResult<unknown>> => {
         try {
-          const teamRows = await db.select({ id: teams.id, slug: teams.slug, name: teams.name }).from(teams);
-          const teamNames = new Map(teamRows.map((t) => [t.id, t.name]));
-          let sleeve: (typeof teamRows)[number] | undefined;
-          if (scope === "fund") {
-            if (!isFundWide(viewer)) throw new Error("Whole-fund attribution is visible to execs and admins only. Ask about your team's sleeve instead (scope 'team').");
-          } else {
-            const q = team?.trim().toLowerCase();
-            sleeve = q ? teamRows.find((t) => t.slug === q || t.name.toLowerCase() === q) : teamRows.find((t) => t.id === ctx.teamId);
-            if (!sleeve) throw new Error(`No team matches "${team}". Teams: ${teamRows.map((t) => t.slug).join(", ")}.`);
-            if (!canManageTeam(viewer, sleeve.id)) throw new Error("Team attribution is visible to the team's lead analyst, execs and admins.");
-          }
+          const { sleeve, teamNames } = await resolveSleeve(scope, team, "attribution");
 
           const loaded = await loadSeries(db);
           if (!loaded.inception) return { data: { note: "No trades are recorded in the ledger yet, so there is no attribution." }, sources: [] };
@@ -111,6 +118,40 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
             retrievedAt: new Date().toISOString(),
             sourceType: "Fund attribution",
             excerpt: attributionHeadline(summary).slice(0, 360),
+          };
+          return { data: { ...summary, sourceId: source.id }, sources: [source] };
+        } catch (e) {
+          return { data: null, sources: [], error: e instanceof Error ? e.message : String(e) };
+        }
+      },
+    }),
+
+    get_daily_performance: tool({
+      description:
+        "Today's performance as the Daily page shows it, live during market hours: the Fund's (or a team's) return and P&L so far from the prior close, the S&P 500 and Dow, active vs the S&P 500 and vs the sector benchmark split into allocation, selection and interaction (bps), every sector's effects, stocks vs ETFs, and the top and bottom contributing holdings with their weight at the open, weight now, price, return today, contribution (bps) and P&L. Priced from live quotes while the market is open, closing quotes after the bell until the 5:00 pm price run, and stored closes after that (then it equals get_attribution's 1d). Before the open, on weekends and holidays it returns the last session. Use it for any question about today, right now, this morning or intraday. Scope 'fund' is the whole Fund (execs and admins); 'team' is one team's sleeve.",
+      inputSchema: z.object({
+        scope: z.enum(["fund", "team"]).default(isFundWide(viewer) ? "fund" : "team"),
+        team: z.string().optional().describe("Team slug or name for scope 'team'; defaults to this chat's team"),
+        holdingsLimit: z.number().int().min(3).max(30).default(8).describe("How many top and bottom contributors to list"),
+      }),
+      execute: async ({ scope, team, holdingsLimit }): Promise<ToolResult<unknown>> => {
+        try {
+          const { sleeve, teamNames } = await resolveSleeve(scope, team, "daily performance");
+          const sectors = sleeve ? (await db.select().from(teamSectors)).filter((r) => r.teamId === sleeve.id).map((r) => r.sector as GicsSector) : [];
+          const snapshot = await loadLiveSnapshot(sleeve ? { team: { ...sleeve, sectors } } : {});
+          if (!snapshot) return { data: { note: "No positions or closing prices are recorded yet, so there is no daily performance." }, sources: [] };
+          const summary = summarizeLive(snapshot, { scope, teamName: sleeve?.name, teamSectors: sectors, teamNames, holdingsLimit });
+          const path = sleeve ? `/t/${sleeve.slug}/daily` : "/daily";
+          const asOf = snapshot.asOf ?? snapshot.hours.close;
+          const source: Source = {
+            id: sourceId("daily", `${path}:${snapshot.session}:${snapshot.status}:${asOf.slice(0, 16)}`),
+            title: [sleeve ? `${sleeve.name} daily performance` : "Fund daily performance", snapshot.session, snapshot.status === "final" ? "final" : [snapshot.status, summary.pricesAsOf].filter(Boolean).join(", ")].join(" · "),
+            url: appUrl(path),
+            publisher: "Owl Fund daily performance (trade ledger + live quotes)",
+            publishedAt: asOf,
+            retrievedAt: new Date().toISOString(),
+            sourceType: "Fund attribution",
+            excerpt: liveHeadline(summary).slice(0, 360),
           };
           return { data: { ...summary, sourceId: source.id }, sources: [source] };
         } catch (e) {

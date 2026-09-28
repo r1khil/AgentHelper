@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { EmptyState } from "@/components/app/empty-state";
 import { DailyView } from "@/components/app/daily/daily-view";
-import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { loadLiveSnapshot } from "@/lib/attribution/live-load";
 import { listAccessibleTeams, requireRole } from "@/lib/auth";
 
@@ -20,7 +19,6 @@ export default async function DailyPage() {
   }
   return (
     <>
-      <PageContextPublisher value={{ kind: "page", path: "/daily", title: "Daily performance" }} />
       <DailyView initial={snapshot} scope={{ kind: "fund" }} teams={teamList.map((t) => [t.id, { name: t.name, slug: t.slug }])} />
     </>
   );

@@ -35,6 +35,8 @@ export type LiveHolding = {
   /** Where the price came from: a live quote, a stored close, the prior close carried (no quote yet), or a trade price. */
   source: "quote" | "close" | "carried" | "trade";
   quoteAt: string | null;
+  /** An exchange-traded fund (the PT sheet reports ETF contributions on their own). */
+  etf: boolean;
 };
 
 /** One line of the intraday path: `base` is the price at which the leg's return for the day is zero. */
@@ -98,8 +100,11 @@ export function buildLiveSnapshot(input: {
   market: { phase: MarketPhase; session: string; opensAt: string; closesAt: string | null };
   now: Date;
   team?: { id: string; sectors: GicsSector[] };
+  /** Which tickers are ETFs (upper case). */
+  etfs?: Set<string>;
 }): LiveSnapshot | null {
   const { raw, quotes, market, now, team } = input;
+  const etfs = input.etfs ?? new Set<string>();
   if (!raw.inception) return null;
   const notes: string[] = [];
 
@@ -150,6 +155,7 @@ export function buildLiveSnapshot(input: {
       pnl: p?.pnl ?? 0,
       source: quoted.has(h.ticker) ? "quote" : (p?.priced ?? "close"),
       quoteAt: quoted.get(h.ticker) ?? null,
+      etf: etfs.has(h.ticker.toUpperCase()),
     };
   });
 
