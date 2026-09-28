@@ -322,7 +322,7 @@ export function AdminView(p: AdminViewProps) {
                 )}
               </div>
               <p className="text-body text-muted-foreground">
-                Applies to the next chat turn, draft feedback, earnings extraction, research-log distillation, and earnings prep packs. All three are free OpenRouter models; a rate-limited model hands the request to the next one on the list.
+                Applies to the next chat turn, draft feedback, earnings extraction, research-log distillation, and earnings prep packs. GPT-6 Luna and Muse Spark are paid (about half a cent to a cent a chat turn); Nemotron and Qwen are free. A rate-limited or withdrawn model hands the request to the next one on the list.
               </p>
               <p className="text-body text-muted-foreground">
                 Changelog summaries are written by <span className="font-mono">{p.changelogModel}</span> (set with CHANGELOG_MODEL).
