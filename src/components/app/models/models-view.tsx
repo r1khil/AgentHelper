@@ -12,6 +12,7 @@ import { UploadModelDialog } from "./upload-model-dialog";
 import { DecisionButtons, ExceptionDecide, RejectAllButton } from "./review-controls";
 import { exceptionKind } from "./exception-kind";
 import type { ModelDetailData, ModelListItem, ModelProposalRow, ModelTab, UploadTarget } from "./types";
+import { RowLink } from "@/components/app/row-link";
 
 /**
  * Models as master–detail: holdings and their latest model on the left, the selected model's proposals on the
@@ -63,7 +64,7 @@ function ModelList({ items, uploadTargets, selectedHoldingId }: { items: ModelLi
           const summary = modelSummary(m);
           return (
             <li key={i.holdingId}>
-              <Link
+              <RowLink
                 href={m.href}
                 aria-current={on ? "page" : undefined}
                 title={`${i.companyName} · v${m.version} · ${m.versions} version${m.versions === 1 ? "" : "s"}`}
@@ -81,7 +82,7 @@ function ModelList({ items, uploadTargets, selectedHoldingId }: { items: ModelLi
                   {[i.teamName, m.uploader ?? "Unknown uploader"].filter(Boolean).join(" · ")} ·{" "}
                   <span className={cn(summary.warn && "text-caution-foreground")}>{summary.text}</span> · {shortDate(m.createdAt)}
                 </div>
-              </Link>
+              </RowLink>
             </li>
           );
         })}

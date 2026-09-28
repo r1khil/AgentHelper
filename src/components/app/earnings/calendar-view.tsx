@@ -46,6 +46,7 @@ import { IMPORTANCE, NowLine, ReleaseDetails, ReleaseStatus, releaseClock, relea
 import { useEconomicFeed, useNow, type FeedSource } from "@/components/app/economic-calendar/use-feed";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { RowLink } from "@/components/app/row-link";
 
 /** A Fund report for the List view's report tables: every report on record, not just this month's. */
 export type ReportRow = {
@@ -291,11 +292,11 @@ export function CalendarView(props: CalendarViewProps) {
               const st = EXPECTATIONS[ev.expectations ?? "not_started"];
               return (
                 <li key={ev.earningsId} className="border-t border-row">
-                  <Link href={reportHref(ev.teamSlug, ev.earningsId)} className="-mx-1.5 flex h-10 items-center gap-2.5 rounded-lg px-1.5 text-[13.5px] hover:bg-band">
+                  <RowLink href={reportHref(ev.teamSlug, ev.earningsId)} className="-mx-1.5 flex h-10 items-center gap-2.5 rounded-lg px-1.5 text-[13.5px] hover:bg-band">
                     <span className="w-11 shrink-0 font-mono text-[13px] font-semibold">{ev.ticker}</span>
                     <span className="min-w-0 flex-1 truncate text-ink-2">{ev.teamName ?? ev.name}</span>
                     <Pill tone={st.tone}>{st.pill}</Pill>
-                  </Link>
+                  </RowLink>
                 </li>
               );
             })}
@@ -512,9 +513,9 @@ function Row({ item, rowProps: r, wide = false }: { item: Item; rowProps: RowPro
       </>
     );
     return linkable ? (
-      <Link href={r.reportHref(ev.teamSlug, ev.earningsId)} className={cn(ROW_GRID, "h-9 text-[13.5px] hover:bg-band")}>
+      <RowLink href={r.reportHref(ev.teamSlug, ev.earningsId)} className={cn(ROW_GRID, "h-9 text-[13.5px] hover:bg-band")}>
         {body}
-      </Link>
+      </RowLink>
     ) : (
       <div className={cn(ROW_GRID, "h-9 text-[13.5px]")}>{body}</div>
     );
@@ -745,9 +746,9 @@ function ReportTable({ title, rows, showTeam, reportHref }: { title: string; row
               <TableRow key={r.id}>
                 <TableCell className="pl-5">
                   {r.teamSlug ? (
-                    <Link href={reportHref(r.teamSlug, r.id)} className="font-mono font-semibold hover:underline">
+                    <RowLink cover="cell" href={reportHref(r.teamSlug, r.id)} className="font-mono font-semibold hover:underline">
                       {r.ticker}
-                    </Link>
+                    </RowLink>
                   ) : (
                     <span className="font-mono font-semibold">{r.ticker}</span>
                   )}

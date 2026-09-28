@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ScopedLink } from "@/components/app/shell/scope-context";
 import { Panel, PanelHeader } from "@/components/app/panel";
 import { activeRiskBreakdown } from "@/lib/risk/active";
 import type { RiskReport } from "@/lib/risk/model";
@@ -8,6 +7,7 @@ import { InfoTip } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "./explainers";
 import { rpct } from "./format";
 import type { TeamNames } from "./holdings-risk-table";
+import { RowLink } from "@/components/app/row-link";
 
 const ROWS = 10;
 /** The largest risk sources get a one-click what-if. */
@@ -51,9 +51,9 @@ export function RiskSources({ report: r, teams, className }: { report: RiskRepor
         const team = h.teamId ? teams.get(h.teamId) : undefined;
         const width = max > 0 ? Math.min(100, (Math.abs(h.share) / max) * 100) : 0;
         return (
-          <div key={h.ticker} className={cn(COLS, "h-10 border-t border-row text-[13.5px]")}>
+          <div key={h.ticker} className={cn(COLS, "relative h-10 border-t border-row text-[13.5px]")}>
             {team ? (
-              <ScopedLink owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} className="truncate font-mono text-[13px] font-semibold hover:underline">{h.ticker}</ScopedLink>
+              <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} className="truncate font-mono text-[13px] font-semibold hover:underline">{h.ticker}</RowLink>
             ) : (
               <span className="truncate font-mono text-[13px] font-semibold">{h.ticker}</span>
             )}

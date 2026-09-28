@@ -33,6 +33,7 @@ async function callFacts(calls: Call[]) {
             callId: sellSideParts.callId,
             parts: sql<number>`count(*)::int`,
             transcribed: sql<number>`count(${sellSideParts.segments})::int`,
+            spoken: sql<number>`(count(*) filter (where ${sellSideParts.segments} <> '[]'::jsonb))::int`,
             summarized: sql<number>`count(${sellSideParts.summary})::int`,
             seconds: sql<string>`coalesce(sum(${sellSideParts.duration}), 0)`,
           })
@@ -42,10 +43,12 @@ async function callFacts(calls: Call[]) {
       : [],
     creators.length ? db.select({ id: profiles.id, name: profiles.fullName }).from(profiles).where(inArray(profiles.id, creators)) : [],
   ]);
-  const counts = new Map(parts.map((p) => [p.callId, { parts: p.parts, transcribed: p.transcribed, summarized: p.summarized, seconds: Number(p.seconds) }]));
+  const counts = new Map(
+    parts.map((p) => [p.callId, { parts: p.parts, transcribed: p.transcribed, spoken: p.spoken, summarized: p.summarized, seconds: Number(p.seconds) }]),
+  );
   const names = new Map(people.map((p) => [p.id, p.name]));
   return {
-    counts: (id: string) => counts.get(id) ?? { parts: 0, transcribed: 0, summarized: 0, seconds: 0 },
+    counts: (id: string) => counts.get(id) ?? { parts: 0, transcribed: 0, spoken: 0, summarized: 0, seconds: 0 },
     name: (c: Call) => (c.createdBy ? names.get(c.createdBy) : undefined),
   };
 }
@@ -96,6 +99,7 @@ export async function SellSideScreen({ scope, call }: { scope: SellSideScope; ca
           user={user}
           byline={[facts.name(selected), fmtDay(selected.createdAt)].filter(Boolean).join(" · ")}
           sector={teamById.get(selected.teamId)?.name}
+          spoken={facts.counts(selected.id).spoken > 0}
         />
       ) : (
         <PickACall>{team ? "Record a call on the left. Its brief, transcript and saved chat open here." : "Calls from every team open here once one is recorded."}</PickACall>
@@ -104,7 +108,7 @@ export async function SellSideScreen({ scope, call }: { scope: SellSideScope; ca
   );
 }
 
-async function CallPane({ call, user, byline, sector }: { call: Call; user: CurrentUser; byline: string; sector?: string }) {
+async function CallPane({ call, user, byline, sector, spoken }: { call: Call; user: CurrentUser; byline: string; sector?: string; spoken: boolean }) {
   const [chat, messages] = await Promise.all([getChat(call.chatId), loadMessages(call.chatId)]);
   if (!chat) return <PickACall>This call’s saved discussion could not be found.</PickACall>;
   // Once an exec's follow-up read the price target sheet, the discussion is for execs and admins only.
@@ -119,6 +123,7 @@ async function CallPane({ call, user, byline, sector }: { call: Call; user: Curr
         callId={call.id}
         configured={configured}
         header={{ ticker: call.ticker, title: call.title, byline, sector }}
+        expect={{ timeline: spoken, recorder: !ready || !!call.error }}
         chat={
           ready && !hidden ? (
             <CallDiscussion

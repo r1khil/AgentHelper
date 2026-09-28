@@ -1,6 +1,6 @@
 # Hoot website controls
 
-Submit a direct request in floating Hoot, the Hoot landing page, or a general/holding conversation:
+Submit a direct request in ⌘K, the Hoot landing page, or a general/holding conversation:
 
 - “Turn on light mode” / “turn off light mode”
 - “Switch to dark mode” / “use system theme” / “toggle theme”
@@ -11,4 +11,6 @@ Hoot confirms the action with a toast. Theme requests use the existing theme pro
 
 These are local controls: they do not start a research run or create a conversation. Only an entire, explicit command is intercepted; questions, quoted instructions, and mixed research/action requests continue through research. Actions are never replayed from stored assistant answers. Supported destinations are the sidebar pages (Today, Backtesting, Holdings, Hoot, Sell-side analyzer, Models, Movements, Earnings, Economic calendar, Attribution, Risk, Exposure, Weekly update, Changelog, Admin), subject to availability. Arbitrary URLs and individual holding navigation are not supported.
 
-Option/Alt+S opens floating Hoot from any signed-in page where Hoot is enabled. On Mac, Command+S also opens it and takes over the browser Save shortcut. Command/Ctrl+J still toggles the panel. On pages where the companion normally stays hidden, the shortcut shows him for that interaction. Sector switching uses the same available choices and keeps the current section where the existing switcher does.
+In ⌘K, Enter opens what the text names (a holding, page, scope or theme) and otherwise sends it to Hoot, so a command typed there runs on Enter; ⌘/Ctrl+Enter (or Tab) always sends the text to Hoot. The docked Hoot's panel has no composer of its own: its "Ask Hoot" row opens ⌘K.
+
+Option/Alt+S opens and closes Hoot's panel from any signed-in page where Hoot is enabled, except while typing in a field. It is the only Hoot shortcut: Command+S (Save) and Command/Ctrl+J (Downloads in Chrome on Windows) are left to the browser. On pages where the companion normally stays hidden, the shortcut shows him for that interaction. Sector switching uses the same available choices and keeps the current section where the existing switcher does.

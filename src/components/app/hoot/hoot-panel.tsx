@@ -1,12 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
-import { Activity, ArrowLeftRight, ArrowUp, CalendarDays, CalendarRange, Eye, EyeOff, FileText, Mic, Sparkles, X } from "lucide-react";
+import { Activity, ArrowLeftRight, CalendarDays, CalendarRange, EyeOff, FileText, Mic, Search, Sparkles, X } from "lucide-react";
 import type { HootNudge, NudgeKind } from "@/lib/hoot/types";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { isMac } from "@/lib/hoot/shortcuts";
+import { hootShortcutLabel, isMac } from "@/lib/hoot/shortcuts";
 import { cn } from "@/lib/utils";
 
 const KIND_ICON: Record<NudgeKind, React.ComponentType<{ className?: string }>> = {
@@ -19,18 +16,13 @@ const KIND_ICON: Record<NudgeKind, React.ComponentType<{ className?: string }>> 
   tip: Sparkles,
 };
 
-export const shortcutLabel = () => (isMac() ? "⌥S / ⌘S" : "Alt S");
-
-/** What opens when you click Hoot: ask him a research question, see what needs you, or send him away. */
+/**
+ * What opens when you click Hoot: what needs you, a way to ask him something, and sending him away. Asking happens in
+ * ⌘K (or on Research), the same as everywhere else, so the panel has no composer or greeting of its own.
+ */
 export function HootPanel({
-  greeting,
-  suggestions,
-  scopeHint,
-  seeing,
   nudges,
   loading,
-  asking,
-  askError,
   onAsk,
   onOpenNudge,
   onDismiss,
@@ -39,17 +31,10 @@ export function HootPanel({
   side,
   onClose,
 }: {
-  greeting: string;
-  suggestions: string[];
-  /** Where the question will go when it isn't a general conversation, e.g. "NVDA's research board". */
-  scopeHint: string | null;
-  /** What on this page goes along with the question, e.g. "Fund attribution · 1D". */
-  seeing?: string | null;
   nudges: HootNudge[];
   loading: boolean;
-  asking: boolean;
-  askError: string | null;
-  onAsk: (text: string) => void;
+  /** Opens ⌘K, where research questions, "take me to …" and "dark mode" all go. */
+  onAsk: () => void;
   onOpenNudge: (n: HootNudge) => void;
   onDismiss: (n: HootNudge) => void;
   onHide: () => void;
@@ -58,85 +43,26 @@ export function HootPanel({
   side: "left" | "right";
   onClose: () => void;
 }) {
-  const [text, setText] = useState("");
-  const box = useRef<HTMLTextAreaElement>(null);
-  const submit = () => {
-    if (text.trim() && !asking) onAsk(text.trim());
-  };
-
   return (
     <div className="flex max-h-[min(34rem,calc(100dvh-8rem))] flex-col">
-      <div className="flex items-start gap-3 border-b px-4 pt-3.5 pb-3">
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold">{greeting}</div>
-          <div className="text-xs text-muted-foreground">Ask a research question, change the theme, or open a page.</div>
-        </div>
-        <button type="button" onClick={onClose} className="-mr-1 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Close">
+      <div className="flex items-center gap-2 border-b p-2">
+        <button
+          type="button"
+          autoFocus
+          onClick={onAsk}
+          className="flex h-9 min-w-0 flex-1 items-center gap-2.5 rounded-md px-2.5 text-left text-sm text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Search className="size-4 shrink-0" aria-hidden />
+          <span className="min-w-0 flex-1 truncate">Ask Hoot, or jump to a page</span>
+          <kbd className="rounded border bg-muted px-1 font-sans text-[10px]">{isMac() ? "⌘K" : "Ctrl K"}</kbd>
+        </button>
+        <button type="button" onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Close">
           <X className="size-4" />
         </button>
       </div>
 
       <div className="overflow-y-auto">
-        <form
-          className="px-4 pt-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit();
-          }}
-        >
-          <label htmlFor="hoot-ask" className="sr-only">
-            Ask Hoot
-          </label>
-          <div className="relative">
-            <Textarea
-              id="hoot-ask"
-              ref={box}
-              value={text}
-              autoFocus
-              rows={2}
-              disabled={asking}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  submit();
-                }
-              }}
-              placeholder="Try “turn on light mode” or “take me to holdings”…"
-              className="min-h-16 resize-none pr-11 text-sm"
-            />
-            <Button type="submit" size="icon" className="absolute right-2 bottom-2 size-7" disabled={!text.trim() || asking} aria-label="Ask">
-              <ArrowUp className="size-4" />
-            </Button>
-          </div>
-          <div className="mt-1.5 text-[11px] text-muted-foreground">
-            {asking ? "Opening a chat…" : `Research questions open a new ${scopeHint ? `chat on ${scopeHint}` : "conversation"}${seeing ? ", with this page attached" : ""}.`}
-          </div>
-          {seeing && !asking && (
-            <div className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">
-              <Eye className="size-3 shrink-0" aria-hidden />
-              <span className="truncate">Hoot can see: {seeing}</span>
-            </div>
-          )}
-          {askError && <div className="mt-1.5 text-xs text-destructive">{askError}</div>}
-          <div className="mt-2.5 flex flex-col gap-1.5">
-            {suggestions.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => {
-                  setText(s);
-                  box.current?.focus();
-                }}
-                className="rounded-md border px-2.5 py-1.5 text-left text-xs leading-snug text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </form>
-
-        <div className="px-4 pt-4 pb-2">
+        <div className="px-4 pt-3 pb-2">
           <div className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">For you</div>
           {loading ? (
             <div className="mt-2 space-y-2">
@@ -186,7 +112,7 @@ export function HootPanel({
           )}
         </span>
         <span>
-          <kbd className="rounded border bg-muted px-1 font-sans text-[10px]">{shortcutLabel()}</kbd> to open
+          <kbd className="rounded border bg-muted px-1 font-sans text-[10px]">{hootShortcutLabel()}</kbd> to open
         </span>
       </div>
     </div>

@@ -16,6 +16,7 @@ import { Tip } from "./info-tip";
 import { INTERACTION_CLASS } from "./interaction-toggle";
 import { PeriodSelector } from "./period-selector";
 import { SectorEffectsList, type SectorEffectPoint } from "./sector-effects-list";
+import { RowLink } from "@/components/app/row-link";
 
 export function rangeText(start: string, end: string, days: number) {
   return `${fmtDay(start)} close through ${fmtDay(end)} · ${days} trading ${days === 1 ? "day" : "days"}`;
@@ -189,9 +190,9 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
         );
         const cls = cn("grid h-10 items-center gap-2.5 border-b border-row px-4 text-[13.5px]", TEAM_COLS);
         return team ? (
-          <Link key={t.teamId} href={`/t/${team.slug}/attribution${query}`} className={cn(cls, "transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")}>
+          <RowLink key={t.teamId} href={`/t/${team.slug}/attribution${query}`} className={cn(cls, "transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")}>
             {cells}
-          </Link>
+          </RowLink>
         ) : (
           <div key="none" className={cls}>{cells}</div>
         );

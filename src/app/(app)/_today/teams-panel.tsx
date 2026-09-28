@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fmtAccounting, fmtCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { TeamRowData } from "./types";
+import { RowLink } from "@/components/app/row-link";
 
 /** The contribution bars run to ±40 bp, or to the biggest team when one moved more. */
 const SCALE_BP = 40;
@@ -134,11 +135,11 @@ function TeamHoldings({ team, live }: { team: TeamRowData; live: boolean }) {
           <span role="columnheader" className="text-right">Next earnings</span>
         </div>
         {team.holdings.map((h) => (
-          <div role="row" key={h.id} className={cn(HOLDING_COLS, "h-9 border-t border-row")}>
+          <div role="row" key={h.id} className={cn(HOLDING_COLS, "relative h-9 border-t border-row")}>
             <span role="cell" className="flex min-w-0 items-baseline gap-2">
-              <Link href={h.href} className="shrink-0 font-mono font-semibold hover:underline">
+              <RowLink cover="cell" href={h.href} className="shrink-0 font-mono font-semibold hover:underline">
                 {h.ticker}
-              </Link>
+              </RowLink>
               <span className="truncate text-muted-foreground">{h.company}</span>
             </span>
             {live ? (

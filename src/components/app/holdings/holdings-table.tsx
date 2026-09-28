@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { fmtMoney, fmtPct, fmtNumber, ppToBp } from "@/lib/format";
 import { Move } from "@/components/app/move";
 import { Pill } from "@/components/app/panel";
+import { RowLink } from "@/components/app/row-link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkline } from "./sparkline";
 import type { AttentionFlag } from "./attention";
@@ -98,9 +99,9 @@ function Row({ r, q, loading }: { r: HoldingListRow; q?: QuoteCells[string]; loa
   return (
     <div role="row" className={cn(GRID, "relative h-10 border-b border-row text-sm transition-colors hover:bg-band")}>
       {/* The ticker link stretches over the whole row; the pills sit above it and keep their own links. */}
-      <Link href={r.href} title={`${r.ticker} · ${shares}`} className="font-mono text-[13.5px] font-semibold after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset">
+      <RowLink cover="stretch" href={r.href} title={`${r.ticker} · ${shares}`} className="font-mono text-[13.5px] font-semibold">
         {r.ticker}
-      </Link>
+      </RowLink>
       <span className="truncate text-ink-2">{r.company}</span>
       <Sparkline values={r.spark} />
       <span className="text-right font-mono text-[13px] tabular-nums" title={`${shares}${r.weightPct != null ? ` · ${fmtPct(r.weightPct)} of NAV` : ""}`}>

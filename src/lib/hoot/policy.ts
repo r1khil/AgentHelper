@@ -8,13 +8,6 @@ export function restingMood(marketOpen: boolean, nudges: HootNudge[]): HootMood 
   return marketOpen ? "idle" : "sleepy";
 }
 
-/** In the viewer's own time zone. */
-export function greeting(now: Date, firstName: string) {
-  const h = now.getHours();
-  const part = h < 5 ? "Up late" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-  return `${part}, ${firstName}`;
-}
-
 // ---------------------------------------------------------------- speech bubbles
 
 export const BUBBLES_PER_SESSION = 3;
@@ -82,9 +75,9 @@ export function companionHiddenOn(pathname: string) {
 type Tip = { id: string; match: RegExp; title: string; detail: string };
 
 const TIPS: Tip[] = [
-  { id: "tip:today", match: /^\/$/, title: "Hi, I'm Hoot!", detail: "I'll flag deadlines and earnings as they come up. Click me any time to ask a research question." },
+  { id: "tip:today", match: /^\/$/, title: "Hi, I'm Hoot!", detail: "I'll flag deadlines and earnings as they come up. Press ⌘K any time to ask me a research question." },
   { id: "tip:holdings", match: /^\/t\/[^/]+$/, title: "Every holding has its own research", detail: "Open a ticker to see its thesis, notes and research chats where I cite every fact." },
-  { id: "tip:holding", match: /^\/t\/[^/]+\/h\/[^/]+$/, title: "Ask about this holding", detail: "Click me and I'll open a research chat pinned to this ticker." },
+  { id: "tip:holding", match: /^\/t\/[^/]+\/h\/[^/]+$/, title: "Ask about this holding", detail: "Press ⌘K and ask: on this page, the question goes to this ticker's research." },
   { id: "tip:movements", match: /^\/t\/[^/]+\/movements$/, title: "Movements", detail: "A holding lands here when it moves 400 bp or more against the S&P 500. Anyone on the team can write up why, by noon the next trading day." },
   { id: "tip:earnings", match: /^\/t\/[^/]+\/earnings$/, title: "Earnings calendar", detail: "Write down expectations before the report. The prep pack gathers evidence, and the reflection afterwards checks your thesis." },
   { id: "tip:sell-side", match: /^\/t\/[^/]+\/sell-side$/, title: "Sell-side analyzer", detail: "Record a call, and you'll get a transcript, a brief and cross-checks against your team's files. I'll tell you when it's ready." },
@@ -99,7 +92,7 @@ export function tipFor(pathname: string, seen: string[]): HootNudge | null {
   return { id: tip.id, kind: "tip", priority: 9, title: tip.title, detail: tip.detail, href: pathname, mood: "wave" };
 }
 
-/** Three starting questions that fit the page. They only fill the box; the member edits and sends. */
+/** Three starting questions that fit the page, listed in ⌘K before anything is typed. They only fill the box; the member edits and sends. */
 export function suggestionsFor(pathname: string, ticker: string | null): string[] {
   if (ticker) {
     return [

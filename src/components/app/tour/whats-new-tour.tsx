@@ -9,6 +9,7 @@ import { saveTourProgress } from "@/lib/actions/preferences";
 import type { TourChapter, TourOffer, TourRecord, TourStep } from "@/lib/tour/types";
 import { WHATS_NEW_PITCH, WHATS_NEW_TOUR, WHATS_NEW_TOUR_ID } from "@/lib/tour/whats-new";
 import { companionHiddenOn } from "@/lib/hoot/policy";
+import { hootShortcutLabel } from "@/lib/hoot/shortcuts";
 import { usePrefersReducedMotion } from "@/components/app/hoot/hoot-sprite";
 import { whenBootDone } from "@/components/app/boot-signal";
 import { FlyingHoot, type FlyingHootHandle, type HootSpot } from "./flying-hoot";
@@ -496,7 +497,7 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
           key,
           title: "That's the new look!",
           body: hootEnabled
-            ? "Press ⌘K any time to jump somewhere or ask me something. On most pages I'm at the bottom of the menu too: click me, or press ⌘J."
+            ? `Press ⌘K any time to jump somewhere or ask me something. On most pages I'm at the bottom of the menu too, with what needs you: click me, or press ${hootShortcutLabel()}.`
             : "Press ⌘K any time to jump somewhere or ask me something. Turn on Hoot in the menu under your initials if you'd like me at the bottom of the menu on every page too.",
           actions: [{ id: "end", label: "Thanks, Hoot" }],
         };

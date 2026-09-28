@@ -18,7 +18,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         user={{ fullName: user.fullName, role: user.role, teamId: user.teamId, email: user.email, username: user.username, transparencyMode: user.transparencyMode, hootEnabled: hoot }}
         teams={teams}
         signOut={signOut}
-        firstName={firstName}
         hoot={hoot}
         backtestingLayout={user.hoot?.layouts?.backtesting ?? "new"}
         initialScope={initialScope}
