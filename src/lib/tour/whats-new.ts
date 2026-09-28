@@ -57,7 +57,7 @@ export const WHATS_NEW_TOUR: Tour = {
           target: '[data-tour="command"]',
           title: "⌘K goes anywhere",
           what: "Type a ticker to open that holding, a page's name to jump there, or a question to start a research chat with me.",
-          how: "Click the box or press ⌘K (Ctrl K on Windows) from any page. Arrow keys pick, Enter goes.",
+          how: "Click the box or press ⌘K from any page. Arrow keys pick, Enter goes.",
         },
       ],
     },
