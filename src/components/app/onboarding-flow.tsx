@@ -68,7 +68,7 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
             <HootHero size={112} className="shrink-0" />
             <div>
               <h1 className="text-xl font-semibold tracking-tight">Welcome to The Owl&apos;s Nest</h1>
-              <p className="mt-1 text-sm text-muted-foreground">A quick setup before you reach the workspace. It takes about a minute. I&apos;m Hoot, and I&apos;ll be in the corner if you need me.</p>
+              <p className="mt-1 text-sm text-muted-foreground">A quick setup before you reach the workspace. It takes about a minute. I&apos;m Hoot, and I&apos;ll be at the bottom of the menu if you need me.</p>
             </div>
           </div>
           <Card>

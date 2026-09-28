@@ -38,7 +38,7 @@ const CENTERED = 112;
 const MIN_WIDTH = 900;
 /** The menu: the rail (or the classic sidebar on the classic Backtesting layout). */
 const MENU = '[data-tour="sidebar"]';
-/** The rail's width, where the corner Hoot sits when he's on the left. */
+/** The rail's width; Hoot docks at its bottom. */
 const RAIL = 76;
 
 /** First element matching `selector` that's actually on screen (the mobile menu keeps a hidden copy). */
@@ -88,20 +88,20 @@ function pageHootSpot(): HootSpot | null {
   return null;
 }
 
-/** Where the corner Hoot sits, so the tour can take off from him and hand back to him. */
-function cornerSpot(): HootSpot {
-  const trigger = document.querySelector("[data-hoot-companion]");
-  if (trigger) {
-    const r = trigger.getBoundingClientRect();
-    return { x: r.left, y: r.top, size: r.width };
-  }
-  let left = false;
-  try {
-    left = localStorage.getItem("hoot:corner") === "left";
-  } catch {
-    // Storage blocked: he lives on the right.
-  }
-  return { x: left ? RAIL + 20 : window.innerWidth - 20 - PERCHED, y: window.innerHeight - 20 - PERCHED, size: PERCHED };
+/**
+ * Where the companion sits, docked at the bottom of the menu, so the tour can take off from him and hand back to
+ * him. While the tour runs he's stepped aside, but his spot in the menu stays reserved, so it can still be measured.
+ */
+function dockSpot(): HootSpot | null {
+  const el = findVisible("[data-hoot-companion]") ?? findVisible("[data-hoot-dock]");
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  return { x: r.left, y: r.top, size: r.width };
+}
+
+/** With Hoot switched off there's no spot to measure: take off from where he'd sit at the bottom of the rail. */
+function railBottomSpot(): HootSpot {
+  return { x: (RAIL - PERCHED) / 2, y: window.innerHeight - 150 - PERCHED, size: PERCHED };
 }
 
 const sameSpot = (a: HootSpot, b: HootSpot) => Math.abs(a.x - b.x) < 3 && Math.abs(a.y - b.y) < 3 && Math.abs(a.size - b.size) < 1;
@@ -167,7 +167,7 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
   const begin = useCallback((first: Phase) => {
     if (runningRef.current || window.innerWidth < MIN_WIDTH) return;
     runningRef.current = true;
-    const from = pageHootSpot() ?? cornerSpot();
+    const from = pageHootSpot() ?? dockSpot() ?? railBottomSpot();
     document.documentElement.dataset.touring = "";
     flightKey.current = null;
     setStart(from);
@@ -239,15 +239,15 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
   }, [phase, goTo]);
 
   /**
-   * Back to the page's own Hoot, or his corner (off screen if he's switched off or the page hides him), then hand
-   * over to that Hoot.
+   * Back to the page's own Hoot, or his spot in the menu (off screen if he's switched off or the page hides him),
+   * then hand over to that Hoot.
    */
   const leave = useCallback(
     (status: TourRecord["status"]) => {
       save(status);
       flightKey.current = "leaving";
       setPhase({ kind: "leaving" });
-      const home = pageHootSpot() ?? (hootEnabled && !companionHiddenOn(pathname) ? cornerSpot() : null);
+      const home = pageHootSpot() ?? (hootEnabled && !companionHiddenOn(pathname) ? dockSpot() : null);
       setSpot(home ?? { x: window.innerWidth + 40, y: window.innerHeight - 140, size: PERCHED });
     },
     [save, hootEnabled, pathname],
@@ -368,7 +368,7 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
     if (landedFor === "leaving") {
       setTourActive(false);
       delete document.documentElement.dataset.touring;
-      // Stay a moment while the corner Hoot rises into the same spot, so the hand-off doesn't blink.
+      // Stay a moment while the docked Hoot rises into the same spot, so the hand-off doesn't blink.
       window.setTimeout(() => {
         runningRef.current = false;
         setPhase({ kind: "off" });
@@ -496,8 +496,8 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
           key,
           title: "That's the new look!",
           body: hootEnabled
-            ? "Press ⌘K any time to jump somewhere or ask me something. On most pages I'm in the corner too: click me, or press ⌘J."
-            : "Press ⌘K any time to jump somewhere or ask me something. Turn on Floating Hoot under your initials if you'd like me in the corner of every page too.",
+            ? "Press ⌘K any time to jump somewhere or ask me something. On most pages I'm at the bottom of the menu too: click me, or press ⌘J."
+            : "Press ⌘K any time to jump somewhere or ask me something. Turn on Hoot in the menu under your initials if you'd like me at the bottom of the menu on every page too.",
           actions: [{ id: "end", label: "Thanks, Hoot" }],
         };
       case "step": {
