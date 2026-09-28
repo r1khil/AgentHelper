@@ -206,6 +206,7 @@ describe("fetching", () => {
   it("builds each issuer's URL", () => {
     expect(sourceUrl("KRE", ETF_SOURCES.KRE)).toBe("https://www.ssga.com/library-content/products/fund-data/etfs/us/holdings-daily-us-en-kre.xlsx");
     expect(sourceUrl("SOXX", ETF_SOURCES.SOXX)).toBe("https://www.ishares.com/us/products/239705/ishares-semiconductor-etf/latest-holdings.csv");
+    expect(sourceUrl("IYK", ETF_SOURCES.IYK)).toBe("https://www.ishares.com/us/products/239505/ishares-us-consumer-staples-etf/latest-holdings.csv");
     expect(sourceUrl("SKYY", ETF_SOURCES.SKYY)).toBe("https://www.ftportfolios.com/Retail/Etf/EtfHoldings.aspx?Ticker=SKYY");
     expect(sourceUrl("DRAM", ETF_SOURCES.DRAM, "2026-09-24")).toBe("https://www.roundhillinvestments.com/assets/data/FilepointRoundhill.40RU.RU_Holdings_09242026.csv");
   });

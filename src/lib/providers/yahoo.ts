@@ -2,7 +2,7 @@ import YahooFinance from "yahoo-finance2";
 import { DateTime } from "luxon";
 import { NY } from "./calendar";
 import { retry, spaced } from "./limiter";
-import { cached } from "./cache";
+import { cached, readCached, storeCached } from "./cache";
 import type { Bar, EarningsDate, Quote } from "./types";
 
 export const SPX_SYMBOL = "^GSPC";
@@ -80,6 +80,33 @@ export async function getQuotes(symbols: string[]): Promise<Record<string, Quote
     }
     return out;
   });
+}
+
+/** A security's type never changes, so each answer is kept a month; an unknown symbol is asked about again the next day. */
+const QUOTE_TYPE_TTL = 60 * 60 * 24 * 30;
+
+/**
+ * Yahoo's quote type per symbol ("EQUITY", "ETF", "MUTUALFUND", …), or null when Yahoo has no quote for it. Cached per
+ * symbol, so only symbols never seen before cost a call, and those share one batch.
+ */
+export async function getQuoteTypes(symbols: string[]): Promise<Record<string, string | null>> {
+  const unique = [...new Set(symbols.map((s) => s.toUpperCase()))];
+  const out: Record<string, string | null> = {};
+  const missing: string[] = [];
+  for (const s of unique) {
+    const hit = await readCached<{ type: string | null }>(`yahoo:quote-type:${s}`);
+    if (hit) out[s] = hit.type;
+    else missing.push(s);
+  }
+  if (!missing.length) return out;
+  const res = await spaced(HOST, GAP_MS, () => retry(() => yf().quote(missing)));
+  const found = new Map(res.map((q) => [q.symbol.toUpperCase(), q.quoteType ?? null]));
+  for (const s of missing) {
+    const type = found.get(s) ?? null;
+    out[s] = type;
+    await storeCached(`yahoo:quote-type:${s}`, type ? QUOTE_TYPE_TTL : 60 * 60 * 24, { type });
+  }
+  return out;
 }
 
 /**
