@@ -39,6 +39,16 @@ describe("buildNudges", () => {
     expect(out[1].title).toBe("Your AAPL write-up is due in 22h");
   });
 
+  it("links in the member's scope when it shows the item, else in the item's team", () => {
+    const rows = {
+      myMovements: [{ id: "m1", ticker: "NVDA", teamSlug: "tech", dueAt: new Date("2026-09-22T16:00:00Z") }],
+      earnings: [{ id: "e1", ticker: "TSM", teamSlug: "tech", reportDate: "2026-09-22", reportHour: "bmo", expectationsLocked: false, mine: false }],
+    };
+    expect(buildNudges(input({ ...rows, scope: "fund" })).map((n) => n.href)).toEqual(["/t/fund/movements/m1", "/t/fund/earnings/e1"]);
+    expect(buildNudges(input({ ...rows, scope: "tech" })).map((n) => n.href)).toEqual(["/t/tech/movements/m1", "/t/tech/earnings/e1"]);
+    expect(buildNudges(input({ ...rows, scope: "consumer" })).map((n) => n.href)).toEqual(["/t/tech/movements/m1", "/t/tech/earnings/e1"]);
+  });
+
   it("flags today's reports, asks owners to lock expectations, and rolls the rest of the week into one line", () => {
     const out = buildNudges(
       input({

@@ -5,6 +5,7 @@ import { db } from "@/db/client";
 import { changelogEntries, earnings, holdingProposals, holdings, modelProposals, models, movements, sellSideCalls, teams, weeklyUpdates } from "@/db/schema";
 import { canManageTeam, isFundWide, listAccessibleTeams, type CurrentUser } from "@/lib/auth";
 import { isTradingDay, nextTradingDay, NY, todayNY } from "@/lib/providers/calendar";
+import { rememberedScope } from "@/lib/teams";
 import { buildNudges } from "./build";
 import type { HootFeed } from "./types";
 
@@ -88,6 +89,8 @@ export async function loadHootFeed(user: CurrentUser): Promise<HootFeed> {
   ]);
 
   const nudges = buildNudges({
+    // Links open in the scope the member is in when it shows the item, so a nudge doesn't switch scope.
+    scope: await rememberedScope(user).catch(() => null),
     now,
     today,
     soon,

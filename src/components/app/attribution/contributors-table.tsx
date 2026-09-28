@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ScopedLink } from "@/components/app/shell/scope-context";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { HoldingRow } from "@/lib/attribution/attribution";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
@@ -30,7 +30,7 @@ export function ContributorsTable({ rows, teams, showTeam = true }: { rows: Hold
               <TableRow key={h.ticker}>
                 <TableCell className="pl-4">
                   <div className="flex min-w-0 items-baseline gap-2">
-                    {team ? <Link href={`/t/${team.slug}/h/${h.ticker}`} className="font-mono font-semibold hover:underline">{h.ticker}</Link> : <span className="font-mono font-semibold">{h.ticker}</span>}
+                    {team ? <ScopedLink owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} className="font-mono font-semibold hover:underline">{h.ticker}</ScopedLink> : <span className="font-mono font-semibold">{h.ticker}</span>}
                     <span className="max-w-64 truncate text-ink-2">{h.name}</span>
                   </div>
                 </TableCell>

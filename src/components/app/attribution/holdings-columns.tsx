@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ScopedLink } from "@/components/app/shell/scope-context";
 import type { HoldingRow } from "@/lib/attribution/attribution";
 import { MagnitudeBar } from "./bars";
 import type { TeamLookup } from "./contributors-table";
@@ -23,7 +23,7 @@ export function HoldingsColumn({ rows, teams, caption }: { rows: HoldingRow[]; t
         return (
           <div key={h.ticker} className="grid min-h-10 grid-cols-[3.5rem_1fr_3.5rem] items-center gap-2.5 border-b border-row text-[13.5px] last:border-b-0">
             {team ? (
-              <Link href={`/t/${team.slug}/h/${h.ticker}`} className="truncate font-mono font-semibold hover:underline">{h.ticker}</Link>
+              <ScopedLink owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} className="truncate font-mono font-semibold hover:underline">{h.ticker}</ScopedLink>
             ) : (
               <span className="truncate font-mono font-semibold">{h.ticker}</span>
             )}

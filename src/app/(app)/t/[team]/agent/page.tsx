@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { loadScope } from "@/lib/teams";
+import { boardHref } from "@/lib/scope";
 import { isFundWide } from "@/lib/roles";
 import { listHoldingChatStats } from "@/lib/chats";
 import { listTeamHoldings } from "@/lib/holdings";
@@ -27,7 +28,7 @@ export default async function AgentIndex({ params }: { params: Promise<{ team: s
     listHoldingChatStats(teamIds, viewer),
     listTeamMovements(teamIds),
     listTeamEarnings(teamIds),
-    loadResearchSidebar(teamIds, viewer),
+    loadResearchSidebar(teamIds, viewer, scope.slug),
   ]);
   // Not awaited: the boards render from the database at once and the quotes stream in when Yahoo answers.
   const market: Promise<MarketByTicker> = marketSnapshot(rows.map((r) => r.h.ticker)).then((m) =>
@@ -54,7 +55,7 @@ export default async function AgentIndex({ params }: { params: Promise<{ team: s
       name: h.companyName,
       ownerName,
       teamName: scope.kind === "fund" ? teamById.get(h.teamId)?.name : undefined,
-      href: `/t/${teamById.get(h.teamId)?.slug}/agent/h/${h.ticker}`,
+      href: boardHref(scope.slug, teamById.get(h.teamId)?.slug ?? scope.slug, h.ticker),
       chats: s?.chats ?? 0,
       sources: s?.sources ?? 0,
       lastActivity: s?.lastActivity.toISOString() ?? null,

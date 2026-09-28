@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ScopedLink } from "@/components/app/shell/scope-context";
 import { Panel, PanelHeader } from "@/components/app/panel";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
 import type { Exposure } from "@/lib/risk/exposure";
@@ -92,7 +92,7 @@ export function ActiveBetsPanel({ report: r, x, lookthrough, teams, benchShort, 
           return (
             <div key={b.key} className={cn(COLS, "min-h-10 flex-1 border-b border-row text-[13.5px] last:border-b-0")} title={`${b.key} · ${b.name}`}>
               {team ? (
-                <Link href={`/t/${team.slug}/h/${b.key}`} className="truncate font-mono text-[13px] font-semibold hover:underline">{b.key}</Link>
+                <ScopedLink owner={team.slug} path={`/h/${encodeURIComponent(b.key)}`} className="truncate font-mono text-[13px] font-semibold hover:underline">{b.key}</ScopedLink>
               ) : (
                 <span className="truncate font-mono text-[13px] font-semibold">{b.key}</span>
               )}
