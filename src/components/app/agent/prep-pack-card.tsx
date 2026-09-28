@@ -80,7 +80,7 @@ export function PrepPackCard({ pack, compact, actions, className }: { pack: Prep
             })}
           </ol>
         )}
-        <p className="mt-3 text-[11px] text-muted-foreground">Evidence only, gathered by the agent. Your expectations, key questions and thesis-change criteria stay yours to write on the earnings page.</p>
+        <p className="mt-3 text-[11px] text-muted-foreground">Write your expectations, key questions and thesis-change criteria before they lock at the report.</p>
       </div>
     </div>
   );

@@ -211,7 +211,7 @@ export const WHATS_NEW_TOUR: Tour = {
           target: '[data-tour="movement-detail"]',
           title: "Evidence, your update, my feedback",
           what: "The news, filings and peer moves I gathered, the box for your update, and my feedback in pink.",
-          how: "I flag claims without support, missing evidence and anything that contradicts the thesis. I never rewrite your update. Models, the next tab, works the same way: the list on the left, proposed values from new filings to approve or reject on the right.",
+          how: "I flag claims without support, missing evidence and anything that contradicts the thesis. Models, the next tab, works the same way: the list on the left, proposed values from new filings to approve or reject on the right.",
           ifMissing: "skip",
         },
       ],

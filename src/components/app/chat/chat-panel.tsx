@@ -203,9 +203,9 @@ function EmptyIntro({ suggestions, onPick, disabled }: { suggestions: string[]; 
     <div className="mx-auto w-full max-w-[560px] pt-4 text-center">
       <HootOnPage />
       <HootHero size={112} className="mx-auto mb-1" />
-      <div className="text-[15px] font-semibold">Ask for evidence, not conclusions</div>
+      <div className="text-[15px] font-semibold">What should Hoot look into?</div>
       <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
-        Hoot pulls prices, SEC filings, financials, news, and your team&rsquo;s notes, with a source on every fact. It will not write your update or thesis.
+        Hoot pulls prices, SEC filings, financials, news, and your team&rsquo;s notes, with a source on every fact.
       </p>
       <div className="mt-5 grid gap-2 text-left">
         {suggestions.map((s) => (

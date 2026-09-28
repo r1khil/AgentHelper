@@ -254,7 +254,7 @@ function Preview({ item }: { item: Item }) {
   if (item.kind === "holding") return <HoldingPreview holding={item.holding} />;
   const [title, body] =
     item.kind === "ask"
-      ? ["Ask Hoot", "Opens a research chat and sends this question. Hoot cites a source for every fact; the conclusions stay yours."]
+      ? ["Ask Hoot", "Opens a research chat and sends this question. Hoot cites a source for every fact."]
       : item.kind === "page"
         ? [item.page.label, item.page.hint ?? "Open this page."]
         : item.kind === "scope"
