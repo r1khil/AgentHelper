@@ -12,7 +12,7 @@ import { chunkDocument } from "@/lib/documents/sections";
 import { requeueOversizedEmbeds } from "@/lib/documents/index";
 import { replaceChunks } from "@/lib/documents/search";
 import { proposalEligibility } from "@/lib/drive/proposals";
-import { SUMMARY_VERSION, isEmptySummary, type DocSummary } from "@/lib/drive/summary";
+import { SUMMARY_VERSION, isEmptySummary, isFailedSummary, type DocSummary } from "@/lib/drive/summary";
 import { summarizeDocument } from "@/lib/drive/summarize";
 import { claimJobLock, releaseJobLock } from "./lock";
 
@@ -179,7 +179,11 @@ async function ingestOne(documentId: string, cfg: IngestConfig, result: IngestRe
     } catch (e) {
       ok = false;
       fail("summary", e);
-      await db.update(documents).set({ summaryError: msg(e).slice(0, 500), summaryFor: row.version, updatedAt: new Date() }).where(eq(documents.id, documentId));
+      // A failed parse stored as a summary by older code is dropped, so the row reads as failed: no summary, summary_error set.
+      await db
+        .update(documents)
+        .set({ summaryError: msg(e).slice(0, 500), summaryFor: row.version, ...(isFailedSummary(row.summary) ? { summary: null } : {}), updatedAt: new Date() })
+        .where(eq(documents.id, documentId));
     }
   }
 
