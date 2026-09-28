@@ -12,3 +12,9 @@ export const isMac = () => typeof navigator !== "undefined" && /Mac|iPhone|iPad/
 
 /** How the shortcut is written on this device. */
 export const hootShortcutLabel = () => (isMac() ? "⌥S" : "Alt S");
+
+/**
+ * Copy written with the Mac's "⌘K", as this device writes it: "Ctrl K" off a Mac. Client-side only (the server can't
+ * tell the platform), so use it where the text first renders in the browser, like Hoot's tips and the tour's cards.
+ */
+export const withCommandKey = (text: string, mac = isMac()) => (mac ? text : text.replaceAll("⌘K", "Ctrl K"));

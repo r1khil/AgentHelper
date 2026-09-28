@@ -43,6 +43,17 @@ describe("⌘K Enter rule", () => {
     expect(enter("hoot")).toMatchObject({ kind: "page", page: { label: "Research" } });
     expect(enter("earnings")).toMatchObject({ kind: "page", page: { label: "Calendar" } });
     expect(enter("research")).toMatchObject({ kind: "page", page: { label: "Research" } });
+    expect(enter("analyzer")).toMatchObject({ kind: "page", page: { label: "Sell-side calls" } });
+  });
+
+  it("opens the Portfolio section's first page for \"portfolio\", and Holdings for \"holdings\"", () => {
+    expect(enter("portfolio")).toMatchObject({ kind: "page", page: { label: "Attribution" } });
+    expect(enter("holdings")).toMatchObject({ kind: "page", page: { label: "Holdings" } });
+    // Without the book, the Portfolio section is Backtesting alone.
+    const pages = destinations({ scope: { slug: "tech" }, fundWide: false, seesBook: false });
+    expect(enter("portfolio", { pages })).toMatchObject({ kind: "page", page: { label: "Backtesting" } });
+    const listed = run("portfolio", { pages }).flatMap((g) => g.items.flatMap((i) => (i.kind === "page" ? [i.page.label] : [])));
+    expect(listed).toEqual(["Backtesting"]);
   });
 
   it("keeps asking Hoot on the list, right after what the query names", () => {
