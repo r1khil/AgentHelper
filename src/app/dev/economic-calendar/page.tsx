@@ -52,7 +52,6 @@ function previewEarnings(start: string, end: string): CalendarEvent[] {
       teamId: "preview-team",
       teamSlug: "preview",
       teamName,
-      ownerId: i % 4 ? "preview-owner" : null,
       status: "upcoming",
       expectations: (["locked", "draft", "not_started"] as const)[i % 3],
     });
@@ -84,7 +83,6 @@ export default async function Preview({ searchParams }: { searchParams: Promise<
         canScope={false}
         industries={[]}
         events={events}
-        ownerNames={{ "preview-owner": "Preview Analyst" }}
         accessibleTeamIds={["preview-team"]}
         notices={["Earnings here are synthetic fixtures, not the Fund's."]}
         reports={[]}

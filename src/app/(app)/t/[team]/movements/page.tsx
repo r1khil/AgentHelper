@@ -11,7 +11,7 @@ export default async function MovementsPage({ params }: { params: Promise<{ team
   if (items.length === 0) {
     return (
       <EmptyState title="No movements yet" hoot="sleepy">
-        The close check runs every trading day. Qualifying moves appear here with evidence attached and an owner assigned.
+        The close check runs every trading day. Qualifying moves appear here with evidence attached, for anyone on the team to write up.
       </EmptyState>
     );
   }

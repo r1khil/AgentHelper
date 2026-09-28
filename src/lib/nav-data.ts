@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, count, desc, eq, gte, inArray, ne } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
-import { earnings, holdings, modelProposals, models, movements, profiles, sellSideCalls, weeklyUpdates } from "@/db/schema";
+import { earnings, holdings, modelProposals, models, movements, sellSideCalls, weeklyUpdates } from "@/db/schema";
 import { isFundWide, listAccessibleTeams, type CurrentUser } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { todayNY } from "@/lib/providers/calendar";
@@ -16,7 +16,6 @@ export type CommandHolding = {
   team: string;
   teamSlug: string;
   weightPct: number | null;
-  owner: string | null;
   nextReport: string | null;
   nextReportEstimated: boolean;
   openMovement: boolean;
@@ -39,9 +38,8 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
 
   const [rows, openMoves, proposals, calls, reports, weekly] = await Promise.all([
     db
-      .select({ ticker: holdings.ticker, company: holdings.companyName, teamId: holdings.teamId, weightPct: holdings.weightPct, owner: profiles.fullName })
+      .select({ ticker: holdings.ticker, company: holdings.companyName, teamId: holdings.teamId, weightPct: holdings.weightPct })
       .from(holdings)
-      .leftJoin(profiles, eq(profiles.id, holdings.ownerId))
       .where(and(inArray(holdings.teamId, teamIds), eq(holdings.status, "active")))
       .orderBy(asc(holdings.ticker)),
     db
@@ -95,7 +93,6 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
         team: t?.name ?? "",
         teamSlug: t?.slug ?? scope,
         weightPct: r.weightPct == null ? null : Number(r.weightPct),
-        owner: r.owner,
         nextReport: n?.date ?? null,
         nextReportEstimated: n?.estimated ?? false,
         openMovement: moving.has(r.ticker),
