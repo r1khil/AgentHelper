@@ -1,9 +1,10 @@
 import "server-only";
-import { and, count, desc, eq, gte, inArray, lte, ne } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, lt, lte, ne, or } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
-import { changelogEntries, earnings, holdingProposals, holdings, modelProposals, models, movements, sellSideCalls, teams, weeklyUpdates } from "@/db/schema";
+import { changelogEntries, earnings, holdingProposals, holdings, modelProposals, models, movements, profiles, sellSideCalls, teams, weeklyUpdates } from "@/db/schema";
 import { canManageTeam, isFundWide, listAccessibleTeams, type CurrentUser } from "@/lib/auth";
+import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { isTradingDay, nextTradingDay, NY, todayNY } from "@/lib/providers/calendar";
 import { buildNudges } from "./build";
 import type { HootFeed } from "./types";
@@ -34,7 +35,10 @@ export async function loadHootFeed(user: CurrentUser): Promise<HootFeed> {
   const dismissed = user.hoot?.dismissed ?? {};
   const none = Promise.resolve([] as never[]);
 
-  const [myMovements, upcoming, mySellSide, thesis, modelRows, weekly, changelog] = await Promise.all([
+  // Holdings filtered to the unowned ones, across the fund or the one team a lead runs.
+  const unownedHref = `/t/${fundWide ? FUND_SCOPE_SLUG : teamList.find((t) => t.id === managed[0])?.slug}?filter=unassigned`;
+
+  const [myMovements, teamMovements, unowned, upcoming, mySellSide, thesis, modelRows, weekly, changelog] = await Promise.all([
     db
       .select({ id: movements.id, ticker: holdings.ticker, teamSlug: teams.slug, dueAt: movements.dueAt })
       .from(movements)
@@ -42,6 +46,23 @@ export async function loadHootFeed(user: CurrentUser): Promise<HootFeed> {
       .innerJoin(teams, eq(teams.id, holdings.teamId))
       .where(and(eq(movements.ownerId, user.id), ne(movements.status, "completed")))
       .limit(10),
+    managed.length
+      ? db
+          .select({ id: movements.id, ticker: holdings.ticker, teamSlug: teams.slug, dueAt: movements.dueAt, ownerName: profiles.fullName })
+          .from(movements)
+          .innerJoin(holdings, eq(holdings.id, movements.holdingId))
+          .innerJoin(teams, eq(teams.id, holdings.teamId))
+          .leftJoin(profiles, eq(profiles.id, movements.ownerId))
+          .where(and(inArray(holdings.teamId, managed), ne(movements.status, "completed"), or(isNull(movements.ownerId), and(ne(movements.ownerId, user.id), lt(movements.dueAt, now)))))
+          .orderBy(asc(movements.dueAt))
+          .limit(20)
+      : none,
+    managed.length
+      ? db
+          .select({ count: count() })
+          .from(holdings)
+          .where(and(inArray(holdings.teamId, managed), eq(holdings.status, "active"), isNull(holdings.ownerId)))
+      : none,
     teamIds.length
       ? db
           .select({ e: earnings, ticker: holdings.ticker, ownerId: holdings.ownerId, teamSlug: teams.slug })
@@ -92,6 +113,8 @@ export async function loadHootFeed(user: CurrentUser): Promise<HootFeed> {
     today,
     soon,
     myMovements,
+    teamMovements,
+    unownedHoldings: unowned[0]?.count ? { count: unowned[0].count, href: unownedHref } : null,
     earnings: upcoming.map((r) => ({ id: r.e.id, ticker: r.ticker, teamSlug: r.teamSlug, reportDate: r.e.reportDate, reportHour: r.e.reportHour, expectationsLocked: !!r.e.preLockedAt, mine: r.ownerId === user.id })),
     mySellSide,
     thesisProposals: thesis,
