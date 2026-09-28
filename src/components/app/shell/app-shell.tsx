@@ -131,7 +131,10 @@ export function AppShell({ user, teams, signOut, firstName, hoot, backtestingLay
       <MobileBar user={user} teams={teams} signOut={signOut} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader nav={nav} counts={counts} onOpenCommand={() => setCommandOpen(true)} />
-        <main className="app-container flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-1 flex-col p-4 md:p-6">{children}</main>
+        {/* data-role lets a page's loading skeleton match what this reader will see (page-skeletons.tsx). */}
+        <main data-role={user.role} className="app-container flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-1 flex-col p-4 md:p-6">
+          {children}
+        </main>
       </div>
       {command}
       {companion}
