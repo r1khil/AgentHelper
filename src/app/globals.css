@@ -398,8 +398,13 @@
   30% { opacity: 1; }
   100% { opacity: 0; transform: translate(10px, -18px) scale(1.1); }
 }
-/* The loading screen on a full page load (boot-splash.tsx). The wave strip is 12 frames wide, so sliding it one
-   full width in 12 steps plays each frame once. The bar trickles toward 92% until the page reports it's done. */
+/* The loading screen on a full page load (boot-splash.tsx). It renders hidden and its inline script moves it
+   through shown → fading → gone, setting the fade's duration itself. The wave strip is 12 frames wide, so sliding
+   it one full width in 12 steps plays each frame once. The bar trickles toward 92% until the page is there. */
+.boot-splash { transition-property: opacity; transition-timing-function: ease-out; }
+.boot-splash[data-boot="idle"] { visibility: hidden; opacity: 0; pointer-events: none; }
+.boot-splash[data-boot="fading"] { opacity: 0; pointer-events: none; }
+.boot-splash[data-boot="gone"] { display: none; }
 @keyframes hoot-wave-loop {
   to { transform: translateX(-100%); }
 }

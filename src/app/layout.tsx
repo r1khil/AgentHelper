@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         {/* Light, dark or the OS setting, remembered per browser. Sets the `dark` class on <html> before first paint. */}
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {/* Hoot waves while a fresh load or refresh finishes; client navigation never shows it again. */}
+          {/* Hoot's welcome on the first full load of the day, or a slow full load; client navigation never shows it. */}
           <BootSplash />
           <UpdateBanner buildId={getBuildId()} />
           {children}
