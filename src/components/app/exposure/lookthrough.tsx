@@ -214,7 +214,7 @@ function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughRep
               <TableCell>
                 <span className="font-mono font-semibold">{n.key}</span>
                 {n.overlap && <span className="ml-1.5 rounded border px-1 py-px text-caption text-muted-foreground" title={RISK_EXPLAIN.overlap}>both</span>}
-                <div className="max-w-36 truncate text-caption text-muted-foreground sm:max-w-56">
+                <div className="max-w-56 text-caption whitespace-normal text-muted-foreground">
                   {n.name}
                   {n.sector ? ` · ${SECTOR_LABELS[n.sector]}` : ""}
                   {n.symbols.length > 1 ? ` · ${n.symbols.join(" + ")}` : ""}
@@ -229,7 +229,8 @@ function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughRep
                 </div>
               </TableCell>
               <TableCell className="text-right font-mono text-body">{n.direct > 0 ? rpct(n.direct, 2) : "—"}</TableCell>
-              <TableCell className="hidden min-w-32 text-body text-muted-foreground sm:table-cell">{viaText(n) || "—"}</TableCell>
+              {/* Wraps, so a long list of ETFs doesn't push the table past a 1,045 px window. */}
+              <TableCell className="hidden min-w-32 text-body whitespace-normal text-muted-foreground sm:table-cell">{viaText(n) || "—"}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -249,7 +250,7 @@ function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughRep
             </TableCell>
             <TableCell className="font-mono text-body text-muted-foreground">{rpct(lt.notLookedThrough.total, 2)}</TableCell>
             <TableCell />
-            <TableCell className="hidden text-body text-muted-foreground sm:table-cell">{notLookedText || "—"}</TableCell>
+            <TableCell className="hidden text-body whitespace-normal text-muted-foreground sm:table-cell">{notLookedText || "—"}</TableCell>
           </TableRow>
           {(scope === "fund" || lt.cash !== 0) && (
             <TableRow>
@@ -303,7 +304,7 @@ function StockActiveTables({ rows, benchmarkLabel }: { rows: ActiveName[]; bench
             <TableRow key={r.key}>
               <TableCell>
                 <span className="font-mono font-semibold">{r.key}</span>
-                <div className="max-w-32 truncate text-caption text-muted-foreground sm:max-w-44">{r.name}</div>
+                <div className="max-w-44 text-caption whitespace-normal text-muted-foreground">{r.name}</div>
               </TableCell>
               <TableCell className="text-right font-mono text-body">
                 {rpct(r.fund, 2)} <span className="text-muted-foreground">· {rpct(r.benchmark, 2)}</span>

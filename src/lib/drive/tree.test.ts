@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FOLDER_MIME, buildPaths, classifyTree, inferKind, matchHolding, matchTeam, parenthesizedTicker, type DriveItem, type HoldingRef, type TeamRef } from "./tree";
+import { FOLDER_MIME, buildPaths, classifyTree, inferKind, matchHolding, matchTeam, namedHoldingOverride, namedTickers, parenthesizedTicker, type DriveItem, type HoldingRef, type TeamRef } from "./tree";
 
 const ROOT = "root";
 const folder = (id: string, name: string, parent: string): DriveItem => ({ id, name, mimeType: FOLDER_MIME, parents: [parent] });
@@ -115,5 +115,66 @@ describe("classifyTree", () => {
     expect(by.cur).toMatchObject({ holdingId: null, ticker: null });
     expect(by.f6).toMatchObject({ holdingId: null, ticker: "CMCSA" });
     expect(unmatched).toEqual(["FIG/Unknown Co (ZZZ)", "Loose/Dup Co (DUP)"]);
+  });
+});
+
+describe("namedTickers / namedHoldingOverride", () => {
+  const cc: HoldingRef[] = [
+    { id: "h-meta", ticker: "META", companyName: "Meta Platforms, Inc.", teamId: "t-cc" },
+    { id: "h-amzn", ticker: "AMZN", companyName: "Amazon.com, Inc.", teamId: "t-cc" },
+    ...holdings,
+  ];
+
+  it("reads only all-caps tickers in parentheses", () => {
+    expect(namedTickers("Amazon.com, Inc. (AMZN)_Valuation Workbook (14-Oct-2025).xlsx")).toEqual(["AMZN"]);
+    expect(namedTickers("AMZN Model (app).xlsx")).toEqual([]);
+    expect(namedTickers("Deck (30-Mar-2022) (1).pdf")).toEqual([]);
+    expect(namedTickers("Meta (META) vs Amazon (AMZN).pdf")).toEqual(["META", "AMZN"]);
+  });
+
+  it("moves a file naming another holding's ticker to that holding", () => {
+    expect(namedHoldingOverride("Amazon.com, Inc. (AMZN)_Valuation Workbook (14-Oct-2025).xlsx", "META", cc)?.id).toBe("h-amzn");
+  });
+
+  it("keeps the folder's holding when the name also names it, names nothing, or names no holding", () => {
+    expect(namedHoldingOverride("Meta Platforms, Inc. (META)_Valuation Workbook.xlsx", "META", cc)).toBeNull();
+    expect(namedHoldingOverride("Meta (META) vs Amazon (AMZN) comps.xlsx", "META", cc)).toBeNull();
+    expect(namedHoldingOverride("Q3 Earnings Update.pdf", "META", cc)).toBeNull();
+    expect(namedHoldingOverride("Model (FINAL).xlsx", "META", cc)).toBeNull();
+    expect(namedHoldingOverride("Snap Inc. (SNAP) comps.xlsx", "META", cc)).toBeNull();
+  });
+
+  it("does nothing outside a company folder, and refuses an ambiguous ticker unless the team settles it", () => {
+    expect(namedHoldingOverride("Amazon.com, Inc. (AMZN) Pre-Pitch Memo.pdf", null, cc)).toBeNull();
+    expect(namedHoldingOverride("Dup Co (DUP) model.xlsx", "META", cc)).toBeNull();
+    expect(namedHoldingOverride("Dup Co (DUP) model.xlsx", "META", cc, "t-tech")?.id).toBe("h-dup-b");
+  });
+});
+
+describe("classifyTree with a misfiled document", () => {
+  it("files a document by the ticker in its own name when it contradicts the company folder", () => {
+    const cc: HoldingRef[] = [
+      { id: "h-meta", ticker: "META", companyName: "Meta Platforms, Inc.", teamId: "t-cc" },
+      { id: "h-amzn", ticker: "AMZN", companyName: "Amazon.com, Inc.", teamId: "t-cc" },
+    ];
+    const xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    const items: DriveItem[] = [
+      folder("s", "1. Consumer & Communications Coverage", ROOT),
+      folder("cur", "Current Holdings", "s"),
+      folder("meta", "Meta Platforms, Inc. (META)", "cur"),
+      folder("wm", "2) Working Model ", "meta"),
+      file("own", "Meta Platforms, Inc. (META)_Valuation Workbook (03-Nov-2025).xlsx", "wm", xlsx),
+      folder("oldm", "Old Models", "wm"),
+      file("amzn", "Amazon.com, Inc. (AMZN)_Valuation Workbook (14-Oct-2025).xlsx", "oldm", xlsx),
+      file("plain", "Old model v2.xlsx", "oldm", xlsx),
+      folder("amznsub", "Amazon.com, Inc. (AMZN)", "oldm"),
+      file("inner", "Cover notes.pdf", "amznsub"),
+    ];
+    const by = Object.fromEntries(classifyTree(ROOT, items, cc, teams).items.map((o) => [o.id, o]));
+    expect(by.own).toMatchObject({ holdingId: "h-meta", ticker: "META" });
+    expect(by.plain).toMatchObject({ holdingId: "h-meta", ticker: "META" });
+    expect(by.amzn).toMatchObject({ holdingId: "h-amzn", ticker: "AMZN", kind: "model" });
+    expect(by.amznsub).toMatchObject({ holdingId: "h-amzn", ticker: "AMZN" });
+    expect(by.inner).toMatchObject({ holdingId: "h-amzn", ticker: "AMZN" });
   });
 });

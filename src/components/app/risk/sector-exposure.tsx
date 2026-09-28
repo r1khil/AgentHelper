@@ -82,7 +82,8 @@ export function SectorExposure({ sectors, benchmarkLabel, activeFirst = false, b
                 <TableCell className="font-medium">
                   {s.label}
                   {etf && <span className="ml-1 text-caption font-normal text-muted-foreground">{etf}</span>}
-                  {s.tickers.length > 0 && <div className="max-w-64 truncate text-caption font-normal text-muted-foreground" title={s.tickers.join(", ")}>{s.tickers.join(" · ")}</div>}
+                  {/* Every holding in the sector, wrapping rather than cut off (and letting the table fit a 1,045 px window). */}
+                  {s.tickers.length > 0 && <div className="max-w-64 text-caption font-normal whitespace-normal text-muted-foreground">{s.tickers.join(" · ")}</div>}
                   {note && <div className="max-w-64 text-caption font-normal text-muted-foreground italic">{note}</div>}
                 </TableCell>
                 {order(weightCell(s), activeCell(s))}

@@ -16,6 +16,11 @@ const REFRESH_MS = 5 * 60_000;
 const SHOWN = 5;
 /** Opening these is the same as dealing with them, as in Hoot's panel. */
 const DISMISS_ON_OPEN = new Set(["sell_side", "changelog", "weekly", "proposal"]);
+/**
+ * A row: icon, title over detail, when, action, dismiss. Below xl (a 1,045 px window) "when" leads the detail line so
+ * the title keeps its width; the title and detail wrap rather than cut off, so a long one makes its row taller.
+ */
+const LIST_ROW = "grid min-h-[58px] grid-cols-[32px_minmax(0,1fr)_116px_20px] items-center gap-3 px-4 py-1.5 xl:grid-cols-[32px_minmax(0,1fr)_150px_116px_20px]";
 
 type Feed = { nudges: HootNudge[]; updatedAt: string; dismiss: (n: HootNudge) => void };
 const FeedContext = createContext<Feed | null>(null);
@@ -116,15 +121,22 @@ export function HootList() {
             const Icon = iconFor(n);
             const urgent = n.priority <= 2;
             return (
-              <li key={n.id} className="grid h-[58px] grid-cols-[32px_minmax(0,1fr)_150px_116px_20px] items-center gap-3 px-4">
+              <li key={n.id} className={LIST_ROW}>
                 <span className={cn("grid size-8 place-items-center rounded-full", urgent ? "bg-hoot text-hoot-foreground" : "bg-muted text-muted-foreground")}>
                   <Icon className="size-[15px]" aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <div className="truncate text-emph font-semibold">{n.title}</div>
-                  {n.detail && <div className="mt-px truncate text-body text-muted-foreground">{n.detail}</div>}
+                  <div className="text-emph font-semibold">{n.title}</div>
+                  <div className={cn("mt-px text-body text-muted-foreground", !n.detail && "xl:hidden")}>
+                    {/* Below xl "when" leads the detail line instead of taking a column of its own. */}
+                    <span suppressHydrationWarning className={cn("font-mono text-caption xl:hidden", urgent ? "text-hoot-foreground" : "text-muted-foreground")}>
+                      {nudgeWhen(n)}
+                    </span>
+                    {n.detail && <span className="xl:hidden"> · </span>}
+                    {n.detail}
+                  </div>
                 </div>
-                <span suppressHydrationWarning className={cn("truncate font-mono text-caption", urgent ? "text-hoot-foreground" : "text-muted-foreground")}>
+                <span suppressHydrationWarning className={cn("hidden font-mono text-caption xl:block", urgent ? "text-hoot-foreground" : "text-muted-foreground")}>
                   {nudgeWhen(n)}
                 </span>
                 <Button

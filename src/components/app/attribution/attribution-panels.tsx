@@ -163,6 +163,7 @@ export function EffectsPanel({ items, total, aside, note, empty, className }: { 
   );
 }
 
+// The team name keeps what the numbers leave and wraps (a 1,045 px window gives it ~100 px) rather than cutting off.
 const TEAM_COLS = "grid-cols-[minmax(0,1fr)_56px_70px_88px]";
 
 /**
@@ -193,9 +194,9 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
             <div
               key={t.teamId ?? "none"}
               role="row"
-              className={cn("relative grid h-10 items-center gap-2.5 border-b border-row px-4 text-body", TEAM_COLS, team && "transition-colors hover:bg-band has-[a:focus-visible]:bg-band")}
+              className={cn("relative grid min-h-10 items-center gap-2.5 border-b border-row px-4 py-1 text-body", TEAM_COLS, team && "transition-colors hover:bg-band has-[a:focus-visible]:bg-band")}
             >
-              <span role="rowheader" className="truncate">
+              <span role="rowheader" className="min-w-0 leading-4">
                 {team ? (
                   <RowLink cover="stretch" href={`/t/${team.slug}/attribution${query}`} className="focus-visible:after:ring-0">
                     {team.name}
@@ -212,8 +213,8 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
         })}
       </div>
       {showCash && (
-        <div className="mt-auto flex min-h-10 shrink-0 items-center bg-band-2 px-4 text-body text-muted-foreground">
-          <span className="truncate">
+        <div className="mt-auto flex min-h-10 shrink-0 items-center bg-band-2 px-4 py-2 text-body text-muted-foreground">
+          <span className="min-w-0 text-pretty">
             Cash, fees and interest{cashWeight !== undefined && ` · ${fmtPct(pct(cashWeight), 1)} average weight`} ·{" "}
             <span className={cn("font-mono", tone(cashContribution, 10_000))}>{fmtBp(bps(cashContribution))}</span>
           </span>
@@ -268,7 +269,9 @@ export function HoldingsPanel({
       ) : showAll ? (
         <ContributorsTable rows={holdings} teams={teams} showTeam={showTeam} />
       ) : (
-        <div className="grid gap-6 px-4 py-3 sm:grid-cols-2">
+        // Side by side, except where the page's two columns leave this panel narrow (lg to xl): there Hurt most goes under
+        // Helped most, so each keeps the width for its team names.
+        <div className="grid gap-6 px-4 py-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
           <HoldingsColumn rows={top} teams={teams} label="Helped most" caption={showTeam ? "Helped most · team, avg weight" : "Helped most · avg weight"} />
           <HoldingsColumn rows={bottom} teams={teams} label="Hurt most" caption={showTeam ? "Hurt most · team, avg weight" : "Hurt most · avg weight"} />
         </div>

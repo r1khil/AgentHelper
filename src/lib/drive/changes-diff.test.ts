@@ -79,6 +79,28 @@ describe("applyChanges", () => {
     expect(plan.needsFullSync).toBe(true);
   });
 
+  it("files a new document by the other holding's ticker in its name, as the full crawl does", () => {
+    const withMeta = [...holdings, { id: "h-meta", ticker: "META", companyName: "Meta Platforms, Inc.", teamId: "t-fin" }];
+    const plan = applyChanges({
+      rootId: ROOT,
+      changes: [
+        change({ id: "misfiled", name: "Meta Platforms, Inc. (META)_Valuation Workbook.xlsx", parents: ["f-axp"] }),
+        change({ id: "subdir", name: "Meta Platforms, Inc. (META)", parents: ["f-axp"], mimeType: FOLDER_MIME }),
+        change({ id: "inner", name: "notes.pdf", parents: ["subdir"] }),
+        change({ id: "peer", name: "AXP vs Visa (V) comps.xlsx", parents: ["f-axp"] }),
+      ],
+      existing: existing(),
+      holdings: withMeta,
+      teams,
+      now,
+    });
+    const by = Object.fromEntries(plan.upserts.map((u) => [u.id, u]));
+    expect(by.misfiled).toMatchObject({ holdingId: "h-meta", ticker: "META" });
+    expect(by.subdir).toMatchObject({ holdingId: "h-meta", ticker: "META" });
+    expect(by.inner).toMatchObject({ holdingId: "h-meta", ticker: "META" });
+    expect(by.peer).toMatchObject({ holdingId: "h-axp", ticker: "AXP" });
+  });
+
   it("keeps an app-created file's holding, kind, and uploader", () => {
     const plan = applyChanges({ rootId: ROOT, changes: [change({ id: "app1", name: "AXP Model (app).xlsx", parents: ["f-axp"], mimeType: "application/octet-stream" })], existing: existing(), holdings, teams, now });
     expect(plan.upserts[0]).toMatchObject({ createdByApp: true, uploadedBy: "u1", kind: "model", holdingId: "h-axp" });

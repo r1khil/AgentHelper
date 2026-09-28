@@ -3,11 +3,12 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Search, Sparkles } from "lucide-react";
+import { ChevronDown, Loader2, Search, Sparkles } from "lucide-react";
 import { fmtNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { CellInfo, WorkbookInfo } from "@/lib/excel/read";
 import { parsePeriodLabel } from "@/lib/models/periods";
+import { defaultSheetIndex, splitSheetTabs } from "@/lib/models/sheet-tabs";
 import { periodEndsFor, saveMapping, searchConcepts, suggestFromValue } from "@/lib/actions/models";
 import type { ConceptSuggestion } from "@/lib/models/proposals";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect } from "@/components/app/native-select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { CountChip } from "@/components/app/panel";
 import { Tabs } from "@/components/app/tabs";
 
 type Props = { modelId: string; workbook: WorkbookInfo; existing: { sheet: string; rowRef: number }[] };
@@ -31,7 +34,15 @@ const SCALES = [
 
 export function MappingEditor({ modelId, workbook, existing }: Props) {
   const router = useRouter();
-  const [sheetIdx, setSheetIdx] = useState(0);
+  const sheetNames = useMemo(() => workbook.sheets.map((s) => s.name), [workbook]);
+  const mappedPerSheet = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const e of existing) n.set(e.sheet, (n.get(e.sheet) ?? 0) + 1);
+    return n;
+  }, [existing]);
+  const mappedCount = (name: string) => mappedPerSheet.get(name) ?? 0;
+  // Opens on the sheet that matters most (mapped rows, else the model's main sheet), not the cover.
+  const [sheetIdx, setSheetIdx] = useState(() => defaultSheetIndex(sheetNames, mappedCount));
   const [row, setRow] = useState<number | null>(null);
   const [label, setLabel] = useState("");
   const [periods, setPeriods] = useState<Record<string, string>>({});
@@ -50,6 +61,12 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
   const [saving, setSaving] = useState(false);
 
   const sheet = workbook.sheets[sheetIdx];
+  // A handful of sheets as tabs, the rest in "More sheets"; the chosen one always has a tab.
+  const sheetTabs = splitSheetTabs(sheetNames, mappedCount, sheetIdx);
+  const pickSheet = (i: number) => {
+    setSheetIdx(i);
+    setRow(null);
+  };
   const cols = useMemo(() => {
     const n = Math.min(sheet?.colCount ?? 0, MAX_COLS);
     return Array.from({ length: n }, (_, i) => colLetter(i + 1));
@@ -169,17 +186,37 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
 
   return (
     <section className="panel overflow-hidden">
-      <div className="flex flex-wrap items-center gap-x-4 border-b bg-band px-3">
+      <div className="flex flex-wrap items-center gap-x-5 border-b bg-band px-3">
         <Tabs
           label="Sheets"
           rule={false}
-          className="w-full flex-wrap"
-          onSelect={(k) => {
-            setSheetIdx(Number(k));
-            setRow(null);
-          }}
-          items={workbook.sheets.map((s, i) => ({ key: String(i), label: s.name, active: i === sheetIdx }))}
+          className="min-w-0"
+          onSelect={(k) => pickSheet(Number(k))}
+          items={sheetTabs.tabs.map((i) => {
+            const mapped = mappedCount(sheetNames[i]);
+            return { key: String(i), label: sheetNames[i], active: i === sheetIdx, count: mapped || undefined, title: mapped ? `${mapped} line item${mapped === 1 ? "" : "s"} mapped` : undefined };
+          })}
         />
+        {sheetTabs.more.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-sm text-body whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset data-popup-open:text-foreground">
+              More sheets
+              <CountChip>{sheetTabs.more.length}</CountChip>
+              <ChevronDown className="size-3.5" aria-hidden />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              {sheetTabs.more.map((i) => {
+                const mapped = mappedCount(sheetNames[i]);
+                return (
+                  <DropdownMenuItem key={i} onClick={() => pickSheet(i)}>
+                    <span className="min-w-0 flex-1 truncate">{sheetNames[i]}</span>
+                    {mapped > 0 && <span className="text-caption text-muted-foreground">{mapped} mapped</span>}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         <span className="ml-auto py-2 text-body text-muted-foreground">Click a row to map it. Shaded cells hold formulas and are never written.</span>
       </div>
 

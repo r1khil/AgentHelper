@@ -24,7 +24,7 @@ function MarketClock({ initial }: { initial: string }) {
  */
 export function Greeting({ hello, name, dateLine, lead, askHref, analyst }: { hello: string; name: string; dateLine: string; lead?: React.ReactNode; askHref: string; analyst: boolean }) {
   return (
-    <header data-tour="today-greeting" className="flex h-[84px] shrink-0 items-center gap-4">
+    <header data-tour="today-greeting" className="flex min-h-[84px] shrink-0 items-center gap-4">
       <HootOnPage />
       <Link href={askHref} aria-label="Ask Hoot" title="Ask Hoot" className="shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
         <HootSprite mood="wave" size={84} track />
@@ -36,7 +36,8 @@ export function Greeting({ hello, name, dateLine, lead, askHref, analyst }: { he
         <h1 className="mt-0.5 text-display leading-tight font-semibold tracking-[-0.025em]">
           {hello}, {name}.
         </h1>
-        <p className="mt-0.5 truncate text-emph text-ink-2">
+        {/* Wraps rather than cuts off: in a narrow window it runs to a second line. */}
+        <p className="mt-0.5 text-emph text-pretty text-ink-2">
           {lead}
           <ListSentence analyst={analyst} />
         </p>
