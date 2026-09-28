@@ -142,7 +142,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
             "After the report: sourced results",
             <form action={gatherResults}>
               <input type="hidden" name="id" value={e.id} />
-              <Button type="submit" size="sm" variant="outline" disabled={!reported} title={reported ? "Pull the 8-K, press release, and XBRL facts" : "Available on the report date"}>
+              <Button type="submit" size="sm" variant="outline" disabled={!reported} title={reported ? "Pull the 8-K, press release, and reported figures" : "Available on the report date"}>
                 <RefreshCw />
                 {actuals ? "Refresh" : "Gather results"}
               </Button>

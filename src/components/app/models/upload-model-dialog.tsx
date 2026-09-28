@@ -39,7 +39,7 @@ export function UploadModelDialog({
         <DialogHeader>
           <DialogTitle>Upload a model</DialogTitle>
           <DialogDescription>
-            Map its line items to reported XBRL concepts once, and Hoot proposes the other periods with a source for every number. You approve; formulas are never touched.
+            Map its line items once to the figures the company reports to the SEC, and Hoot proposes the other periods with a source for every number. You approve; formulas are never touched.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-1.5">

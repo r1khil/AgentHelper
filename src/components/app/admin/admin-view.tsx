@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Diagnostics } from "./diagnostics";
 import { JobRunsLive } from "./job-runs-live";
 import { JobsPanel, type JobsPanelProps } from "./jobs-panel";
 import { MembersPanel, type MembersPanelProps } from "./members-panel";
@@ -32,6 +33,8 @@ export type AdminViewProps = {
   driveUnmatched: string[];
   filings: { lastSync: string | null; lastRun: { ok: boolean | null; at: string } | null };
   agent: { id: string; label: string | null; options: Option[] };
+  /** The model that writes the Changelog's summaries. */
+  changelogModel: string;
   retrieval: {
     configured: boolean;
     embedId: string;
@@ -48,7 +51,7 @@ export type AdminViewProps = {
 type Dot = "good" | "caution" | "down";
 const DOT: Record<Dot, string> = { good: "bg-up", caution: "bg-caution-foreground", down: "bg-down" };
 
-/** S16: members on the left; connections and scheduled jobs on the right; everything else below the fold. */
+/** S16: members on the left; connections and scheduled jobs on the right; Drive below, then the plumbing in a collapsed Diagnostics. */
 export function AdminView(p: AdminViewProps) {
   const { drive, canMutate } = p;
   const ingestPending = drive.ingest?.pending ?? 0;
@@ -97,9 +100,9 @@ export function AdminView(p: AdminViewProps) {
       ) : null,
     },
     {
-      name: "Agent model",
+      name: "Hoot",
       dot: p.services.agent ? "good" : "down",
-      line: p.services.agent ? `OpenRouter · ${p.agent.label ?? p.agent.id} · web search ${p.services.webSearch ? "on" : "off"}` : "Off: set OPENROUTER_API_KEY",
+      line: p.services.agent ? `Ready · web search ${p.services.webSearch ? "on" : "off"}` : "Off: not set up on this deployment",
       actions: (
         <a href="#agent" className={LINK}>
           {canMutate ? "Change" : "Details"}
@@ -107,11 +110,15 @@ export function AdminView(p: AdminViewProps) {
       ),
     },
     {
-      name: "Retrieval",
+      name: "Document search",
       dot: !p.retrieval.configured ? "down" : ingestPending > 0 || !embeddedAll ? "caution" : "good",
       line: !p.retrieval.configured
-        ? "Embeddings off"
-        : `Embeddings on · ${ingestPending ? `${ingestPending} ${ingestPending === 1 ? "file" : "files"} waiting to be read` : p.retrieval.stats ? `${p.retrieval.stats.embeddedWithModel} of ${p.retrieval.stats.documents} documents embedded` : "stats unavailable"}`,
+        ? "Off: not set up on this deployment"
+        : ingestPending
+          ? `${ingestPending} ${ingestPending === 1 ? "file" : "files"} waiting to be read`
+          : p.retrieval.stats
+            ? `${p.retrieval.stats.embeddedWithModel} of ${p.retrieval.stats.documents} documents searchable`
+            : "Status unavailable",
       actions:
         canMutate && drive.connected && drive.rootFolderId ? (
           <ActionForm action={ingestDriveNow} tone={ingestPending > 0 ? "caution" : undefined}>
@@ -165,80 +172,148 @@ export function AdminView(p: AdminViewProps) {
               </div>
             ))}
             <PanelFooter>
-              News (Finnhub) {p.services.news ? "on" : "off"} · Email {p.services.email ? "on" : "log only"} · Web search {p.services.webSearch ? "on" : "off"}
+              News (Finnhub) {p.services.news ? "on" : "off: set FINNHUB_API_KEY"} · Email {p.services.email ? "on" : "log only"} · Web search {p.services.webSearch ? "on" : "off"}
             </PanelFooter>
           </Panel>
           <JobsPanel {...p.jobs} />
         </div>
       </div>
 
-      <Panel>
-        <PanelHeader title="Recent runs" aside={p.transparency ? "click a run for its step log" : "updates live while a job runs"} />
-        <div className="overflow-x-auto">
-          <JobRunsLive initial={p.runs} transparency={p.transparency} />
-        </div>
-      </Panel>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Panel id="agent" className="scroll-mt-20">
-          <PanelHeader title="Research agent" aside={p.services.agent ? `using ${p.agent.label ?? p.agent.id}` : "set OPENROUTER_API_KEY"} />
-          <form action={setAgentModel} className="grid gap-2 p-4">
-            <Label htmlFor="agent-model">Model</Label>
-            <div className="flex flex-wrap items-center gap-2">
-              <NativeSelect id="agent-model" name="model" defaultValue={p.agent.id} className="w-72" disabled={!canMutate}>
-                {p.agent.options.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-                {!p.agent.label && <option value={p.agent.id}>{p.agent.id} (from environment)</option>}
-              </NativeSelect>
-              {canMutate && (
-                <Button type="submit" variant="outline">
-                  Save
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Applies to the next chat turn, draft feedback, earnings extraction, research-log distillation, and earnings prep packs. All three are free OpenRouter models; a rate-limited model hands the request to the next one on the list.
+      <Panel id="drive" className="scroll-mt-20">
+        <PanelHeader title="Google Drive" aside={drive.connected ? `connected as ${drive.accountEmail}` : drive.configured ? "not connected" : "set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, DRIVE_TOKEN_KEY"} />
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+          <div className="grid content-start gap-3 p-4 lg:border-r">
+            <p className="text-[13.5px] text-ink-2">
+              Hoot reads the Fund&rsquo;s document folder (initiating reports, earnings updates, models) and files analyst uploads into it. Permissions are read everything plus add new files only: the app never edits or deletes what you put there.
             </p>
-          </form>
-          <PanelFooter>
-            Web search (Tavily): {p.services.webSearch ? "on; the agent has search_web and read_url." : "off; set TAVILY_API_KEY to give the agent search_web (read_url still opens a URL directly)."}
-          </PanelFooter>
-        </Panel>
-
-        <Panel id="retrieval" className="scroll-mt-20">
-          <PanelHeader title="Retrieval" aside={p.retrieval.configured ? `${p.retrieval.embedLabel ?? p.retrieval.embedId}${p.retrieval.embedDims ? `, ${p.retrieval.embedDims} dims` : ""}` : "embeddings off"} />
-          <div className="grid gap-3 p-4">
-            <form action={setEmbeddingModel} className="grid gap-1.5">
-              <Label htmlFor="embed-model">Embedding model</Label>
+            {canMutate && (
               <div className="flex flex-wrap items-center gap-2">
-                <NativeSelect id="embed-model" name="model" defaultValue={p.retrieval.embedId} className="w-72" disabled={!canMutate}>
-                  {p.retrieval.embedOptions.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label} ({m.dims} dims)
-                    </option>
-                  ))}
-                  {!p.retrieval.embedLabel && <option value={p.retrieval.embedId}>{p.retrieval.embedId} (from environment; not in the registry)</option>}
-                </NativeSelect>
-                {canMutate && (
+                <Button nativeButton={false} render={<a href="/api/google/connect" />} variant={drive.connected && !drive.needsReconnect ? "outline" : "default"} disabled={!drive.configured}>
+                  {drive.connected ? "Reconnect Google" : "Connect Google Drive"}
+                </Button>
+                {drive.connected && (
+                  <form action={disconnectDrive}>
+                    <Button type="submit" variant="ghost" className="text-destructive">
+                      Disconnect
+                    </Button>
+                  </form>
+                )}
+              </div>
+            )}
+            {canMutate && drive.connected && (
+              <form action={setDriveRoot} className="grid gap-1.5 border-t border-row pt-3">
+                <Label htmlFor="drive-root">Root folder (URL or id)</Label>
+                <div className="flex items-center gap-2">
+                  <Input id="drive-root" name="root" placeholder="https://drive.google.com/drive/folders/…" defaultValue={drive.rootFolderId ?? ""} required />
                   <Button type="submit" variant="outline">
                     Save
                   </Button>
-                )}
-              </div>
-            </form>
-            <form action={setRerankModel} className="grid gap-1.5">
-              <Label htmlFor="rerank-model">Reranker</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">Layout expected inside it: one folder per sector team, then one folder per company named like &ldquo;American Express (AXP)&rdquo;.</p>
+              </form>
+            )}
+          </div>
+          <div className="grid content-start gap-3 p-4">
+            {!drive.connected ? (
+              <p className="text-[13.5px] text-muted-foreground">{drive.configured ? "Connect the Fund's Google account to start." : "Add the three Drive variables to the environment, redeploy, then connect."}</p>
+            ) : (
+              <KV
+                rows={[
+                  ["Account", drive.accountEmail ?? "—"],
+                  [
+                    "Root folder",
+                    drive.rootFolderId ? (
+                      <a href={`https://drive.google.com/drive/folders/${drive.rootFolderId}`} target="_blank" rel="noreferrer" className="hover:underline">
+                        {drive.rootFolderName ?? drive.rootFolderId}
+                      </a>
+                    ) : (
+                      <span className="text-caution-foreground">not set</span>
+                    ),
+                  ],
+                  ["Indexed", `${drive.fileCount} files, ${drive.matchedCount} matched to holdings`],
+                  ["Last sync", drive.lastSyncAt ? fmtDateTime(drive.lastSyncAt) : "never"],
+                  ...(drive.ingest
+                    ? ([
+                        [
+                          "Read by the app",
+                          <>
+                            {drive.ingest.summarized} summarized, {drive.ingest.embedded} searchable of {drive.ingest.matched} matched
+                            {drive.ingest.pending ? `; ${drive.ingest.pending} pending` : ""}
+                            {drive.ingest.errored ? <span className="text-caution-foreground">; {drive.ingest.errored} with errors</span> : null}
+                            {drive.ingest.pendingProposals ? `; ${drive.ingest.pendingProposals} thesis proposal${drive.ingest.pendingProposals === 1 ? "" : "s"} awaiting review` : ""}
+                          </>,
+                        ],
+                      ] as [string, React.ReactNode][])
+                    : []),
+                  ...(drive.watch
+                    ? ([
+                        [
+                          "Live updates",
+                          drive.watch.active ? (
+                            <>
+                              on, channel valid until {drive.watch.expiration ? fmtDateTime(drive.watch.expiration) : "?"}
+                              {drive.watch.lastChangeSyncAt ? `; last change applied ${fmtDateTime(drive.watch.lastChangeSyncAt)}` : ""}
+                            </>
+                          ) : (
+                            <span className="text-caution-foreground">off{drive.watch.error ? `: ${drive.watch.error}` : ""}</span>
+                          ),
+                        ],
+                      ] as [string, React.ReactNode][])
+                    : []),
+                  ...(drive.lastError ? ([["Error", <span key="e" className="text-destructive">{drive.lastError}</span>]] as [string, React.ReactNode][]) : []),
+                  ...(p.driveUnmatched.length ? ([["Unmatched folders", p.driveUnmatched.join(" · ")]] as [string, React.ReactNode][]) : []),
+                ]}
+              />
+            )}
+          </div>
+        </div>
+        {canMutate && drive.connected && drive.rootFolderId && (
+          <div className="flex items-center justify-between gap-3 border-t bg-band-2 px-4 py-2.5">
+            <span className="text-xs text-muted-foreground">
+              With live updates on, Drive tells the app about changes as they happen; the morning sweep still does a full crawl and renews the channel. Reading files (summaries, search index) continues in the background a few at a time.
+            </span>
+            <div className="flex shrink-0 gap-2">
+              <form action={renewDriveWatchNow}>
+                <Button type="submit" variant="outline">
+                  Renew live updates
+                </Button>
+              </form>
+              <form action={ingestDriveNow}>
+                <Button type="submit" variant="outline">
+                  Read files now
+                </Button>
+              </form>
+              <form action={syncDriveNow}>
+                <Button type="submit" variant="outline">
+                  Sync now
+                </Button>
+              </form>
+            </div>
+          </div>
+        )}
+      </Panel>
+
+      <Diagnostics summary="Hoot's models, document search, recent job runs, external tools and the PT sheet read">
+        <Panel>
+          <PanelHeader title="Recent runs" aside={p.transparency ? "click a run for its step log" : "updates live while a job runs"} />
+          <div className="overflow-x-auto">
+            <JobRunsLive initial={p.runs} transparency={p.transparency} />
+          </div>
+        </Panel>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Panel id="agent" className="scroll-mt-20">
+            <PanelHeader title="Research agent" aside={p.services.agent ? `using ${p.agent.label ?? p.agent.id}` : "set OPENROUTER_API_KEY"} />
+            <form action={setAgentModel} className="grid gap-2 p-4">
+              <Label htmlFor="agent-model">Model</Label>
               <div className="flex flex-wrap items-center gap-2">
-                <NativeSelect id="rerank-model" name="model" defaultValue={p.retrieval.rerankId} className="w-72" disabled={!canMutate}>
-                  {p.retrieval.rerankOptions.map((m) => (
+                <NativeSelect id="agent-model" name="model" defaultValue={p.agent.id} className="w-72" disabled={!canMutate}>
+                  {p.agent.options.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.label}
                     </option>
                   ))}
-                  {!p.retrieval.rerankOptions.some((m) => m.id === p.retrieval.rerankId) && <option value={p.retrieval.rerankId}>{p.retrieval.rerankId} (from environment)</option>}
+                  {!p.agent.label && <option value={p.agent.id}>{p.agent.id} (from environment)</option>}
                 </NativeSelect>
                 {canMutate && (
                   <Button type="submit" variant="outline">
@@ -246,154 +321,95 @@ export function AdminView(p: AdminViewProps) {
                   </Button>
                 )}
               </div>
-            </form>
-            <KV
-              rows={[
-                [
-                  "Embedded",
-                  p.retrieval.stats
-                    ? `${p.retrieval.stats.embeddedWithModel} of ${p.retrieval.stats.documents} indexed documents with this model (${p.retrieval.stats.chunksWithModel} of ${p.retrieval.stats.chunksTotal} chunks)`
-                    : "unavailable (apply drizzle/0013_documents.sql)",
-                ],
-              ]}
-            />
-          </div>
-          {canMutate && (
-            <form action={reembedNow} className="flex items-center justify-between gap-3 border-t bg-band-2 px-4 py-2.5">
-              <span className="text-xs text-muted-foreground">
-                Search fuses vector and full-text hits, then reranks. Free OpenRouter models share one budget (20 requests/min, 50 or 1,000/day) with the chat model: a switch re-embeds a few documents per run and stops on a 429 until the next run.
-              </span>
-              <Button type="submit" variant="outline" className="shrink-0">
-                Re-embed now
-              </Button>
-            </form>
-          )}
-        </Panel>
-
-        <Panel id="drive" className="scroll-mt-20 lg:col-span-2">
-          <PanelHeader title="Google Drive" aside={drive.connected ? `connected as ${drive.accountEmail}` : drive.configured ? "not connected" : "set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, DRIVE_TOKEN_KEY"} />
-          <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
-            <div className="grid content-start gap-3 p-4 lg:border-r">
-              <p className="text-[13.5px] text-ink-2">
-                The agent reads the Fund&rsquo;s document folder (initiating reports, earnings updates, models) and files analyst uploads into it. Permissions are read everything plus add new files only: the app never edits or deletes what you put there.
+              <p className="text-xs text-muted-foreground">
+                Applies to the next chat turn, draft feedback, earnings extraction, research-log distillation, and earnings prep packs. All three are free OpenRouter models; a rate-limited model hands the request to the next one on the list.
               </p>
-              {canMutate && (
+              <p className="text-xs text-muted-foreground">
+                Changelog summaries are written by <span className="font-mono">{p.changelogModel}</span> (set with CHANGELOG_MODEL).
+              </p>
+            </form>
+            <PanelFooter>
+              Web search (Tavily): {p.services.webSearch ? "on; the agent has search_web and read_url." : "off; set TAVILY_API_KEY to give the agent search_web (read_url still opens a URL directly)."}
+            </PanelFooter>
+          </Panel>
+
+          <Panel id="retrieval" className="scroll-mt-20">
+            <PanelHeader title="Retrieval" aside={p.retrieval.configured ? `${p.retrieval.embedLabel ?? p.retrieval.embedId}${p.retrieval.embedDims ? `, ${p.retrieval.embedDims} dims` : ""}` : "embeddings off"} />
+            <div className="grid gap-3 p-4">
+              <form action={setEmbeddingModel} className="grid gap-1.5">
+                <Label htmlFor="embed-model">Embedding model</Label>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button nativeButton={false} render={<a href="/api/google/connect" />} variant={drive.connected && !drive.needsReconnect ? "outline" : "default"} disabled={!drive.configured}>
-                    {drive.connected ? "Reconnect Google" : "Connect Google Drive"}
-                  </Button>
-                  {drive.connected && (
-                    <form action={disconnectDrive}>
-                      <Button type="submit" variant="ghost" className="text-destructive">
-                        Disconnect
-                      </Button>
-                    </form>
-                  )}
-                </div>
-              )}
-              {canMutate && drive.connected && (
-                <form action={setDriveRoot} className="grid gap-1.5 border-t border-row pt-3">
-                  <Label htmlFor="drive-root">Root folder (URL or id)</Label>
-                  <div className="flex items-center gap-2">
-                    <Input id="drive-root" name="root" placeholder="https://drive.google.com/drive/folders/…" defaultValue={drive.rootFolderId ?? ""} required />
+                  <NativeSelect id="embed-model" name="model" defaultValue={p.retrieval.embedId} className="w-72" disabled={!canMutate}>
+                    {p.retrieval.embedOptions.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label} ({m.dims} dims)
+                      </option>
+                    ))}
+                    {!p.retrieval.embedLabel && <option value={p.retrieval.embedId}>{p.retrieval.embedId} (from environment; not in the registry)</option>}
+                  </NativeSelect>
+                  {canMutate && (
                     <Button type="submit" variant="outline">
                       Save
                     </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Layout expected inside it: one folder per sector team, then one folder per company named like &ldquo;American Express (AXP)&rdquo;.</p>
-                </form>
-              )}
-              {drive.connected && (
-                <div className="flex items-center justify-between gap-2 border-t border-row pt-3">
-                  <span className="text-xs text-muted-foreground">The price target sheet is read separately: allowed tabs only, never edited.</span>
-                  <Button nativeButton={false} render={<Link href="/admin/pt-sheet" prefetch={false} />} variant="outline" className="shrink-0">
-                    Test PT sheet read
-                  </Button>
+                  )}
                 </div>
-              )}
+              </form>
+              <form action={setRerankModel} className="grid gap-1.5">
+                <Label htmlFor="rerank-model">Reranker</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <NativeSelect id="rerank-model" name="model" defaultValue={p.retrieval.rerankId} className="w-72" disabled={!canMutate}>
+                    {p.retrieval.rerankOptions.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label}
+                      </option>
+                    ))}
+                    {!p.retrieval.rerankOptions.some((m) => m.id === p.retrieval.rerankId) && <option value={p.retrieval.rerankId}>{p.retrieval.rerankId} (from environment)</option>}
+                  </NativeSelect>
+                  {canMutate && (
+                    <Button type="submit" variant="outline">
+                      Save
+                    </Button>
+                  )}
+                </div>
+              </form>
+              <KV
+                rows={[
+                  [
+                    "Embedded",
+                    p.retrieval.stats
+                      ? `${p.retrieval.stats.embeddedWithModel} of ${p.retrieval.stats.documents} indexed documents with this model (${p.retrieval.stats.chunksWithModel} of ${p.retrieval.stats.chunksTotal} chunks)`
+                      : "unavailable (apply drizzle/0013_documents.sql)",
+                  ],
+                ]}
+              />
             </div>
-            <div className="grid content-start gap-3 p-4">
-              {!drive.connected ? (
-                <p className="text-[13.5px] text-muted-foreground">{drive.configured ? "Connect the Fund's Google account to start." : "Add the three Drive variables to the environment, redeploy, then connect."}</p>
-              ) : (
-                <KV
-                  rows={[
-                    ["Account", drive.accountEmail ?? "—"],
-                    [
-                      "Root folder",
-                      drive.rootFolderId ? (
-                        <a href={`https://drive.google.com/drive/folders/${drive.rootFolderId}`} target="_blank" rel="noreferrer" className="hover:underline">
-                          {drive.rootFolderName ?? drive.rootFolderId}
-                        </a>
-                      ) : (
-                        <span className="text-caution-foreground">not set</span>
-                      ),
-                    ],
-                    ["Indexed", `${drive.fileCount} files, ${drive.matchedCount} matched to holdings`],
-                    ["Last sync", drive.lastSyncAt ? fmtDateTime(drive.lastSyncAt) : "never"],
-                    ...(drive.ingest
-                      ? ([
-                          [
-                            "Read by the app",
-                            <>
-                              {drive.ingest.summarized} summarized, {drive.ingest.embedded} embedded of {drive.ingest.matched} matched
-                              {drive.ingest.pending ? `; ${drive.ingest.pending} pending` : ""}
-                              {drive.ingest.errored ? <span className="text-caution-foreground">; {drive.ingest.errored} with errors</span> : null}
-                              {drive.ingest.pendingProposals ? `; ${drive.ingest.pendingProposals} thesis proposal${drive.ingest.pendingProposals === 1 ? "" : "s"} awaiting review` : ""}
-                            </>,
-                          ],
-                        ] as [string, React.ReactNode][])
-                      : []),
-                    ...(drive.watch
-                      ? ([
-                          [
-                            "Live updates",
-                            drive.watch.active ? (
-                              <>
-                                on, channel valid until {drive.watch.expiration ? fmtDateTime(drive.watch.expiration) : "?"}
-                                {drive.watch.lastChangeSyncAt ? `; last change applied ${fmtDateTime(drive.watch.lastChangeSyncAt)}` : ""}
-                              </>
-                            ) : (
-                              <span className="text-caution-foreground">off{drive.watch.error ? `: ${drive.watch.error}` : ""}</span>
-                            ),
-                          ],
-                        ] as [string, React.ReactNode][])
-                      : []),
-                    ...(drive.lastError ? ([["Error", <span key="e" className="text-destructive">{drive.lastError}</span>]] as [string, React.ReactNode][]) : []),
-                    ...(p.driveUnmatched.length ? ([["Unmatched folders", p.driveUnmatched.join(" · ")]] as [string, React.ReactNode][]) : []),
-                  ]}
-                />
-              )}
-            </div>
-          </div>
-          {canMutate && drive.connected && drive.rootFolderId && (
-            <div className="flex items-center justify-between gap-3 border-t bg-band-2 px-4 py-2.5">
-              <span className="text-xs text-muted-foreground">
-                With live updates on, Drive tells the app about changes as they happen; the morning sweep still does a full crawl and renews the channel. Reading files (summaries, search index) continues in the background a few at a time.
-              </span>
-              <div className="flex shrink-0 gap-2">
-                <form action={renewDriveWatchNow}>
-                  <Button type="submit" variant="outline">
-                    Renew live updates
-                  </Button>
-                </form>
-                <form action={ingestDriveNow}>
-                  <Button type="submit" variant="outline">
-                    Read files now
-                  </Button>
-                </form>
-                <form action={syncDriveNow}>
-                  <Button type="submit" variant="outline">
-                    Sync now
-                  </Button>
-                </form>
-              </div>
-            </div>
-          )}
-        </Panel>
+            {canMutate && (
+              <form action={reembedNow} className="flex items-center justify-between gap-3 border-t bg-band-2 px-4 py-2.5">
+                <span className="text-xs text-muted-foreground">
+                  Search fuses vector and full-text hits, then reranks. Free OpenRouter models share one budget (20 requests/min, 50 or 1,000/day) with the chat model: a switch re-embeds a few documents per run and stops on a 429 until the next run.
+                </span>
+                <Button type="submit" variant="outline" className="shrink-0">
+                  Re-embed now
+                </Button>
+              </form>
+            )}
+          </Panel>
+        </div>
 
         <McpPanel mcp={p.mcp} canMutate={canMutate} />
-      </div>
+
+        {drive.connected && (
+          <Panel>
+            <PanelHeader title="PT sheet read" />
+            <div className="flex items-center justify-between gap-3 px-4 py-3">
+              <span className="text-[13px] text-ink-2">The price target sheet is read separately from the Drive folder: allowed tabs only, never edited. See each tab exactly as Hoot reads it.</span>
+              <Button nativeButton={false} render={<Link href="/admin/pt-sheet" prefetch={false} />} variant="outline" className="shrink-0">
+                Test PT sheet read
+              </Button>
+            </div>
+          </Panel>
+        )}
+      </Diagnostics>
     </div>
   );
 }
@@ -435,7 +451,7 @@ function KV({ rows }: { rows: [string, React.ReactNode][] }) {
 function McpPanel({ mcp, canMutate }: { mcp: AdminViewProps["mcp"]; canMutate: boolean }) {
   const { servers, budget } = mcp;
   return (
-    <Panel id="mcp" className="scroll-mt-20 lg:col-span-2">
+    <Panel id="mcp" className="scroll-mt-20">
       <PanelHeader title="External tools (MCP servers)" count={servers.length || undefined} aside={servers.length ? `${servers.filter((m) => m.enabled).length} of ${servers.length} enabled` : "none registered"} />
       <div className={cn("grid", canMutate && "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]")}>
         <div className="min-w-0 overflow-x-auto">

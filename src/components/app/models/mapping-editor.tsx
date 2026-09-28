@@ -131,7 +131,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
 
   function suggest() {
     if (!anchor || !periods[anchor]) {
-      toast.error("Pick an anchor column and give it a period end first");
+      toast.error("Pick the column you typed by hand and give it a period end first");
       return;
     }
     const v = grid.get(`${anchor}${row}`)?.v;
@@ -207,7 +207,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
 
         <div className="space-y-4 p-4 text-sm">
           {row === null ? (
-            <p className="text-muted-foreground">Select the row of a line item you want the agent to fill (for example Revenue). You will map the first period yourself; that is the anchor the agent checks against.</p>
+            <p className="text-muted-foreground">Select the row of a line item you want Hoot to fill (for example Revenue). You enter its first period by hand; Hoot checks the other periods against that number.</p>
           ) : (
             <>
               <div className="grid gap-1.5">
@@ -224,7 +224,7 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
                   <div className="grid gap-1">
                     {numericCols.map((c) => (
                       <div key={c} className="flex items-center gap-2">
-                        <input type="radio" name="anchor" checked={anchor === c} onChange={() => setAnchor(c)} disabled={typeof grid.get(`${c}${row}`)?.v !== "number"} title="Anchor: the period you entered by hand" />
+                        <input type="radio" name="anchor" checked={anchor === c} onChange={() => setAnchor(c)} disabled={typeof grid.get(`${c}${row}`)?.v !== "number"} title="The period you entered by hand" />
                         <span className="tnum w-7 text-xs font-medium">{c}</span>
                         <span className="tnum w-24 truncate text-right text-xs text-muted-foreground">{typeof grid.get(`${c}${row}`)?.v === "number" ? (grid.get(`${c}${row}`)!.v as number).toLocaleString("en-US", { maximumFractionDigits: 2 }) : "empty"}</span>
                         <Input type="date" value={periods[c] ?? ""} onChange={(e) => setPeriods({ ...periods, [c]: e.target.value })} className="h-7 w-40 text-xs" list={`ends-${c}`} />
@@ -235,21 +235,21 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
                         </datalist>
                       </div>
                     ))}
-                    <p className="text-xs text-muted-foreground">Radio = anchor column (the number you typed). Dates were guessed from headers; fix any that are wrong. Leave a date empty to skip a column.</p>
+                    <p className="text-xs text-muted-foreground">Pick the column holding the number you typed by hand. Dates were guessed from headers; fix any that are wrong. Leave a date empty to skip a column.</p>
                   </div>
                 )}
               </div>
 
               <div className="grid gap-1.5">
-                <Label>Reported concept (SEC XBRL)</Label>
+                <Label title="The XBRL tag the company uses in its SEC filings">Reported figure (from SEC filings)</Label>
                 <div className="flex gap-2">
                   <Input placeholder="Search: revenue, operating income, diluted eps…" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), runSearch())} className="h-8" />
                   <Button type="button" size="sm" variant="outline" onClick={runSearch} disabled={pending}>
                     {pending ? <Loader2 className="animate-spin" /> : <Search />}
                   </Button>
-                  <Button type="button" size="sm" variant="outline" onClick={suggest} disabled={pending || !anchor} title="Value-match the anchor number against every reported fact for that period">
+                  <Button type="button" size="sm" variant="outline" onClick={suggest} disabled={pending || !anchor} title="Find reported figures that match the number you typed for that period">
                     <Sparkles />
-                    From anchor
+                    Match my number
                   </Button>
                 </div>
                 {suggestions && (
