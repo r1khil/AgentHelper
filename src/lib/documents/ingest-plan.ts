@@ -1,6 +1,6 @@
 import type { DocumentKind } from "@/db/schema";
 import { MAX_DOWNLOAD_BYTES, isExtractableMime } from "@/lib/drive/mime";
-import { SUMMARY_VERSION } from "@/lib/drive/summary";
+import { SUMMARY_VERSION, isFailedSummary, type DocSummary } from "@/lib/drive/summary";
 
 /** The columns the planner needs for any corpus row; Drive rows also carry their file facts. Pure module, no DB. */
 export type IngestRow = {
@@ -15,6 +15,7 @@ export type IngestRow = {
   summaryFor: string | null;
   summaryVersion: number | null;
   summaryError: string | null;
+  summary: DocSummary | null;
   embedModel: string | null;
   embedFor: string | null;
   ingestAttempts: number;
@@ -45,13 +46,15 @@ export function isIngestible(row: IngestRow): boolean {
 
 /**
  * What still has to happen for this version of the document. A step is fresh when its `*_for` equals the row's
- * version; embeddings are also stale when the model changed, so a model switch requeues the whole corpus.
+ * version; embeddings are also stale when the model changed, so a model switch requeues the whole corpus. A failed
+ * summary (summary_error, or a failed parse stored as a summary by older code) stays due; the attempt cap in
+ * pickIngestCandidates bounds the retries.
  */
 export function ingestNeeds(row: IngestRow, cfg: IngestConfig): IngestNeeds {
   const textFresh = row.textFor === row.version;
   if (textFresh && row.textError) return { text: false, summary: false, embed: false };
   const version = cfg.summaryVersion ?? SUMMARY_VERSION;
-  const summaryFresh = !summaryApplies(row.kind) || (row.summaryFor === row.version && row.summaryVersion === version && !row.summaryError);
+  const summaryFresh = !summaryApplies(row.kind) || (row.summaryFor === row.version && row.summaryVersion === version && !row.summaryError && !isFailedSummary(row.summary));
   const embedFresh = !cfg.embedEnabled || (row.embedFor === row.version && row.embedModel === cfg.embedModel);
   const summary = !summaryFresh;
   const embed = !embedFresh;

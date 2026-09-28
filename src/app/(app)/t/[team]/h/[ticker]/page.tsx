@@ -173,7 +173,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
             label: documentLabel(d),
             path: d.path,
             modified: d.modifiedTime,
-            summary: <DocumentSummary summary={d.summary} summaryError={d.summaryError} summaryModel={d.summaryModel} summarizedAt={d.summarizedAt} />,
+            summary: <DocumentSummary summary={d.summary} summaryModel={d.summaryModel} summarizedAt={d.summarizedAt} />,
           }))}
           docsNote={driveReady ? "Nothing filed for this holding yet. Hoot reads these documents for context." : "Hoot reads the team's initiating report, earnings updates, and model from the Fund's Drive."}
           driveCount={driveReady ? `${docs.length} in the Fund's Drive` : undefined}
