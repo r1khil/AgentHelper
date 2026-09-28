@@ -1,33 +1,37 @@
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
-import { completeMovement, reopenMovement, requestMovementFeedback, rerunEvidence, saveMovementUpdate } from "@/lib/actions/movements";
 import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Panel, PanelHeader, Pill } from "@/components/app/panel";
+import { Panel, Pill } from "@/components/app/panel";
 import { Move } from "@/components/app/move";
 import { FeedbackPanel } from "@/components/app/feedback-panel";
 import { HootMoodFor } from "@/components/app/hoot/presence";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { OwnerPicker } from "./owner-picker";
-import { dueLabel, firstName, gatheredAt, movementPill, overdueLabel, sessionLong, sessionShort, wordCount } from "./format";
+import { MovementListPopover } from "./list-popover";
+import { MovementWorkspace, type EvidenceRow } from "./workspace";
+import { citationFor } from "./cite";
+import { KIND_LABEL, dueLabel, gatheredAt, movementPill, overdueLabel, sessionLong, sessionShort, sessionShortDateTime, wordCount } from "./format";
 import type { MovementDetailData, MovementEvidence, MovementListItem } from "./types";
 
-const KIND_LABEL: Record<string, string> = { news: "News", filing: "SEC filing", peer_move: "Peer move, same session", financial: "Calendar", price: "Prices", release: "Company release" };
-
 /**
- * Movements as master–detail: the list on the left, the selected movement on the right. Rendered by both
- * /movements (most relevant item selected) and /movements/[id].
+ * Movements as master–detail, filling the window: the list on the left, the selected movement on the right with
+ * its write-up as the main column. Below xl the list folds into a button so the write-up keeps its width. Rendered
+ * by both /movements (most relevant item selected) and /movements/[id].
  */
 export function MovementsView({ items, selected }: { items: MovementListItem[]; selected: MovementDetailData | null }) {
   const anyOverdue = items.some((i) => i.overdue) || !!selected?.overdue;
+  const list = (className?: string) => <MovementList items={items} selectedId={selected?.id ?? null} className={className} />;
   return (
-    <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
+    <div
+      className={cn(
+        "grid min-h-0 flex-1 gap-5 lg:h-[calc(100dvh-6.5rem)] lg:flex-none lg:grid-rows-[minmax(0,1fr)]",
+        selected ? "xl:grid-cols-[320px_minmax(0,1fr)]" : "lg:grid-cols-[320px_minmax(0,1fr)]",
+      )}
+    >
       {anyOverdue && <HootMoodFor mood="concerned" />}
-      <MovementList items={items} selectedId={selected?.id ?? null} />
+      {list(selected ? "hidden xl:flex" : undefined)}
       {selected ? (
-        <MovementDetail d={selected} />
+        <MovementDetail d={selected} list={list("rounded-none shadow-none max-h-[min(70dvh,640px)]")} items={items} />
       ) : (
         <div className="flex min-h-64 items-center justify-center rounded-[14px] border border-dashed text-sm text-muted-foreground">Select a movement to see its evidence and write-up.</div>
       )}
@@ -35,10 +39,10 @@ export function MovementsView({ items, selected }: { items: MovementListItem[]; 
   );
 }
 
-function MovementList({ items, selectedId }: { items: MovementListItem[]; selectedId: string | null }) {
+function MovementList({ items, selectedId, className }: { items: MovementListItem[]; selectedId: string | null; className?: string }) {
   const open = items.filter((i) => i.status !== "completed").length;
   return (
-    <Panel data-tour="movements-list" className="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6.5rem)]">
+    <Panel data-tour="movements-list" className={className}>
       <div className="shrink-0 border-b px-4 py-3.5">
         <div className="flex items-baseline gap-2">
           <h2 className="text-[14.5px] font-semibold">Movements</h2>
@@ -90,101 +94,75 @@ function MovementList({ items, selectedId }: { items: MovementListItem[]; select
   );
 }
 
-function MovementDetail({ d }: { d: MovementDetailData }) {
-  const completed = d.status === "completed";
-  const owner = firstName(d.ownerName);
+function MovementDetail({ d, list, items }: { d: MovementDetailData; list: React.ReactNode; items: MovementListItem[] }) {
+  const open = items.filter((i) => i.status !== "completed").length;
+  const status = d.status === "completed" ? `Completed ${relativeTime(d.completedAt)}` : d.updateText?.trim() ? `Draft · ${wordCount(d.updateText)} words` : "Not started";
+  const latest = d.evidence.reduce<Date | null>((a, e) => (!a || e.retrievedAt > a ? e.retrievedAt : a), null);
   return (
-    <div data-tour="movement-detail" className="flex min-w-0 flex-col gap-5">
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <Link href={d.holdingHref} className="font-mono text-2xl font-semibold hover:underline">
-              {d.ticker}
-            </Link>
-            <span className="text-[15px] text-ink-2">
-              {sessionLong(d.sessionDate)}
-              <span className="text-muted-foreground"> · {d.companyName}</span>
-            </span>
+    <div data-tour="movement-detail" className="flex min-h-0 min-w-0 flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <div className="flex min-w-0 flex-1 basis-[22rem] items-center gap-4">
+          <div className="shrink-0 xl:hidden">
+            <MovementListPopover open={open} total={items.length}>
+              {list}
+            </MovementListPopover>
           </div>
-          {d.dataQuality ? (
-            <p className="mt-1 text-[13.5px] text-caution-foreground">
-              Data quality problem: {d.dataQuality}. No calculation was made; resolve the data issue and re-run the close check.
-            </p>
-          ) : (
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13.5px] text-ink-2" title={`Official closes · Yahoo Finance. Rule: relative move of ${MOVEMENT_THRESHOLD_PP} pp or more.`}>
-              <span>
-                {d.ticker} <Move value={d.holdingReturnPct} unit="%" digits={2} />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <Link href={d.holdingHref} className="font-mono text-2xl font-semibold hover:underline">
+                {d.ticker}
+              </Link>
+              <span className="text-[15px] text-ink-2">
+                {sessionLong(d.sessionDate)}
+                <span className="text-muted-foreground"> · {d.companyName}</span>
               </span>
-              <span>
-                S&amp;P 500 <Move value={d.spxReturnPct} unit="%" digits={2} />
-              </span>
-              <span>
-                Relative <Move value={d.relativePp} unit=" pp" className="font-semibold" />
-              </span>
+              {!d.dataQuality && (
+                <span className="flex flex-wrap gap-x-4 gap-y-1 text-[13.5px] text-ink-2" title={`Official closes · Yahoo Finance. Rule: relative move of ${MOVEMENT_THRESHOLD_PP} pp or more.`}>
+                  <span>
+                    {d.ticker} <Move value={d.holdingReturnPct} unit="%" digits={2} />
+                  </span>
+                  <span>
+                    S&amp;P 500 <Move value={d.spxReturnPct} unit="%" digits={2} />
+                  </span>
+                  <span>
+                    Relative <Move value={d.relativePp} unit=" pp" className="font-semibold" />
+                  </span>
+                </span>
+              )}
             </div>
-          )}
+            {d.dataQuality && (
+              <p className="mt-1 text-[13.5px] text-caution-foreground">
+                Data quality problem: {d.dataQuality}. No calculation was made; resolve the data issue and re-run the close check.
+              </p>
+            )}
+          </div>
         </div>
         <MetaStrip d={d} />
       </div>
-
-      <div className="grid flex-1 gap-5 xl:grid-cols-2">
-        <EvidencePanel d={d} owner={owner} />
-        <div className="flex min-w-0 flex-col gap-5">
-          <Panel className="shrink-0">
-            <PanelHeader
-              title={owner ? `${owner}'s update` : "Update"}
-              aside={completed ? `Completed ${relativeTime(d.completedAt)}` : d.updateText?.trim() ? `Draft · ${wordCount(d.updateText)} words` : "Not started"}
-            />
-            {completed ? (
-              <div className="px-4 py-3.5">
-                <p className="text-[14.5px] leading-[1.6] whitespace-pre-wrap">{d.updateText}</p>
-                <form action={reopenMovement} className="mt-3">
-                  <input type="hidden" name="id" value={d.id} />
-                  <Button type="submit" variant="outline">
-                    Reopen
-                  </Button>
-                </form>
-              </div>
-            ) : (
-              <form className="flex flex-col gap-3 px-4 pt-2 pb-3.5">
-                <input type="hidden" name="id" value={d.id} />
-                <Textarea
-                  name="updateText"
-                  defaultValue={d.updateText ?? ""}
-                  rows={7}
-                  aria-label="Your update"
-                  placeholder={"What happened, what the evidence supports, what remains unexplained, and what it means for the thesis.\n\nCite the sources you relied on."}
-                  className="-mx-2.5 w-[calc(100%+1.25rem)] resize-y border-transparent bg-transparent py-1.5 text-[14.5px] leading-[1.6] hover:bg-band focus-visible:bg-card md:text-[14.5px]"
-                />
-                <div className="flex flex-wrap items-center gap-2">
-                  {d.agentConfigured && (
-                    <Button
-                      type="submit"
-                      formAction={requestMovementFeedback}
-                      variant="outline"
-                      title="Hoot flags unsupported claims, missing evidence, alternatives, and thesis contradictions. He never rewrites."
-                    >
-                      Ask Hoot for feedback
-                    </Button>
-                  )}
-                  <Button type="submit" formAction={saveMovementUpdate} variant="outline">
-                    Save draft
-                  </Button>
-                  <Button type="submit" formAction={completeMovement}>
-                    Mark complete
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Your words; Hoot never drafts this. Completing records your name and time. Email the Fund separately; this keeps the record.
-                </p>
-              </form>
-            )}
-          </Panel>
-          {d.feedback && <FeedbackPanel feedback={d.feedback} currentText={d.updateText} className="flex-1" />}
-        </div>
-      </div>
+      <MovementWorkspace
+        d={d}
+        status={status}
+        evidence={evidenceRows(d.evidence)}
+        gathered={latest && gatheredAt(latest)}
+        feedback={d.feedback && <FeedbackPanel feedback={d.feedback} currentText={d.updateText} className="shrink-0" />}
+      />
     </div>
   );
+}
+
+/** The evidence grouped by kind (news, filings, peers, …) in the order each kind first appears, then numbered. */
+function evidenceRows(evidence: MovementEvidence[]): EvidenceRow[] {
+  const groups = new Map<string, MovementEvidence[]>();
+  for (const e of evidence) groups.set(e.kind, [...(groups.get(e.kind) ?? []), e]);
+  return [...groups.values()].flat().map((e, i) => {
+    const kind = KIND_LABEL[e.kind] ?? e.kind;
+    return {
+      ...e,
+      n: i + 1,
+      meta: [kind, e.publisher, e.publishedAt ? sessionShortDateTime(e.publishedAt) : null].filter(Boolean).join(" · "),
+      citation: citationFor(e, kind),
+    };
+  });
 }
 
 function MetaStrip({ d }: { d: MovementDetailData }) {
@@ -213,72 +191,4 @@ function MetaStrip({ d }: { d: MovementDetailData }) {
       ))}
     </div>
   );
-}
-
-function EvidencePanel({ d, owner }: { d: MovementDetailData; owner: string | null }) {
-  // Grouped by kind (news, filings, peers, …) in the order each kind first appears, then numbered.
-  const groups = new Map<string, MovementEvidence[]>();
-  for (const e of d.evidence) groups.set(e.kind, [...(groups.get(e.kind) ?? []), e]);
-  const ordered = [...groups.values()].flat();
-  const latest = d.evidence.reduce<Date | null>((a, e) => (!a || e.retrievedAt > a ? e.retrievedAt : a), null);
-  return (
-    <Panel>
-      <PanelHeader
-        title="Evidence Hoot gathered"
-        aside={
-          <>
-            <span>
-              {d.evidence.length} source{d.evidence.length === 1 ? "" : "s"}
-              {latest && ` · ${gatheredAt(latest)}`}
-            </span>
-            <form action={rerunEvidence}>
-              <input type="hidden" name="id" value={d.id} />
-              <Button type="submit" size="icon-xs" variant="ghost" title="Re-gather news, filings, and peer moves" aria-label="Re-gather evidence">
-                <RefreshCw />
-              </Button>
-            </form>
-          </>
-        }
-      />
-      {d.evidenceStatus === "pending" && d.evidence.length === 0 ? (
-        <p className="flex-1 px-4 py-3 text-[13.5px] text-muted-foreground">Evidence is still being gathered. Refresh in a moment.</p>
-      ) : d.evidence.length === 0 ? (
-        <p className="flex-1 px-4 py-3 text-[13.5px] text-muted-foreground">Nothing found in the window. That is a finding too: say so in the update.</p>
-      ) : (
-        <ol className="flex flex-1 flex-col">
-          {ordered.map((e, i) => (
-            <li key={e.id} className="flex flex-1 gap-3 border-b border-row px-4 py-2.5">
-              <span className="mt-px grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-hoot px-1 font-mono text-[10.5px] font-medium text-hoot-foreground">{i + 1}</span>
-              <div className="min-w-0">
-                <div className="text-[13.5px] leading-[1.45]">
-                  {e.url ? (
-                    <a href={e.url} target="_blank" rel="noreferrer" className="hover:underline">
-                      {e.title}
-                    </a>
-                  ) : (
-                    e.title
-                  )}
-                </div>
-                <div className="mt-0.5 text-xs text-muted-foreground">
-                  {[KIND_LABEL[e.kind] ?? e.kind, e.publisher, e.publishedAt ? sessionShortDateTime(e.publishedAt) : null].filter(Boolean).join(" · ")}
-                  {e.failed && <span className="ml-1.5 text-down">lookup failed</span>}
-                </div>
-              </div>
-            </li>
-          ))}
-        </ol>
-      )}
-      <div className="flex shrink-0 items-center gap-3 bg-band-2 px-4 py-2.5 text-[12.5px] text-ink-2">
-        <span className="min-w-0 flex-1">These are possible catalysts, not the explanation. The write-up is {owner ? `${owner}'s` : "the owner's"}.</span>
-        <Button nativeButton={false} render={<Link href={d.askHootHref} />} size="sm" variant="outline">
-          Ask Hoot about {d.ticker}
-        </Button>
-      </div>
-    </Panel>
-  );
-}
-
-/** "Sep 21, 6:04 pm" in New York time. */
-function sessionShortDateTime(d: Date) {
-  return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }).replace(/ (AM|PM)$/, (m) => m.toLowerCase());
 }

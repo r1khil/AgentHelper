@@ -70,3 +70,10 @@ export function firstName(name: string | null) {
 export function wordCount(text: string | null) {
   return text?.trim() ? text.trim().split(/\s+/).length : 0;
 }
+
+export const KIND_LABEL: Record<string, string> = { news: "News", filing: "SEC filing", peer_move: "Peer move, same session", financial: "Calendar", price: "Prices", release: "Company release" };
+
+/** "Sep 21, 6:04 pm" in New York time. */
+export function sessionShortDateTime(d: Date) {
+  return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: NY }).replace(/ (AM|PM)$/, (m) => m.toLowerCase());
+}
