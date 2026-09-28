@@ -2,7 +2,7 @@
 export type HootCommand = { kind: "theme"; theme: "light" | "dark" | "system" | "toggle" } | { kind: "navigate"; destination: string } | { kind: "scope"; scope: string };
 
 const destinations: Record<string, string> = {
-  home: "Today", dashboard: "Today", today: "Today", portfolio: "Holdings", holdings: "Holdings",
+  home: "Today", dashboard: "Today", today: "Today", portfolio: "Portfolio", holdings: "Holdings",
   research: "Research", hoot: "Research", chat: "Research", chats: "Research", conversations: "Research", agent: "Research",
   boards: "Research", "research boards": "Research", "sell side": "Sell-side analyzer", "sell side analyzer": "Sell-side analyzer",
   models: "Models", movements: "Movements", earnings: "Earnings", calendar: "Economic calendar",
@@ -32,11 +32,17 @@ export function parseHootCommand(text: string): HootCommand | null {
   return destination ? { kind: "navigate", destination } : null;
 }
 
+/** A rail section Hoot opens by name goes where the rail does: the first of its pages this member can open. */
+const SECTION_PAGES: Record<string, string[]> = { Portfolio: ["Attribution", "Backtesting"] };
+
 export type HootLink = { label: string; href: string };
 /** Routes come from the member's scoped sidebar, never from user-provided URLs. */
 export function commandHref(destination: string, links: HootLink[]): string | null {
-  const href = links.find((link) => link.label === destination)?.href;
-  return href && /^\/(?!\/)/.test(href) && !/[\\\s]/.test(href) ? href : null;
+  for (const name of SECTION_PAGES[destination] ?? [destination]) {
+    const href = links.find((link) => link.label === name)?.href;
+    if (href) return /^\/(?!\/)/.test(href) && !/[\\\s]/.test(href) ? href : null;
+  }
+  return null;
 }
 
 /** Match only a rendered, accessible scope option. No generated team slugs or arbitrary URLs. */

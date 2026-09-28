@@ -151,7 +151,7 @@ export function destinations({ scope, fundWide, seesBook }: Omit<NavInput, "path
   const out: Destination[] = [{ label: "Today", hoot: "Today", href: "/", hint: "Hoot's list, last session, coming up", keywords: "home dashboard" }];
   if (base) {
     out.push(
-      { label: "Holdings", hoot: "Holdings", href: base, hint: "Every holding in scope", keywords: "portfolio positions" },
+      { label: "Holdings", hoot: "Holdings", href: base, hint: "Every holding in scope", keywords: "positions" },
       { label: "Movements", hoot: "Movements", href: `${base}/movements`, hint: "400 bp moves and their write-ups" },
       { label: "Models", hoot: "Models", href: `${base}/models`, hint: "Proposed values from new filings", keywords: "xlsx excel" },
       { label: "Research", hoot: "Research", href: `${base}/agent`, hint: "Chats with Hoot, by holding and general", keywords: "hoot ask chat chats conversations agent boards research boards holding boards" },
@@ -160,14 +160,17 @@ export function destinations({ scope, fundWide, seesBook }: Omit<NavInput, "path
       { label: "Economic releases", hoot: "Economic calendar", href: `${base}/economic-calendar`, hint: "CPI, jobs, rates", keywords: "economic calendar macro cpi" },
     );
   }
-  if (seesBook && bookBase !== null) {
+  // "portfolio" names the rail's Portfolio section, so it goes where the rail does: Attribution, or Backtesting for
+  // members who don't see the book.
+  const book = seesBook && bookBase !== null;
+  if (book) {
     out.push(
-      { label: "Attribution", hoot: "Attribution", href: `${bookBase}/attribution`, hint: "Where the return came from", keywords: "performance" },
+      { label: "Attribution", hoot: "Attribution", href: `${bookBase}/attribution`, hint: "Where the return came from", keywords: "portfolio performance" },
       { label: "Risk", hoot: "Risk", href: `${bookBase}/risk`, hint: "Volatility, tracking error, stress tests", keywords: "var beta stress" },
       { label: "Exposure", hoot: "Exposure", href: `${bookBase}/exposure`, hint: "Sector weights and factor tilts", keywords: "sectors factors etf" },
     );
   }
-  out.push({ label: "Backtesting", hoot: "Backtesting", href: "/backtesting", hint: "Replay different weights", keywords: "what if scenario backtest" });
+  out.push({ label: "Backtesting", hoot: "Backtesting", href: "/backtesting", hint: "Replay different weights", keywords: `what if scenario backtest${book ? "" : " portfolio"}` });
   if (fundWide) {
     out.push(
       { label: "Ledger", href: "/attribution/ledger", hint: "Trades and cash flows", keywords: "trades tickets" },

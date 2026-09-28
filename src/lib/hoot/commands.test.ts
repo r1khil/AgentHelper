@@ -14,6 +14,7 @@ describe("Hoot UI commands", () => {
     ["Open sell-side analyzer", "Sell-side analyzer"], ["Can you take me to the economic calendar?", "Economic calendar"],
     ["go to backtesting", "Backtesting"], ["navigate to the weekly update section", "Weekly update"],
     ["take me to research", "Research"], ["open hoot", "Research"], ["go to conversations", "Research"], ["open the agent page", "Research"],
+    ["take me to the portfolio", "Portfolio"], ["open portfolio", "Portfolio"],
   ])("recognizes %s", (text, destination) => expect(parseHootCommand(text)).toEqual({ kind: "navigate", destination }));
 
   it.each([
@@ -37,6 +38,14 @@ describe("Hoot UI commands", () => {
     expect(commandHref("Risk", [{ label: "Risk", href: "/t/tech/risk" }])).toBe("/t/tech/risk");
     expect(commandHref("Risk", [{ label: "Risk", href: "/risk" }])).toBe("/risk");
     expect(commandHref("Admin", [{ label: "Holdings", href: "/t/tech" }])).toBeNull();
+  });
+  it("opens Portfolio where the rail does: Attribution, or Backtesting without the book", () => {
+    const holdings = { label: "Holdings", href: "/t/tech" };
+    const backtesting = { label: "Backtesting", href: "/backtesting" };
+    expect(commandHref("Portfolio", [holdings, backtesting, { label: "Attribution", href: "/t/tech/attribution" }])).toBe("/t/tech/attribution");
+    expect(commandHref("Portfolio", [holdings, backtesting])).toBe("/backtesting");
+    expect(commandHref("Portfolio", [holdings])).toBeNull();
+    expect(commandHref("Portfolio", [{ label: "Attribution", href: "//example.com" }, backtesting])).toBeNull();
   });
   it("matches only the scope choices rendered for the member", () => {
     const links = [{ label: "Whole fund", href: "/t/fund/risk" }, { label: "Financials", href: "/t/financials/risk" }];
