@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { ArrowLeft, Search } from "lucide-react";
 import type { NavModel } from "@/lib/nav";
 import type { TabCount } from "@/lib/nav-data";
 import { isMac } from "@/lib/hoot/shortcuts";
@@ -10,12 +10,29 @@ import { cn } from "@/lib/utils";
 
 const noSubscribe = () => () => {};
 
-/** The 56px header: the section title, its tabs (with counts), and the ⌘K box. */
+/**
+ * The 56px header: the section title and its tabs (with counts), or on a page about one item a link back up to its
+ * list in their place; then the ⌘K box.
+ */
 export function AppHeader({ nav, counts, onOpenCommand }: { nav: NavModel; counts: Record<string, TabCount>; onOpenCommand: () => void }) {
   const mac = useSyncExternalStore(noSubscribe, isMac, () => true);
   return (
     <header className="sticky top-0 z-30 hidden h-14 shrink-0 items-center gap-6 border-b bg-background px-6 md:flex">
-      <h1 className="text-[17px] font-semibold tracking-[-0.015em] whitespace-nowrap">{nav.title}</h1>
+      {nav.back ? (
+        // The page's own title is its h1; this is its one "where am I / go up" line, above the page's tabs.
+        <nav aria-label="Breadcrumb">
+          <Link
+            href={nav.back.href}
+            className="group flex items-center gap-1.5 text-[17px] font-semibold tracking-[-0.015em] whitespace-nowrap focus-visible:underline focus-visible:outline-none"
+          >
+            <ArrowLeft className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+            <span className="sr-only">Back to </span>
+            {nav.back.label}
+          </Link>
+        </nav>
+      ) : (
+        <h1 className="text-[17px] font-semibold tracking-[-0.015em] whitespace-nowrap">{nav.title}</h1>
+      )}
       {nav.tabs.length > 0 && (
         <nav data-tour="section-tabs" aria-label={`${nav.title} pages`} className="flex gap-5 self-stretch">
           {nav.tabs.map((t) => {

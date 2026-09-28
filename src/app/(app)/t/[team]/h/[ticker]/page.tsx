@@ -11,7 +11,6 @@ import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
 import { NY, todayNY } from "@/lib/providers/calendar";
 import { fmtCurrency } from "@/lib/format";
 import { canManageTeam, isFundWide } from "@/lib/auth";
-import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { effectiveRunStatus, listHoldingChats } from "@/lib/chats";
 import { documentLabel } from "@/lib/drive/labels";
 import { driveStatus, listHoldingFiles } from "@/lib/drive/index";
@@ -127,7 +126,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 md:-mt-1">
       <HoldingHeader
-        crumbs={[{ label: "Holdings", href: isFundWide(user) ? `/t/${FUND_SCOPE_SLUG}` : base }, { label: team.name, href: `/t/${team.slug}` }]}
+        team={team.name}
         ticker={h.ticker}
         company={h.companyName}
         exited={!active}
