@@ -41,7 +41,10 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { setHootEnabled, setTransparencyMode } from "@/lib/actions/preferences";
+import { resolveScope } from "@/lib/scope";
 import { replayTour } from "./tour/tour-store";
+import { useScopeSlug } from "./shell/scope-context";
+import { markScopeIntent } from "./shell/scope-intent";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,14 +62,14 @@ type Props = { user: SidebarUser; teams: Team[]; signOut: () => Promise<void> };
 type Icon = React.ComponentType<{ className?: string }>;
 type NavLink = { href: string; label: string; icon: Icon; exact?: boolean; also?: string };
 
-/** Which team the section nav points at. Execs and admins default to the whole fund; everyone else to their team. */
+/**
+ * Which scope the section nav points at: the URL's own, else the one the app shell remembers (so Today or a Hoot
+ * chat doesn't change it), else the whole fund for execs and admins and their team for everyone else.
+ */
 export function useCurrentTeam(teams: Team[], user: SidebarUser, fundWide: boolean): Team | "fund" | null {
   const pathname = usePathname();
-  const m = pathname.match(/^\/t\/([^/]+)/);
-  const fromPath = m ? teams.find((t) => t.slug === m[1]) : undefined;
-  if (fromPath) return fromPath;
-  if (fundWide) return "fund";
-  return teams.find((t) => t.id === user.teamId) ?? teams[0] ?? null;
+  const remembered = useScopeSlug();
+  return resolveScope({ pathname, remembered, teams, fundWide, userTeamId: user.teamId });
 }
 
 /** The list page under /t/<slug>/ being viewed ("" for Holdings), so switching scope keeps the reader on it. */
@@ -323,7 +326,7 @@ export function ScopeSwitcher({ teams, current, fundWide, variant = "card" }: { 
 
 function ScopeItem({ href, selected, children }: { href: string; selected: boolean; children: React.ReactNode }) {
   return (
-    <DropdownMenuItem render={<Link href={href} />} className={cn(selected && "font-medium")}>
+    <DropdownMenuItem render={<Link href={href} onClick={() => markScopeIntent()} />} className={cn(selected && "font-medium")}>
       <span className="min-w-0 flex-1">{children}</span>
       {selected && <Check className="text-muted-foreground" />}
     </DropdownMenuItem>

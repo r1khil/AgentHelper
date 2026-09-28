@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { commandHref, parseHootCommand, scopeHref } from "@/lib/hoot/commands";
+import { markScopeIntent } from "@/components/app/shell/scope-intent";
 
 /** Run only on a fresh submission, never by replaying saved chat messages. */
 export function useHootCommand() {
@@ -23,6 +24,7 @@ export function useHootCommand() {
       }));
       const href = scopeHref(command.scope, links);
       if (href) {
+        markScopeIntent();
         router.push(href);
         toast.success(`Hoot: Viewing ${links.find((link) => link.href === href)?.label ?? command.scope}.`);
       } else {

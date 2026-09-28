@@ -29,6 +29,7 @@ import { nextRelease, todayIn } from "@/lib/economic-calendar/view";
 import { fmtDate, fmtMoney } from "@/lib/format";
 import { NY } from "@/lib/providers/calendar";
 import { cn } from "@/lib/utils";
+import { earningsHref } from "@/lib/scope";
 import { Panel, Pill, Segmented, type PillTone } from "@/components/app/panel";
 import { NativeSelect } from "@/components/app/native-select";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -78,6 +79,8 @@ export type CalendarViewProps = {
   showTeam: boolean;
   /** The team a Hoot chat opens under; null on the Fund page. */
   teamSlug: string | null;
+  /** The scope in the URL (the fund or a team). A report opens there when it can, so the scope doesn't change. */
+  scopeSlug?: string | null;
   factorContext: Promise<CalendarFactorContext> | null;
   feedSource?: FeedSource;
   /** A band across the top of the week panel, e.g. the development preview's warning. */
@@ -145,6 +148,7 @@ export function CalendarView(props: CalendarViewProps) {
   const [jump, setJump] = useState<{ id: string; n: number } | null>(null);
 
   const href = (q: Partial<CalendarQuery>) => calendarHref(base, { ...query, ...q }, defaultShow);
+  const reportHref = reportHrefFor(props.scopeSlug);
   const show = new Set(query.show);
   const accessible = new Set(accessibleTeamIds);
   const mini = buildMiniMonth(query.month);
@@ -192,7 +196,7 @@ export function CalendarView(props: CalendarViewProps) {
         <FactorClause context={factorContext} event={e} />
       </Suspense>
     ) : null;
-  const rowProps = { now, today, nextId: next?.id ?? null, openRow, onRow: (id: string) => setOpenRow((r) => (r === id ? null : id)), accessible, askable, teamSlug, factorText };
+  const rowProps = { now, today, nextId: next?.id ?? null, openRow, onRow: (id: string) => setOpenRow((r) => (r === id ? null : id)), accessible, askable, teamSlug, factorText, reportHref };
 
   const counts = {
     holdings: weekEvents.filter((ev) => ev.kind === "holding").length,
@@ -287,7 +291,7 @@ export function CalendarView(props: CalendarViewProps) {
               const owner = ev.ownerId ? props.ownerNames[ev.ownerId] : null;
               return (
                 <li key={ev.earningsId} className="border-t border-row">
-                  <Link href={`/t/${ev.teamSlug}/earnings/${ev.earningsId}`} className="-mx-1.5 flex h-10 items-center gap-2.5 rounded-lg px-1.5 text-[13.5px] hover:bg-band">
+                  <Link href={reportHref(ev.teamSlug, ev.earningsId)} className="-mx-1.5 flex h-10 items-center gap-2.5 rounded-lg px-1.5 text-[13.5px] hover:bg-band">
                     <span className="w-11 shrink-0 font-mono text-[13px] font-semibold">{ev.ticker}</span>
                     <span className={cn("min-w-0 flex-1 truncate", owner ? "text-ink-2" : "text-caution-foreground")}>{owner ?? "No owner"}</span>
                     <Pill tone={st.tone}>{st.pill}</Pill>
@@ -316,7 +320,7 @@ export function CalendarView(props: CalendarViewProps) {
         </div>
         {props.banner}
         {query.layout === "week" && <WeekLayout week={week} items={weekItems} rowProps={rowProps} />}
-        {query.layout === "month" && <MonthLayout month={query.month} items={monthItems} today={today} week={week} dayHref={(d) => href({ layout: "week", day: d })} accessible={accessible} />}
+        {query.layout === "month" && <MonthLayout month={query.month} items={monthItems} today={today} week={week} dayHref={(d) => href({ layout: "week", day: d })} accessible={accessible} reportHref={reportHref} />}
         {query.layout === "list" && <ListLayout items={monthItems} rowProps={rowProps} reports={props.reports} showTeam={props.showTeam} today={today} />}
       </Panel>
     </div>
@@ -333,7 +337,15 @@ type RowProps = {
   askable: boolean;
   teamSlug: string | null;
   factorText: (e: EconomicEvent) => ReactNode;
+  reportHref: ReportHref;
 };
+
+type ReportHref = (owner: string | null | undefined, earningsId: string | undefined) => string;
+
+/** A report's page, opened in the calendar's scope when it can be (see earningsHref). Only holdings have one. */
+function reportHrefFor(scopeSlug: string | null | undefined): ReportHref {
+  return (owner, earningsId) => earningsHref(scopeSlug, owner ?? scopeSlug ?? "", earningsId ?? "");
+}
 
 function MiniMonth({
   mini,
@@ -499,7 +511,7 @@ function Row({ item, rowProps: r, wide = false }: { item: Item; rowProps: RowPro
       </>
     );
     return linkable ? (
-      <Link href={`/t/${ev.teamSlug}/earnings/${ev.earningsId}`} className={cn(ROW_GRID, "h-9 text-[13.5px] hover:bg-band")}>
+      <Link href={r.reportHref(ev.teamSlug, ev.earningsId)} className={cn(ROW_GRID, "h-9 text-[13.5px] hover:bg-band")}>
         {body}
       </Link>
     ) : (
@@ -593,7 +605,23 @@ function WeekLayout({ week, items, rowProps }: { week: string[]; items: Item[]; 
   );
 }
 
-function MonthLayout({ month, items, today, week, dayHref, accessible }: { month: string; items: Item[]; today: string; week: string[]; dayHref: (d: string) => string; accessible: Set<string> }) {
+function MonthLayout({
+  month,
+  items,
+  today,
+  week,
+  dayHref,
+  accessible,
+  reportHref,
+}: {
+  month: string;
+  items: Item[];
+  today: string;
+  week: string[];
+  dayHref: (d: string) => string;
+  accessible: Set<string>;
+  reportHref: ReportHref;
+}) {
   const grid = buildMonthGrid(month);
   const MAX = 4;
   // A month cell lists the Fund's and bellwethers' reports and the high-importance releases; the rest are counted.
@@ -636,7 +664,7 @@ function MonthLayout({ month, items, today, week, dayHref, accessible }: { month
                   );
                   const title = it.type === "economic" ? `${it.e.name}${it.e.timestamp ? ` · ${releaseClock(it.e)} ET` : ""}` : `${it.ev.name}${it.ev.teamName ? ` · ${it.ev.teamName}` : it.ev.etf ? ` · ${it.ev.etf} constituent` : ""}`;
                   return linkable && it.type === "holding" ? (
-                    <Link key={it.key} href={`/t/${it.ev.teamSlug}/earnings/${it.ev.earningsId}`} title={title} className="flex min-w-0 items-center gap-1.5 text-[12px] hover:underline">
+                    <Link key={it.key} href={reportHref(it.ev.teamSlug, it.ev.earningsId)} title={title} className="flex min-w-0 items-center gap-1.5 text-[12px] hover:underline">
                       {inner}
                     </Link>
                   ) : (
@@ -679,13 +707,13 @@ function ListLayout({ items, rowProps, reports, showTeam, today }: { items: Item
             ))}
         </section>
       ))}
-      <ReportTable title="Upcoming Fund reports" rows={upcoming} showTeam={showTeam} />
-      {past.length > 0 && <ReportTable title="Reported" rows={past} showTeam={showTeam} />}
+      <ReportTable title="Upcoming Fund reports" rows={upcoming} showTeam={showTeam} reportHref={rowProps.reportHref} />
+      {past.length > 0 && <ReportTable title="Reported" rows={past} showTeam={showTeam} reportHref={rowProps.reportHref} />}
     </div>
   );
 }
 
-function ReportTable({ title, rows, showTeam }: { title: string; rows: ReportRow[]; showTeam: boolean }) {
+function ReportTable({ title, rows, showTeam, reportHref }: { title: string; rows: ReportRow[]; showTeam: boolean; reportHref: ReportHref }) {
   return (
     <section aria-label={title} className="border-b border-border last:border-b-0">
       <div className="flex items-baseline gap-2 px-5 pt-4 pb-2">
@@ -712,7 +740,7 @@ function ReportTable({ title, rows, showTeam }: { title: string; rows: ReportRow
               <TableRow key={r.id}>
                 <TableCell className="pl-5">
                   {r.teamSlug ? (
-                    <Link href={`/t/${r.teamSlug}/earnings/${r.id}`} className="font-mono font-semibold hover:underline">
+                    <Link href={reportHref(r.teamSlug, r.id)} className="font-mono font-semibold hover:underline">
                       {r.ticker}
                     </Link>
                   ) : (

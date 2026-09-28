@@ -106,6 +106,7 @@ export async function CalendarPage({ slug, sp, route, defaultShow }: { slug: str
   return (
     <CalendarView
       base={`/t/${scope.slug}/${route}`}
+      scopeSlug={scope.slug}
       defaultShow={defaultShow}
       query={query}
       today={today}

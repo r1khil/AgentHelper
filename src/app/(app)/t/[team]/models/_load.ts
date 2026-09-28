@@ -4,6 +4,7 @@ import { count, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { modelMappings, modelProposals, profiles } from "@/db/schema";
 import { loadScope } from "@/lib/teams";
+import { holdingHref } from "@/lib/scope";
 import { getModel, listMappings, listModelVersions, listProposals, listTeamModels } from "@/lib/models";
 import type { WorkbookInfo } from "@/lib/excel/read";
 import type { ModelDetailData, ModelListItem, ModelTab, UploadTarget } from "@/components/app/models/types";
@@ -71,7 +72,7 @@ export async function loadModelsView({ slug, modelId, tab, ok, error }: { slug: 
     id: m.id,
     ticker: h.ticker,
     companyName: h.companyName,
-    holdingHref: `/t/${team.slug}/h/${h.ticker}`,
+    holdingHref: holdingHref(scope.slug, team.slug, h.ticker),
     fileName: m.fileName,
     version: m.version,
     nextVersion: Math.max(m.version, ...versions.map((v) => v.version)) + 1,

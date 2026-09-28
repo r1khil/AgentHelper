@@ -1,11 +1,13 @@
 import "server-only";
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { teams, type Team } from "@/db/schema";
 import { isFundWide, listAccessibleTeams, requireTeamAccess, requireUser, type CurrentUser } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
+import { canViewScope, SCOPE_COOKIE } from "@/lib/scope";
 
 export const getTeamBySlug = cache(async (slug: string) => {
   const [team] = await db.select().from(teams).where(eq(teams.slug, slug)).limit(1);
@@ -43,4 +45,23 @@ export async function loadScope(slug: string): Promise<TeamScope> {
   if (!isFundWide(user)) redirect(user.team ? `/t/${user.team.slug}` : "/");
   const all = await listAccessibleTeams(user);
   return { kind: "fund", slug, team: null, teamIds: all.map((t) => t.id), teamById: new Map(all.map((t) => [t.id, t])), user };
+}
+
+/**
+ * A team's own item (a holding, report, call, chat) opened under a scope: its team when the scope shows that team's
+ * items (the fund shows every team's, a team only its own), else a 404. Access to the scope itself is loadScope's job.
+ */
+export function itemTeam(scope: TeamScope, teamId: string): Team {
+  const team = scope.teamById.get(teamId);
+  if (!team) notFound();
+  return team;
+}
+
+/**
+ * The scope this member was last in, for pages outside /t/ that build links (Today, Hoot's list, a general chat).
+ * The shell writes the cookie; it's only a preference, so a slug they can't view reads as none.
+ */
+export async function rememberedScope(user: CurrentUser): Promise<string | null> {
+  const slug = (await cookies()).get(SCOPE_COOKIE)?.value ?? null;
+  return canViewScope(slug, await listAccessibleTeams(user), isFundWide(user)) ? slug : null;
 }

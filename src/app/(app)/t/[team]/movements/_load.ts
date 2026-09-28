@@ -1,6 +1,7 @@
 import "server-only";
 import { notFound } from "next/navigation";
 import { loadScope } from "@/lib/teams";
+import { boardHref, holdingHref } from "@/lib/scope";
 import { getMovement, listEvidence, listTeamMovements } from "@/lib/movements";
 import { listTeamMembers } from "@/lib/holdings";
 import { canManageTeam } from "@/lib/auth";
@@ -49,8 +50,8 @@ export async function loadMovementsView(slug: string, selectedId: string | null)
     id: m.id,
     ticker: h.ticker,
     companyName: h.companyName,
-    holdingHref: `/t/${team.slug}/h/${h.ticker}`,
-    askHootHref: `/t/${team.slug}/agent/h/${h.ticker}`,
+    holdingHref: holdingHref(scope.slug, team.slug, h.ticker),
+    askHootHref: boardHref(scope.slug, team.slug, h.ticker),
     sessionDate: m.sessionDate,
     holdingReturnPct: num(m.holdingReturnPct),
     spxReturnPct: num(m.spxReturnPct),

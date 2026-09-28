@@ -7,6 +7,8 @@ import { db } from "@/db/client";
 import { chats, holdings, teams } from "@/db/schema";
 import { isFundWide, listAccessibleTeams, requireTeamAccess, requireUser } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
+import { boardHref } from "@/lib/scope";
+import { rememberedScope } from "@/lib/teams";
 
 export async function createChat(fd: FormData) {
   const teamId = String(fd.get("teamId") ?? "");
@@ -38,8 +40,9 @@ export async function deleteChat(fd: FormData) {
   const [h] = c.holdingId ? await db.select({ ticker: holdings.ticker }).from(holdings).where(eq(holdings.id, c.holdingId)).limit(1) : [];
   revalidatePath(`/t/${team.slug}/agent`);
   if (isFundWide(user)) revalidatePath(`/t/${FUND_SCOPE_SLUG}/agent`);
-  // A holding chat returns to its board; a general conversation returns to Hoot's page in the reader's usual scope.
-  redirect(h ? `/t/${team.slug}/agent/h/${h.ticker}` : `/t/${isFundWide(user) ? FUND_SCOPE_SLUG : team.slug}/agent`);
+  // A holding chat returns to its board, a general conversation to Hoot's page, both in the scope the member is in.
+  const current = await rememberedScope(user);
+  redirect(h ? boardHref(current, team.slug, h.ticker) : `/t/${current ?? (isFundWide(user) ? FUND_SCOPE_SLUG : team.slug)}/agent`);
 }
 
 /**
@@ -63,7 +66,8 @@ export async function startHootChat(input: { teamSlug: string | null; ticker: st
       .limit(1);
     if (row) {
       const [c] = await db.insert(chats).values({ teamId: row.teamId, holdingId: row.holdingId, createdBy: user.id }).returning({ id: chats.id });
-      return { href: `/t/${row.slug}/agent/h/${encodeURIComponent(input.ticker)}?chat=${c.id}`, chatId: c.id };
+      // The board opens in the scope the member is in when it shows this holding (the fund shows every team's).
+      return { href: boardHref(await rememberedScope(user), row.slug, input.ticker, c.id), chatId: c.id };
     }
   }
   const team = inView ?? accessible.find((t) => t.id === user.teamId) ?? accessible[0];

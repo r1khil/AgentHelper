@@ -6,12 +6,14 @@ import type { Team } from "@/db/schema";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { destinations, navModel } from "@/lib/nav";
 import type { CommandHolding, TabCount } from "@/lib/nav-data";
+import { resolveScope } from "@/lib/scope";
 import { cn } from "@/lib/utils";
 import { HootCompanion, type HootDock } from "../hoot/hoot-companion";
-import { MobileBar, Sidebar, useCurrentTeam, useTeamSection, type SidebarUser } from "../sidebar";
+import { MobileBar, Sidebar, useTeamSection, type SidebarUser } from "../sidebar";
 import { AppHeader } from "./app-header";
 import { CommandMenu } from "./command-menu";
 import { Rail } from "./rail";
+import { ScopeProvider, useRememberedScope, useScopeSwitchNotice } from "./scope-context";
 
 export type BacktestingLayout = "new" | "classic";
 
@@ -22,6 +24,8 @@ type Props = {
   firstName: string;
   hoot: boolean;
   backtestingLayout: BacktestingLayout;
+  /** The scope remembered from the last visit (a cookie), for a page outside /t/ loaded directly. */
+  initialScope: string | null;
   children: React.ReactNode;
 };
 
@@ -47,10 +51,13 @@ function useDesktop() {
  * bottom of the rail, so he never covers the page (on a phone, with no rail, he floats in a corner).
  * The classic Backtesting layout (a per-member preference) keeps the previous sidebar and look.
  */
-export function AppShell({ user, teams, signOut, firstName, hoot, backtestingLayout, children }: Props) {
+export function AppShell({ user, teams, signOut, firstName, hoot, backtestingLayout, initialScope, children }: Props) {
   const pathname = usePathname();
   const fundWide = user.role === "exec" || user.role === "admin";
-  const current = useCurrentTeam(teams, user, fundWide);
+  // Pages outside /t/ (Today, a Hoot chat) keep the scope the member was last in rather than falling back to the fund.
+  const remembered = useRememberedScope(pathname, initialScope, teams, fundWide);
+  const current = resolveScope({ pathname, remembered, teams, fundWide, userTeamId: user.teamId });
+  useScopeSwitchNotice(pathname, current);
   const team = current === "fund" ? null : current;
   const seesBook = current === "fund" || (!!team && (fundWide || (user.role === "lead_analyst" && user.teamId === team.id)));
   const scope = current === "fund" ? ("fund" as const) : team ? { slug: team.slug } : null;
@@ -118,41 +125,47 @@ export function AppShell({ user, teams, signOut, firstName, hoot, backtestingLay
       scopes={scopes}
       pathname={pathname}
       teamSlug={scopeSlug === FUND_SCOPE_SLUG ? (user.teamId ? (teams.find((t) => t.id === user.teamId)?.slug ?? null) : null) : scopeSlug}
+      scopeSlug={scopeSlug}
     />
   );
 
+  // The provider lets links built on the client (book tables, the sidebar) open in the scope in view.
   if (pathname === "/backtesting" && backtestingLayout === "classic") {
     return (
-      <div className="theme-classic flex min-h-screen flex-col md:flex-row">
-        <Sidebar user={user} teams={teams} signOut={signOut} hoot={desktop && companion("sidebar")} />
-        <main className="min-w-0 flex-1">
-          <div className={cn("mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8", hoot && "pb-24 md:pb-8")}>{children}</div>
-        </main>
-        {command}
-        {!desktop && companion(null)}
-      </div>
+      <ScopeProvider value={scopeSlug}>
+        <div className="theme-classic flex min-h-screen flex-col md:flex-row">
+          <Sidebar user={user} teams={teams} signOut={signOut} hoot={desktop && companion("sidebar")} />
+          <main className="min-w-0 flex-1">
+            <div className={cn("mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8", hoot && "pb-24 md:pb-8")}>{children}</div>
+          </main>
+          {command}
+          {!desktop && companion(null)}
+        </div>
+      </ScopeProvider>
     );
   }
 
   return (
-    <div className="flex min-h-dvh flex-col md:flex-row">
-      <Rail
-        nav={nav}
-        user={user}
-        teams={teams}
-        current={current}
-        fundWide={fundWide}
-        signOut={signOut}
-        destinations={dests.filter((d) => d.hoot).map((d) => ({ label: d.hoot!, href: d.href }))}
-        hoot={desktop && companion("rail")}
-      />
-      <MobileBar user={user} teams={teams} signOut={signOut} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <AppHeader nav={nav} counts={counts} onOpenCommand={() => setCommandOpen(true)} />
-        <main className="app-container flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-1 flex-col p-4 md:p-6">{children}</main>
+    <ScopeProvider value={scopeSlug}>
+      <div className="flex min-h-dvh flex-col md:flex-row">
+        <Rail
+          nav={nav}
+          user={user}
+          teams={teams}
+          current={current}
+          fundWide={fundWide}
+          signOut={signOut}
+          destinations={dests.filter((d) => d.hoot).map((d) => ({ label: d.hoot!, href: d.href }))}
+          hoot={desktop && companion("rail")}
+        />
+        <MobileBar user={user} teams={teams} signOut={signOut} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <AppHeader nav={nav} counts={counts} onOpenCommand={() => setCommandOpen(true)} />
+          <main className="app-container flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-1 flex-col p-4 md:p-6">{children}</main>
+        </div>
+        {command}
+        {!desktop && companion(null)}
       </div>
-      {command}
-      {!desktop && companion(null)}
-    </div>
+    </ScopeProvider>
   );
 }

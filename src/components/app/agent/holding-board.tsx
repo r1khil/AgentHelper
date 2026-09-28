@@ -12,6 +12,7 @@ import { marketFigure, pairTurns, stepLabel, turnSources, type Turn, type TurnSo
 import { resolveSource, sourceType } from "@/lib/agent/source-resolution";
 import { clearHootQuestion, peekHootQuestion } from "@/components/app/hoot/handoff";
 import { createHoldingChat, deleteChat } from "@/lib/actions/chats";
+import { boardHref } from "@/lib/scope";
 import { ResearchAnswer, ResearchSources, type CitationLinks } from "@/components/app/chat/research-answer";
 import { SourceViewer } from "@/components/app/chat/source-viewer";
 import { ActivityRow, Composer, PromptLabel, shortDate, SourceNumber, ThinkingRow, ThreadHeader, ThreadNote, UserBubble } from "@/components/app/chat/thread-parts";
@@ -30,6 +31,8 @@ export type BoardMarket = { price?: number; changePct?: number; relativePp?: num
 
 type Props = {
   team: { id: string; slug: string; name: string };
+  /** The scope the board was opened in (the fund, or the holding's team); its URLs stay there. */
+  scopeSlug: string;
   holding: { id: string; ticker: string; name: string };
   market: Promise<BoardMarket>;
   /** An open movement: the analyst owes an update (`overdue` once the due time has passed). */
@@ -83,7 +86,7 @@ export function HoldingBoard(props: Props) {
   const [tab, setTab] = useState<SideTab>(props.initialChatId ? "sources" : "board");
 
   const chat = chats.find((c) => c.id === chatId) ?? null;
-  const boardPath = `/t/${team.slug}/agent/h/${holding.ticker}`;
+  const boardPath = boardHref(props.scopeSlug, team.slug, holding.ticker);
   const syncUrl = (id: string | null, push: boolean) => {
     const url = id ? `${boardPath}?chat=${id}` : boardPath;
     if (push) window.history.pushState(null, "", url);

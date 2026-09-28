@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DateTime } from "luxon";
-import { loadTeam } from "@/lib/teams";
+import { itemTeam, loadScope } from "@/lib/teams";
 import { getHolding, listNotes, listPendingProposals, listTeamMembers, loadHoldingActivity } from "@/lib/holdings";
 import { marketSnapshot } from "@/lib/market";
 import { getBarsRange, SPX_SYMBOL } from "@/lib/providers/yahoo";
@@ -42,10 +42,13 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
   const { team: slug, ticker } = await params;
   const { error: flash, tab: tabParam } = await searchParams;
   const tab: Tab = (TABS as readonly string[]).includes(tabParam ?? "") ? (tabParam as Tab) : "overview";
-  const { team, user } = await loadTeam(slug);
-  const row = await getHolding(team.id, ticker);
+  // The fund scope shows any team's holding; a team scope only its own.
+  const scope = await loadScope(slug);
+  const { user } = scope;
+  const row = await getHolding(scope.teamIds, ticker);
   if (!row) notFound();
   const { h, ownerName } = row;
+  const team = itemTeam(scope, h.teamId);
 
   // Network sources load only on the tabs that show them: price history on Overview, EDGAR and news on Overview and Documents.
   const wantsChart = tab === "overview";
@@ -70,7 +73,8 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
 
   const today = todayNY();
   const now = nowMs();
-  const base = `/t/${team.slug}`;
+  // Links stay in the scope the holding was opened in.
+  const base = `/t/${scope.slug}`;
   const holdingPath = `${base}/h/${encodeURIComponent(h.ticker)}`;
   const boardHref = `${base}/agent/h/${encodeURIComponent(h.ticker)}`;
   const manage = canManageTeam(user, team.id);
@@ -122,7 +126,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 md:-mt-1">
       <HoldingHeader
-        crumbs={[{ label: "Holdings", href: isFundWide(user) ? `/t/${FUND_SCOPE_SLUG}` : base }, { label: team.name, href: base }]}
+        crumbs={[{ label: "Holdings", href: isFundWide(user) ? `/t/${FUND_SCOPE_SLUG}` : base }, { label: team.name, href: `/t/${team.slug}` }]}
         ticker={h.ticker}
         company={h.companyName}
         exited={!active}
