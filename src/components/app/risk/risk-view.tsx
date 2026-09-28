@@ -47,7 +47,7 @@ export function LookbackSelector({ basePath, active, extra = "" }: { basePath: s
 }
 
 /** One window of the page: panels stretch to the bottom of the viewport, the detail follows below the fold. */
-export const FIRST_SCREEN = "flex min-h-[calc(100dvh-6.5rem)] flex-col gap-4";
+export const FIRST_SCREEN = "flex flex-col gap-4";
 
 /**
  * The body of the Risk page, shared by the Fund and team views. The first screen is the toolbar, the five headline
@@ -147,7 +147,7 @@ export function RiskView({
           />
         </section>
 
-        <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-2">
+        <div className="grid items-start gap-5 lg:grid-cols-2">
           <RiskSources report={r} teams={teams} />
           {stressPanel}
         </div>
@@ -212,13 +212,13 @@ export function RiskView({
         <ActiveRiskSection report={r} teams={teams} benchmarkLabel={benchmarkLabel} transparency={transparency} basePath={basePath} showAll={showAll} download={download("active-risk", "Active risk")} />
 
         <section aria-label="Correlation and realized risk" className="grid gap-5 lg:grid-cols-12">
-          <Card className="gap-3 p-4 lg:col-span-7">
+          <Card className="gap-3 bg-transparent p-4 shadow-none lg:col-span-7">
             <SectionHead className="mb-0" aside={`Largest ${r.correlation.tickers.length} holdings`}>
               <Explained label="Correlation">{RISK_EXPLAIN.correlation}</Explained>
             </SectionHead>
             <CorrelationHeatmap tickers={r.correlation.tickers} matrix={r.correlation.matrix} />
           </Card>
-          <Card className="gap-3 p-4 lg:col-span-5">
+          <Card className="gap-3 bg-transparent p-4 shadow-none lg:col-span-5">
             <SectionHead className="mb-0" aside={realized ? `${realized.days} trading days` : undefined}>
               <Explained label="Realized, from the Fund's own returns">{RISK_EXPLAIN.realized}</Explained>
             </SectionHead>

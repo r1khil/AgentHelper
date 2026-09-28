@@ -53,7 +53,7 @@ export function TeamsPanel({
     });
 
   return (
-    <Panel data-tour="today-teams" aria-label={title} className="flex-1">
+    <Panel data-tour="today-teams" aria-label={title}>
       <PanelHeader
         title={title}
         aside={
@@ -77,12 +77,12 @@ export function TeamsPanel({
         const isOpen = open.has(t.id);
         const c = t.stats ? bps(t.stats.contribution) : null;
         return (
-          <div key={t.id} className={cn("flex flex-col border-t border-row", isOpen ? "" : "max-h-16 min-h-[52px] flex-1")}>
+          <div key={t.id} className="flex flex-col border-t border-row">
             <button
               type="button"
               onClick={() => toggle(t.id)}
               aria-expanded={isOpen}
-              className={cn("group grid w-full items-center gap-3 px-4 text-left text-[14px] hover:bg-band focus-visible:bg-band focus-visible:outline-none", cols, isOpen ? "h-[52px]" : "flex-1")}
+              className={cn("group grid w-full items-center gap-3 px-4 text-left text-[14px] hover:bg-band focus-visible:bg-band focus-visible:outline-none", cols, "h-[52px]")}
             >
               <span className="flex min-w-0 items-center">
                 <span className="truncate font-semibold">{t.name}</span>

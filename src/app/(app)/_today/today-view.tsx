@@ -79,7 +79,7 @@ export async function TodayView({ user, myTeams }: { user: CurrentUser; myTeams:
 
   return (
     <TodayFeed initial={feed.nudges} loadedAt={now.toISOString()}>
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
         <div className="flex min-w-0 flex-col gap-5">
           <Greeting
             hello={greetingWord(now)}

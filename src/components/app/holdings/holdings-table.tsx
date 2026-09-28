@@ -48,8 +48,8 @@ export function HoldingsTable({ groups, quotes, grouped = true, empty }: { group
   const any = groups.some((g) => g.rows.length > 0);
 
   return (
-    <section data-tour="holdings-table" className="panel flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-hidden">
-      <div className="flex min-w-[920px] flex-1 flex-col">
+    <section data-tour="holdings-table" className="panel flex flex-col overflow-x-auto overflow-y-hidden">
+      <div className="flex min-w-[920px] flex-col">
         <div role="row" className={cn(GRID, "h-9 shrink-0 border-b text-xs text-muted-foreground")}>
           <span>Ticker</span>
           <span>Company</span>
@@ -61,7 +61,7 @@ export function HoldingsTable({ groups, quotes, grouped = true, empty }: { group
           <span>Next report</span>
           <span>Needs attention</span>
         </div>
-        {!any && <div className="px-4 py-10 text-center text-sm text-muted-foreground">{empty ?? "Nothing here."}</div>}
+        {!any && <div className="px-4 py-3 text-sm text-muted-foreground">{empty ?? "Nothing here."}</div>}
         {groups.map((g) => {
           if (!g.rows.length) return null;
           const open = !collapsed.has(g.id);

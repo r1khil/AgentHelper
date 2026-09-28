@@ -137,16 +137,15 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
       <HoldingTabs tabs={tabs} />
 
       {tab === "overview" && (
-        <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
           <div className="flex min-h-0 min-w-0 flex-col gap-5">
             <PriceChart data={alignPrices(bars, spxBars)} ticker={h.ticker} currency={m?.quote?.currency} className="shrink-0" />
             <ThesisPanel holdingId={h.id} thesis={h.thesis} meta={h.thesisUpdatedAt ? `updated ${monthDay(h.thesisUpdatedAt)}` : undefined} flash={flash} proposal={thesisProposal ? <ThesisProposal proposal={thesisProposal} /> : undefined} />
-            <NotesPanel holdingId={h.id} notes={noteItems} className="flex-1" />
+            <NotesPanel holdingId={h.id} notes={noteItems} />
           </div>
           <div className="flex min-h-0 min-w-0 flex-col gap-5">
             <GlancePanel rows={glanceRows({ h, teamName: team.name, leadNames, next, moves: activity.moves, base, now })} />
             <LatestPanel
-              className="flex-1"
               items={latestItems({
                 indexed: indexedFilings,
                 edgar: filings,

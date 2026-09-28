@@ -106,7 +106,7 @@ export function EveningBrief({ brief }: { brief: Brief }) {
   const written = writtenLine(brief.writtenAt);
   const hasMore = brief.paragraphs.length > 1 || brief.sources.length > 0;
   return (
-    <section aria-label="Hoot's evening brief" className="panel shrink-0 px-[18px] py-4">
+    <section aria-label="Hoot's evening brief" className="panel-plain shrink-0 px-[18px] py-2">
       <div className="flex items-center gap-2">
         <h2 className="text-[14.5px] leading-5 font-semibold">Hoot&rsquo;s evening brief</h2>
         <span className="flex-1" />

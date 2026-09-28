@@ -43,7 +43,7 @@ export function SectorWeightsPanel({ x, benchShort, className }: { x: Exposure; 
       {rows.map((s) => (
         <div
           key={s.key}
-          className={cn(COLS, "min-h-9 flex-1 border-t border-row text-[13.5px]")}
+          className={cn(COLS, "min-h-9 border-t border-row text-[13.5px]")}
           title={`${s.label}: ${rpct(s.weight)}${s.benchWeight !== null ? ` vs ${rpct(s.benchWeight)} in ${benchShort}` : ""}${s.tickers.length ? ` · ${s.tickers.join(", ")}` : ""}`}
         >
           <span className="truncate">{s.label}</span>
@@ -90,7 +90,7 @@ export function ActiveBetsPanel({ report: r, x, lookthrough, teams, benchShort, 
           const n = names.get(b.key);
           const note = team?.name ?? (n?.sector ? SECTOR_LABELS[n.sector] : b.name);
           return (
-            <div key={b.key} className={cn(COLS, "relative min-h-10 flex-1 border-b border-row text-[13.5px] last:border-b-0")} title={`${b.key} · ${b.name}`}>
+            <div key={b.key} className={cn(COLS, "relative min-h-10 border-b border-row text-[13.5px] last:border-b-0")} title={`${b.key} · ${b.name}`}>
               {team ? (
                 <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(b.key)}`} className="truncate font-mono text-[13px] font-semibold hover:underline">{b.key}</RowLink>
               ) : (
@@ -113,7 +113,7 @@ export function ActiveBetsPanel({ report: r, x, lookthrough, teams, benchShort, 
     <Panel id="stock-active" className={cn("scroll-mt-4", className)}>
       {header(`by sector · vs ${benchShort} weight, bp`)}
       {bets.map((s) => (
-        <div key={s.key} className={cn(COLS, "min-h-10 flex-1 border-b border-row text-[13.5px] last:border-b-0")} title={s.tickers.join(", ")}>
+        <div key={s.key} className={cn(COLS, "min-h-10 border-b border-row text-[13.5px] last:border-b-0")} title={s.tickers.join(", ")}>
           <span className="truncate font-mono text-[13px] font-semibold">{s.etf ?? "—"}</span>
           <span className="truncate text-ink-2">{s.label}</span>
           <span className="text-right font-mono text-[12.5px]">{rpct(s.weight)}</span>
@@ -121,7 +121,7 @@ export function ActiveBetsPanel({ report: r, x, lookthrough, teams, benchShort, 
           <span className={cn("text-right font-mono text-[12.5px] font-semibold", tone(s.active))}>{activeBp(s.active)}</span>
         </div>
       ))}
-      {!bets.length && <div className="flex flex-1 items-center p-4 text-[13px] text-muted-foreground">Add S&amp;P 500 sector weights to compare against the benchmark.</div>}
+      {!bets.length && <div className="px-4 py-3 text-[13px] text-muted-foreground">Add S&amp;P 500 sector weights to compare against the benchmark.</div>}
       {lt && !lt.report.active && lt.benchmarkMissing && <div className="border-t border-row px-4 py-2 text-xs text-muted-foreground">{lt.benchmarkMissing} Company-level bets need them.</div>}
     </Panel>
   );
@@ -132,7 +132,7 @@ export function FactorTiltsPanel({ report: r, className }: { report: RiskReport;
   const f = r.factors;
   if (!isFactorReport(f)) {
     return (
-      <Panel id="factors" className={cn("scroll-mt-4", className)}>
+      <Panel id="factors" variant="plain" className={cn("scroll-mt-4", className)}>
         <PanelHeader title="Factor tilts" />
         <div className="p-4 text-[13px] text-muted-foreground">{f.reason}</div>
       </Panel>
@@ -142,7 +142,7 @@ export function FactorTiltsPanel({ report: r, className }: { report: RiskReport;
   const rows = FACTORS.map((d) => ({ ...d, c: fit.betas[d.key] }));
   const max = Math.max(0.25, ...rows.map((x) => Math.abs(x.c.beta))) * 1.1;
   return (
-    <Panel id="factors" className={cn("scroll-mt-4", className)}>
+    <Panel id="factors" variant="plain" className={cn("scroll-mt-4", className)}>
       <PanelHeader
         title="Factor tilts"
         aside={
