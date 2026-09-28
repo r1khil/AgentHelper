@@ -25,11 +25,51 @@ describe("sectionFor", () => {
 
 describe("navModel", () => {
   it("follows the scope and marks the active tab", () => {
-    const nav = navModel({ pathname: "/t/fund/h/NVDA", ...exec });
+    const nav = navModel({ pathname: "/t/fund", ...exec });
     expect(nav.title).toBe("Holdings");
     expect(nav.rail.map((r) => r.href)).toEqual(["/", "/t/fund", "/t/fund/agent", "/t/fund/earnings", "/attribution"]);
     expect(nav.tabs.find((t) => t.active)?.key).toBe("holdings");
+    expect(nav.back).toBeNull();
     expect(nav.manage?.href).toBe("/weekly");
+    expect(navModel({ pathname: "/t/fund/movements", ...exec }).tabs.filter((t) => t.active).map((t) => t.key)).toEqual(["movements"]);
+  });
+
+  it("gives a holding and an earnings report a way back up in place of the section's tabs", () => {
+    const holding = navModel({ pathname: "/t/fund/h/NVDA", ...exec });
+    expect(holding.tabs).toEqual([]);
+    expect(holding.back).toEqual({ label: "Holdings", href: "/t/fund" });
+    expect(holding.section).toBe("holdings");
+    expect(holding.rail.find((r) => r.active)?.key).toBe("holdings");
+
+    const report = navModel({ pathname: "/t/fund/earnings/e1", ...exec });
+    expect(report.tabs).toEqual([]);
+    expect(report.back).toEqual({ label: "Calendar", href: "/t/fund/earnings" });
+  });
+
+  it("keeps the way back in the scope in view", () => {
+    const team = { scope: { slug: "tech" }, fundWide: false, seesBook: false };
+    expect(navModel({ pathname: "/t/tech/h/NVDA", ...team }).back).toEqual({ label: "Holdings", href: "/t/tech" });
+    expect(navModel({ pathname: "/t/tech/earnings/e1", ...team }).back?.href).toBe("/t/tech/earnings");
+    expect(navModel({ pathname: "/t/tech/h/BRK.B/", ...team }).back?.href).toBe("/t/tech");
+    // No scope (no team yet): nowhere to go back to, so nothing rather than a broken link.
+    expect(navModel({ pathname: "/t/tech/h/NVDA", scope: null, fundWide: false, seesBook: false }).back).toBeNull();
+  });
+
+  it("keeps the section's tabs on master-detail pages, where the list is beside the item", () => {
+    for (const [pathname, active] of [
+      ["/t/fund/movements/m1", "movements"],
+      ["/t/fund/models/m1", "models"],
+      ["/t/fund/sell-side/c1", "sell-side"],
+      ["/t/fund/agent/h/NVDA", "conversations"],
+      ["/hoot/c1", "conversations"],
+    ] as const) {
+      const nav = navModel({ pathname, ...exec });
+      expect(nav.back, pathname).toBeNull();
+      expect(nav.tabs.find((t) => t.active)?.key, pathname).toBe(active);
+    }
+    // Lists and other scoped pages keep their tabs too.
+    expect(navModel({ pathname: "/t/fund/earnings", ...exec }).back).toBeNull();
+    expect(navModel({ pathname: "/t/fund/risk", ...exec }).back).toBeNull();
   });
 
   it("keeps team book pages under the team", () => {

@@ -11,7 +11,6 @@ export type AttentionInput = {
   nextReport: { id: string; reportDate: string; reportHour: string | null; locked: boolean } | null;
   modelUpdates: number;
   thesisProposed: boolean;
-  hasOwner: boolean;
 };
 
 /** How far ahead an upcoming report counts as "reporting soon" (the filter chip and the expectations flag). */
@@ -35,7 +34,7 @@ export function expectationsDue(reportDate: string, reportHour: string | null) {
 
 /**
  * Everything waiting on a holding, most urgent first: an overdue write-up, a write-up due, expectations due for a
- * report within two weeks, no owner, model values to review, a proposed thesis.
+ * report within two weeks, model values to review, a proposed thesis.
  */
 export function attentionFlags(s: AttentionInput, ctx: { teamSlug: string; ticker: string; today: string; now: number }): AttentionFlag[] {
   const out: AttentionFlag[] = [];
@@ -49,7 +48,6 @@ export function attentionFlags(s: AttentionInput, ctx: { teamSlug: string; ticke
   if (s.nextReport && !s.nextReport.locked && reportsWithin(s.nextReport.reportDate, ctx.today)) {
     out.push({ tone: "caution", label: `Expectations due ${shortDate(expectationsDue(s.nextReport.reportDate, s.nextReport.reportHour))}`, href: `${base}/earnings/${s.nextReport.id}` });
   }
-  if (!s.hasOwner) out.push({ tone: "caution", label: "No owner", href: `${base}/h/${encodeURIComponent(ctx.ticker)}` });
   if (s.modelUpdates > 0) out.push({ tone: "neutral", label: `${s.modelUpdates} model update${s.modelUpdates === 1 ? "" : "s"}`, href: `${base}/models` });
   if (s.thesisProposed) out.push({ tone: "neutral", label: "Thesis proposed", href: `${base}/h/${encodeURIComponent(ctx.ticker)}` });
   return out;

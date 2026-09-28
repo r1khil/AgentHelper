@@ -5,7 +5,7 @@ import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
-import { holdingNotes, holdings, movements, profiles } from "@/db/schema";
+import { holdingNotes, holdings, movements } from "@/db/schema";
 import { getDailyBars, getEarningsDate, getEstimates, getHolders, getQuote, getQuotes, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { getInsiderTransactions, TRANSACTION_CODES } from "@/lib/providers/edgar-form4";
 import { fetchWebPage, safeWebUrl } from "@/lib/agent/web";
@@ -466,13 +466,12 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
     }),
 
     get_team_context: tool({
-      description: "The team's current holdings, owners, theses, recent notes, and open movement investigations from the workspace database.",
+      description: "The team's current holdings, theses, recent notes, and open movement investigations from the workspace database.",
       inputSchema: z.object({ ticker: tickerArg.optional().describe("Limit to one holding") }),
       execute: async ({ ticker }): Promise<ToolResult<unknown>> => {
         const rows = await db
-          .select({ h: holdings, ownerName: profiles.fullName })
+          .select({ h: holdings })
           .from(holdings)
-          .leftJoin(profiles, eq(profiles.id, holdings.ownerId))
           .where(and(eq(holdings.teamId, ctx.teamId), eq(holdings.status, "active")));
         const subset = ticker ? rows.filter((r) => r.h.ticker === ticker.toUpperCase()) : rows;
         const driveOn = driveConfigured();
@@ -487,7 +486,6 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
           out.push({
             ticker: r.h.ticker,
             company: r.h.companyName,
-            owner: r.ownerName,
             thesis: r.h.thesis,
             thesisUpdatedAt: r.h.thesisUpdatedAt,
             pendingThesisProposal: pendingThesis ? { fileName: pendingThesis.sourceFileName, note: "Extracted by the app from the initiating report; awaiting analyst review. Not the recorded thesis." } : null,

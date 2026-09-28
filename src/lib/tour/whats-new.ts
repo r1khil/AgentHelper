@@ -97,7 +97,7 @@ export const WHATS_NEW_TOUR: Tour = {
           target: '[data-tour="today-teams"]',
           title: "Teams, by what they added",
           what: "Each team's return last session and what it added to the fund, with a bar that grows right for a gain and left for a loss, and the team's biggest mover. The team that added most comes first.",
-          how: "Open a team to see each holding's price, today's move against the S&P 500, next report and owner.",
+          how: "Open a team to see each holding's price, today's move against the S&P 500 and next report.",
           source: `${LEDGER} ${QUOTES}`,
         },
         {
@@ -130,7 +130,7 @@ export const WHATS_NEW_TOUR: Tour = {
           kind: "info",
           target: '[data-tour="holdings-filters"]',
           title: "Filter to what matters",
-          what: "Needs attention, Reporting in 2 weeks and Unassigned, each with a count. The S&P 500's move today sits on the right.",
+          what: "Needs attention and Reporting in 2 weeks, each with a count. The S&P 500's move today sits on the right.",
           how: "Needs attention turns pink when a write-up is overdue.",
         },
         {
@@ -273,7 +273,7 @@ export const WHATS_NEW_TOUR: Tour = {
           kind: "info",
           target: '[data-tour="calendar-week"]',
           title: "The week",
-          what: "Every report and release this week, day by day. Switch to Month or List at the top right.",
+          what: "The week day by day: the Fund's reports, plus anything else you tick under Show. Switch to Month or List at the top right.",
           how: "Click a release to see what's expected and why it matters for us. On a weekend it opens on the coming week.",
           source: "Earnings dates from Finnhub and Yahoo Finance. The release schedule from TradingView.",
         },
@@ -283,8 +283,8 @@ export const WHATS_NEW_TOUR: Tour = {
           target: '[data-tour="calendar-side"]',
           title: "Pick what to show",
           points: [
-            { label: "Month", text: "dots mark days with reports or releases. Click a day to jump to its week." },
-            { label: "Show", text: "turn holdings, bellwethers and releases on or off, and filter releases by importance." },
+            { label: "Month", text: "a dot marks a day with something you're showing, blue for a Fund report. Click a day to jump to its week." },
+            { label: "Show", text: "it opens on the Fund's reports. Tick bellwethers or releases to add them (the number beside each says how many), and filter releases by importance." },
             { label: "Expectations this week", text: "who still has to set expectations before their company reports. They lock when the report lands." },
           ],
         },

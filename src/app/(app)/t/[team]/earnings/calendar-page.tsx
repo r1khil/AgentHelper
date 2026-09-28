@@ -8,6 +8,7 @@ import {
   defaultSelectedDay,
   expectationsState,
   filterCalendarEvents,
+  kindOf,
   groupByDate,
   inGrid,
   industryOptions,
@@ -15,7 +16,6 @@ import {
   toCalendarEvents,
   type CalendarKind,
 } from "@/lib/earnings-calendar";
-import { listTeamHoldings } from "@/lib/holdings";
 import { NY, todayNY } from "@/lib/providers/calendar";
 import { calendarFactorContext } from "@/lib/risk/factor-context";
 import { loadScope } from "@/lib/teams";
@@ -25,7 +25,8 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 /**
  * The Calendar: the Fund's and bellwethers' earnings merged with the economic releases, one week at a time.
- * /t/[team]/earnings shows everything; /t/[team]/economic-calendar is the same page with only the releases shown.
+ * /t/[team]/earnings opens on the Fund's own reports and /t/[team]/economic-calendar on the releases; the Show
+ * filters (the `?show=` param) add the rest.
  * Earnings load here; the releases stream in on the client from /api/economic-calendar and refresh every minute.
  */
 export async function CalendarPage({ slug, sp, route, defaultShow }: { slug: string; sp: SearchParams; route: "earnings" | "economic-calendar"; defaultShow: CalendarKind[] }) {
@@ -47,13 +48,11 @@ export async function CalendarPage({ slug, sp, route, defaultShow }: { slug: str
     listAccessibleTeams(user),
   ]);
   const accessibleTeamIds = accessibleTeams.map((t) => t.id);
-  const owners = await listTeamHoldings(accessibleTeamIds, "all");
-  const ownerNames: Record<string, string> = {};
-  for (const o of owners) if (o.h.ownerId && o.ownerName) ownerNames[o.h.ownerId] = o.ownerName;
 
   const all = toCalendarEvents(holdingEvents, bellwethers).filter((ev) => ev.date >= grid.start && ev.date <= through);
   const events = filterCalendarEvents(all, { view: query.scope, teamId: team?.id ?? "", teamSectors: sectors, industry: query.industry });
-  const byDate = groupByDate(events);
+  // The week to open on follows what is shown, so a month of bellwethers doesn't pick it for a Fund-only calendar.
+  const byDate = groupByDate(events.filter((ev) => query.show.includes(kindOf(ev))));
   const selectedDay = query.day && inGrid(grid, query.day) ? query.day : defaultSelectedDay(grid, byDate, today);
   const industries = industryOptions(holdingIndustries, bellwethers, sectors);
   const unclassifiedOwn = query.scope === "industry" ? all.filter((ev) => ev.kind === "holding" && ev.teamId === team?.id && !ev.industry).length : 0;
@@ -115,7 +114,6 @@ export async function CalendarPage({ slug, sp, route, defaultShow }: { slug: str
       canScope={!!team}
       industries={industries}
       events={events}
-      ownerNames={ownerNames}
       accessibleTeamIds={accessibleTeamIds}
       notices={notices}
       reports={reports}

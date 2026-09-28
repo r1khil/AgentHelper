@@ -6,20 +6,14 @@ import { inTeams, type TeamIds } from "@/lib/team-filter";
 
 export async function listTeamHoldings(teamId: TeamIds, status: "active" | "exited" | "all" = "active") {
   const where = status === "all" ? inTeams(holdings.teamId, teamId) : and(inTeams(holdings.teamId, teamId), eq(holdings.status, status));
-  return db
-    .select({ h: holdings, ownerName: profiles.fullName })
-    .from(holdings)
-    .leftJoin(profiles, eq(profiles.id, holdings.ownerId))
-    .where(where)
-    .orderBy(asc(holdings.ticker));
+  return db.select({ h: holdings }).from(holdings).where(where).orderBy(asc(holdings.ticker));
 }
 
 /** A holding by ticker in one team, or in any of several for the fund scope. */
 export async function getHolding(teamIds: TeamIds, ticker: string) {
   const [row] = await db
-    .select({ h: holdings, ownerName: profiles.fullName })
+    .select({ h: holdings })
     .from(holdings)
-    .leftJoin(profiles, eq(profiles.id, holdings.ownerId))
     .where(and(inTeams(holdings.teamId, teamIds), eq(holdings.ticker, ticker.toUpperCase())))
     .orderBy(desc(holdings.status)) // active first if an exited duplicate exists
     .limit(1);

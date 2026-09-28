@@ -1,12 +1,12 @@
 import "server-only";
-import { and, asc, count, desc, eq, gte, inArray, isNull, lt, lte, ne, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, lte, ne } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
-import { changelogEntries, earnings, holdingProposals, holdings, modelProposals, models, movements, profiles, sellSideCalls, teams, weeklyUpdates } from "@/db/schema";
+import { changelogEntries, earnings, holdingProposals, holdings, modelProposals, models, movements, sellSideCalls, teams } from "@/db/schema";
 import { canManageTeam, isFundWide, listAccessibleTeams, type CurrentUser } from "@/lib/auth";
-import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { isTradingDay, nextTradingDay, NY, todayNY } from "@/lib/providers/calendar";
 import { rememberedScope } from "@/lib/teams";
+import { latestPackStatus } from "@/lib/weekly/latest";
 import { buildNudges } from "./build";
 import type { HootFeed } from "./types";
 
@@ -31,42 +31,40 @@ export async function loadHootFeed(user: CurrentUser): Promise<HootFeed> {
   }
   const teamList = await listAccessibleTeams(user);
   const teamIds = teamList.map((t) => t.id);
+  // A write-up belongs to the whole team that holds the stock, so a member's own are their team's. Rows the close
+  // check logged for a data problem aren't write-ups (no move was calculated); the reminder emails skip them too.
+  const ownTeamId = user.teamId;
+  // Other teams this member runs: a lead runs only their own; an exec or admin runs every team.
+  const managedOthers = teamList.filter((t) => t.id !== ownTeamId && canManageTeam(user, t.id)).map((t) => t.id);
   const managed = teamList.filter((t) => canManageTeam(user, t.id)).map((t) => t.id);
   const fundWide = isFundWide(user);
   const dismissed = user.hoot?.dismissed ?? {};
   const none = Promise.resolve([] as never[]);
 
-  // Holdings filtered to the unowned ones, across the fund or the one team a lead runs.
-  const unownedHref = `/t/${fundWide ? FUND_SCOPE_SLUG : teamList.find((t) => t.id === managed[0])?.slug}?filter=unassigned`;
-
-  const [myMovements, teamMovements, unowned, upcoming, mySellSide, thesis, modelRows, weekly, changelog] = await Promise.all([
-    db
-      .select({ id: movements.id, ticker: holdings.ticker, teamSlug: teams.slug, dueAt: movements.dueAt })
-      .from(movements)
-      .innerJoin(holdings, eq(holdings.id, movements.holdingId))
-      .innerJoin(teams, eq(teams.id, holdings.teamId))
-      .where(and(eq(movements.ownerId, user.id), ne(movements.status, "completed")))
-      .limit(10),
-    managed.length
+  const [myMovements, teamMovements, upcoming, mySellSide, thesis, modelRows, weekly, changelog] = await Promise.all([
+    ownTeamId
       ? db
-          .select({ id: movements.id, ticker: holdings.ticker, teamSlug: teams.slug, dueAt: movements.dueAt, ownerName: profiles.fullName })
+          .select({ id: movements.id, ticker: holdings.ticker, teamSlug: teams.slug, dueAt: movements.dueAt })
           .from(movements)
           .innerJoin(holdings, eq(holdings.id, movements.holdingId))
           .innerJoin(teams, eq(teams.id, holdings.teamId))
-          .leftJoin(profiles, eq(profiles.id, movements.ownerId))
-          .where(and(inArray(holdings.teamId, managed), ne(movements.status, "completed"), or(isNull(movements.ownerId), and(ne(movements.ownerId, user.id), lt(movements.dueAt, now)))))
+          .where(and(eq(holdings.teamId, ownTeamId), ne(movements.status, "completed"), isNull(movements.dataQuality)))
+          .orderBy(asc(movements.dueAt))
+          .limit(10)
+      : none,
+    managedOthers.length
+      ? db
+          .select({ id: movements.id, ticker: holdings.ticker, teamSlug: teams.slug, teamName: teams.name, dueAt: movements.dueAt })
+          .from(movements)
+          .innerJoin(holdings, eq(holdings.id, movements.holdingId))
+          .innerJoin(teams, eq(teams.id, holdings.teamId))
+          .where(and(inArray(holdings.teamId, managedOthers), ne(movements.status, "completed"), isNull(movements.dataQuality)))
           .orderBy(asc(movements.dueAt))
           .limit(20)
       : none,
-    managed.length
-      ? db
-          .select({ count: count() })
-          .from(holdings)
-          .where(and(inArray(holdings.teamId, managed), eq(holdings.status, "active"), isNull(holdings.ownerId)))
-      : none,
     teamIds.length
       ? db
-          .select({ e: earnings, ticker: holdings.ticker, ownerId: holdings.ownerId, teamSlug: teams.slug })
+          .select({ e: earnings, ticker: holdings.ticker, teamId: holdings.teamId, teamSlug: teams.slug })
           .from(earnings)
           .innerJoin(holdings, eq(holdings.id, earnings.holdingId))
           .innerJoin(teams, eq(teams.id, holdings.teamId))
@@ -101,9 +99,7 @@ export async function loadHootFeed(user: CurrentUser): Promise<HootFeed> {
           .groupBy(models.id, holdings.ticker, teams.slug)
           .limit(5)
       : none,
-    fundWide
-      ? db.select({ weekEnding: weeklyUpdates.weekEnding }).from(weeklyUpdates).where(and(eq(weeklyUpdates.status, "draft"), gte(weeklyUpdates.weekEnding, DateTime.fromISO(today).minus({ days: 3 }).toISODate()!))).orderBy(desc(weeklyUpdates.weekEnding)).limit(1)
-      : none,
+    fundWide ? latestPackStatus() : Promise.resolve(null),
     fundWide
       ? db.select({ prNumber: changelogEntries.prNumber, headline: changelogEntries.headline, mergedAt: changelogEntries.mergedAt }).from(changelogEntries).orderBy(desc(changelogEntries.mergedAt)).limit(1)
       : none,
@@ -117,12 +113,12 @@ export async function loadHootFeed(user: CurrentUser): Promise<HootFeed> {
     soon,
     myMovements,
     teamMovements,
-    unownedHoldings: unowned[0]?.count ? { count: unowned[0].count, href: unownedHref } : null,
-    earnings: upcoming.map((r) => ({ id: r.e.id, ticker: r.ticker, teamSlug: r.teamSlug, reportDate: r.e.reportDate, reportHour: r.e.reportHour, expectationsLocked: !!r.e.preLockedAt, mine: r.ownerId === user.id })),
+    earnings: upcoming.map((r) => ({ id: r.e.id, ticker: r.ticker, teamSlug: r.teamSlug, reportDate: r.e.reportDate, reportHour: r.e.reportHour, expectationsLocked: !!r.e.preLockedAt, mine: !!ownTeamId && r.teamId === ownTeamId })),
     mySellSide,
     thesisProposals: thesis,
     modelProposals: modelRows,
-    weeklyDraft: weekly[0] ?? null,
+    // Only this week's pack (Fri to Mon), and only until it is Sent.
+    weeklyPack: weekly && weekly.state !== "sent" && weekly.weekEnding >= DateTime.fromISO(today).minus({ days: 3 }).toISODate()! ? { weekEnding: weekly.weekEnding, state: weekly.state } : null,
     latestChangelog: changelog[0] ?? null,
     dismissed,
   });

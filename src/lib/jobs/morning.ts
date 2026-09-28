@@ -2,10 +2,12 @@ import "server-only";
 import { and, eq, isNull, lt, ne } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
-import { holdings, jobRuns, movements, profiles, teams } from "@/db/schema";
+import { holdings, jobRuns, movements, teams } from "@/db/schema";
 import { NY, formatNY, todayNY } from "@/lib/providers/calendar";
 import { gatherMovementEvidence } from "./evidence";
 import { queueNotification, sendPendingNotifications } from "./notify";
+import { teamRecipients } from "./recipients";
+import type { Recipient } from "./recipients-rule";
 import { refreshEarningsCalendar } from "./earnings";
 import { backfillIndustries, refreshBellwethers } from "./bellwethers";
 import { ensureDriveWatch, runDriveSync } from "./drive";
@@ -60,11 +62,14 @@ export async function runMorningJob(): Promise<MorningJobResult> {
     .where(and(ne(movements.status, "completed"), isNull(movements.dataQuality)));
   progress.step("reminders and overdue", { open: open.length });
 
+  // A write-up belongs to its team: reminders go to the team's leads, or its members when it has none.
+  const byTeam = new Map<string, Recipient[]>();
   for (const { m, h, teamSlug } of open) {
     if (!m.dueAt) continue;
     const due = DateTime.fromJSDate(m.dueAt).setZone(NY);
     const link = `${process.env.APP_URL ?? ""}/t/${teamSlug}/movements/${m.id}`;
-    const recipients = await recipientsFor(h.teamId, m.ownerId);
+    if (!byTeam.has(h.teamId)) byTeam.set(h.teamId, await teamRecipients(h.teamId));
+    const recipients = byTeam.get(h.teamId)!;
     const isDueToday = due.hasSame(now, "day");
     if (isDueToday && now < due) {
       for (const r of recipients) {
@@ -178,16 +183,6 @@ export async function runMorningJob(): Promise<MorningJobResult> {
   await progress.close();
   await db.update(jobRuns).set({ finishedAt: new Date(), ok: true, summary: result as unknown as Record<string, unknown> }).where(eq(jobRuns.id, jobRow.id));
   return result;
-}
-
-export async function recipientsFor(teamId: string, ownerId: string | null) {
-  const leads = await db.select({ id: profiles.id, email: profiles.email }).from(profiles).where(and(eq(profiles.teamId, teamId), eq(profiles.role, "lead_analyst")));
-  const out = new Map(leads.map((l) => [l.id, l]));
-  if (ownerId) {
-    const [o] = await db.select({ id: profiles.id, email: profiles.email }).from(profiles).where(eq(profiles.id, ownerId)).limit(1);
-    if (o) out.set(o.id, o);
-  }
-  return [...out.values()];
 }
 
 // Used by the overdue query typing above.
