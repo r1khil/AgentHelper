@@ -9,7 +9,8 @@ export type FallbackEvent = { from: string; to: string; error: string };
 export function isFallbackError(e: unknown): boolean {
   if (APICallError.isInstance(e)) {
     const s = e.statusCode;
-    if (s === 429 || s === 408 || s === 404) return true;
+    // 402: out of OpenRouter credits for a paid model; the free models on the list still answer.
+    if (s === 429 || s === 408 || s === 404 || s === 402) return true;
     if (s !== undefined && s >= 500) return true;
     return s === undefined && e.isRetryable;
   }

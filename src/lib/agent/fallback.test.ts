@@ -34,6 +34,7 @@ describe("isFallbackError", () => {
     expect(isFallbackError(apiError(400))).toBe(false);
     // A withdrawn model (OpenRouter pulled Ling's free variant on 2026-09-28) hands off like an outage.
     expect(isFallbackError(apiError(404))).toBe(true);
+    expect(isFallbackError(apiError(402))).toBe(true);
     expect(isFallbackError(apiError(401))).toBe(false);
     expect(isFallbackError(new Error("boom"))).toBe(false);
   });
