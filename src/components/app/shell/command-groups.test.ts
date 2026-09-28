@@ -43,6 +43,7 @@ describe("⌘K Enter rule", () => {
     expect(enter("hoot")).toMatchObject({ kind: "page", page: { label: "Research" } });
     expect(enter("earnings")).toMatchObject({ kind: "page", page: { label: "Calendar" } });
     expect(enter("research")).toMatchObject({ kind: "page", page: { label: "Research" } });
+    expect(enter("analyzer")).toMatchObject({ kind: "page", page: { label: "Sell-side calls" } });
   });
 
   it("opens the Portfolio section's first page for \"portfolio\", and Holdings for \"holdings\"", () => {

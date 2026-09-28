@@ -141,7 +141,7 @@ function SidebarBody({ user, teams, signOut, dock }: Props & { dock?: React.Reac
     ? [
         { href: base, label: "Holdings", icon: Briefcase, exact: true },
         { href: `${base}/agent`, label: "Research", icon: HootIcon, also: "/hoot" },
-        { href: `${base}/sell-side`, label: "Sell-side analyzer", icon: Mic },
+        { href: `${base}/sell-side`, label: "Sell-side calls", icon: Mic },
         { href: `${base}/models`, label: "Models", icon: Table2 },
       ]
     : [];

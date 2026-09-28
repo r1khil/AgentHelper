@@ -4,7 +4,7 @@ export type HootCommand = { kind: "theme"; theme: "light" | "dark" | "system" | 
 const destinations: Record<string, string> = {
   home: "Today", dashboard: "Today", today: "Today", portfolio: "Portfolio", holdings: "Holdings",
   research: "Research", hoot: "Research", chat: "Research", chats: "Research", conversations: "Research", agent: "Research",
-  boards: "Research", "research boards": "Research", "sell side": "Sell-side analyzer", "sell side analyzer": "Sell-side analyzer",
+  boards: "Research", "research boards": "Research", "sell side": "Sell-side calls", "sell side calls": "Sell-side calls", "sell side analyzer": "Sell-side calls",
   models: "Models", movements: "Movements", earnings: "Earnings", calendar: "Economic calendar",
   "economic calendar": "Economic calendar", attribution: "Attribution", risk: "Risk", exposure: "Exposure",
   backtesting: "Backtesting", backtest: "Backtesting", "weekly update": "Weekly update", changelog: "Changelog",

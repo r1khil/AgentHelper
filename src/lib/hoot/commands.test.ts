@@ -11,7 +11,7 @@ describe("Hoot UI commands", () => {
 
   it.each([
     ["Take me to holdings", "Holdings"], ["bring me to the risk page", "Risk"],
-    ["Open sell-side analyzer", "Sell-side analyzer"], ["Can you take me to the economic calendar?", "Economic calendar"],
+    ["Open sell-side calls", "Sell-side calls"], ["Open sell-side analyzer", "Sell-side calls"], ["go to sell side", "Sell-side calls"], ["Can you take me to the economic calendar?", "Economic calendar"],
     ["go to backtesting", "Backtesting"], ["navigate to the weekly update section", "Weekly update"],
     ["take me to research", "Research"], ["open hoot", "Research"], ["go to conversations", "Research"], ["open the agent page", "Research"],
     ["take me to the portfolio", "Portfolio"], ["open portfolio", "Portfolio"],

@@ -155,7 +155,7 @@ export function destinations({ scope, fundWide, seesBook }: Omit<NavInput, "path
       { label: "Movements", hoot: "Movements", href: `${base}/movements`, hint: "400 bp moves and their write-ups" },
       { label: "Models", hoot: "Models", href: `${base}/models`, hint: "Proposed values from new filings", keywords: "xlsx excel" },
       { label: "Research", hoot: "Research", href: `${base}/agent`, hint: "Chats with Hoot, by holding and general", keywords: "hoot ask chat chats conversations agent boards research boards holding boards" },
-      { label: "Sell-side calls", hoot: "Sell-side analyzer", href: `${base}/sell-side`, hint: "Record a call, get a brief", keywords: "sell side analyzer record" },
+      { label: "Sell-side calls", hoot: "Sell-side calls", href: `${base}/sell-side`, hint: "Record a call, get a brief", keywords: "sell side analyzer record" },
       { label: "Calendar", hoot: "Earnings", href: `${base}/earnings`, hint: "Earnings and economic releases", keywords: "earnings reports" },
       { label: "Economic releases", hoot: "Economic calendar", href: `${base}/economic-calendar`, hint: "CPI, jobs, rates", keywords: "economic calendar macro cpi" },
     );
