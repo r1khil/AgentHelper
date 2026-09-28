@@ -8,8 +8,10 @@ import { toast } from "sonner";
 import { ArrowRight, Briefcase, CalendarDays, ChartColumn, Layers, MessageSquareText, Moon, Search, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { startHootChat } from "@/lib/actions/chats";
+import { boardHref, holdingHref } from "@/lib/scope";
+import { markScopeIntent } from "./scope-intent";
 import type { CommandHolding } from "@/lib/nav-data";
-import { fmtPct } from "@/lib/format";
+import { fmtCurrency, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useHootCommand } from "../hoot/use-hoot-command";
 import { leaveHootQuestion } from "../hoot/handoff";
@@ -40,6 +42,7 @@ export function CommandMenu({
   scopes,
   pathname,
   teamSlug,
+  scopeSlug,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -49,6 +52,8 @@ export function CommandMenu({
   pathname: string;
   /** The scope in view, for questions not about one holding. */
   teamSlug: string | null;
+  /** The scope in view (the fund's slug or a team's); holdings and boards open there. */
+  scopeSlug: string | null;
 }) {
   const router = useRouter();
   const runCommand = useHootCommand();
@@ -67,7 +72,10 @@ export function CommandMenu({
     }
   }
 
-  const groups = useMemo(() => buildGroups({ query, holdings, pages, scopes, teamSlug, dark: resolvedTheme === "dark" }), [query, holdings, pages, scopes, teamSlug, resolvedTheme]);
+  const groups = useMemo(
+    () => buildGroups({ query, holdings, pages, scopes, teamSlug, scopeSlug, dark: resolvedTheme === "dark" }),
+    [query, holdings, pages, scopes, teamSlug, scopeSlug, resolvedTheme],
+  );
   const all = groups.flatMap((g) => g.items);
   const current = all.find((i) => i.id === selected) ?? all[0] ?? null;
 
@@ -99,7 +107,7 @@ export function CommandMenu({
     switch (item.kind) {
       case "holding":
         close();
-        router.push(`/t/${item.holding.teamSlug}/h/${encodeURIComponent(item.holding.ticker)}`);
+        router.push(holdingHref(scopeSlug, item.holding.teamSlug, item.holding.ticker));
         return;
       case "page":
         close();
@@ -107,6 +115,7 @@ export function CommandMenu({
         return;
       case "scope":
         close();
+        markScopeIntent();
         router.push(item.scope.href);
         return;
       case "theme":
@@ -254,7 +263,7 @@ function Preview({ item }: { item: Item }) {
   if (item.kind === "holding") return <HoldingPreview holding={item.holding} />;
   const [title, body] =
     item.kind === "ask"
-      ? ["Ask Hoot", "Opens a research chat and sends this question. Hoot cites a source for every fact; the conclusions stay yours."]
+      ? ["Ask Hoot", "Opens a research chat and sends this question. Hoot cites a source for every fact."]
       : item.kind === "page"
         ? [item.page.label, item.page.hint ?? "Open this page."]
         : item.kind === "scope"
@@ -268,7 +277,7 @@ function Preview({ item }: { item: Item }) {
   );
 }
 
-type Quote = { price: number | null; changePct: number | null; relativePp: number | null };
+type Quote = { price: number | null; currency: string | null; changePct: number | null; relativePp: number | null };
 
 /** Quotes fetched for the preview this session, so arrowing back and forth doesn't refetch. */
 const quoteCache = new Map<string, Quote>();
@@ -309,7 +318,7 @@ function HoldingPreview({ holding: h }: { holding: CommandHolding }) {
         {h.company} · {h.team}
       </div>
       <div className="mt-3 flex items-baseline gap-2">
-        <span className="figure text-2xl">{q?.price != null ? `$${q.price.toFixed(2)}` : "—"}</span>
+        <span className="figure text-2xl">{fmtCurrency(q?.price, q?.currency)}</span>
         {q?.changePct != null && <span className={cn("font-mono text-xs", q.changePct >= 0 ? "text-up" : "text-down")}>{fmtPct(q.changePct)}</span>}
       </div>
       <dl className="mt-4 border-t">
@@ -330,6 +339,7 @@ function buildGroups({
   pages,
   scopes,
   teamSlug,
+  scopeSlug,
   dark,
 }: {
   query: string;
@@ -337,6 +347,7 @@ function buildGroups({
   pages: CommandPage[];
   scopes: CommandScope[];
   teamSlug: string | null;
+  scopeSlug: string | null;
   dark: boolean;
 }): { label: string; items: Item[] }[] {
   const q = query.trim().toLowerCase();
@@ -365,10 +376,10 @@ function buildGroups({
 
   const go: Item[] = [];
   if (top) {
-    const base = `/t/${top.teamSlug}`;
+    // In the scope in view: the fund shows every team's holdings, a team its own (⌘K lists only those).
     go.push(
-      { kind: "page", id: `go:board:${top.ticker}`, page: { label: `${top.ticker} research board`, href: `${base}/agent/h/${encodeURIComponent(top.ticker)}`, hint: "Hoot's chats about this holding" } },
-      { kind: "page", id: `go:earnings:${top.ticker}`, page: { label: `${top.ticker} earnings`, href: `${base}/h/${encodeURIComponent(top.ticker)}?tab=earnings`, hint: top.nextReport ? `${shortDate(top.nextReport)}${top.nextReportEstimated ? " est." : ""}` : "No report scheduled" } },
+      { kind: "page", id: `go:board:${top.ticker}`, page: { label: `${top.ticker} research board`, href: boardHref(scopeSlug, top.teamSlug, top.ticker), hint: "Hoot's chats about this holding" } },
+      { kind: "page", id: `go:earnings:${top.ticker}`, page: { label: `${top.ticker} earnings`, href: holdingHref(scopeSlug, top.teamSlug, top.ticker, "?tab=earnings"), hint: top.nextReport ? `${shortDate(top.nextReport)}${top.nextReportEstimated ? " est." : ""}` : "No report scheduled" } },
     );
   }
   const pageHits = (q ? pages.filter((p) => matches(`${p.label} ${p.keywords ?? ""} ${p.hint ?? ""}`)) : pages).slice(0, q ? 6 : 8);

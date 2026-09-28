@@ -14,6 +14,8 @@ import { MAX_MODEL_BYTES, parseStagedModelPath, stagedModelPath, validateModelFi
 import { mirrorModelToDrive } from "@/lib/drive/mirror";
 import { getCompanyFacts, listConcepts } from "@/lib/providers/edgar";
 import { buildProposals, reportedPeriodEnds, suggestConcepts, type ConceptSuggestion } from "@/lib/models/proposals";
+import { modelHref } from "@/lib/scope";
+import { rememberedScope } from "@/lib/teams";
 
 async function loadModel(modelId: string) {
   const [row] = await db.select({ m: models, h: holdings, slug: teams.slug }).from(models).innerJoin(holdings, eq(holdings.id, models.holdingId)).innerJoin(teams, eq(teams.id, holdings.teamId)).where(eq(models.id, modelId)).limit(1);
@@ -87,7 +89,8 @@ export async function finalizeModelUpload(input: unknown): Promise<FinalizeUploa
   const [m] = await db.insert(models).values({ holdingId, version, storagePath: finalPath, fileName, sheets, uploadedBy: h.user.id }).returning({ id: models.id });
   await mirrorModel({ holdingId, buffer, ext: staged.ext, uploadedBy: h.user.id });
   revalidatePath(`/t/${h.slug}/models`);
-  redirect(`/t/${h.slug}/models/${m.id}`);
+  // The new model opens in the scope the member is in (the fund's or this team's).
+  redirect(modelHref(await rememberedScope(h.user), h.slug, m.id));
 }
 
 const mappingSchema = z.object({
@@ -191,18 +194,21 @@ export async function approveAllProposed(fd: FormData) {
 export async function writeApproved(fd: FormData) {
   const modelId = String(fd.get("modelId") ?? "");
   const r = await loadModel(modelId);
+  // Redirects stay in the scope the member is in (the fund's or this team's).
+  const current = await rememberedScope(r.user);
+  const here = modelHref(current, r.slug, r.m.id);
   const approved = await db
     .select({ p: modelProposals, sheet: modelMappings.sheet })
     .from(modelProposals)
     .innerJoin(modelMappings, eq(modelMappings.id, modelProposals.mappingId))
     .where(and(eq(modelProposals.modelId, modelId), eq(modelProposals.status, "approved")));
-  if (!approved.length) redirect(`${r.path}?error=Nothing+approved+to+write`);
+  if (!approved.length) redirect(`${here}?error=Nothing+approved+to+write`);
   const original = await downloadModelFile(r.m.storagePath);
   let patched: Buffer;
   try {
     patched = await patchXlsx(original, approved.map(({ p, sheet }) => ({ sheet, ref: p.cellRef, value: Number(p.value) })));
   } catch (e) {
-    redirect(`${r.path}?error=${encodeURIComponent(e instanceof Error ? e.message : String(e))}`);
+    redirect(`${here}?error=${encodeURIComponent(e instanceof Error ? e.message : String(e))}`);
   }
   const versions = await db.select({ version: models.version }).from(models).where(eq(models.holdingId, r.h.id));
   const version = Math.max(...versions.map((v) => v.version)) + 1;
@@ -222,7 +228,7 @@ export async function writeApproved(fd: FormData) {
     await db.insert(modelMappings).values({ ...m, id: undefined, modelId: nm.id, createdAt: undefined });
   }
   revalidatePath(`/t/${r.slug}/models`);
-  redirect(`/t/${r.slug}/models/${nm.id}?ok=${encodeURIComponent(`Wrote ${approved.length} value${approved.length === 1 ? "" : "s"} into version ${version}`)}`);
+  redirect(`${modelHref(current, r.slug, nm.id)}?ok=${encodeURIComponent(`Wrote ${approved.length} value${approved.length === 1 ? "" : "s"} into version ${version}`)}`);
 }
 
 /** Best-effort copy to the Fund's Drive; a Drive problem never blocks the model flow. */

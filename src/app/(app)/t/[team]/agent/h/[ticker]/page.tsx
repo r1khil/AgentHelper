@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { loadTeam } from "@/lib/teams";
+import { itemTeam, loadScope } from "@/lib/teams";
 import { canManageTeam, transparencyEnabled } from "@/lib/auth";
 import { effectiveRunStatus, listHoldingChats, loadMessages } from "@/lib/chats";
 import { isFundWide } from "@/lib/roles";
@@ -21,17 +21,20 @@ export async function generateMetadata({ params }: { params: Promise<{ ticker: s
 
 export default async function HoldingBoardPage({ params, searchParams }: { params: Promise<{ team: string; ticker: string }>; searchParams: Promise<{ chat?: string }> }) {
   const [{ team: slug, ticker }, { chat: requested }] = await Promise.all([params, searchParams]);
-  const { team, user } = await loadTeam(slug);
-  const row = await getHolding(team.id, ticker);
+  // The fund scope shows any team's board; a team scope only its own. The list beside it follows the scope.
+  const scope = await loadScope(slug);
+  const { user } = scope;
+  const row = await getHolding(scope.teamIds, ticker);
   if (!row) notFound();
   const { h } = row;
+  const team = itemTeam(scope, h.teamId);
   const viewer = { fundWide: isFundWide(user) };
   const [rows, movement, memories, upcoming, sidebar] = await Promise.all([
     listHoldingChats(h.id, viewer),
     getOpenMovement(h.id),
     listHoldingMemories(h.id).catch(() => []),
     getUpcomingEarnings(h.id).catch(() => null),
-    loadResearchSidebar(team.id, viewer),
+    loadResearchSidebar(scope.teamIds, viewer, scope.slug),
   ]);
   const fundWide = user.role === "admin" || user.role === "lead_analyst" || user.role === "exec";
   const chats: BoardChat[] = rows.map(({ c, authorName, questions }) => ({
@@ -53,6 +56,7 @@ export default async function HoldingBoardPage({ params, searchParams }: { param
   return (
     <HoldingBoard
       team={{ id: team.id, slug: team.slug, name: team.name }}
+      scopeSlug={scope.slug}
       holding={{ id: h.id, ticker: h.ticker, name: h.companyName }}
       market={market}
       movement={movement ? { id: movement.id, dueAt: movement.dueAt?.toISOString() ?? null, overdue: movement.dueAt ? movement.dueAt < new Date() : false } : null}

@@ -35,8 +35,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <BootSplash />
           <UpdateBanner buildId={getBuildId()} />
           {children}
-          {/* Offset so toasts stack above Hoot rather than on top of him. */}
-          <Toaster position="bottom-right" offset={{ bottom: 96, right: 20 }} mobileOffset={{ bottom: 80, right: 12 }} />
+          {/* On a desktop Hoot is docked in the menu; on a phone he floats in a corner, so toasts stack above him there. */}
+          <Toaster position="bottom-right" offset={{ bottom: 20, right: 20 }} mobileOffset={{ bottom: 80, right: 12 }} />
         </ThemeProvider>
       </body>
     </html>

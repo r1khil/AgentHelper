@@ -21,14 +21,18 @@ export function parseCompleteOnboarding(fd: FormData) {
   return completeOnboardingSchema.safeParse({ fullName: fd.get("fullName"), acknowledged: fd.get("acknowledged") });
 }
 
-/** The product's core rule, from docs/product.md. */
+/**
+ * The product's core rule (docs/product.md), said once to the user here and nowhere else in the UI. Hoot's own
+ * instructions still carry it in full.
+ */
 export const LEARNING_BOUNDARY =
-  "The agent gathers evidence, explains concepts, lists sourced possible catalysts, and asks questions. After you write, it flags unsupported claims, missing evidence, alternative explanations, and contradictions with the recorded thesis. It never drafts the update, the reflection, the thesis, or the conclusion, and the workspace has no button for it.";
+  "Hoot gathers evidence, explains concepts and questions your reasoning. You write the movement updates, earnings reflections and theses; Hoot never drafts them, and the workspace has no button for it.";
 
+/** What Hoot does under that rule. None of these restate it. */
 export const BOUNDARY_IMPLICATIONS = [
-  "Every number the agent shows carries a source id you can open and check.",
-  "Movement updates, earnings reflections, and theses are written by you, in your words.",
-  "Ask the agent for evidence, explanations, and counterarguments as often as you like.",
+  "Every number Hoot shows carries a source you can open and check.",
+  "Ask for evidence, explanations and counterarguments as often as you like.",
+  "After you write, ask Hoot for feedback: he flags unsupported claims, missing evidence, alternative explanations and contradictions with the thesis.",
 ] as const;
 
 export type TourCard = { id: string; title: string; body: string };
@@ -37,12 +41,12 @@ export const TOUR_CARDS: TourCard[] = [
   {
     id: "holdings",
     title: "Holdings",
-    body: "Each ticker your team covers gets a live quote, its day move against the S&P 500, filings, news, notes, and an owner. You write and maintain the thesis.",
+    body: "Each ticker your team covers gets a live quote, its day move against the S&P 500, filings, news, notes, an owner, and the team's thesis.",
   },
   {
     id: "movements",
     title: "Major movements",
-    body: `After each close, any holding whose daily return differs from the S&P 500 by ${MOVEMENT_THRESHOLD_PP.toFixed(1)} pp or more opens an investigation with evidence and a deadline of noon New York on the next trading day. You write the update.`,
+    body: `After each close, any holding whose daily return differs from the S&P 500 by ${MOVEMENT_THRESHOLD_PP.toFixed(1)} pp or more opens an investigation with evidence, and its update is due by noon New York on the next trading day.`,
   },
   {
     id: "earnings",
@@ -52,6 +56,6 @@ export const TOUR_CARDS: TourCard[] = [
   {
     id: "agent",
     title: "Hoot",
-    body: "Your research companion: click him in the corner or open Hoot in the sidebar. He works with tools for quotes, price history, EDGAR filings, XBRL facts, news, and the earnings calendar. Filings and company releases come first, news second, and every claim carries a source chip.",
+    body: "Your research companion: click him at the bottom of the menu, or open Research. He works with tools for quotes, price history, EDGAR filings, XBRL facts, news, and the earnings calendar. Filings and company releases come first, news second, and every claim carries a source chip.",
   },
 ];

@@ -1,13 +1,20 @@
+import { earningsHref, holdingHref, modelHref, movementHref, scopedHref, sellSideHref } from "@/lib/scope";
 import type { HootNudge } from "./types";
 
 // Plain rows, so the ranking is testable without a database. The loader in nudges.ts fills these.
 export type NudgeInput = {
+  /** The scope the member is in; links open there when it shows the item (see scopeFor), else in the item's team. */
+  scope?: string | null;
   now: Date;
   /** YYYY-MM-DD in New York. */
   today: string;
   /** The next few trading days after today, New York dates. */
   soon: string[];
   myMovements: { id: string; ticker: string; teamSlug: string; dueAt: Date | null }[];
+  /** Unfinished write-ups on the teams this member runs that have no owner, or are overdue with someone else. */
+  teamMovements: { id: string; ticker: string; teamSlug: string; dueAt: Date | null; ownerName: string | null }[];
+  /** Active holdings with no owner on the teams this member runs, and where Holdings lists just those. */
+  unownedHoldings: { count: number; href: string } | null;
   earnings: { id: string; ticker: string; teamSlug: string; reportDate: string; reportHour: string | null; expectationsLocked: boolean; mine: boolean }[];
   mySellSide: { id: string; ticker: string; teamSlug: string; status: string; updatedAt: Date }[];
   thesisProposals: { ticker: string; teamSlug: string }[];
@@ -38,18 +45,39 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
   for (const m of i.myMovements) {
     if (!m.dueAt) continue;
     const left = m.dueAt.getTime() - i.now.getTime();
-    const href = `/t/${m.teamSlug}/movements/${m.id}`;
+    const href = movementHref(i.scope, m.teamSlug, m.id);
+    const at = m.dueAt.toISOString();
     if (left < 0) {
-      out.push({ id: `movement:${m.id}:overdue`, kind: "movement", priority: 1, mood: "concerned", href, at: m.dueAt.toISOString(), title: `Your ${m.ticker} write-up is overdue`, detail: "The team is waiting on why it moved. A short update with sources is enough." });
+      out.push({ id: `movement:${m.id}:overdue`, kind: "movement", priority: 1, mood: "concerned", href, at, title: `Your ${m.ticker} write-up is overdue`, detail: "The team is waiting on why it moved. A short update with sources is enough." });
     } else if (left < 48 * HOUR) {
       const hours = Math.max(1, Math.round(left / HOUR));
-      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 2, mood: "alert", href, at: m.dueAt.toISOString(), title: `Your ${m.ticker} write-up is due in ${hours}h`, detail: "I can pull the filings and news from that session. Open it and ask the agent." });
+      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 2, mood: "alert", href, at, title: `Your ${m.ticker} write-up is due in ${hours}h`, detail: "I can pull the filings and news from that session. Open it and ask the agent." });
+    } else {
+      // Due after a weekend or holiday: still owed, just not pressing yet.
+      const day = m.dueAt.toLocaleDateString("en-US", { weekday: "long", timeZone: "America/New_York" });
+      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `Your ${m.ticker} write-up is due ${day}`, detail: "I can pull the filings and news from that session. Open it and ask the agent." });
     }
+  }
+
+  for (const m of i.teamMovements) {
+    const href = movementHref(i.scope, m.teamSlug, m.id);
+    const overdue = !!m.dueAt && m.dueAt.getTime() < i.now.getTime();
+    const at = m.dueAt?.toISOString();
+    if (!m.ownerName) {
+      out.push({ id: `movement:${m.id}:unassigned${overdue ? ":overdue" : ""}`, kind: "movement", priority: overdue ? 2 : 3, mood: overdue ? "concerned" : "alert", href, at, title: `${m.ticker} write-up has no owner`, detail: "Assign someone on the movement page so it gets written." });
+    } else if (overdue) {
+      out.push({ id: `movement:${m.id}:team:overdue`, kind: "movement", priority: 3, mood: "concerned", href, at, title: `${m.ticker} write-up is overdue`, detail: `${m.ownerName} owns it. Check in, or reassign it on the movement page.` });
+    }
+  }
+
+  if (i.unownedHoldings?.count) {
+    const n = i.unownedHoldings.count;
+    out.push({ id: `holdings:unowned:${n}`, kind: "holdings", priority: 6, mood: "idle", href: i.unownedHoldings.href, title: `${n} ${n === 1 ? "holding has" : "holdings have"} no owner`, detail: "Assign owners so their movement write-ups reach someone." });
   }
 
   const upcoming = i.earnings.filter((e) => e.reportDate === i.today || i.soon.includes(e.reportDate));
   for (const e of upcoming) {
-    const href = `/t/${e.teamSlug}/earnings/${e.id}`;
+    const href = earningsHref(i.scope, e.teamSlug, e.id);
     if (e.reportDate === i.today) {
       out.push({ id: `earnings:${e.id}:today`, kind: "earnings", priority: 2, mood: "alert", href, at: e.reportDate, title: `${e.ticker} reports today${when(e.reportHour)}`, detail: e.expectationsLocked ? "Your expectations are locked in. Check back for the reflection." : "Expectations aren't written down yet. There's still time before the numbers land." });
     } else if (e.mine && !e.expectationsLocked) {
@@ -64,14 +92,14 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
       kind: "earnings",
       priority: 5,
       mood: "idle",
-      href: later.length === 1 ? `/t/${first.teamSlug}/earnings/${first.id}` : `/t/${first.teamSlug}/earnings`,
+      href: later.length === 1 ? earningsHref(i.scope, first.teamSlug, first.id) : scopedHref(i.scope, first.teamSlug, "/earnings"),
       at: first.reportDate,
       title: `${list(later.map((e) => e.ticker))} ${later.length === 1 ? "reports" : "report"} in the next few days`,
     });
   }
 
   for (const c of i.mySellSide) {
-    const href = `/t/${c.teamSlug}/sell-side/${c.id}`;
+    const href = sellSideHref(i.scope, c.teamSlug, c.id);
     const fresh = i.now.getTime() - c.updatedAt.getTime() < 7 * DAY;
     if (c.status === "ready" && fresh) {
       out.push({ id: `sell_side:${c.id}:ready`, kind: "sell_side", priority: 4, mood: "happy", href, at: c.updatedAt.toISOString(), title: `Your ${c.ticker} call brief is ready`, detail: "Transcript, key points and cross-checks against your team's files." });
@@ -87,13 +115,13 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
       kind: "proposal",
       priority: 5,
       mood: "idle",
-      href: `/t/${first.teamSlug}/h/${first.ticker}`,
+      href: holdingHref(i.scope, first.teamSlug, first.ticker),
       title: `Thesis update proposed for ${list(i.thesisProposals.map((p) => p.ticker))}`,
       detail: "Drafted from new Drive files. Accept or dismiss it on the holding page.",
     });
   }
   for (const m of i.modelProposals) {
-    out.push({ id: `proposal:model:${m.modelId}:${m.count}`, kind: "proposal", priority: 6, mood: "idle", href: `/t/${m.teamSlug}/models/${m.modelId}`, title: `${m.count} model ${m.count === 1 ? "update" : "updates"} to review for ${m.ticker}`, detail: "From the latest filing. Nothing is written until you approve it." });
+    out.push({ id: `proposal:model:${m.modelId}:${m.count}`, kind: "proposal", priority: 6, mood: "idle", href: modelHref(i.scope, m.teamSlug, m.modelId), title: `${m.count} model ${m.count === 1 ? "update" : "updates"} to review for ${m.ticker}`, detail: "From the latest filing. Nothing is written until you approve it." });
   }
 
   if (i.weeklyDraft) {

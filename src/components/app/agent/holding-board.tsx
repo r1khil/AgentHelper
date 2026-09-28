@@ -4,7 +4,7 @@ import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState, type 
 import type { UIMessage } from "ai";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtDateTime, fmtMoney } from "@/lib/format";
+import { fixed, fmtDateTime, fmtMoney } from "@/lib/format";
 import type { RunStatus } from "@/lib/chats";
 import type { Source } from "@/lib/providers/types";
 import { collectSources } from "@/lib/agent/citations";
@@ -12,9 +12,10 @@ import { marketFigure, pairTurns, stepLabel, turnSources, type Turn, type TurnSo
 import { resolveSource, sourceType } from "@/lib/agent/source-resolution";
 import { clearHootQuestion, peekHootQuestion } from "@/components/app/hoot/handoff";
 import { createHoldingChat, deleteChat } from "@/lib/actions/chats";
+import { boardHref } from "@/lib/scope";
 import { ResearchAnswer, ResearchSources, type CitationLinks } from "@/components/app/chat/research-answer";
 import { SourceViewer } from "@/components/app/chat/source-viewer";
-import { ActivityRow, Composer, shortDate, SourceNumber, ThinkingRow, ThreadHeader, ThreadNote, UserBubble } from "@/components/app/chat/thread-parts";
+import { ActivityRow, Composer, PromptLabel, shortDate, SourceNumber, ThinkingRow, ThreadHeader, ThreadNote, UserBubble } from "@/components/app/chat/thread-parts";
 import { TraceToggle } from "@/components/app/chat/trace-toggle";
 import { headerAction } from "@/components/app/chat/styles";
 import { useResearchChat } from "@/components/app/chat/use-research-chat";
@@ -30,6 +31,8 @@ export type BoardMarket = { price?: number; changePct?: number; relativePp?: num
 
 type Props = {
   team: { id: string; slug: string; name: string };
+  /** The scope the board was opened in (the fund, or the holding's team); its URLs stay there. */
+  scopeSlug: string;
   holding: { id: string; ticker: string; name: string };
   market: Promise<BoardMarket>;
   /** An open movement: the analyst owes an update (`overdue` once the due time has passed). */
@@ -83,7 +86,7 @@ export function HoldingBoard(props: Props) {
   const [tab, setTab] = useState<SideTab>(props.initialChatId ? "sources" : "board");
 
   const chat = chats.find((c) => c.id === chatId) ?? null;
-  const boardPath = `/t/${team.slug}/agent/h/${holding.ticker}`;
+  const boardPath = boardHref(props.scopeSlug, team.slug, holding.ticker);
   const syncUrl = (id: string | null, push: boolean) => {
     const url = id ? `${boardPath}?chat=${id}` : boardPath;
     if (push) window.history.pushState(null, "", url);
@@ -291,10 +294,13 @@ function BoardQuote({ market }: { market: Promise<BoardMarket> }) {
   const m = use(market);
   if (m.changePct === undefined) return <div className="mt-1 text-[11.5px] text-muted-foreground">Quote unavailable</div>;
   const tone = (v: number) => (v > 0.005 ? "text-up" : v < -0.005 ? "text-down" : "text-muted-foreground");
-  const pct = (v: number) => (v < 0 ? `(${Math.abs(v).toFixed(2)}%)` : `${v > 0 ? "+" : ""}${v.toFixed(2)}%`);
+  const pct = (v: number) => {
+    const s = fixed(Math.abs(v), 2);
+    return Number(s) === 0 ? `${s}%` : v < 0 ? `(${s}%)` : `+${s}%`;
+  };
   const bps = (pp: number) => {
     const n = Math.round(Math.abs(pp) * 100);
-    return pp < 0 ? `(${n} bps)` : `${pp > 0 ? "+" : ""}${n} bps`;
+    return n === 0 ? "0 bps" : pp < 0 ? `(${n} bps)` : `+${n} bps`;
   };
   return (
     <div className="mt-1 flex flex-wrap items-baseline gap-x-2 font-mono text-xs tabular-nums" title={m.asOf ? `As of ${fmtDateTime(m.asOf)}` : undefined}>
@@ -398,7 +404,7 @@ function EmptyBoard({ header, loadError, holding, configured, busy, hasChats, on
             if (draft.trim()) onAsk(draft);
           }}
           disabled={busy || !configured}
-          placeholder={configured ? "Ask about a holding, a filing, a move…" : "Hoot is not configured: add OPENROUTER_API_KEY"}
+          placeholder={configured ? "Ask about a holding, a filing, a move…" : "Hoot isn't set up yet: an admin needs to turn it on"}
           sees={`${holding.ticker} research board`}
         />
       </CenterColumn>
@@ -566,9 +572,13 @@ function BoardThread({
               const trace = t === last ? traceView : null;
               return (
                 <div key={t.id} onClick={() => activate(t)} className={cn("flex flex-col gap-3", !isActive && "cursor-pointer")} aria-current={isActive && turns.length > 1 ? "true" : undefined}>
-                  <UserBubble>
-                    <p>{t.question}</p>
-                  </UserBubble>
+                  {t.label ? (
+                    <PromptLabel>{t.label}</PromptLabel>
+                  ) : (
+                    <UserBubble>
+                      <p>{t.question}</p>
+                    </UserBubble>
+                  )}
                   {t.assistant && (t.activity.length > 0 || turnLive || trace) && (
                     <div onClick={(e) => e.stopPropagation()}>
                       <ActivityRow parts={t.activity} live={turnLive && !t.answerText} trace={trace} now={now} thinking />
@@ -597,7 +607,7 @@ function BoardThread({
           onStop={stopWatching}
           streaming={streaming}
           disabled={!configured || catchingUp}
-          placeholder={!configured ? "Hoot is not configured: add OPENROUTER_API_KEY" : catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…"}
+          placeholder={!configured ? "Hoot isn't set up yet: an admin needs to turn it on" : catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…"}
           sees={`${holding.ticker} research board`}
         />
       </CenterColumn>

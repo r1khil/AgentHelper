@@ -41,7 +41,10 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { setHootEnabled, setTransparencyMode } from "@/lib/actions/preferences";
+import { resolveScope } from "@/lib/scope";
 import { replayTour } from "./tour/tour-store";
+import { useScopeSlug } from "./shell/scope-context";
+import { markScopeIntent } from "./shell/scope-intent";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,14 +62,14 @@ type Props = { user: SidebarUser; teams: Team[]; signOut: () => Promise<void> };
 type Icon = React.ComponentType<{ className?: string }>;
 type NavLink = { href: string; label: string; icon: Icon; exact?: boolean; also?: string };
 
-/** Which team the section nav points at. Execs and admins default to the whole fund; everyone else to their team. */
+/**
+ * Which scope the section nav points at: the URL's own, else the one the app shell remembers (so Today or a Hoot
+ * chat doesn't change it), else the whole fund for execs and admins and their team for everyone else.
+ */
 export function useCurrentTeam(teams: Team[], user: SidebarUser, fundWide: boolean): Team | "fund" | null {
   const pathname = usePathname();
-  const m = pathname.match(/^\/t\/([^/]+)/);
-  const fromPath = m ? teams.find((t) => t.slug === m[1]) : undefined;
-  if (fromPath) return fromPath;
-  if (fundWide) return "fund";
-  return teams.find((t) => t.id === user.teamId) ?? teams[0] ?? null;
+  const remembered = useScopeSlug();
+  return resolveScope({ pathname, remembered, teams, fundWide, userTeamId: user.teamId });
 }
 
 /** The list page under /t/<slug>/ being viewed ("" for Holdings), so switching scope keeps the reader on it. */
@@ -83,12 +86,15 @@ export function useTeamSection() {
   return section === "/h" ? "" : section;
 }
 
-/** The previous sidebar, kept for the classic Backtesting layout. */
-export function Sidebar(props: Props) {
+/**
+ * The previous sidebar, kept for the classic Backtesting layout. Hoot, when he's on, is docked beside the account row
+ * (`hoot`); his bubbles and panel open to the sidebar's right, which is why it stacks above the content.
+ */
+export function Sidebar({ hoot, ...props }: Props & { hoot?: React.ReactNode }) {
   return (
     <>
-      <aside data-tour="sidebar" className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
-        <SidebarBody {...props} />
+      <aside data-tour="sidebar" className="sticky top-0 z-30 hidden h-screen w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
+        <SidebarBody {...props} dock={hoot} />
       </aside>
       <MobileBar {...props} />
     </>
@@ -120,7 +126,7 @@ export function MobileBar(props: Props) {
   );
 }
 
-function SidebarBody({ user, teams, signOut }: Props) {
+function SidebarBody({ user, teams, signOut, dock }: Props & { dock?: React.ReactNode }) {
   const pathname = usePathname();
   const fundWide = user.role === "exec" || user.role === "admin";
   const current = useCurrentTeam(teams, user, fundWide);
@@ -193,8 +199,16 @@ function SidebarBody({ user, teams, signOut }: Props) {
         )}
       </div>
 
-      <div className="border-t p-3">
-        <AccountMenu user={user} fundWide={fundWide} signOut={signOut} />
+      <div className="flex items-center gap-1 border-t p-3">
+        <div className="min-w-0 flex-1">
+          <AccountMenu user={user} fundWide={fundWide} signOut={signOut} />
+        </div>
+        {/* Beside the account row, so he costs the navigation no height. */}
+        {dock && (
+          <div data-hoot-dock="sidebar" className="-my-2 grid size-[60px] shrink-0 place-items-center">
+            {dock}
+          </div>
+        )}
       </div>
     </>
   );
@@ -312,7 +326,7 @@ export function ScopeSwitcher({ teams, current, fundWide, variant = "card" }: { 
 
 function ScopeItem({ href, selected, children }: { href: string; selected: boolean; children: React.ReactNode }) {
   return (
-    <DropdownMenuItem render={<Link href={href} />} className={cn(selected && "font-medium")}>
+    <DropdownMenuItem render={<Link href={href} onClick={() => markScopeIntent()} />} className={cn(selected && "font-medium")}>
       <span className="min-w-0 flex-1">{children}</span>
       {selected && <Check className="text-muted-foreground" />}
     </DropdownMenuItem>
@@ -410,14 +424,14 @@ function HootIcon({ className }: { className?: string }) {
 
 const prefRow = "flex items-center gap-2.5 rounded-md px-1.5 py-1.5";
 
-/** Show or hide Hoot, the companion in the corner. Persisted on the profile. */
+/** Show or hide Hoot, the companion at the bottom of the menu. Persisted on the profile. */
 function HootToggle({ on }: { on: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return (
-    <label className={cn(prefRow, "cursor-pointer hover:bg-accent")} title="Hoot in the corner of every page: flags deadlines and takes quick questions">
+    <label className={cn(prefRow, "cursor-pointer hover:bg-accent")} title="Hoot at the bottom of the menu on every page: flags deadlines and takes quick questions">
       <HootIcon className="size-4 shrink-0" />
-      <span className="min-w-0 flex-1 text-sm">Floating Hoot</span>
+      <span className="min-w-0 flex-1 text-sm">Hoot in the menu</span>
       <Switch
         checked={on}
         disabled={pending}

@@ -54,6 +54,9 @@ export type EarningsDate = {
   isEstimate: boolean;
   epsEstimate?: number;
   revenueEstimate?: number;
+  /** ISO codes for the estimates. They can differ: TSM's EPS is per ADR in USD, its revenue is in TWD. */
+  epsCurrency?: string;
+  revenueCurrency?: string;
   fiscalPeriod?: string;
   sourceUrl?: string;
 };

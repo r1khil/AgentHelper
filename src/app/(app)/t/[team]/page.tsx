@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DateTime } from "luxon";
 import { loadScope } from "@/lib/teams";
+import { holdingHref, scopeFor } from "@/lib/scope";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { listHoldingSignals, listRecentCloses, listTeamHoldings, listTeamMembers } from "@/lib/holdings";
 import { marketSnapshot, type MarketSnapshot } from "@/lib/market";
@@ -44,14 +45,15 @@ export default async function TeamHoldingsPage({ params, searchParams }: { param
       teamId: h.teamId,
       ticker: h.ticker,
       company: h.companyName,
-      href: `/t/${t?.slug ?? slug}/h/${encodeURIComponent(h.ticker)}`,
+      href: holdingHref(slug, t?.slug ?? slug, h.ticker),
       weightPct: h.weightPct == null ? null : Number(h.weightPct),
       shares: h.shares == null ? null : Number(h.shares),
       spark: closes.get(h.ticker) ?? [],
       nextReport: next ? `${shortDate(next.reportDate)}${next.estimated ? " est." : ""}` : null,
       flags: attentionFlags(
         { openMovement: s?.openMovement ?? null, nextReport: next, modelUpdates: s?.modelUpdates ?? 0, thesisProposed: s?.thesisProposed ?? false, hasOwner: !!h.ownerId },
-        { teamSlug: t?.slug ?? slug, ticker: h.ticker, today, now },
+        // Flags link within the scope in view, like the row itself.
+        { teamSlug: scopeFor(slug, t?.slug ?? slug), ticker: h.ticker, today, now },
       ),
       owner: ownerName,
       reporting: reportsWithin(next?.reportDate, today),

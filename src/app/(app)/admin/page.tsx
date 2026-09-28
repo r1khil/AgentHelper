@@ -9,6 +9,7 @@ import { embeddingStats } from "@/lib/documents/index";
 import { getSetting } from "@/lib/settings";
 import { WEEKLY_EMAIL_DEFAULT, WEEKLY_RECIPIENTS_SETTING } from "@/lib/weekly/email";
 import { FILINGS_LAST_SYNC_SETTING } from "@/lib/jobs/filings";
+import { changelogModelId } from "@/lib/changelog/summarize";
 import { tavilyConfigured } from "@/lib/web/tavily";
 import { listMcpServers } from "@/lib/agent/mcp";
 import { mcpBudgets } from "@/lib/agent/mcp-budget";
@@ -73,9 +74,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     db.select().from(invitations).where(isNull(invitations.acceptedAt)).orderBy(desc(invitations.createdAt)),
     lastActivity(),
   ]);
-  const [mcpBudget, retrieval] = await Promise.all([
+  const [mcpBudget, retrieval, changelogModel] = await Promise.all([
     mcpBudgets(mcp.map((m) => m.name)).catch(() => ({}) as Awaited<ReturnType<typeof mcpBudgets>>),
     embeddingStats(embedId).catch(() => null),
+    changelogModelId(),
   ]);
 
   const runs: JobRunView[] = runRows.map((r) => ({
@@ -146,6 +148,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       driveUnmatched={((lastDriveRun?.summary as { unmatched?: string[] } | undefined)?.unmatched ?? []).slice(0, 12)}
       filings={{ lastSync: filingsLastSync, lastRun: lastFilingsRun ? { ok: lastFilingsRun.ok, at: lastFilingsRun.startedAt.toISOString() } : null }}
       agent={{ id: currentModelId, label: currentModel?.label ?? null, options: AGENT_MODELS.map((m) => ({ id: m.id, label: m.label })) }}
+      changelogModel={changelogModel}
       retrieval={{
         configured: embeddingConfigured(),
         embedId,

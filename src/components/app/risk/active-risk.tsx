@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ScopedLink } from "@/components/app/shell/scope-context";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Segmented } from "@/components/app/panel";
@@ -172,7 +173,7 @@ function HoldingRow({ h, max, teams }: { h: ActiveRiskRow; max: number; teams: T
   return (
     <TableRow>
       <TableCell>
-        {team ? <Link href={`/t/${team.slug}/h/${h.ticker}`} className="font-mono font-semibold hover:underline">{h.ticker}</Link> : <span className="font-mono font-semibold">{h.ticker}</span>}
+        {team ? <ScopedLink owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} className="font-mono font-semibold hover:underline">{h.ticker}</ScopedLink> : <span className="font-mono font-semibold">{h.ticker}</span>}
         {h.source !== "own" && (
           <span className="ml-1.5 rounded border px-1 py-px text-[10px] text-muted-foreground" title={h.source === "proxy" ? `Too little price history; modeled with ${h.proxy}` : "No price history or sector; treated as riskless"}>
             {h.source === "proxy" ? `via ${h.proxy}` : "not modeled"}

@@ -31,6 +31,8 @@ export type CalendarEvent = {
   reportHour: string | null;
   dateStatus: "confirmed" | "estimated" | null;
   epsEstimate: string | null;
+  /** ISO code of `epsEstimate`; null when unknown, which shows no symbol. */
+  epsCurrency: string | null;
   // Holdings
   earningsId?: string;
   teamId?: string;
@@ -232,6 +234,7 @@ export function toCalendarEvents(rows: HoldingEventRow[], bellwethers: Bellwethe
       reportHour: r.e.reportHour,
       dateStatus: r.e.dateStatus,
       epsEstimate: r.e.epsEstimate,
+      epsCurrency: r.e.epsCurrency,
       earningsId: r.e.id,
       teamId: r.h.teamId,
       teamSlug: r.teamSlug,
@@ -253,6 +256,8 @@ export function toCalendarEvents(rows: HoldingEventRow[], bellwethers: Bellwethe
       reportHour: b.reportHour,
       dateStatus: b.dateStatus,
       epsEstimate: b.epsEstimate,
+      // Bellwethers are top constituents of the sector SPDRs, so S&P 500 companies reporting in dollars.
+      epsCurrency: "USD",
       etf: b.etf,
       weightPct: b.weightPct,
     });

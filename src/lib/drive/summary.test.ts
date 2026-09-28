@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_SUMMARY, isEmptySummary, parseSummaryJson, summaryInput, summaryToPromptLines } from "./summary";
+import { EMPTY_SUMMARY, isFailedSummary, parseSummaryJson, summaryInput, summaryToPromptLines } from "./summary";
 
 const good = { oneLine: "Initiating at Buy.", thesis: "Margins expand as mix shifts.", rating: "Buy", priceTarget: "$245 (12-month)", keyNumbers: ["FY2025 revenue: $17.9B"], catalysts: ["Q3 print"], risks: ["FX"], docDate: "2025-03-01", evidenceNote: null };
 
@@ -13,33 +13,53 @@ describe("parseSummaryJson", () => {
     expect(parseSummaryJson(wrapped)).toEqual(good);
   });
 
-  it("returns an empty summary with a note on garbage", () => {
-    const s = parseSummaryJson("no json here");
-    expect(isEmptySummary(s)).toBe(true);
-    expect(s.evidenceNote).toMatch(/could not be parsed/);
-    expect(parseSummaryJson("{ not valid").evidenceNote).toMatch(/could not be parsed/);
-    expect(parseSummaryJson("[1,2]").evidenceNote).toMatch(/could not be parsed/);
+  it("tolerates trailing commas and an unclosed fence", () => {
+    const sloppy = `\`\`\`json\n{"oneLine":"Initiating at Buy.","thesis":"Margins expand as mix shifts.","rating":"Buy","priceTarget":"$245 (12-month)","keyNumbers":["FY2025 revenue: $17.9B",],"catalysts":["Q3 print"],"risks":["FX"],"docDate":"2025-03-01","evidenceNote":null,}`;
+    expect(parseSummaryJson(sloppy)).toEqual(good);
+  });
+
+  it("returns null, not a placeholder summary, when there is no JSON object", () => {
+    expect(parseSummaryJson("no json here")).toBeNull();
+    expect(parseSummaryJson("")).toBeNull();
+    expect(parseSummaryJson("{ not valid")).toBeNull();
+    expect(parseSummaryJson("[1,2]")).toBeNull();
   });
 
   it("clamps list lengths and item sizes, drops non-strings", () => {
     const s = parseSummaryJson(JSON.stringify({ ...good, keyNumbers: Array.from({ length: 20 }, (_, i) => `n${i}`), risks: [null, "", "  real  ", { a: "x", b: "y" }] }));
-    expect(s.keyNumbers).toHaveLength(8);
-    expect(s.risks).toEqual(["real", "x: y"]);
+    expect(s?.keyNumbers).toHaveLength(8);
+    expect(s?.risks).toEqual(["real", "x: y"]);
     const long = parseSummaryJson(JSON.stringify({ ...good, oneLine: "x".repeat(500) }));
-    expect(long.oneLine).toHaveLength(200);
+    expect(long?.oneLine).toHaveLength(200);
   });
 
   it("drops a docDate that is not yyyy-mm-dd or is out of range", () => {
-    expect(parseSummaryJson(JSON.stringify({ ...good, docDate: "March 2025" })).docDate).toBeNull();
-    expect(parseSummaryJson(JSON.stringify({ ...good, docDate: "2025-13-01" })).docDate).toBeNull();
-    expect(parseSummaryJson(JSON.stringify({ ...good, docDate: "1950-01-01" })).docDate).toBeNull();
-    expect(parseSummaryJson(JSON.stringify({ ...good, docDate: "2025-03-01" })).docDate).toBe("2025-03-01");
+    expect(parseSummaryJson(JSON.stringify({ ...good, docDate: "March 2025" }))?.docDate).toBeNull();
+    expect(parseSummaryJson(JSON.stringify({ ...good, docDate: "2025-13-01" }))?.docDate).toBeNull();
+    expect(parseSummaryJson(JSON.stringify({ ...good, docDate: "1950-01-01" }))?.docDate).toBeNull();
+    expect(parseSummaryJson(JSON.stringify({ ...good, docDate: "2025-03-01" }))?.docDate).toBe("2025-03-01");
   });
 
   it("treats whitespace-only strings as null", () => {
     const s = parseSummaryJson(JSON.stringify({ ...good, rating: "   ", thesis: "" }));
-    expect(s.rating).toBeNull();
-    expect(s.thesis).toBeNull();
+    expect(s?.rating).toBeNull();
+    expect(s?.thesis).toBeNull();
+  });
+});
+
+describe("isFailedSummary", () => {
+  const legacy = { ...EMPTY_SUMMARY, evidenceNote: "The summary could not be parsed from the model's reply." };
+
+  it("recognises the placeholder older code stored on a failed parse", () => {
+    expect(isFailedSummary(legacy)).toBe(true);
+    expect(summaryToPromptLines(legacy)).toBe("");
+  });
+
+  it("does not flag real summaries, genuine evidence notes, or a missing summary", () => {
+    expect(isFailedSummary(good)).toBe(false);
+    expect(isFailedSummary({ ...good, evidenceNote: legacy.evidenceNote })).toBe(false);
+    expect(isFailedSummary({ ...EMPTY_SUMMARY, evidenceNote: "The file is a blank template." })).toBe(false);
+    expect(isFailedSummary(null)).toBe(false);
   });
 });
 

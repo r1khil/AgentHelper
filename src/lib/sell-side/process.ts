@@ -7,6 +7,7 @@ import { downloadModelFile } from "@/lib/storage";
 import { collectSources } from "@/lib/agent/citations";
 import { makeTools, type ToolResult } from "@/lib/agent/tools";
 import { getChat, loadMessages, saveMessages, setRunStatus } from "@/lib/chats";
+import { callBriefLabel, hiddenPromptMessage } from "@/lib/agent/hidden-prompt";
 import { generateStructured } from "./generate";
 import { analysisMarkdown, callAnalysisSchema, partNotesSchema, repairAnalysis, savedAnalysis } from "./analysis";
 import { transcribeAudio } from "./transcribe";
@@ -121,7 +122,8 @@ export async function analyzeCall(callId: string, user: { id: string; fullName: 
       const input = { documentId: file.documentId, offset: 0, maxChars: READ_DOCUMENT_CHARS };
       messages.push(toolMessage("read_document", input, await toolOutput(await tools.read_document.execute!(input, options))));
     }
-    messages.push({ id: crypto.randomUUID(), role: "user", parts: [{ type: "text", text: summaryPrompt(ticker, callId) }] });
+    // Follow-up questions replay the prompt to the model; the thread shows it as "Call brief · <ticker>".
+    messages.push(hiddenPromptMessage(summaryPrompt(ticker, callId), callBriefLabel(ticker)));
     await saveMessages(chat.id, messages);
   }
   await setRunStatus(chat.id, "running");

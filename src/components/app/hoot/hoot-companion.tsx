@@ -42,7 +42,8 @@ const NOD: Keyframe[] = [{ transform: "translateY(0) rotate(0)" }, { transform: 
 const STRETCH: Keyframe[] = [{ transform: "scale(1, 1)" }, { transform: "scale(0.97, 1.05)", offset: 0.45 }, { transform: "scale(0.97, 1.05)", offset: 0.6 }, { transform: "scale(1, 1)" }];
 const WIGGLE: Keyframe[] = [{ transform: "rotate(0)" }, { transform: "rotate(-6deg)", offset: 0.2 }, { transform: "rotate(6deg)", offset: 0.45 }, { transform: "rotate(-3deg)", offset: 0.7 }, { transform: "rotate(0)" }];
 
-// Which bottom corner he sits in: a per-device convenience, so localStorage (unavailable storage just means "right").
+// With no menu on screen (phones) he floats in a bottom corner instead. Which one is a per-device convenience, so
+// localStorage (unavailable storage just means "right").
 type Corner = "left" | "right";
 const CORNER_KEY = "hoot:corner";
 const cornerListeners = new Set<() => void>();
@@ -102,12 +103,17 @@ function memberIsBusy() {
   return memberIsTyping() || !!document.querySelector('[role="dialog"], [role="alertdialog"]');
 }
 
+/** Where the companion lives on a desktop: at the bottom of the rail, or of the classic sidebar. */
+export type HootDock = "rail" | "sidebar";
+
 /**
- * Hoot, the floating companion in the bottom corner. His face tells you the state of things at a glance
- * (dozing after the close, alert on earnings day, worried about an overdue write-up); a click opens a quick ask
- * to research and everything that needs you. He speaks up on his own rarely: a few times a session at most.
+ * Hoot, the companion. On a desktop he sits at the bottom of the menu (`dock`), so he never covers the page; his
+ * speech bubbles and the panel open beside the menu, over the page, and close with a click away or Escape. With no
+ * menu on screen (phones) he floats in a bottom corner. His face tells you the state of things at a glance (dozing
+ * after the close, alert on earnings day, worried about an overdue write-up); a click opens a quick ask to research
+ * and everything that needs you. He speaks up on his own rarely: a few times a session at most.
  */
-export function HootCompanion({ firstName, suppressed = false }: { firstName: string; suppressed?: boolean }) {
+export function HootCompanion({ firstName, suppressed = false, dock = null }: { firstName: string; suppressed?: boolean; dock?: HootDock | null }) {
   const pathname = usePathname();
   const router = useRouter();
   const runCommand = useHootCommand();
@@ -201,13 +207,14 @@ export function HootCompanion({ firstName, suppressed = false }: { firstName: st
       firstPage.current = false;
       return;
     }
-    const look = window.setTimeout(() => setGlance({ x: side === "right" ? -0.9 : 0.9, y: -0.3 }), 120);
+    // Docked in the menu, the page is always to his right.
+    const look = window.setTimeout(() => setGlance({ x: dock || side === "left" ? 0.9 : -0.9, y: -0.3 }), 120);
     const back = window.setTimeout(() => setGlance(null), 1100);
     return () => {
       window.clearTimeout(look);
       window.clearTimeout(back);
     };
-  }, [pathname, side]);
+  }, [pathname, side, dock]);
 
   useEffect(() => {
     if (!feed || hidden || open || bubble || pageSpoke.current) return;
@@ -383,7 +390,7 @@ export function HootCompanion({ firstName, suppressed = false }: { firstName: st
       await setHootEnabled(false);
       router.refresh();
       toast("Hoot is taking a nap", {
-        description: "Bring him back any time from the sidebar.",
+        description: "Bring him back any time: click your initials, then Hoot in the menu.",
         action: {
           label: "Undo",
           // Hoot has unmounted by now, so this can't lean on his transition.
@@ -405,11 +412,11 @@ export function HootCompanion({ firstName, suppressed = false }: { firstName: st
   return (
     <div
       className={cn(
-        "pointer-events-none fixed bottom-3 z-40 flex flex-col gap-2 md:bottom-[18px]",
-        // On the left he sits just past the rail, never over its account menu.
-        side === "right" ? "right-3 items-end md:right-5" : "left-3 items-start md:left-[calc(76px+1.25rem)]",
+        dock
+          ? "relative flex flex-col items-center"
+          : cn("pointer-events-none fixed bottom-3 z-40 flex flex-col gap-2", side === "right" ? "right-3 items-end" : "left-3 items-start"),
       )}
-      style={{ paddingBottom: "env(safe-area-inset-bottom)", transform: drag ? `translate(${drag.dx}px, ${drag.dy}px)` : undefined }}
+      style={dock ? undefined : { paddingBottom: "env(safe-area-inset-bottom)", transform: drag ? `translate(${drag.dx}px, ${drag.dy}px)` : undefined }}
       // A drag ends with a click on the trigger; don't let it open the panel.
       onClickCapture={(e) => {
         if (!swallowClick.current) return;
@@ -424,7 +431,11 @@ export function HootCompanion({ firstName, suppressed = false }: { firstName: st
           aria-live="polite"
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
-          className="hoot-arrive pointer-events-auto relative mx-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-3 pr-8 text-sm text-popover-foreground shadow-lg"
+          className={cn(
+            "hoot-arrive pointer-events-auto w-64 max-w-[calc(100vw-2rem)] rounded-xl border bg-popover p-3 pr-8 text-sm text-popover-foreground shadow-lg",
+            // Docked, he speaks from beside the menu, over the page's bottom-left corner, for a few seconds at most.
+            dock ? "absolute bottom-1 left-full z-10 ml-3" : "relative mx-2",
+          )}
         >
           <div className="leading-snug font-medium">{bubble.title}</div>
           {bubble.detail && <div className="mt-1 text-xs leading-snug text-muted-foreground">{bubble.detail}</div>}
@@ -452,7 +463,13 @@ export function HootCompanion({ firstName, suppressed = false }: { firstName: st
             <X className="size-3.5" />
           </button>
           {/* Tail pointing at Hoot. */}
-          <span aria-hidden className={cn("absolute -bottom-1.5 size-3 rotate-45 border-r border-b bg-popover", side === "right" ? "right-8" : "left-8")} />
+          <span
+            aria-hidden
+            className={cn(
+              "absolute size-3 rotate-45 bg-popover",
+              dock ? "bottom-5 -left-1.5 border-b border-l" : cn("-bottom-1.5 border-r border-b", side === "right" ? "right-8" : "left-8"),
+            )}
+          />
         </div>
       )}
 
@@ -487,9 +504,9 @@ export function HootCompanion({ firstName, suppressed = false }: { firstName: st
                 setHovered(false);
                 cancelPet();
               }}
-              // Drag him to the other bottom corner. A short movement is still a click.
+              // Floating, drag him to the other bottom corner (a short movement is still a click). Docked, he stays put.
               onPointerDown={(e) => {
-                if (e.button !== 0) return;
+                if (dock || e.button !== 0) return;
                 cancelPet();
                 lastTouch.current = Date.now();
                 dragFrom.current = { x: e.clientX, y: e.clientY, moved: false };
@@ -516,7 +533,7 @@ export function HootCompanion({ firstName, suppressed = false }: { firstName: st
                 dragFrom.current = null;
                 setDrag(null);
               }}
-              style={{ touchAction: "none" }}
+              style={dock ? undefined : { touchAction: "none" }}
               className={cn(
                 "hoot-arrive group pointer-events-auto relative rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 drag ? "cursor-grabbing" : "cursor-pointer",
@@ -534,17 +551,29 @@ export function HootCompanion({ firstName, suppressed = false }: { firstName: st
             </span>
           </span>
           {mood === "sleepy" && (
-            <span aria-hidden className="hoot-zzz absolute -top-1 right-1 text-[11px] font-semibold text-muted-foreground">
+            <span aria-hidden className={cn("hoot-zzz absolute -top-1 right-1 text-[11px] font-semibold", dock === "rail" ? "text-rail-foreground" : "text-muted-foreground")}>
               z
             </span>
           )}
           {urgent > 0 && (
-            <span aria-hidden className="absolute top-0.5 right-0.5 grid size-4.5 place-items-center rounded-full bg-down text-[10px] font-semibold text-white ring-2 ring-background">
+            <span
+              aria-hidden
+              className={cn(
+                "absolute top-0.5 right-0.5 grid size-4.5 place-items-center rounded-full bg-down text-[10px] font-semibold text-white ring-2",
+                dock === "rail" ? "ring-rail" : dock === "sidebar" ? "ring-sidebar" : "ring-background",
+              )}
+            >
               {urgent}
             </span>
           )}
         </PopoverTrigger>
-        <PopoverContent side="top" align={side === "right" ? "end" : "start"} sideOffset={10} className="w-[22rem] max-w-[calc(100vw-1.5rem)] gap-0 overflow-hidden p-0">
+        {/* Docked, the panel opens beside the menu, bottom-aligned with him, and grows upward. */}
+        <PopoverContent
+          side={dock ? "right" : "top"}
+          align={dock || side === "right" ? "end" : "start"}
+          sideOffset={dock ? 14 : 10}
+          className="w-[22rem] max-w-[calc(100vw-1.5rem)] gap-0 overflow-hidden p-0"
+        >
           <HootPanel
             greeting={greeting(new Date(), firstName)}
             suggestions={suggestionsFor(pathname, ticker)}
@@ -562,10 +591,14 @@ export function HootCompanion({ firstName, suppressed = false }: { firstName: st
             onDismiss={(n) => persistDismiss(n.id)}
             onHide={hide}
             side={side}
-            onMove={() => {
-              setOpen(false);
-              moveTo(side === "right" ? "left" : "right");
-            }}
+            onMove={
+              dock
+                ? undefined
+                : () => {
+                    setOpen(false);
+                    moveTo(side === "right" ? "left" : "right");
+                  }
+            }
             onClose={() => setOpen(false)}
           />
         </PopoverContent>

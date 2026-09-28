@@ -8,6 +8,7 @@ import { getChat, loadMessages, effectiveRunStatus } from "@/lib/chats";
 import { agentConfigured } from "@/lib/agent/model";
 import { canOpenChat, transparencyEnabled, type CurrentUser } from "@/lib/auth";
 import type { TeamIds } from "@/lib/team-filter";
+import { sellSideHref } from "@/lib/scope";
 import { HootMoodFor } from "@/components/app/hoot/presence";
 import { NewCall } from "@/components/app/sell-side/new-call";
 import { CallWorkspace } from "@/components/app/sell-side/call-workspace";
@@ -17,7 +18,7 @@ import { PickACall, PickATeam, SellSideLayout, type SavedCallRow } from "@/compo
 import { listStatus, minutesLabel } from "@/components/app/sell-side/timeline";
 
 type Call = Awaited<ReturnType<typeof listCalls>>[number];
-export type SellSideScope = { team: Team | null; teamIds: TeamIds; teamById: Map<string, Team>; user: CurrentUser };
+export type SellSideScope = { slug: string; team: Team | null; teamIds: TeamIds; teamById: Map<string, Team>; user: CurrentUser };
 
 const TZ = "America/New_York";
 const year = (d: Date) => new Intl.DateTimeFormat("en-US", { year: "numeric", timeZone: TZ }).format(d);
@@ -71,7 +72,7 @@ export async function SellSideScreen({ scope, call }: { scope: SellSideScope; ca
     const counts = facts.counts(c.id);
     return {
       id: c.id,
-      href: `/t/${teamById.get(c.teamId)?.slug}/sell-side/${c.id}`,
+      href: sellSideHref(scope.slug, teamById.get(c.teamId)?.slug ?? scope.slug, c.id),
       ticker: c.ticker,
       title: c.title,
       meta: [facts.name(c), shortDate(c.createdAt), counts.seconds > 0 ? minutesLabel(counts.seconds) : null, !team ? teamById.get(c.teamId)?.name : null]

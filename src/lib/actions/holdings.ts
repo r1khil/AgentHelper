@@ -9,6 +9,8 @@ import { holdingNotes, holdings, profiles, teams } from "@/db/schema";
 import { canManageTeam, requireTeamAccess, requireUser } from "@/lib/auth";
 import { lookupCompany } from "@/lib/providers/yahoo";
 import { tickerToCik } from "@/lib/providers/edgar";
+import { scopedHref } from "@/lib/scope";
+import { rememberedScope } from "@/lib/teams";
 
 async function teamSlug(teamId: string) {
   const [t] = await db.select({ slug: teams.slug }).from(teams).where(eq(teams.id, teamId)).limit(1);
@@ -85,7 +87,8 @@ export async function exitHolding(fd: FormData) {
   await db.update(holdings).set({ status: "exited", exitedAt: new Date().toISOString().slice(0, 10) }).where(eq(holdings.id, holdingId));
   const slug = await teamSlug(h.teamId);
   revalidatePath(`/t/${slug}`);
-  redirect(`/t/${slug}`);
+  // Back to the holdings list in the scope the member is in (the fund's or this team's).
+  redirect(scopedHref(await rememberedScope(user), slug));
 }
 
 export async function addNote(fd: FormData) {

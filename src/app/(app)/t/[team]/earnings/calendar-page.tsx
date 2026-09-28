@@ -98,6 +98,7 @@ export async function CalendarPage({ slug, sp, route, defaultShow }: { slug: str
       reportHour: e.reportHour,
       dateStatus: e.dateStatus,
       epsEstimate: e.epsEstimate,
+      epsCurrency: e.epsCurrency,
       expectations: expectationsState(e),
       status: e.status,
     };
@@ -106,6 +107,7 @@ export async function CalendarPage({ slug, sp, route, defaultShow }: { slug: str
   return (
     <CalendarView
       base={`/t/${scope.slug}/${route}`}
+      scopeSlug={scope.slug}
       defaultShow={defaultShow}
       query={query}
       today={today}

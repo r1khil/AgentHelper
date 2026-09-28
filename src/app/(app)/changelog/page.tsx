@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { requireRole } from "@/lib/auth";
 import { changelogConfigured } from "@/lib/changelog/github";
 import { changelogBacklog, loadChangelog, syncChangelog } from "@/lib/changelog";
-import { FALLBACK_MODEL, changelogModelId } from "@/lib/changelog/summarize";
+import { FALLBACK_MODEL } from "@/lib/changelog/summarize";
 import { EmptyState } from "@/components/app/empty-state";
 import { ChangelogView } from "./changelog-view";
 
@@ -33,7 +33,7 @@ export default async function ChangelogPage() {
   }
 
   // Only the database is awaited here; GitHub and the summary model never hold up the page.
-  const [entries, model] = await Promise.all([loadChangelog(), changelogModelId()]);
+  const entries = await loadChangelog();
 
   return (
     <ChangelogView
@@ -47,7 +47,6 @@ export default async function ChangelogPage() {
         fallback: e.model === FALLBACK_MODEL,
       }))}
       isAdmin={isAdmin}
-      model={model}
       now={new Date().toISOString()}
       status={
         <Suspense fallback="Checking GitHub…">

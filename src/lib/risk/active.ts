@@ -1,4 +1,5 @@
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
+import { fixed } from "@/lib/format";
 import { TRADING_DAYS, sum, volAfterBump } from "./math";
 import type { HoldingRisk, RiskReport } from "./model";
 
@@ -29,8 +30,11 @@ export type ActiveRisk = {
   sentences: string[];
 };
 
-const p1 = (x: number) => `${(x * 100).toFixed(1)}%`;
-const pp = (x: number, d = 1) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(x * 100).toFixed(d)} pp`;
+const p1 = (x: number) => `${fixed(x * 100, 1)}%`;
+const pp = (x: number, d = 1) => {
+  const s = fixed(Math.abs(x * 100), d);
+  return `${Number(s) === 0 ? "" : x > 0 ? "+" : "−"}${s} pp`;
+};
 /** marginalTe is TE (a fraction) per unit of weight, so it is also "pp of TE per pp of weight". */
 const ppPerPp = (m: number) => `${Math.abs(m).toFixed(2)} pp`;
 

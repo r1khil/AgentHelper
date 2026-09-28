@@ -10,6 +10,8 @@ import { gatherEarningsResults } from "@/lib/jobs/earnings-results";
 import { buildPrepPack } from "@/lib/jobs/earnings-prep";
 import { listEarningsEvidence, type Actuals } from "@/lib/earnings";
 import { reasoningFeedback } from "@/lib/agent/feedback";
+import { earningsHref } from "@/lib/scope";
+import { rememberedScope } from "@/lib/teams";
 
 async function load(id: string) {
   const [row] = await db.select({ e: earnings, h: holdings, slug: teams.slug }).from(earnings).innerJoin(holdings, eq(holdings.id, earnings.holdingId)).innerJoin(teams, eq(teams.id, holdings.teamId)).where(eq(earnings.id, id)).limit(1);
@@ -87,9 +89,11 @@ export async function requestEarningsFeedback(fd: FormData) {
 export async function rebuildPrepPack(fd: FormData) {
   const row = await load(String(fd.get("id") ?? ""));
   if (!row) return;
-  if (!canManageTeam(row.user, row.h.teamId)) redirect(row.path);
+  // Back to the report in the scope it was opened in (the fund's or its team's).
+  const back = earningsHref(await rememberedScope(row.user), row.slug, row.e.id);
+  if (!canManageTeam(row.user, row.h.teamId)) redirect(back);
   const r = await buildPrepPack(row.e.id);
   revalidatePath(row.path);
   revalidatePath(`/t/${row.slug}/agent/h/${row.h.ticker}`);
-  redirect(r.ok ? row.path : `${row.path}?error=${encodeURIComponent(r.error)}`);
+  redirect(r.ok ? back : `${back}?error=${encodeURIComponent(r.error)}`);
 }

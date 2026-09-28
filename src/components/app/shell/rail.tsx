@@ -18,7 +18,8 @@ const ICONS: Record<RailKey, React.ComponentType<{ className?: string }>> = {
 
 /**
  * The slim navigation rail: five destinations, Manage at the bottom for execs and admins, and the account menu.
- * The logo is typographic on purpose; Hoot appears once per screen, and never here.
+ * The logo is typographic on purpose. Hoot, when he's on, is docked just above Manage (`hoot`), so he never sits
+ * over the page; his bubbles and panel open to the rail's right, which is why the rail stacks above the content.
  */
 export function Rail({
   nav,
@@ -28,6 +29,7 @@ export function Rail({
   fundWide,
   signOut,
   destinations,
+  hoot,
 }: {
   nav: NavModel;
   user: SidebarUser;
@@ -36,11 +38,13 @@ export function Rail({
   fundWide: boolean;
   signOut: () => Promise<void>;
   destinations: { label: string; href: string }[];
+  /** The docked companion. His spot stays reserved while he steps aside, so nothing below it moves. */
+  hoot?: React.ReactNode;
 }) {
   return (
     <aside
       data-tour="sidebar"
-      className="sticky top-0 hidden h-dvh w-[76px] shrink-0 flex-col items-center bg-rail py-3 text-rail-foreground md:flex"
+      className="sticky top-0 z-30 hidden h-dvh w-[76px] shrink-0 flex-col items-center bg-rail py-3 text-rail-foreground md:flex"
     >
       <Link
         href="/"
@@ -59,6 +63,11 @@ export function Rail({
         ))}
       </nav>
       <div className="min-h-3 flex-1" />
+      {hoot && (
+        <div data-hoot-dock="rail" className="mb-3 grid size-[60px] shrink-0 place-items-center">
+          {hoot}
+        </div>
+      )}
       {nav.manage && (
         <div className="mb-3">
           <RailLink item={nav.manage} />

@@ -5,6 +5,8 @@ import { earnings, holdings, profiles, teams, type Team } from "@/db/schema";
 import { canManageTeam, isFundWide, type CurrentUser } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { loadHootFeed } from "@/lib/hoot/nudges";
+import { holdingHref } from "@/lib/scope";
+import { rememberedScope } from "@/lib/teams";
 import type { HootNudge } from "@/lib/hoot/types";
 import { marketSnapshot, type MarketSnapshot } from "@/lib/market";
 import { todayNY } from "@/lib/providers/calendar";
@@ -73,7 +75,8 @@ export async function TodayView({ user, myTeams }: { user: CurrentUser; myTeams:
   const market = marketSnapshot(activeHoldings.map((r) => r.h.ticker));
   const book = fundWide ? loadFundBook() : bookTeam ? loadTeamBook(bookTeam) : null;
   const scopeSlug = fundWide ? FUND_SCOPE_SLUG : (ownTeam ?? myTeams[0]).slug;
-  const teamInput: TeamInput = { teams: myTeams, rows: activeHoldings, upcoming };
+  // Holdings open in the scope the member is in when it shows them, so following one doesn't switch scope.
+  const teamInput: TeamInput = { teams: myTeams, rows: activeHoldings, upcoming, scope: (await rememberedScope(user)) ?? scopeSlug };
 
   return (
     <TodayFeed initial={feed.nudges} loadedAt={now.toISOString()}>
@@ -84,6 +87,7 @@ export async function TodayView({ user, myTeams }: { user: CurrentUser; myTeams:
             name={firstName}
             dateLine={marketLine(now)}
             askHref={`/t/${scopeSlug}/agent`}
+            analyst={user.role === "associate_analyst"}
             lead={
               book && (
                 <Suspense fallback={null}>
@@ -128,7 +132,7 @@ async function LastSession({ book }: { book: Promise<Book> }) {
 /* ----------------------------------------------------------------------------------------------- Teams */
 
 type HoldingListRow = { h: typeof holdings.$inferSelect; teamSlug: string; ownerName: string | null };
-type TeamInput = { teams: Team[]; rows: HoldingListRow[]; upcoming: UpcomingReport[] };
+type TeamInput = { teams: Team[]; rows: HoldingListRow[]; upcoming: UpcomingReport[]; scope: string };
 
 async function LiveTeams({ input, market, book, holdingsHref }: { input: TeamInput; market: Promise<MarketSnapshot>; book: Promise<Book> | null; holdingsHref: string }) {
   const [m, b] = await Promise.all([market, book]);
@@ -141,7 +145,7 @@ async function LiveTeams({ input, market, book, holdingsHref }: { input: TeamInp
  * Each team's row: last session's return and contribution from attribution, the biggest mover (last session's
  * holding return from attribution; today's live move for readers without the book), and its holdings.
  */
-function teamRows({ teams: teamList, rows, upcoming }: TeamInput, market?: MarketSnapshot, book?: Book): TeamRowData[] {
+function teamRows({ teams: teamList, rows, upcoming, scope }: TeamInput, market?: MarketSnapshot, book?: Book): TeamRowData[] {
   const next = nextReportByTicker(upcoming);
   const stats = book && book.kind !== "none" ? book : null;
   const change = (t: string) => market?.rows[t]?.quote?.changePct;
@@ -174,8 +178,9 @@ function teamRows({ teams: teamList, rows, upcoming }: TeamInput, market?: Marke
         return {
           id: h.id,
           ticker: h.ticker,
-          href: `/t/${teamSlug}/h/${h.ticker}`,
+          href: holdingHref(scope, teamSlug, h.ticker),
           price: q?.quote?.price ?? null,
+          currency: q?.quote?.currency ?? null,
           changePct: q?.quote?.changePct ?? null,
           relativePp: q?.relativePp ?? null,
           nextReport: report ? `${monthDay(report.reportDate)}${report.dateStatus === "estimated" ? " est." : ""}` : null,

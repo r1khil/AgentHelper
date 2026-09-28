@@ -158,6 +158,21 @@ export function sessionSentence(r: { subject: string; vs: string; diffBps: numbe
   return `${r.subject} ${r.diffBps > 0 ? "beat" : "trailed"} ${r.vs} by ${bps} ${bps === 1 ? "bp" : "bps"} on ${r.weekday}.`;
 }
 
+export type ScoreCell = { label: string; value: number | null; unit: "%" | " bp"; tone: boolean };
+export type ScoreHero = { label: string; value: number; unit: "%" | " bp" };
+
+/**
+ * The Last session card's big figure and the three under it. It leads with the result against the benchmark, the
+ * call Hoot's sentence makes, so a day the book made money but trailed reads red rather than green; the return
+ * moves into the row. Without a benchmark the return leads, as it did before.
+ */
+export function scoreboard(s: { name: string; vs: string; ret: number; diffBps: number | null; benchmark: ScoreCell; third: ScoreCell }): { hero: ScoreHero; cells: ScoreCell[] } {
+  if (s.diffBps === null) {
+    return { hero: { label: s.name, value: s.ret, unit: "%" }, cells: [s.benchmark, { label: "Difference", value: null, unit: " bp", tone: true }, s.third] };
+  }
+  return { hero: { label: `${s.name} vs ${s.vs}`, value: s.diffBps, unit: " bp" }, cells: [{ label: s.name, value: s.ret, unit: "%", tone: true }, s.benchmark, s.third] };
+}
+
 /** The second sentence: "I found four things for you, one of them overdue." */
 export function listSentence(count: number, overdue: number) {
   if (count === 0) return "Nothing on my list for you right now.";
@@ -169,16 +184,57 @@ export function listSentence(count: number, overdue: number) {
 
 type NudgeLike = { id: string; kind: string; title: string; detail?: string; at?: string };
 
-/** "Fri 12:00" in New York, from an ISO time. */
-const dueStamp = (iso: string) => DateTime.fromISO(iso).setZone(NY).toFormat("ccc H:mm");
+/** "Fri 12:00 ET" in New York, from an ISO time. */
+const dueStamp = (iso: string) => DateTime.fromISO(iso).setZone(NY).toFormat("ccc H:mm 'ET'");
+
+/** "2 days overdue", "3 hours overdue". */
+function overdueFor(iso: string, now: Date) {
+  const hours = Math.max(1, Math.floor(DateTime.fromJSDate(now).diff(DateTime.fromISO(iso), "hours").hours));
+  const days = Math.floor(hours / 24);
+  return days >= 1 ? `${days} ${days === 1 ? "day" : "days"} overdue` : `${hours} ${hours === 1 ? "hour" : "hours"} overdue`;
+}
+
+/** "12:00 ET today", "12:00 ET Monday": when a write-up is due, as said in a sentence. */
+function dueSpoken(iso: string, now: Date) {
+  const due = DateTime.fromISO(iso).setZone(NY);
+  const days = Math.round(due.startOf("day").diff(DateTime.fromJSDate(now).setZone(NY).startOf("day"), "days").days);
+  return `${due.toFormat("H:mm")} ET ${days <= 0 ? "today" : days === 1 ? "tomorrow" : days < 7 ? due.toFormat("cccc") : due.toFormat("LLL d")}`;
+}
+
+// Movement nudges about a write-up with no owner, or someone else's overdue one, say so in their id.
+const isUnassigned = (n: { id: string }) => n.id.includes(":unassigned");
+const isOwnWriteUp = (n: NudgeLike) => n.kind === "movement" && !!n.at && !isUnassigned(n) && !n.id.includes(":team:");
+
+/**
+ * What an analyst owes, from their own write-ups on the list: "You owe 1 write-up, due 12:00 ET Monday.", "You owe
+ * 1 write-up, 2 days overdue.", "You owe 2 write-ups; the next is due 12:00 ET today." Null when they owe none.
+ */
+export function owedSentence(nudges: NudgeLike[], now: Date = new Date()): string | null {
+  const owed = nudges.filter(isOwnWriteUp).sort((a, b) => a.at!.localeCompare(b.at!));
+  if (!owed.length) return null;
+  const late = owed.filter(isOverdue).length;
+  if (owed.length === 1) return `You owe 1 write-up, ${late ? overdueFor(owed[0].at!, now) : `due ${dueSpoken(owed[0].at!, now)}`}.`;
+  if (!late) return `You owe ${owed.length} write-ups; the next is due ${dueSpoken(owed[0].at!, now)}.`;
+  return `You owe ${owed.length} write-ups; ${late === owed.length ? (late === 2 ? "both are" : "all are") : `${word(late)} ${late === 1 ? "is" : "are"}`} overdue.`;
+}
+
+/** An analyst's line under the greeting: what they owe first, then the rest of the list. */
+export function analystSentence(nudges: NudgeLike[], now: Date = new Date()): string {
+  const owed = owedSentence(nudges, now);
+  if (!owed) return listSentence(nudges.length, nudges.filter(isOverdue).length);
+  const rest = nudges.filter((n) => !isOwnWriteUp(n)).length;
+  return rest ? `${owed} I found ${word(rest)} more ${rest === 1 ? "thing" : "things"} for you.` : owed;
+}
+
 /** "Sep 24" in New York, from an ISO time or date. */
 const sinceStamp = (iso: string) => (iso.length === 10 ? day(iso) : DateTime.fromISO(iso).setZone(NY)).toFormat("LLL d");
 
-/** The mono "when" beside a list item. Nudges carry no timestamps, so this reads what their id and copy say. */
-export function nudgeWhen(n: NudgeLike): string {
+/** The mono "when" beside a list item, from the nudge's time or, without one, what its id and copy say. */
+export function nudgeWhen(n: NudgeLike, now: Date = new Date()): string {
   if (n.kind === "movement") {
-    if (n.at) return `Due ${dueStamp(n.at)}`;
+    if (n.at) return isOverdue(n) ? overdueFor(n.at, now) : `Due ${dueStamp(n.at)}`;
     if (isOverdue(n)) return "Overdue";
+    if (isUnassigned(n)) return "No owner";
     const h = /due in (\d+)h/i.exec(n.title)?.[1];
     return h ? `Due in ${h}h` : "Due soon";
   }
@@ -201,6 +257,7 @@ export function nudgeWhen(n: NudgeLike): string {
     const pr = n.id.split(":")[1];
     return pr ? `PR #${pr}` : "New";
   }
+  if (n.kind === "holdings") return "No owner";
   return "";
 }
 
@@ -208,7 +265,9 @@ export function nudgeWhen(n: NudgeLike): string {
 export function nudgeAction(n: NudgeLike): string {
   switch (n.kind) {
     case "movement":
-      return "Open write-up";
+      return isUnassigned(n) ? "Assign owner" : "Open write-up";
+    case "holdings":
+      return "Assign owners";
     case "earnings":
       return n.id.endsWith(":expectations") ? "Write them" : "Open";
     case "sell_side":

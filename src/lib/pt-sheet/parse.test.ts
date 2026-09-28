@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PT_SHEET_TABS, type PtTabConfig } from "./config";
-import { cleanLabel, colLetter, displayValue, parseTab, quoteTab, rangesFor, renderTab, rowsForTicker } from "./parse";
+import { cleanLabel, colIndex, colLetter, displayValue, parseTab, quoteTab, rangesFor, renderTab, rowsForTicker, tabColumns } from "./parse";
 
 const cfg: PtTabConfig = { name: "Price Targets", headerRow: 1, required: ["Ticker", "Target Price", "Owl Fund Weights"], about: "Targets." };
 
@@ -100,6 +100,17 @@ describe("parseTab", () => {
     expect(text).toContain("Columns: B=Ticker, C=Current Price, D=Target Price, E=% Off Target, F=Owl Fund Weights");
     expect(text).toContain("r4: B=AMZN | C=$249.67 | D=$271.00 | E=-7.9% | F=3.30%");
   });
+
+  it("lists the table's columns in sheet order, unlabelled ones included", () => {
+    expect(tabColumns(parseTab(cfg, raw, shown, 1000))).toEqual([
+      { col: "A", label: null },
+      { col: "B", label: "Ticker" },
+      { col: "C", label: "Current Price" },
+      { col: "D", label: "Target Price" },
+      { col: "E", label: "% Off Target" },
+      { col: "F", label: "Owl Fund Weights" },
+    ]);
+  });
 });
 
 describe("rowsForTicker", () => {
@@ -112,6 +123,7 @@ describe("rowsForTicker", () => {
 describe("helpers", () => {
   it("names columns past Z", () => {
     expect([0, 25, 26, 37, 701, 702].map(colLetter)).toEqual(["A", "Z", "AA", "AL", "ZZ", "AAA"]);
+    expect(["A", "Z", "AA", "AL", "ZZ", "AAA"].map(colIndex)).toEqual([0, 25, 26, 37, 701, 702]);
   });
 
   it("cleans header labels", () => {

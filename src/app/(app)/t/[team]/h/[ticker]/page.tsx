@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DateTime } from "luxon";
-import { loadTeam } from "@/lib/teams";
+import { itemTeam, loadScope } from "@/lib/teams";
 import { getHolding, listNotes, listPendingProposals, listTeamMembers, loadHoldingActivity } from "@/lib/holdings";
 import { marketSnapshot } from "@/lib/market";
 import { getBarsRange, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { listFilings } from "@/lib/providers/edgar";
 import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
 import { NY, todayNY } from "@/lib/providers/calendar";
+import { fmtCurrency } from "@/lib/format";
 import { canManageTeam, isFundWide } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { effectiveRunStatus, listHoldingChats } from "@/lib/chats";
@@ -42,10 +43,13 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
   const { team: slug, ticker } = await params;
   const { error: flash, tab: tabParam } = await searchParams;
   const tab: Tab = (TABS as readonly string[]).includes(tabParam ?? "") ? (tabParam as Tab) : "overview";
-  const { team, user } = await loadTeam(slug);
-  const row = await getHolding(team.id, ticker);
+  // The fund scope shows any team's holding; a team scope only its own.
+  const scope = await loadScope(slug);
+  const { user } = scope;
+  const row = await getHolding(scope.teamIds, ticker);
   if (!row) notFound();
   const { h, ownerName } = row;
+  const team = itemTeam(scope, h.teamId);
 
   // Network sources load only on the tabs that show them: price history on Overview, EDGAR and news on Overview and Documents.
   const wantsChart = tab === "overview";
@@ -70,7 +74,8 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
 
   const today = todayNY();
   const now = nowMs();
-  const base = `/t/${team.slug}`;
+  // Links stay in the scope the holding was opened in.
+  const base = `/t/${scope.slug}`;
   const holdingPath = `${base}/h/${encodeURIComponent(h.ticker)}`;
   const boardHref = `${base}/agent/h/${encodeURIComponent(h.ticker)}`;
   const manage = canManageTeam(user, team.id);
@@ -97,7 +102,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
     period: e.fiscalPeriod,
     status: e.status,
     expectations: e.preLockedAt ? "locked" : e.expectations?.trim() ? "draft" : "none",
-    eps: e.epsEstimate != null ? Number(e.epsEstimate).toFixed(2) : null,
+    eps: e.epsEstimate != null ? fmtCurrency(e.epsEstimate, e.epsCurrency) : null,
   }));
 
   // ── Tabs ──
@@ -122,7 +127,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 md:-mt-1">
       <HoldingHeader
-        crumbs={[{ label: "Holdings", href: isFundWide(user) ? `/t/${FUND_SCOPE_SLUG}` : base }, { label: team.name, href: base }]}
+        crumbs={[{ label: "Holdings", href: isFundWide(user) ? `/t/${FUND_SCOPE_SLUG}` : base }, { label: team.name, href: `/t/${team.slug}` }]}
         ticker={h.ticker}
         company={h.companyName}
         exited={!active}
@@ -173,7 +178,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
             label: documentLabel(d),
             path: d.path,
             modified: d.modifiedTime,
-            summary: <DocumentSummary summary={d.summary} summaryError={d.summaryError} summaryModel={d.summaryModel} summarizedAt={d.summarizedAt} />,
+            summary: <DocumentSummary summary={d.summary} summaryModel={d.summaryModel} summarizedAt={d.summarizedAt} />,
           }))}
           docsNote={driveReady ? "Nothing filed for this holding yet. Hoot reads these documents for context." : "Hoot reads the team's initiating report, earnings updates, and model from the Fund's Drive."}
           driveCount={driveReady ? `${docs.length} in the Fund's Drive` : undefined}
@@ -186,7 +191,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
           edgarEmpty={h.cik ? "No filings found." : "No SEC registrant matched this ticker."}
           cikLabel={h.cik ? `CIK ${Number(h.cik)}` : "No CIK"}
           news={news.slice(0, 8).map((n) => ({ id: n.id, headline: n.headline, url: n.url, source: n.source, publishedAt: n.publishedAt }))}
-          newsNote={!finnhubConfigured() ? "News needs a Finnhub key (FINNHUB_API_KEY)." : news.length === 0 ? "No news in the window." : undefined}
+          newsNote={!finnhubConfigured() ? "News isn't set up yet: an admin needs to turn it on." : news.length === 0 ? "No news in the window." : undefined}
         />
       )}
 

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { startHootChat } from "@/lib/actions/chats";
 import { leaveHootQuestion } from "@/components/app/hoot/handoff";
-import { ComposerBox, LEARNING_BOUNDARY, SendButton } from "@/components/app/chat/thread-parts";
+import { ComposerBox, SendButton } from "@/components/app/chat/thread-parts";
 import { cn } from "@/lib/utils";
 
 /** A question that isn't about one holding: starts a general conversation, the same way the floating Hoot does. */
@@ -82,7 +82,7 @@ export function AskHoot({ teamSlug, configured, hint, className }: { teamSlug: s
               void submit();
             }
           }}
-          placeholder={configured ? "Ask Hoot anything: the portfolio, a sector, an upcoming report…" : "Hoot is not configured: add OPENROUTER_API_KEY"}
+          placeholder={configured ? "Ask Hoot anything: the portfolio, a sector, an upcoming report…" : "Hoot isn't set up yet: an admin needs to turn it on"}
           className="field-sizing-content max-h-40 min-h-11 w-full resize-none bg-transparent text-sm leading-[22px] outline-none placeholder:text-muted-foreground disabled:opacity-60"
         />
         <div className="flex items-center gap-2">
@@ -91,7 +91,7 @@ export function AskHoot({ teamSlug, configured, hint, className }: { teamSlug: s
           <SendButton disabled={!text.trim() || asking || !configured} label="Ask" />
         </div>
       </ComposerBox>
-      {error ? <div className="mt-1.5 text-xs text-destructive">{error}</div> : <div className="mt-1.5 text-[11.5px] text-muted-foreground">{LEARNING_BOUNDARY}</div>}
+      {error && <div className="mt-1.5 text-xs text-destructive">{error}</div>}
     </form>
   );
 }
