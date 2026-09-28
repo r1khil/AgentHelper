@@ -196,5 +196,8 @@ describe("summarizeLive", () => {
     expect(sum.bottomContributors.map((h) => h.ticker)).toEqual(["AAA"]);
     expect(sum.bottomContributors[0]).toMatchObject({ type: "Stock", team: "Tech", priced: "live quote at 14:00 ET" });
     expect(liveHeadline(sum)).toContain("biggest detractors AAA");
+    expect(liveHeadline(sum)).toContain("(live, prices as of 14:00 ET)");
+    const after2 = summarizeLive(buildLiveSnapshot({ raw: inputs([D1, D2]), quotes: quotesAt(D3), market: after, now })!, { scope: "fund", teamNames: new Map(), holdingsLimit: 5 });
+    expect(liveHeadline(after2)).toContain("(closed, provisional, prices as of 14:00 ET)");
   });
 });

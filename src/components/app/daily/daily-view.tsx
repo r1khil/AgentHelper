@@ -183,7 +183,10 @@ export function DailyView({ initial, scope, teams: teamList }: { initial: LiveSn
   );
   const notices = [...(failed ? ["The last refresh failed; these are the numbers from before it."] : []), ...snap.notes].map((text) => ({ text }));
   const etfCount = snap.holdings.filter((h) => h.etf).length;
-  const shownRows = kind === "all" ? snap.holdings : snap.holdings.filter((h) => h.etf === (kind === "etfs"));
+  // The chips only show when there are both kinds; if a refresh leaves one kind, the choice falls back to All.
+  const filterable = etfCount > 0 && etfCount < snap.holdings.length;
+  const shownKind: HoldingKind = filterable ? kind : "all";
+  const shownRows = shownKind === "all" ? snap.holdings : snap.holdings.filter((h) => h.etf === (shownKind === "etfs"));
   const group = shownRows.reduce((s, h) => ({ w: s.w + h.weightOpen, c: s.c + h.contribution, pnl: s.pnl + h.pnl }), { w: 0, c: 0, pnl: 0 });
   const portfolioLabel = fund ? "Owl Fund" : scope.name;
   const benchmarkLabel = fund ? INDEX_LABEL : "Sector benchmark";
@@ -223,7 +226,7 @@ export function DailyView({ initial, scope, teams: teamList }: { initial: LiveSn
         <div className={`${GRID} lg:items-start`}>
           <Panel>
             <PanelHeader title={<Tip label="Holdings">{EXPLAIN.contributors}</Tip>} count={snap.holdings.length} aside={`${fmtUsd(snap.value, 0)} ${fund ? "NAV" : "held"}`} />
-            {etfCount > 0 && etfCount < snap.holdings.length && (
+            {filterable && (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-2.5">
                 <FilterChips label="Show holdings">
                   <FilterChip onClick={() => setKind("all")} active={kind === "all"} count={snap.holdings.length}>All</FilterChip>
@@ -231,9 +234,9 @@ export function DailyView({ initial, scope, teams: teamList }: { initial: LiveSn
                   <FilterChip onClick={() => setKind("etfs")} active={kind === "etfs"} count={etfCount}>ETFs</FilterChip>
                 </FilterChips>
                 <span className="flex-1" />
-                {kind !== "all" && (
+                {shownKind !== "all" && (
                   <span className="text-body text-muted-foreground">
-                    {kind === "etfs" ? "ETFs" : "Stocks"}: {fmtPct(pct(group.w), 1)} of the {own} at the open, <Move value={bps(group.c)} unit=" bp" digits={1} />, <Move value={group.pnl} digits={0} /> P&amp;L
+                    {shownKind === "etfs" ? "ETFs" : "Stocks"}: {fmtPct(pct(group.w), 1)} of the {own} at the open, <Move value={bps(group.c)} unit=" bp" digits={1} />, <Move value={group.pnl} digits={0} /> P&amp;L
                   </span>
                 )}
               </div>

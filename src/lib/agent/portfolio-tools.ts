@@ -142,10 +142,10 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
           if (!snapshot) return { data: { note: "No positions or closing prices are recorded yet, so there is no daily performance." }, sources: [] };
           const summary = summarizeLive(snapshot, { scope, teamName: sleeve?.name, teamSectors: sectors, teamNames, holdingsLimit });
           const path = sleeve ? `/t/${sleeve.slug}/daily` : "/daily";
-          const asOf = snapshot.asOf ?? `${snapshot.session}T20:00:00.000Z`;
+          const asOf = snapshot.asOf ?? snapshot.hours.close;
           const source: Source = {
             id: sourceId("daily", `${path}:${snapshot.session}:${snapshot.status}:${asOf.slice(0, 16)}`),
-            title: `${sleeve ? `${sleeve.name} daily performance` : "Fund daily performance"} · ${snapshot.session} · ${snapshot.status === "final" ? "final" : `${snapshot.status}, ${summary.pricesAsOf ?? ""}`.trim()}`,
+            title: [sleeve ? `${sleeve.name} daily performance` : "Fund daily performance", snapshot.session, snapshot.status === "final" ? "final" : [snapshot.status, summary.pricesAsOf].filter(Boolean).join(", ")].join(" · "),
             url: appUrl(path),
             publisher: "Owl Fund daily performance (trade ledger + live quotes)",
             publishedAt: asOf,

@@ -55,6 +55,7 @@ export function summarizeLive(s: LiveSnapshot, opts: { scope: "fund" | "team"; t
   return {
     scope: fund ? "Whole fund" : `${opts.teamName ?? "Team"} sleeve (its holdings scaled to 100%)`,
     status: STATUS[s.status],
+    statusKey: s.status,
     session: s.session,
     // Returns run from the close of `baseClose` to the prices at `pricesAsOf`.
     baseClose: s.base,
@@ -106,7 +107,8 @@ export type LiveSummary = ReturnType<typeof summarizeLive>;
 export function liveHeadline(s: LiveSummary): string {
   const h = s.headline as LiveSummary["headline"] & { spxPriceReturnPct?: number | null; activeVsSpxBps?: number | null };
   const when = s.pricesAsOf ? `prices as of ${s.pricesAsOf}` : "";
-  const parts = [`${s.scope}, ${fmtDay(s.session)} (${s.status.split(":")[0].toLowerCase()}${when ? `, ${when}` : ""}): return ${fmtPct(h.returnTodayPct)}`];
+  const label = s.statusKey === "provisional" ? "closed, provisional" : s.statusKey;
+  const parts = [`${s.scope}, ${fmtDay(s.session)} (${label}${when ? `, ${when}` : ""}): return ${fmtPct(h.returnTodayPct)}`];
   if (h.spxPriceReturnPct !== undefined && h.spxPriceReturnPct !== null) parts.push(`S&P 500 ${fmtPct(h.spxPriceReturnPct)}, active ${fmtBp(h.activeVsSpxBps, 1)}`);
   if (h.activeVsSectorBenchmarkBps !== null) parts.push(`vs sector benchmark ${fmtBp(h.activeVsSectorBenchmarkBps, 1)}`);
   const movers = (rows: { ticker: string; contributionBps: number | null }[]) => rows.slice(0, 3).map((x) => `${x.ticker} ${fmtBp(x.contributionBps, 1)}`).join(", ");
