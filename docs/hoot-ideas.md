@@ -25,7 +25,6 @@ New analysts get a short guided walk from Hoot: Today, a holding, its research b
 ## Smarter nudges
 - **Stale thesis:** a holding the member owns whose thesis hasn't changed in 90 days, or since two earnings reports.
 - **Reflection due:** earnings reported more than two days ago and the reflection is still empty.
-- **Big mover, no owner:** an open movement with no owner a few hours before it's due (leads and execs only).
 - **Weekly reply outstanding:** execs who haven't answered the weekly process-update ask by Friday.
 
 ## Page-aware quick ask

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, desc, eq, gte, inArray, isNull, lt, lte, ne } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, lte, ne } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
 import { changelogEntries, earnings, holdingProposals, holdings, modelProposals, models, movements, sellSideCalls, teams, weeklyUpdates } from "@/db/schema";
@@ -57,7 +57,7 @@ export async function loadHootFeed(user: CurrentUser): Promise<HootFeed> {
           .from(movements)
           .innerJoin(holdings, eq(holdings.id, movements.holdingId))
           .innerJoin(teams, eq(teams.id, holdings.teamId))
-          .where(and(inArray(holdings.teamId, managedOthers), ne(movements.status, "completed"), isNull(movements.dataQuality), lt(movements.dueAt, now)))
+          .where(and(inArray(holdings.teamId, managedOthers), ne(movements.status, "completed"), isNull(movements.dataQuality)))
           .orderBy(asc(movements.dueAt))
           .limit(20)
       : none,

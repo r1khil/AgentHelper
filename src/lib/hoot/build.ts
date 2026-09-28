@@ -1,4 +1,5 @@
 import { earningsHref, holdingHref, modelHref, movementHref, scopedHref, sellSideHref } from "@/lib/scope";
+import { dueStamp } from "@/lib/today";
 import type { HootNudge } from "./types";
 
 // Plain rows, so the ranking is testable without a database. The loader in nudges.ts fills these.
@@ -12,7 +13,7 @@ export type NudgeInput = {
   soon: string[];
   /** Unfinished write-ups on this member's own team. A write-up belongs to the whole team, so each one is theirs. */
   myMovements: { id: string; ticker: string; teamSlug: string; dueAt: Date | null }[];
-  /** Unfinished write-ups on the other teams this member runs (an exec or admin runs every team); only overdue ones show. */
+  /** Unfinished write-ups on the other teams this member runs (an exec or admin runs every team, and has none of their own). */
   teamMovements: { id: string; ticker: string; teamSlug: string; teamName: string; dueAt: Date | null }[];
   /** `mine`: the holding is on this member's own team. */
   earnings: { id: string; ticker: string; teamSlug: string; reportDate: string; reportHour: string | null; expectationsLocked: boolean; mine: boolean }[];
@@ -60,9 +61,15 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
   }
 
   for (const m of i.teamMovements) {
-    if (!m.dueAt || m.dueAt.getTime() >= i.now.getTime()) continue;
+    if (!m.dueAt) continue;
     const href = movementHref(i.scope, m.teamSlug, m.id);
-    out.push({ id: `movement:${m.id}:team:overdue`, kind: "movement", priority: 3, mood: "concerned", href, at: m.dueAt.toISOString(), title: `${m.ticker} write-up is overdue`, detail: `${m.teamName} hasn't finished it yet. Check in with the team.` });
+    const at = m.dueAt.toISOString();
+    if (m.dueAt.getTime() < i.now.getTime()) {
+      out.push({ id: `movement:${m.id}:team:overdue`, kind: "movement", priority: 3, mood: "concerned", href, at, title: `${m.ticker} write-up is overdue`, detail: `${m.teamName} hasn't finished it yet. Check in with the team.` });
+    } else {
+      // Not late yet: worth knowing about, not worth a speech bubble.
+      out.push({ id: `movement:${m.id}:team:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `${m.ticker} write-up is due ${dueStamp(at)}`, detail: `${m.teamName} is on it.` });
+    }
   }
 
   const upcoming = i.earnings.filter((e) => e.reportDate === i.today || i.soon.includes(e.reportDate));

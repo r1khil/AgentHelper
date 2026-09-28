@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildNudges, type NudgeInput } from "./build";
 import { companionHiddenOn, pickBubble, pruneDismissed, restingMood, suggestionsFor, tickerFromPath, tipFor } from "./policy";
-import type { HootNudge } from "./types";
+import { BUBBLE_MAX_PRIORITY, type HootNudge } from "./types";
 
 // Tuesday 2026-09-22, 14:00 New York.
 const NOW = new Date("2026-09-22T18:00:00Z");
@@ -42,7 +42,7 @@ describe("buildNudges", () => {
     expect(out[2]).toMatchObject({ priority: 5, title: "Your team's MSFT write-up is due Monday" });
   });
 
-  it("gives a lead or exec only the overdue write-ups of the other teams they run, as the team's", () => {
+  it("gives an exec every unfinished write-up of the other teams they run: overdue ones urgent, the rest calm", () => {
     const out = buildNudges(
       input({
         teamMovements: [
@@ -56,10 +56,14 @@ describe("buildNudges", () => {
     expect(out.map((n) => [n.id, n.priority, n.title])).toEqual([
       ["movement:t1:team:overdue", 3, "META write-up is overdue"],
       ["movement:t3:team:overdue", 3, "UNH write-up is overdue"],
+      ["movement:t2:team:due", 5, "JPM write-up is due Wed 12:00 ET"],
     ]);
     expect(out[0]).toMatchObject({ href: "/t/consumer/movements/t1", mood: "concerned", at: "2026-09-20T16:00:00.000Z" });
     expect(out[1].detail).toBe("Healthcare hasn't finished it yet. Check in with the team.");
-    expect(out.some((n) => /owner/i.test(`${n.title} ${n.detail}`))).toBe(false);
+    // Not yet due: no speech bubble, and it doesn't read as the exec's own.
+    expect(out[2]).toMatchObject({ mood: "idle", detail: "FIG is on it.", at: "2026-09-23T16:00:00.000Z", href: "/t/fig/movements/t2" });
+    expect(out[2].priority).toBeGreaterThan(BUBBLE_MAX_PRIORITY);
+    expect(out.some((n) => /owner|your/i.test(`${n.title} ${n.detail}`))).toBe(false);
   });
 
   it("links in the member's scope when it shows the item, else in the item's team", () => {

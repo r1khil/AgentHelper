@@ -135,7 +135,9 @@ describe("Today v2", () => {
     expect(nudgeWhen(m("movement:1:due", "2026-09-28T16:00:00Z"), now)).toBe("Due Mon 12:00 ET");
     expect(nudgeWhen(m("movement:1:overdue", "2026-09-23T16:00:00Z"), now)).toBe("2 days overdue");
     expect(nudgeWhen(m("movement:1:team:overdue", "2026-09-25T16:00:00Z"), now)).toBe("6 hours overdue");
+    expect(nudgeWhen(m("movement:1:team:due", "2026-09-29T16:00:00Z"), now)).toBe("Due Tue 12:00 ET");
     expect(nudgeAction(m("movement:1:team:overdue", "2026-09-25T16:00:00Z"))).toBe("Open write-up");
+    expect(nudgeAction(m("movement:1:team:due", "2026-09-29T16:00:00Z"))).toBe("Open write-up");
   });
 
   it("tells an analyst plainly what their team owes", () => {
@@ -153,9 +155,9 @@ describe("Today v2", () => {
     expect(owedSentence([monday, late], now)).toBe("Your team owes 2 write-ups; one is overdue.");
     expect(owedSentence([late, m("d:overdue", "2026-09-24T16:00:00Z")], now)).toBe("Your team owes 2 write-ups; both are overdue.");
     expect(owedSentence([monday, tomorrow, late], now)).toBe("Your team owes 3 write-ups; one is overdue.");
-    // Another team's overdue write-up, which a lead or exec is shown, is not their team's to owe.
-    expect(owedSentence([m("x:team:overdue", "2026-09-23T16:00:00Z")], now)).toBeNull();
-    expect(analystSentence([monday, m("x:team:overdue", "2026-09-23T16:00:00Z")], now)).toBe("Your team owes 1 write-up, due 12:00 ET Monday. I found one more thing for you.");
+    // Another team's write-up, overdue or not, which an exec is shown, is not their own team's to owe.
+    expect(owedSentence([m("x:team:overdue", "2026-09-23T16:00:00Z"), m("y:team:due", "2026-09-28T16:00:00Z")], now)).toBeNull();
+    expect(analystSentence([monday, m("x:team:overdue", "2026-09-23T16:00:00Z"), m("y:team:due", "2026-09-28T16:00:00Z")], now)).toBe("Your team owes 1 write-up, due 12:00 ET Monday. I found two more things for you.");
 
     expect(analystSentence([monday], now)).toBe("Your team owes 1 write-up, due 12:00 ET Monday.");
     expect(analystSentence([monday, earnings], now)).toBe("Your team owes 1 write-up, due 12:00 ET Monday. I found one more thing for you.");

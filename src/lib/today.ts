@@ -185,7 +185,7 @@ export function listSentence(count: number, overdue: number) {
 type NudgeLike = { id: string; kind: string; title: string; detail?: string; at?: string };
 
 /** "Fri 12:00 ET" in New York, from an ISO time. */
-const dueStamp = (iso: string) => DateTime.fromISO(iso).setZone(NY).toFormat("ccc H:mm 'ET'");
+export const dueStamp = (iso: string) => DateTime.fromISO(iso).setZone(NY).toFormat("ccc H:mm 'ET'");
 
 /** "2 days overdue", "3 hours overdue". */
 function overdueFor(iso: string, now: Date) {
