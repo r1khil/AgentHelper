@@ -8,6 +8,7 @@ import {
   ChartColumn,
   ChartPie,
   Activity,
+  Gauge,
   CalendarDays,
   CalendarClock,
   CalendarRange,
@@ -78,8 +79,8 @@ export function useTeamSection() {
   const pathname = usePathname();
   // A general chat isn't under any team; switching scope from one lands on that scope's Research page.
   if (/^\/hoot(\/|$)/.test(pathname)) return "/agent";
-  // The fund's own Attribution, Risk and Exposure pages have team versions under /t/<slug>/.
-  const book = pathname.match(/^\/(attribution|risk|exposure)(\/|$)/);
+  // The fund's own Attribution, Daily, Risk and Exposure pages have team versions under /t/<slug>/.
+  const book = pathname.match(/^\/(attribution|daily|risk|exposure)(\/|$)/);
   if (book) return `/${book[1]}`;
   const m = pathname.match(/^\/t\/[^/]+(\/[^/]+)?/);
   const section = m?.[1] ?? "";
@@ -155,6 +156,7 @@ function SidebarBody({ user, teams, signOut, dock }: Props & { dock?: React.Reac
   const portfolio: NavLink[] = seesBook
     ? [
         { href: `${bookBase}/attribution`, label: "Attribution", icon: ChartColumn },
+        { href: `${bookBase}/daily`, label: "Daily", icon: Gauge },
         { href: `${bookBase}/risk`, label: "Risk", icon: ShieldAlert },
         { href: `${bookBase}/exposure`, label: "Exposure", icon: ChartPie },
       ]

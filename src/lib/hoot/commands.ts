@@ -6,7 +6,7 @@ const destinations: Record<string, string> = {
   research: "Research", hoot: "Research", chat: "Research", chats: "Research", conversations: "Research", agent: "Research",
   boards: "Research", "research boards": "Research", "sell side": "Sell-side calls", "sell side calls": "Sell-side calls", "sell side analyzer": "Sell-side calls",
   models: "Models", movements: "Movements", earnings: "Earnings", calendar: "Economic calendar",
-  "economic calendar": "Economic calendar", attribution: "Attribution", risk: "Risk", exposure: "Exposure",
+  "economic calendar": "Economic calendar", attribution: "Attribution", "daily performance": "Daily performance", "daily": "Daily performance", "today's performance": "Daily performance", risk: "Risk", exposure: "Exposure",
   backtesting: "Backtesting", backtest: "Backtesting", "weekly update": "Weekly update", changelog: "Changelog",
   "what's new": "Changelog", admin: "Admin", administration: "Admin",
 };
