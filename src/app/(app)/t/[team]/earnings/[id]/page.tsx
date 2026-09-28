@@ -142,7 +142,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
             "After the report: sourced results",
             <form action={gatherResults}>
               <input type="hidden" name="id" value={e.id} />
-              <Button type="submit" size="sm" variant="outline" disabled={!reported} title={reported ? "Pull the 8-K, press release, and XBRL facts" : "Available on the report date"}>
+              <Button type="submit" size="sm" variant="outline" disabled={!reported} title={reported ? "Pull the 8-K, press release, and reported figures" : "Available on the report date"}>
                 <RefreshCw />
                 {actuals ? "Refresh" : "Gather results"}
               </Button>
@@ -234,7 +234,7 @@ export default async function EarningsDetail({ params, searchParams }: { params:
 
       {reported && (
         <Panel>
-          {header("Post-earnings reflection", e.status === "reviewed" ? <Pill tone="good">Reviewed {relativeTime(e.reflectionAt)}</Pill> : "Your words, against your locked expectations")}
+          {header("Post-earnings reflection", e.status === "reviewed" ? <Pill tone="good">Reviewed {relativeTime(e.reflectionAt)}</Pill> : "Against your locked expectations")}
           <div className="p-4">
             <form className="grid gap-2">
               <input type="hidden" name="id" value={e.id} />

@@ -1,3 +1,5 @@
+import { extractJsonObject } from "@/lib/agent/json-repair";
+
 /**
  * Structured summary of a team document, extracted by the app. Pure: prompt building and defensive parsing only;
  * the model call lives in summarize.ts. Bump SUMMARY_VERSION when the shape or prompt changes materially; every
@@ -87,18 +89,13 @@ function isoDate(v: unknown): string | null {
   return s;
 }
 
-/** Parse the model's reply defensively. Never throws; garbage yields an empty summary with an evidenceNote. */
-export function parseSummaryJson(raw: string): DocSummary {
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-  if (start < 0 || end <= start) return { ...EMPTY_SUMMARY, evidenceNote: "The summary could not be parsed from the model's reply." };
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw.slice(start, end + 1)) as Record<string, unknown>;
-  } catch {
-    return { ...EMPTY_SUMMARY, evidenceNote: "The summary could not be parsed from the model's reply." };
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { ...EMPTY_SUMMARY, evidenceNote: "The summary could not be parsed from the model's reply." };
+/**
+ * Parse the model's reply defensively: prose around the object, code fences and trailing commas are tolerated.
+ * Never throws; returns null when no JSON object can be recovered, so the caller records a failure, not a summary.
+ */
+export function parseSummaryJson(raw: string): DocSummary | null {
+  const parsed = extractJsonObject(raw) as Record<string, unknown> | null;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
   return {
     oneLine: str(parsed.oneLine, LIMITS.oneLine) ?? "",
     thesis: str(parsed.thesis, LIMITS.thesis),
@@ -115,6 +112,14 @@ export function parseSummaryJson(raw: string): DocSummary {
 export function isEmptySummary(s: DocSummary | null | undefined): boolean {
   if (!s) return true;
   return !s.oneLine && !s.thesis && !s.rating && !s.priceTarget && !s.keyNumbers.length && !s.catalysts.length && !s.risks.length;
+}
+
+/** The note parseSummaryJson stored in place of a summary before parse failures went to summary_error. */
+const LEGACY_PARSE_FAILURE_NOTE = "The summary could not be parsed from the model's reply.";
+
+/** A stored summary that is really a failed parse from before that change: shown as no summary, and re-summarized. */
+export function isFailedSummary(s: DocSummary | null | undefined): boolean {
+  return !!s && isEmptySummary(s) && s.evidenceNote === LEGACY_PARSE_FAILURE_NOTE;
 }
 
 /** Indented bullet lines for the agent prompt, capped so a long document cannot crowd out the rest. */

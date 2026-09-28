@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { Activity, ArrowLeftRight, ArrowUp, CalendarDays, CalendarRange, Eye, EyeOff, FileText, Mic, Sparkles, X } from "lucide-react";
+import { Activity, ArrowLeftRight, ArrowUp, CalendarDays, CalendarRange, Eye, EyeOff, FileText, Mic, Sparkles, UserX, X } from "lucide-react";
 import type { HootNudge, NudgeKind } from "@/lib/hoot/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 const KIND_ICON: Record<NudgeKind, React.ComponentType<{ className?: string }>> = {
   movement: Activity,
+  holdings: UserX,
   earnings: CalendarDays,
   sell_side: Mic,
   proposal: FileText,
@@ -53,8 +54,8 @@ export function HootPanel({
   onOpenNudge: (n: HootNudge) => void;
   onDismiss: (n: HootNudge) => void;
   onHide: () => void;
-  /** Send Hoot to the other bottom corner (he can also be dragged there). */
-  onMove: () => void;
+  /** Send Hoot to the other bottom corner (he can also be dragged there). Absent while he's docked in the menu. */
+  onMove?: () => void;
   side: "left" | "right";
   onClose: () => void;
 }) {
@@ -179,9 +180,11 @@ export function HootPanel({
           <button type="button" onClick={onHide} className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 hover:text-foreground">
             <EyeOff className="size-3.5" /> Hide
           </button>
-          <button type="button" onClick={onMove} className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 hover:text-foreground" title="You can also drag him">
-            <ArrowLeftRight className="size-3.5" /> Move {side === "right" ? "left" : "right"}
-          </button>
+          {onMove && (
+            <button type="button" onClick={onMove} className="inline-flex items-center gap-1.5 rounded px-1 py-0.5 hover:text-foreground" title="You can also drag him">
+              <ArrowLeftRight className="size-3.5" /> Move {side === "right" ? "left" : "right"}
+            </button>
+          )}
         </span>
         <span>
           <kbd className="rounded border bg-muted px-1 font-sans text-[10px]">{shortcutLabel()}</kbd> to open

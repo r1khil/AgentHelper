@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import type { Team } from "@/db/schema";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { destinations, navModel } from "@/lib/nav";
 import type { CommandHolding, TabCount } from "@/lib/nav-data";
 import { cn } from "@/lib/utils";
-import { HootCompanion } from "../hoot/hoot-companion";
+import { HootCompanion, type HootDock } from "../hoot/hoot-companion";
 import { MobileBar, Sidebar, useCurrentTeam, useTeamSection, type SidebarUser } from "../sidebar";
 import { AppHeader } from "./app-header";
 import { CommandMenu } from "./command-menu";
@@ -28,8 +28,23 @@ type Props = {
 /** Counts barely move; refetch on a new section at most this often. */
 const COUNTS_MIN_MS = 30_000;
 
+/** Tailwind's `md`: from here up the menu is on screen, and Hoot docks in it. */
+const DESKTOP = "(min-width: 768px)";
+function useDesktop() {
+  return useSyncExternalStore(
+    (on) => {
+      const q = window.matchMedia(DESKTOP);
+      q.addEventListener("change", on);
+      return () => q.removeEventListener("change", on);
+    },
+    () => window.matchMedia(DESKTOP).matches,
+    () => true,
+  );
+}
+
 /**
- * The app chrome: the rail, the header with the section's tabs and ⌘K, the content area, and Hoot in the corner.
+ * The app chrome: the rail, the header with the section's tabs and ⌘K, the content area, and Hoot docked at the
+ * bottom of the rail, so he never covers the page (on a phone, with no rail, he floats in a corner).
  * The classic Backtesting layout (a per-member preference) keeps the previous sidebar and look.
  */
 export function AppShell({ user, teams, signOut, firstName, hoot, backtestingLayout, children }: Props) {
@@ -91,7 +106,9 @@ export function AppShell({ user, teams, signOut, firstName, hoot, backtestingLay
   }, [fundWide, teams, section, current, team?.name]);
 
   const counts = data && data.scope === scopeSlug ? data.counts : {};
-  const companion = hoot && <HootCompanion firstName={firstName} suppressed={commandOpen} />;
+  // One companion at a time: docked in whichever menu is on screen, or floating when there's none.
+  const desktop = useDesktop();
+  const companion = (dock: HootDock | null) => hoot && <HootCompanion firstName={firstName} suppressed={commandOpen} dock={dock} />;
   const command = (
     <CommandMenu
       open={commandOpen}
@@ -107,12 +124,12 @@ export function AppShell({ user, teams, signOut, firstName, hoot, backtestingLay
   if (pathname === "/backtesting" && backtestingLayout === "classic") {
     return (
       <div className="theme-classic flex min-h-screen flex-col md:flex-row">
-        <Sidebar user={user} teams={teams} signOut={signOut} />
+        <Sidebar user={user} teams={teams} signOut={signOut} hoot={desktop && companion("sidebar")} />
         <main className="min-w-0 flex-1">
-          <div className={cn("mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8", hoot && "pb-24 md:pb-24")}>{children}</div>
+          <div className={cn("mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8", hoot && "pb-24 md:pb-8")}>{children}</div>
         </main>
         {command}
-        {companion}
+        {!desktop && companion(null)}
       </div>
     );
   }
@@ -127,6 +144,7 @@ export function AppShell({ user, teams, signOut, firstName, hoot, backtestingLay
         fundWide={fundWide}
         signOut={signOut}
         destinations={dests.filter((d) => d.hoot).map((d) => ({ label: d.hoot!, href: d.href }))}
+        hoot={desktop && companion("rail")}
       />
       <MobileBar user={user} teams={teams} signOut={signOut} />
       <div className="flex min-w-0 flex-1 flex-col">
@@ -134,7 +152,7 @@ export function AppShell({ user, teams, signOut, firstName, hoot, backtestingLay
         <main className="app-container flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-1 flex-col p-4 md:p-6">{children}</main>
       </div>
       {command}
-      {companion}
+      {!desktop && companion(null)}
     </div>
   );
 }

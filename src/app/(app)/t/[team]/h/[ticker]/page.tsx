@@ -174,7 +174,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
             label: documentLabel(d),
             path: d.path,
             modified: d.modifiedTime,
-            summary: <DocumentSummary summary={d.summary} summaryError={d.summaryError} summaryModel={d.summaryModel} summarizedAt={d.summarizedAt} />,
+            summary: <DocumentSummary summary={d.summary} summaryModel={d.summaryModel} summarizedAt={d.summarizedAt} />,
           }))}
           docsNote={driveReady ? "Nothing filed for this holding yet. Hoot reads these documents for context." : "Hoot reads the team's initiating report, earnings updates, and model from the Fund's Drive."}
           driveCount={driveReady ? `${docs.length} in the Fund's Drive` : undefined}
@@ -187,7 +187,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
           edgarEmpty={h.cik ? "No filings found." : "No SEC registrant matched this ticker."}
           cikLabel={h.cik ? `CIK ${Number(h.cik)}` : "No CIK"}
           news={news.slice(0, 8).map((n) => ({ id: n.id, headline: n.headline, url: n.url, source: n.source, publishedAt: n.publishedAt }))}
-          newsNote={!finnhubConfigured() ? "News needs a Finnhub key (FINNHUB_API_KEY)." : news.length === 0 ? "No news in the window." : undefined}
+          newsNote={!finnhubConfigured() ? "News isn't set up yet: an admin needs to turn it on." : news.length === 0 ? "No news in the window." : undefined}
         />
       )}
 

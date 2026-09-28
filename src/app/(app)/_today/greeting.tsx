@@ -20,8 +20,9 @@ function MarketClock({ initial }: { initial: string }) {
 /**
  * The greeting row: waving Hoot (a link to ask him something), the date and market clock, "Morning, Rikhil." and
  * one sentence in Hoot's voice. `lead` is the session half of that sentence; it streams in with the attribution.
+ * An analyst's sentence leads with the write-ups they owe.
  */
-export function Greeting({ hello, name, dateLine, lead, askHref }: { hello: string; name: string; dateLine: string; lead?: React.ReactNode; askHref: string }) {
+export function Greeting({ hello, name, dateLine, lead, askHref, analyst }: { hello: string; name: string; dateLine: string; lead?: React.ReactNode; askHref: string; analyst: boolean }) {
   return (
     <header data-tour="today-greeting" className="flex h-[84px] shrink-0 items-center gap-4">
       <HootOnPage />
@@ -37,7 +38,7 @@ export function Greeting({ hello, name, dateLine, lead, askHref }: { hello: stri
         </h1>
         <p className="mt-0.5 truncate text-[15px] text-ink-2">
           {lead}
-          <ListSentence />
+          <ListSentence analyst={analyst} />
         </p>
       </div>
     </header>

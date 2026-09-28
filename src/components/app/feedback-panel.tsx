@@ -34,8 +34,6 @@ export function FeedbackPanel({
           {relativeTime(feedback.at)}
           {stale && " · on an earlier draft"}
         </span>
-        <span className="flex-1" />
-        <span className="text-[12.5px] whitespace-nowrap text-hoot-foreground">He flags, you decide</span>
       </div>
       {flags.length === 0 ? (
         <p className="flex-1 px-4 py-3 text-[13.5px] leading-[1.45] text-ink-2">No flags. That means the text is consistent with the gathered evidence, not that it is right.</p>
@@ -51,7 +49,6 @@ export function FeedbackPanel({
           ))}
         </ul>
       )}
-      <div className="shrink-0 border-t border-hoot-panel-ring px-4 py-2 text-xs text-muted-foreground">He never rewrites your text. What you keep is your call.</div>
     </section>
   );
 }

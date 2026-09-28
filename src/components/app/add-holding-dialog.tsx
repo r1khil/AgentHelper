@@ -56,7 +56,7 @@ export function AddHoldingDialog({ teamId, members, defaultOwnerId }: { teamId: 
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="thesis">Thesis (optional)</Label>
-            <Textarea id="thesis" name="thesis" rows={3} placeholder="Why the team owns it, in the team's words." />
+            <Textarea id="thesis" name="thesis" rows={3} placeholder="Why the team owns it." />
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
