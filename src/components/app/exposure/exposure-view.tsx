@@ -114,7 +114,7 @@ export function ExposureView({
       <div className={FIRST_SCREEN}>
         <div data-tour="exposure-toolbar" className="flex min-w-0 shrink-0 items-center gap-2.5">
           {controls}
-          <span className="truncate text-body text-muted-foreground">{context}</span>
+          <span className="min-w-0 text-body leading-4 text-muted-foreground">{context}</span>
           <span className="flex-1" />
           {notices}
           <LookbackSelector basePath={basePath} active={r.lookback} extra={query} />
@@ -156,8 +156,9 @@ export function ExposureView({
         </div>
       </div>
 
-      <div className="mt-8 grid gap-8">
-        <details id="sector-detail" className="group scroll-mt-4">
+      {/* One column no wider than the page: a wide table below scrolls inside its own card instead of widening the page. */}
+      <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-8">
+        <details id="sector-detail" className="group min-w-0 scroll-mt-4">
           <summary className="flex cursor-pointer list-none items-baseline justify-between gap-3 select-none [&::-webkit-details-marker]:hidden">
             <h2 className="text-emph font-semibold">
               <span className="mr-1.5 inline-block text-muted-foreground transition-transform group-open:rotate-90">›</span>
@@ -305,7 +306,7 @@ function TopPositions({ x, report: r }: { x: Exposure; report: RiskReport }) {
                 <TableCell className="font-mono text-body text-muted-foreground">{i + 1}</TableCell>
                 <TableCell>
                   <span className="font-mono font-semibold">{h.ticker}</span>
-                  <div className="max-w-32 truncate text-caption text-muted-foreground sm:max-w-52">{h.name}{s ? ` · ${SECTOR_LABELS[s]}` : ""}</div>
+                  <div className="max-w-52 text-caption whitespace-normal text-muted-foreground">{h.name}{s ? ` · ${SECTOR_LABELS[s]}` : ""}</div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">

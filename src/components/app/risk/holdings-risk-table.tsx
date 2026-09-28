@@ -44,7 +44,7 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
                       <span className="sr-only">: {h.source === "proxy" ? `too little price history; modeled with ${h.proxy}` : "no price history or sector; treated as riskless"}</span>
                     </span>
                   )}
-                  <div className="max-w-44 truncate text-caption text-muted-foreground">{team?.name ?? h.name}</div>
+                  <div className="max-w-44 text-caption whitespace-normal text-muted-foreground">{team?.name ?? h.name}</div>
                 </TableCell>
                 <TableCell>
                   <div className="grid gap-1">
