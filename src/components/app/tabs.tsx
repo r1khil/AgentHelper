@@ -7,7 +7,7 @@ import { CountChip } from "./panel";
 
 /*
  * The one tab control. Tabs move between views of one thing: a section's pages in the header, a holding's sections,
- * a model's sections, the ledger's tables, a call's brief and transcript. One look everywhere: 14px labels, the
+ * a model's sections, the ledger's tables, a call's brief and transcript. One look everywhere: text-body (13px) labels, the
  * active one 600 with a 2px ink underline, an optional count chip, 20px apart.
  *
  * - Every tab has an `href`: the tabs are links to other URLs, so they render as a `nav` with `aria-current="page"`

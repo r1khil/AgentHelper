@@ -22,7 +22,7 @@ export function Panel({ className, children, variant = "outlined", ...props }: R
   );
 }
 
-/** The panel header: a 14.5px title, an optional count, and whatever sits on the right. 44px over a divider on an outlined panel, 40px and no divider on a plain one. */
+/** The panel header: a text-emph (15px) title, an optional count, and whatever sits on the right. 44px over a divider on an outlined panel, 40px and no divider on a plain one. */
 export function PanelHeader({
   title,
   count,
@@ -74,7 +74,7 @@ export type StatCell = {
 };
 
 /** One panel split into equal cells: label, a big mono figure, a note. */
-export function StatStrip({ cells, className, size = "md", ...props }: { cells: StatCell[]; className?: string; size?: "md" | "lg" } & Omit<React.ComponentProps<"section">, "children">) {
+export function StatStrip({ cells, className, ...props }: { cells: StatCell[]; className?: string } & Omit<React.ComponentProps<"section">, "children">) {
   return (
     <section className={cn("panel grid shrink-0 overflow-hidden", className)} style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }} {...props}>
       {cells.map((c, i) => (
@@ -82,8 +82,7 @@ export function StatStrip({ cells, className, size = "md", ...props }: { cells: 
           <div className="truncate text-body text-muted-foreground">{c.label}</div>
           <div
             className={cn(
-              "figure mt-1 truncate leading-tight",
-              size === "lg" ? "text-display" : "text-display",
+              "figure mt-1 truncate text-display leading-tight",
               c.tone === "up" && "text-up",
               c.tone === "down" && "text-down",
               c.tone === "hoot" && "text-hoot-foreground",

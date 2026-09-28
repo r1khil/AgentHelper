@@ -4,7 +4,8 @@ import { fmtDate, fmtDayMonth } from "@/lib/format";
 import { Segmented } from "@/components/app/panel";
 
 /** Axis ticks: small muted mono, like every other figure in the app. */
-export const chartTick = { fontSize: 10.5, fill: "var(--muted-foreground)", fontFamily: "var(--font-mono)" };
+/** Axis ticks at the type scale's caption size (11px); an SVG attribute can't read the CSS token. */
+export const chartTick = { fontSize: 11, fill: "var(--muted-foreground)", fontFamily: "var(--font-mono)" };
 /** Light gridlines in the row-divider color. */
 export const chartGrid = "var(--row)";
 export const tone = (value: number | null) =>

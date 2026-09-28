@@ -58,13 +58,13 @@ export function SkeletonPanelHeader({ className, w = "w-36", aside }: { classNam
 }
 
 /** StatStrip with placeholder cells: same grid, padding and line boxes. */
-export function SkeletonStatStrip({ cells, size = "md", notes = true, className }: { cells: number; size?: "md" | "lg"; notes?: boolean; className?: string }) {
+export function SkeletonStatStrip({ cells, notes = true, className }: { cells: number; notes?: boolean; className?: string }) {
   return (
     <section className={cn("panel grid shrink-0 overflow-hidden", className)} style={{ gridTemplateColumns: `repeat(${cells}, minmax(0, 1fr))` }}>
       {Array.from({ length: cells }, (_, i) => (
         <div key={i} className={cn("min-w-0 px-[18px] py-3.5", i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
           <TextBone className="text-body" w="w-20" />
-          <TextBone className={cn("figure mt-1 leading-tight", size === "lg" ? "text-display" : "text-display")} w="w-24" />
+          <TextBone className="figure mt-1 text-display leading-tight" w="w-24" />
           {notes && <TextBone className="mt-1 text-caption" w="w-28" />}
         </div>
       ))}

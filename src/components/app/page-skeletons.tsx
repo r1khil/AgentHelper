@@ -816,7 +816,7 @@ export function AttributionSkeleton() {
           <SkeletonPill className="w-[460px]" />
           <TextBone className="text-body" w="w-72" />
         </div>
-        <SkeletonStatStrip cells={4} size="lg" />
+        <SkeletonStatStrip cells={4} />
         <div className={cn(ATTRIBUTION_GRID, "lg:min-h-[252px]")}>
           <section className="panel-plain flex min-w-0 flex-col px-4 pt-2 pb-3">
             <div className="flex min-h-7 shrink-0 items-center gap-3.5">
