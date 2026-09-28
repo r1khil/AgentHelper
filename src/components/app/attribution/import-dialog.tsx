@@ -150,7 +150,7 @@ export function PositionChanges({ rows, afterLabel }: { rows: Ready["positionCha
     <div className="max-h-48 overflow-y-auto rounded-lg border">
       <table className="w-full text-sm">
         <thead className="sticky top-0 bg-muted text-xs text-muted-foreground">
-          <tr><th className="px-3 py-1.5 text-left font-medium">Ticker</th><th className="px-3 py-1.5 text-right font-medium">Now</th><th className="px-3 py-1.5 text-right font-medium">{afterLabel}</th></tr>
+          <tr><th scope="col" className="px-3 py-1.5 text-left font-medium">Ticker</th><th scope="col" className="px-3 py-1.5 text-right font-medium">Now</th><th scope="col" className="px-3 py-1.5 text-right font-medium">{afterLabel}</th></tr>
         </thead>
         <tbody>
           {rows.map((r) => (

@@ -46,6 +46,7 @@ import { IMPORTANCE, NowLine, ReleaseDetails, ReleaseStatus, releaseClock, relea
 import { useEconomicFeed, useNow, type FeedSource } from "@/components/app/economic-calendar/use-feed";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ReadAs } from "@/components/app/read-as";
 import { RowLink } from "@/components/app/row-link";
 
 /** A Fund report for the List view's report tables: every report on record, not just this month's. */
@@ -729,14 +730,16 @@ function ReportTable({ title, rows, showTeam, reportHref }: { title: string; row
       {rows.length === 0 ? (
         <p className="px-5 pb-4 text-[13.5px] text-muted-foreground">Nothing scheduled.</p>
       ) : (
-        <Table>
+        <Table aria-label={title}>
           <TableHeader>
             <TableRow>
               <TableHead className="pl-5">Ticker</TableHead>
               {showTeam && <TableHead>Team</TableHead>}
               <TableHead>Report date</TableHead>
               <TableHead>Date</TableHead>
-              <TableHead className="text-right">EPS est.</TableHead>
+              <TableHead className="text-right">
+                <ReadAs text="EPS estimate">EPS est.</ReadAs>
+              </TableHead>
               <TableHead>Expectations</TableHead>
               <TableHead className="pr-5">Status</TableHead>
             </TableRow>

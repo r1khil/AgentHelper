@@ -114,9 +114,9 @@ function TabPanel({ tab }: { tab: PtTab }) {
           <table className="w-max min-w-full border-collapse text-[13px]">
             <thead className="sticky top-0 z-10 bg-band text-left text-xs text-muted-foreground">
               <tr>
-                <th className="sticky left-0 z-20 border-b bg-band px-3 py-1.5 text-right font-medium">Row</th>
+                <th scope="col" className="sticky left-0 z-20 border-b bg-band px-3 py-1.5 text-right font-medium">Row</th>
                 {columns.map((c) => (
-                  <th key={c.col} className="border-b px-3 py-1.5 font-medium whitespace-nowrap">
+                  <th scope="col" key={c.col} className="border-b px-3 py-1.5 font-medium whitespace-nowrap">
                     {c.label && <span className="text-foreground">{c.label} </span>}
                     <span className="font-mono text-[11px]">{c.col}</span>
                   </th>

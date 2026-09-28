@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { InfoTip } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "./explainers";
 import { rbp, rpct } from "./format";
+import { ReadAs } from "../read-as";
 
 const COLS = "grid grid-cols-[minmax(0,1fr)_140px_76px_76px_70px] items-center gap-3 px-4";
 const tone = (v: number | null) => (v === null || Math.abs(v) < 5e-5 ? "text-muted-foreground" : v > 0 ? "text-up" : "text-down");
@@ -18,12 +19,14 @@ export const backtestHref = (r: StressOk) => `/backtesting?${new URLSearchParams
 
 function Head() {
   return (
-    <div className={cn(COLS, "h-8 shrink-0 text-xs text-muted-foreground")}>
-      <span>Window</span>
-      <span>Dates</span>
-      <span className="text-right">Fund</span>
-      <span className="text-right">S&amp;P 500</span>
-      <span className="text-right" title="Fund return minus the S&P 500's, in basis points">Diff</span>
+    <div role="row" className={cn(COLS, "h-8 shrink-0 text-xs text-muted-foreground")}>
+      <span role="columnheader">Window</span>
+      <span role="columnheader">Dates</span>
+      <span role="columnheader" className="text-right">Fund</span>
+      <span role="columnheader" className="text-right">S&amp;P 500</span>
+      <span role="columnheader" className="text-right" title="Fund return minus the S&P 500's, in basis points">
+        <ReadAs text="Fund minus S&P 500, basis points">Diff</ReadAs>
+      </span>
     </div>
   );
 }
@@ -47,25 +50,29 @@ export function StressPanel({ results, fundLabel, className }: { results: Stress
           </>
         }
       />
-      <Head />
-      {results.map((r) =>
-        r.status === "ok" ? (
-          <div key={r.key} className={cn(COLS, "min-h-11 border-t border-row text-[13.5px]")}>
-            <a href={`#${stressAnchor(r.key)}`} className="truncate font-medium hover:underline" title={`${r.note} Open the day-by-day path and each holding's contribution.`}>
-              {r.label}
-            </a>
-            <span className="truncate font-mono text-[11.5px] text-muted-foreground">{stressDates(r.start, r.end)}</span>
-            <span className={cn("text-right font-mono text-[12.5px]", tone(r.fund))} title={fundLabel}>{rpct(r.fund)}</span>
-            <span className="text-right font-mono text-[12.5px] text-muted-foreground">{rpct(r.market)}</span>
-            <span className={cn("text-right font-mono text-[12.5px] font-semibold", tone(r.fund - r.market))}>{rbp(r.fund - r.market)}</span>
-          </div>
-        ) : (
-          <div key={r.key} className={cn(COLS, "min-h-11 border-t border-row text-[13.5px]")}>
-            <span className="truncate font-medium">{r.label}</span>
-            <span className="col-span-4 truncate text-xs text-muted-foreground" title={r.reason}>{stressDates(r.from, r.to)} · {r.reason}</span>
-          </div>
-        ),
-      )}
+      <div role="table" aria-label="Stress tests">
+        <Head />
+        {results.map((r) =>
+          r.status === "ok" ? (
+            <div key={r.key} role="row" className={cn(COLS, "min-h-11 border-t border-row text-[13.5px]")}>
+              <span role="rowheader" className="truncate font-medium">
+                <a href={`#${stressAnchor(r.key)}`} className="hover:underline" title={`${r.note} Open the day-by-day path and each holding's contribution.`}>
+                  {r.label}
+                </a>
+              </span>
+              <span role="cell" className="truncate font-mono text-[11.5px] text-muted-foreground">{stressDates(r.start, r.end)}</span>
+              <span role="cell" className={cn("text-right font-mono text-[12.5px]", tone(r.fund))} title={fundLabel}>{rpct(r.fund)}</span>
+              <span role="cell" className="text-right font-mono text-[12.5px] text-muted-foreground">{rpct(r.market)}</span>
+              <span role="cell" className={cn("text-right font-mono text-[12.5px] font-semibold", tone(r.fund - r.market))}>{rbp(r.fund - r.market)}</span>
+            </div>
+          ) : (
+            <div key={r.key} role="row" className={cn(COLS, "min-h-11 border-t border-row text-[13.5px]")}>
+              <span role="rowheader" className="truncate font-medium">{r.label}</span>
+              <span role="cell" aria-colspan={4} className="col-span-4 truncate text-xs text-muted-foreground" title={r.reason}>{stressDates(r.from, r.to)} · {r.reason}</span>
+            </div>
+          ),
+        )}
+      </div>
       <PanelFooter className="h-[42px] border-t-0 text-ink-2">
         Replay any window with different weights
         <span className="flex-1" />
@@ -83,14 +90,16 @@ export function StressPanelFallback({ className }: { className?: string }) {
   return (
     <Panel aria-label="Historical stress tests" aria-busy variant="plain" className={className}>
       <PanelHeader title="Stress tests" aside="today's positions, buy and hold" />
-      <Head />
-      {STRESS_WINDOWS.map((w) => (
-        <div key={w.key} className={cn(COLS, "min-h-11 border-t border-row text-[13.5px]")}>
-          <span className="truncate font-medium">{w.label}</span>
-          <span className="truncate font-mono text-[11.5px] text-muted-foreground">{stressDates(w.from, w.to)}</span>
-          <span className="col-span-3 text-right text-xs text-muted-foreground">loading…</span>
-        </div>
-      ))}
+      <div role="table" aria-label="Stress tests">
+        <Head />
+        {STRESS_WINDOWS.map((w) => (
+          <div key={w.key} role="row" className={cn(COLS, "min-h-11 border-t border-row text-[13.5px]")}>
+            <span role="rowheader" className="truncate font-medium">{w.label}</span>
+            <span role="cell" className="truncate font-mono text-[11.5px] text-muted-foreground">{stressDates(w.from, w.to)}</span>
+            <span role="cell" aria-colspan={3} className="col-span-3 text-right text-xs text-muted-foreground">loading…</span>
+          </div>
+        ))}
+      </div>
       <PanelFooter className="h-[42px] border-t-0 text-ink-2">Replay any window with different weights</PanelFooter>
     </Panel>
   );

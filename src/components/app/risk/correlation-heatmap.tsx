@@ -18,7 +18,7 @@ export function CorrelationHeatmap({ tickers, matrix }: { tickers: string[]; mat
         <table className="border-separate border-spacing-0.5 text-[10px]" aria-label="Correlation matrix">
           <thead>
             <tr>
-              <th />
+              <td />
               {tickers.map((t) => (
                 <th key={t} scope="col" className="h-14 w-8 align-bottom font-medium text-muted-foreground">
                   <span className="inline-block origin-bottom-left translate-x-3 -rotate-60 whitespace-nowrap">{t}</span>

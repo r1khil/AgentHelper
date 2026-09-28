@@ -16,6 +16,7 @@ import { Tip } from "./info-tip";
 import { INTERACTION_CLASS } from "./interaction-toggle";
 import { PeriodSelector } from "./period-selector";
 import { SectorEffectsList, type SectorEffectPoint } from "./sector-effects-list";
+import { ReadAs } from "@/components/app/read-as";
 import { RowLink } from "@/components/app/row-link";
 
 export function rangeText(start: string, end: string, days: number) {
@@ -164,39 +165,52 @@ export function EffectsPanel({ items, total, aside, note, empty, className }: { 
 
 const TEAM_COLS = "grid-cols-[minmax(0,1fr)_56px_70px_88px]";
 
-/** Teams ranked by contribution to the Fund, each linking to that team's attribution; cash in the footer. */
+/**
+ * Teams ranked by contribution to the Fund, each linking to that team's attribution; cash in the footer. A table for
+ * screen readers: the team name is the row header and its link stretches over the row.
+ */
 export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, className }: { rows: TeamRow[]; teams: TeamLookup; cashContribution: number; cashWeight?: number; query: string; className?: string }) {
   const num = "text-right font-mono text-[12.5px]";
   const tone = (v: number, scale: number) => (Math.round(v * scale) > 0 ? "text-up" : Math.round(v * scale) < 0 ? "text-down" : "text-muted-foreground");
   const showCash = Math.abs(cashContribution) > 1e-9 || cashWeight !== undefined;
   return (
     <section className={cn("panel flex min-w-0 flex-col overflow-hidden", className)} aria-label="Teams">
-      <div className={cn("grid h-9 shrink-0 items-center gap-2.5 border-b px-4 text-xs text-muted-foreground", TEAM_COLS)}>
-        <span><Tip label="Team" side="bottom">{EXPLAIN.teams}</Tip></span>
-        <span className="text-right"><Tip label="Avg wt" side="bottom">{EXPLAIN.teamWeight}</Tip></span>
-        <span className="text-right"><Tip label="Return" side="bottom">{EXPLAIN.teamReturn}</Tip></span>
-        <span className="text-right"><Tip label="To the Fund" side="bottom">{EXPLAIN.fundContribution}</Tip></span>
+      <div role="table" aria-label="Teams" className="flex flex-col">
+        <div role="row" className={cn("grid h-9 shrink-0 items-center gap-2.5 border-b px-4 text-xs text-muted-foreground", TEAM_COLS)}>
+          <span role="columnheader"><Tip label="Team" side="bottom">{EXPLAIN.teams}</Tip></span>
+          <span role="columnheader" className="text-right"><Tip label={<ReadAs text="Average weight">Avg wt</ReadAs>} side="bottom">{EXPLAIN.teamWeight}</Tip></span>
+          <span role="columnheader" className="text-right"><Tip label="Return" side="bottom">{EXPLAIN.teamReturn}</Tip></span>
+          <span role="columnheader" className="text-right"><Tip label={<ReadAs text="Contribution to the Fund, basis points">To the Fund</ReadAs>} side="bottom">{EXPLAIN.fundContribution}</Tip></span>
+        </div>
+        {rows.length === 0 && (
+          <div role="row">
+            <div role="cell" aria-colspan={4} className="px-4 py-3 text-sm text-muted-foreground">No team holdings in this period.</div>
+          </div>
+        )}
+        {rows.map((t) => {
+          const team = t.teamId ? teams.get(t.teamId) : undefined;
+          return (
+            <div
+              key={t.teamId ?? "none"}
+              role="row"
+              className={cn("relative grid h-10 items-center gap-2.5 border-b border-row px-4 text-[13.5px]", TEAM_COLS, team && "transition-colors hover:bg-band has-[a:focus-visible]:bg-band")}
+            >
+              <span role="rowheader" className="truncate">
+                {team ? (
+                  <RowLink cover="stretch" href={`/t/${team.slug}/attribution${query}`} className="focus-visible:after:ring-0">
+                    {team.name}
+                  </RowLink>
+                ) : (
+                  "No team"
+                )}
+              </span>
+              <span role="cell" className={cn(num, "text-muted-foreground")}>{fmtPct(pct(t.avgWeight), 1)}</span>
+              <span role="cell" className={cn(num, tone(t.ret, 10_000))}>{fmtPct(pct(t.ret))}</span>
+              <span role="cell" className={cn(num, "font-semibold", tone(t.contribution, 10_000))}>{fmtBp(bps(t.contribution))}</span>
+            </div>
+          );
+        })}
       </div>
-      {rows.length === 0 && <div className="px-4 py-3 text-sm text-muted-foreground">No team holdings in this period.</div>}
-      {rows.map((t) => {
-        const team = t.teamId ? teams.get(t.teamId) : undefined;
-        const cells = (
-          <>
-            <span className="truncate">{team?.name ?? "No team"}</span>
-            <span className={cn(num, "text-muted-foreground")}>{fmtPct(pct(t.avgWeight), 1)}</span>
-            <span className={cn(num, tone(t.ret, 10_000))}>{fmtPct(pct(t.ret))}</span>
-            <span className={cn(num, "font-semibold", tone(t.contribution, 10_000))}>{fmtBp(bps(t.contribution))}</span>
-          </>
-        );
-        const cls = cn("grid h-10 items-center gap-2.5 border-b border-row px-4 text-[13.5px]", TEAM_COLS);
-        return team ? (
-          <RowLink key={t.teamId} href={`/t/${team.slug}/attribution${query}`} className={cn(cls, "transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")}>
-            {cells}
-          </RowLink>
-        ) : (
-          <div key="none" className={cls}>{cells}</div>
-        );
-      })}
       {showCash && (
         <div className="mt-auto flex min-h-10 shrink-0 items-center bg-band-2 px-4 text-[12.5px] text-muted-foreground">
           <span className="truncate">
@@ -255,8 +269,8 @@ export function HoldingsPanel({
         <ContributorsTable rows={holdings} teams={teams} showTeam={showTeam} />
       ) : (
         <div className="grid gap-6 px-4 py-3 sm:grid-cols-2">
-          <HoldingsColumn rows={top} teams={teams} caption={showTeam ? "Helped most · team, avg weight" : "Helped most · avg weight"} />
-          <HoldingsColumn rows={bottom} teams={teams} caption={showTeam ? "Hurt most · team, avg weight" : "Hurt most · avg weight"} />
+          <HoldingsColumn rows={top} teams={teams} label="Helped most" caption={showTeam ? "Helped most · team, avg weight" : "Helped most · avg weight"} />
+          <HoldingsColumn rows={bottom} teams={teams} label="Hurt most" caption={showTeam ? "Hurt most · team, avg weight" : "Hurt most · avg weight"} />
         </div>
       )}
     </Panel>

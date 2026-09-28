@@ -421,7 +421,9 @@ function MappingsPanel({ d }: { d: ModelDetailData }) {
                 <TableHead>Unit · scale</TableHead>
                 <TableHead>Periods</TableHead>
                 <TableHead>Rationale</TableHead>
-                <TableHead />
+                <TableHead>
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

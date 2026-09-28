@@ -16,6 +16,7 @@ import { TeamSectorsForm } from "./team-sectors-form";
 import { TicketDialog } from "./ticket-dialog";
 import { TradeDialog } from "./trade-dialog";
 import { VoidMenu } from "./void-menu";
+import { ReadAs } from "@/components/app/read-as";
 
 export const LEDGER_TABS = ["trades", "cash", "benchmark", "securities"] as const;
 export type LedgerTab = (typeof LEDGER_TABS)[number];
@@ -115,7 +116,7 @@ export function LedgerView({
                   </EmptyState>
                 ) : (
                   <div className="overflow-x-auto">
-                    <Table>
+                    <Table aria-label="Trades">
                       <TableHeader>
                         <TableRow>
                           <TableHead className="pl-4">Date</TableHead>
@@ -126,7 +127,9 @@ export function LedgerView({
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead className="text-right">Fees</TableHead>
                           <TableHead>Note</TableHead>
-                          <TableHead className="pr-4" />
+                          <TableHead className="pr-4">
+                            <span className="sr-only">Actions</span>
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -175,14 +178,16 @@ export function LedgerView({
                   <EmptyState title="No cash recorded" className="m-4">Start with a deposit for the Fund&apos;s opening balance.</EmptyState>
                 ) : (
                   <div className="overflow-x-auto">
-                    <Table>
+                    <Table aria-label="Cash">
                       <TableHeader>
                         <TableRow>
                           <TableHead className="pl-4">Date</TableHead>
                           <TableHead>Type</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead>Note</TableHead>
-                          <TableHead className="pr-4" />
+                          <TableHead className="pr-4">
+                            <span className="sr-only">Actions</span>
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -224,17 +229,19 @@ export function LedgerView({
                 <Panel>
                   <PanelHeader title="Saved sets" count={weightSets.length} />
                   <div className="overflow-x-auto">
-                    <Table>
+                    <Table aria-label="Saved S&P 500 sector weight sets">
                       <TableHeader>
                         <TableRow>
                           <TableHead className="pl-4">As of</TableHead>
                           {GICS_SECTORS.map((s) => (
                             <TableHead key={s} className="text-right font-mono" title={SECTOR_LABELS[s]}>
-                              {SECTOR_LABELS[s].split(" ").map((w) => w[0]).join("")}
+                              <ReadAs text={SECTOR_LABELS[s]}>{SECTOR_LABELS[s].split(" ").map((w) => w[0]).join("")}</ReadAs>
                             </TableHead>
                           ))}
                           <TableHead>Source</TableHead>
-                          <TableHead className="pr-4" />
+                          <TableHead className="pr-4">
+                            <span className="sr-only">Actions</span>
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -267,7 +274,7 @@ export function LedgerView({
                   <EmptyState title="No securities yet" className="m-4">A security is added the first time it is traded.</EmptyState>
                 ) : (
                   <div className="overflow-x-auto">
-                    <Table>
+                    <Table aria-label="Classification">
                       <TableHeader>
                         <TableRow>
                           <TableHead className="pl-4">Ticker</TableHead>

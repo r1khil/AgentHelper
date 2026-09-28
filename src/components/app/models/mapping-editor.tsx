@@ -188,9 +188,9 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
           <table className="w-max min-w-full border-collapse font-mono text-[11.5px]">
             <thead className="sticky top-0 z-10 bg-band">
               <tr>
-                <th className="w-8 border-r border-b px-1 py-1 text-right text-muted-foreground">#</th>
+                <th scope="col" className="w-8 border-r border-b px-1 py-1 text-right text-muted-foreground">#</th>
                 {cols.map((c) => (
-                  <th key={c} className="min-w-16 border-r border-b px-1.5 py-1 text-left font-medium text-muted-foreground">{c}</th>
+                  <th scope="col" key={c} className="min-w-16 border-r border-b px-1.5 py-1 text-left font-medium text-muted-foreground">{c}</th>
                 ))}
               </tr>
             </thead>
