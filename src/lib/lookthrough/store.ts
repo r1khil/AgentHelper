@@ -135,7 +135,7 @@ export async function refreshEtfConstituents(
 ): Promise<EtfRefreshResult> {
   const log = opts.log ?? ((m: string) => console.log(`[lookthrough] ${m}`));
   const result: EtfRefreshResult = { status: "ok", refreshed: [], fresh: [], kept: [], failed: {}, remaining: [] };
-  const started = Date.now();
+  let started = Date.now();
   const budget = opts.budgetMs ?? 60_000;
   const write = opts.write ?? true;
   try {
@@ -145,6 +145,8 @@ export async function refreshEtfConstituents(
     }
     const today = opts.today ?? DateTime.now().setZone("America/New_York").toISODate()!;
     const targets = (opts.etfs ?? (await lookthroughTargets(db))).map((e) => e.toUpperCase());
+    // Working out the targets can wait on Yahoo; the time budget is for fetching lists.
+    started = Date.now();
     const stored = await storedMeta(db, targets);
     const cutoff = DateTime.fromISO(today).minus({ days: opts.maxAgeDays ?? MAX_AGE_DAYS }).toISODate()!;
     const keepCutoff = DateTime.fromISO(today).minus({ days: KEEP_ISSUER_LIST_DAYS }).toISODate()!;
