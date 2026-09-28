@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PerformanceChart } from "@/components/charts/performance-chart";
-import { ChartTooltip, TimeRangeSelector, chartTick, exactDate, tone } from "@/components/charts/primitives";
-import { fmtAccounting, fmtPct } from "@/lib/format";
+import { ChartTooltip, TimeRangeSelector, chartGrid, chartTick, exactDate, tone, valueAxis } from "@/components/charts/primitives";
+import { fmtCurrency, fmtPct } from "@/lib/format";
 import { availableRanges, normalizeObservations, performance, selectRange, type Observation, type TimeRange } from "@/lib/charts/series";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +29,8 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
   const plotted = useMemo(() => points.map((p) => ({ time: p.time, date: p.date, holding: p.returns.holding, benchmark: p.returns.benchmark, price: p.values.holding })), [points]);
   const last = points.at(-1);
   const ticks = useMemo(() => pickTicks(points.map((p) => ({ time: p.time, date: p.date }))), [points]);
+  // Both lines are rebased to 0% at the range's first close, so the axis is the return; the tooltip gives the price.
+  const axis = useMemo(() => valueAxis(plotted.flatMap((p) => [p.holding, p.benchmark]), fmtPct), [plotted]);
 
   return (
     <section className={cn("panel min-w-0 px-4 py-3.5", className)} aria-label={`${ticker} versus S&P 500`}>
@@ -54,7 +56,7 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
             data={observations}
             label={`${ticker} versus S&P 500`}
             series={[
-              { key: "holding", label: ticker, color: HOLDING, unit: currency },
+              { key: "holding", label: ticker, color: HOLDING, currency },
               { key: "benchmark", label: "S&P 500", color: BENCH, dashed: true, unit: "pts" },
             ]}
             note="Daily closes · rebased to 0% · price return"
@@ -67,8 +69,9 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
       ) : (
         <div className="mt-2.5 h-[200px] w-full">
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <LineChart data={plotted} margin={{ top: 6, right: 4, bottom: 0, left: 4 }} accessibilityLayer={false}>
-              <CartesianGrid vertical={false} stroke="var(--row)" />
+            <LineChart data={plotted} margin={{ top: 6, right: 4, bottom: 0, left: 0 }} accessibilityLayer={false}>
+              {/* Gridlines only at the labelled returns, not the plot's unlabelled top and bottom edges. */}
+              <CartesianGrid vertical={false} stroke={chartGrid} syncWithTicks />
               <XAxis dataKey="time" type="number" scale="time" domain={["dataMin", "dataMax"]} ticks={ticks.map((t) => t.time)}
                 tick={({ x, y, payload }: { x: number | string; y: number | string; payload: { value: number } }) => {
                   // The end ticks hug the plot edges instead of centering past them.
@@ -81,7 +84,9 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
                   );
                 }}
                 axisLine={false} tickLine={false} interval={0} height={22} />
-              <YAxis hide domain={["auto", "auto"]} />
+              <YAxis tick={chartTick} tickLine={false} axisLine={false} {...axis} />
+              {/* The 0% start both lines are rebased to. */}
+              <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.4} />
               <Tooltip
                 cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}
                 isAnimationActive={false}
@@ -93,7 +98,7 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
                       <div className="flex justify-between gap-4">
                         <span>{ticker}</span>
                         <span>
-                          {p.price != null ? `${fmtAccounting(p.price, 2, currency ? ` ${currency}` : "")} · ` : ""}
+                          {p.price != null ? `${fmtCurrency(p.price, currency)} · ` : ""}
                           <span className={tone(p.holding ?? null)}>{fmtPct(p.holding)}</span>
                         </span>
                       </div>
