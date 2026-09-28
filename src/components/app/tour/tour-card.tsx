@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { withCommandKey } from "@/lib/hoot/shortcuts";
 import { cn } from "@/lib/utils";
 
 /** Buttons are data; the tour handles every press in one place (`onAction`). */
@@ -60,9 +61,9 @@ export const TourCard = forwardRef<HTMLDivElement, { view: CardView; onAction: (
       <div key={view.key}>
         {view.eyebrow && <div className="mb-1 text-caption font-medium tracking-wide text-muted-foreground uppercase">{view.eyebrow}</div>}
         <h2 id={titleId} className="text-emph leading-snug font-semibold text-balance">
-          {view.title}
+          {withCommandKey(view.title)}
         </h2>
-        {view.body && <p className="mt-1.5 text-body leading-relaxed">{view.body}</p>}
+        {view.body && <p className="mt-1.5 text-body leading-relaxed">{withCommandKey(view.body)}</p>}
         {view.points && (
           <dl className="mt-2 grid gap-1.5 text-body leading-snug">
             {view.points.map((p) => (
@@ -75,8 +76,8 @@ export const TourCard = forwardRef<HTMLDivElement, { view: CardView; onAction: (
         )}
         {(view.what || view.how || view.source) && (
           <dl className="mt-2.5 grid gap-2 text-body leading-snug">
-            {view.what && <Line label="What it is" text={view.what} />}
-            {view.how && <Line label="How it works" text={view.how} />}
+            {view.what && <Line label="What it is" text={withCommandKey(view.what)} />}
+            {view.how && <Line label="How it works" text={withCommandKey(view.how)} />}
             {view.source && <Line label="Where the data comes from" text={view.source} />}
           </dl>
         )}

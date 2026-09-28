@@ -1,6 +1,6 @@
 "use client";
 
-import { hootShortcut } from "@/lib/hoot/shortcuts";
+import { hootShortcut, withCommandKey } from "@/lib/hoot/shortcuts";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -389,7 +389,7 @@ export function HootCompanion({ onAsk, suppressed = false, dock = null }: { onAs
           )}
         >
           <div className="leading-snug font-medium">{bubble.title}</div>
-          {bubble.detail && <div className="mt-1 text-caption leading-snug text-muted-foreground">{bubble.detail}</div>}
+          {bubble.detail && <div className="mt-1 text-caption leading-snug text-muted-foreground">{withCommandKey(bubble.detail)}</div>}
           {bubble.kind !== "tip" && (
             <Link
               href={bubble.href}
