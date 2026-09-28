@@ -151,7 +151,7 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
           </div>
           <Label htmlFor="ob-ack" className="flex items-start gap-3 rounded-lg border bg-background p-3 text-sm font-normal leading-snug">
             <Checkbox id="ob-ack" checked={acknowledged} onCheckedChange={(c) => setAcknowledged(c === true)} className="mt-0.5" />
-            <span>I have read the learning boundary.</span>
+            <span>I understand: Hoot gathers the evidence, and I write the interpretation.</span>
           </Label>
           <div className="flex justify-between">
             <Button type="button" variant="ghost" onClick={() => setStep(1)} disabled={pending}>

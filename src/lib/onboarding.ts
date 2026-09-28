@@ -26,7 +26,7 @@ export function parseCompleteOnboarding(fd: FormData) {
  * instructions still carry it in full.
  */
 export const LEARNING_BOUNDARY =
-  "Hoot gathers evidence and questions your reasoning, and you write the movement updates, earnings reflections and theses.";
+  "Hoot gathers evidence, explains concepts and questions your reasoning. You write the movement updates, earnings reflections and theses; Hoot never drafts them, and the workspace has no button for it.";
 
 /** What Hoot does under that rule. None of these restate it. */
 export const BOUNDARY_IMPLICATIONS = [
