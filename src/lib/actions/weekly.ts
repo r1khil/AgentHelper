@@ -53,7 +53,7 @@ export async function saveWeeklyFigures(fd: FormData) {
   const me = await requireRole(...FUND_WIDE);
   const week = weekFrom(fd);
   const row = await ensurePack(week);
-  if (row.status === "sent") back(week, "This pack is marked sent. Reopen it before editing.");
+  if (row.status === "sent") back(week, "This pack is locked for edits. Choose Reopen for edits under ⋯ first.");
   const current = packFigures(row);
   const next: WeeklyFigures = { ...current };
   const fields: { key: keyof WeeklyFigures; label: string }[] = [
@@ -79,7 +79,7 @@ export async function fillWeeklyFromSheet(fd: FormData) {
   const me = await requireRole(...FUND_WIDE);
   const week = weekFrom(fd);
   const row = await ensurePack(week);
-  if (row.status === "sent") back(week, "This pack is marked sent. Reopen it before editing.");
+  if (row.status === "sent") back(week, "This pack is locked for edits. Choose Reopen for edits under ⋯ first.");
   let read: Awaited<ReturnType<typeof readSheetWeeklyFigures>>;
   try {
     read = await readSheetWeeklyFigures();
@@ -102,7 +102,7 @@ export async function saveWeeklyField(fd: FormData) {
   const section = String(fd.get("section") ?? "");
   if (!isAgendaSection(section)) back(week, "Unknown agenda section");
   const row = await ensurePack(week);
-  if (row.status === "sent") back(week, "This pack is marked sent. Reopen it before editing.");
+  if (row.status === "sent") back(week, "This pack is locked for edits. Choose Reopen for edits under ⋯ first.");
   const agenda = normalizeAgenda(row.agenda);
   agenda[section] = linesToItems(String(fd.get("text") ?? ""));
   const now = new Date();
@@ -117,7 +117,7 @@ export async function markWeeklySent(fd: FormData) {
   const now = new Date();
   await db.update(weeklyUpdates).set({ status: "sent", sentAt: now, sentBy: me.id, updatedAt: now }).where(eq(weeklyUpdates.weekEnding, week));
   revalidateWeek(week);
-  back(week, "Marked sent. The Sunday job will leave this pack alone.", true);
+  back(week, "Sent and locked for edits. The Sunday job will leave this pack alone.", true);
 }
 
 export async function reopenWeekly(fd: FormData) {
@@ -125,7 +125,7 @@ export async function reopenWeekly(fd: FormData) {
   const week = weekFrom(fd);
   await db.update(weeklyUpdates).set({ status: "draft", sentAt: null, sentBy: null, updatedAt: new Date() }).where(eq(weeklyUpdates.weekEnding, week));
   revalidateWeek(week);
-  back(week, "Reopened as a draft", true);
+  back(week, "Reopened for edits", true);
 }
 
 /**
@@ -138,6 +138,6 @@ export async function sendWeeklyEmailNow(fd: FormData) {
   const toMe = String(fd.get("mode") ?? "") === "me";
   const r = await sendWeeklyEmail(week, toMe ? { only: me.email } : { force: true });
   revalidateWeek(week);
-  if (r.status === "sent") back(week, toMe ? `Sent a copy to ${r.to}` : `Emailed ${r.to}${r.cc?.length ? `, cc ${r.cc.join(", ")}` : ""}`, true);
-  back(week, `Email ${r.status === "failed" ? "failed" : "not sent"}: ${r.reason ?? "unknown reason"}`);
+  if (r.status === "sent") back(week, toMe ? `Sent a copy to ${r.to}` : `Sent to ${r.to}${r.cc?.length ? `, cc ${r.cc.join(", ")}` : ""}`, true);
+  back(week, `${r.status === "failed" ? "Send failed" : "Not sent"}: ${r.reason ?? "unknown reason"}`);
 }
