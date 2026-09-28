@@ -2,11 +2,14 @@ import { APICallError, type LanguageModelV4 } from "@ai-sdk/provider";
 
 export type FallbackEvent = { from: string; to: string; error: string };
 
-/** Rate limits, upstream outages, and dropped connections are worth trying on the next model; bad requests are not. */
+/**
+ * Rate limits, upstream outages, dropped connections and a model that no longer exists are worth trying on the next
+ * model; bad requests are not. OpenRouter answers 404 when a free variant is withdrawn (Ling's, 2026-09-28).
+ */
 export function isFallbackError(e: unknown): boolean {
   if (APICallError.isInstance(e)) {
     const s = e.statusCode;
-    if (s === 429 || s === 408) return true;
+    if (s === 429 || s === 408 || s === 404) return true;
     if (s !== undefined && s >= 500) return true;
     return s === undefined && e.isRetryable;
   }
