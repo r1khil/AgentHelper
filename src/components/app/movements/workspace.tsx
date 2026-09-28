@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { completeMovement, reopenMovement, requestMovementFeedback, rerunEvidence, saveMovementUpdate } from "@/lib/actions/movements";
 import { cn } from "@/lib/utils";
-import { Panel, PanelFooter, PanelHeader, Segmented } from "@/components/app/panel";
+import { Panel, PanelFooter, PanelHeader } from "@/components/app/panel";
+import { Tabs, tabPanelProps } from "@/components/app/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { insertAt } from "./cite";
@@ -121,17 +122,24 @@ function SidePane({ feedback, ...side }: Side & { feedback: React.ReactNode }) {
   return (
     <div className="flex min-h-0 min-w-0 flex-col gap-3">
       {fb && (
-        <Segmented
+        <Tabs
           label="Beside the update"
-          className="self-start"
-          segments={[
-            { key: "evidence", label: `Evidence · ${d.evidence.length}`, active: tab === "evidence", onClick: () => setTab("evidence") },
-            { key: "feedback", label: `Hoot's feedback · ${flags}`, active: tab === "feedback", onClick: () => setTab("feedback") },
+          idBase="movement-side"
+          onSelect={(k) => setTab(k as "evidence" | "feedback")}
+          items={[
+            { key: "evidence", label: "Evidence", count: d.evidence.length, active: tab === "evidence" },
+            { key: "feedback", label: "Hoot's feedback", count: flags, hot: flags > 0, active: tab === "feedback" },
           ]}
         />
       )}
-      <EvidencePanel {...side} className={cn("min-h-0 flex-1", tab !== "evidence" && "hidden")} />
-      {fb && <div className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto p-px", tab !== "feedback" && "hidden")}>{feedback}</div>}
+      <div {...(fb ? tabPanelProps("movement-side", "evidence") : {})} className={cn("flex min-h-0 flex-1 flex-col", tab !== "evidence" && "hidden")}>
+        <EvidencePanel {...side} className="min-h-0 flex-1" />
+      </div>
+      {fb && (
+        <div {...tabPanelProps("movement-side", "feedback")} className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto p-px", tab !== "feedback" && "hidden")}>
+          {feedback}
+        </div>
+      )}
     </div>
   );
 }

@@ -22,8 +22,8 @@ export type NavInput = {
 export type NavBack = { label: string; href: string };
 
 /**
- * `tabs` are the section's pages; a page about one item gets `back` instead (and no tabs), so the header carries one
- * "where am I / go up" line and the page's own tabs are the only row below it.
+ * `tabs` are the section's pages; a page about one item, or a sub-page, gets `back` instead (and no tabs), so the
+ * header carries one "where am I / go up" line and the page's own tabs are the only row below it.
  */
 export type NavModel = { rail: RailItem[]; manage: RailItem | null; section: RailKey | null; title: string; tabs: NavTab[]; back: NavBack | null };
 
@@ -66,11 +66,14 @@ export function sectionFor(pathname: string): RailKey | null {
 }
 
 /**
- * The item pages that stand on their own (a holding, one earnings report) and the list each goes up to. Master–detail
- * pages (a movement, a model, a sell-side call, a research board or Hoot chat) show their item beside its list, so they
- * keep the section's tabs: the list is already the way up, and the header matches their list page's.
+ * The pages that stand on their own under another page, and the page each goes up to: an item page (a holding, one
+ * earnings report) goes up to its list, a sub-page (the ledger, the PT sheet read test) to the page it hangs off.
+ * Master–detail pages (a movement, a model, a sell-side call, a research board or Hoot chat) show their item beside its
+ * list, so they keep the section's tabs: the list is already the way up, and the header matches their list page's.
  */
 export function backFor(pathname: string, base: string | null): NavBack | null {
+  if (/^\/attribution\/ledger\/?$/.test(pathname)) return { label: "Attribution", href: "/attribution" };
+  if (/^\/admin\/pt-sheet\/?$/.test(pathname)) return { label: "Admin", href: "/admin" };
   const m = pathname.match(/^\/t\/[^/]+\/(h|earnings)\/[^/]+\/?$/);
   if (!m || !base) return null;
   return m[1] === "h" ? { label: TITLES.holdings, href: base } : { label: TITLES.calendar, href: `${base}/earnings` };

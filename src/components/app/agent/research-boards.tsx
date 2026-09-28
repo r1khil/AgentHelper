@@ -5,7 +5,7 @@ import { Suspense, use, useMemo, useState } from "react";
 import { ChevronRight, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtBp, fmtDateTime, fmtDay, fmtPct, ppToBp, relativeTime } from "@/lib/format";
-import { CountChip, Panel, Pill, Segmented } from "@/components/app/panel";
+import { CountChip, FilterChip, FilterChips, Panel, Pill } from "@/components/app/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export type HoldingCardData = {
@@ -73,17 +73,11 @@ export function ResearchBoards({ holdings, market, showTeam }: { holdings: Holdi
     })
     .sort((a, b) => compare(a, b, sort, flags));
 
-  const segment = (key: Filter, label: string) => ({
-    key,
-    label: (
-      <>
-        {label}
-        <span className="ml-1.5 font-mono text-[11px] font-normal text-muted-foreground">{counts[key]}</span>
-      </>
-    ),
-    active: filter === key,
-    onClick: () => setFilter(key),
-  });
+  const chip = (key: Filter, label: string) => (
+    <FilterChip key={key} active={filter === key} count={counts[key]} onClick={() => setFilter(key)}>
+      {label}
+    </FilterChip>
+  );
 
   return (
     <Panel className="min-h-[420px] flex-1 lg:min-h-0" aria-label="By holding">
@@ -92,11 +86,12 @@ export function ResearchBoards({ holdings, market, showTeam }: { holdings: Holdi
         {counts.attention > 0 && (
           <CountChip hot>{counts.attention}</CountChip>
         )}
-        <Segmented
-          label="Show"
-          className="ml-2"
-          segments={[segment("all", "All"), segment("attention", "Needs attention"), segment("researched", "Researched"), segment("none", "No research yet")]}
-        />
+        <FilterChips label="Show" className="ml-2">
+          {chip("all", "All")}
+          {chip("attention", "Needs attention")}
+          {chip("researched", "Researched")}
+          {chip("none", "No research yet")}
+        </FilterChips>
         <span className="flex-1" />
         <label className="flex items-center">
           <span className="sr-only">Sort</span>

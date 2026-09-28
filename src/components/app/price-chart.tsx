@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PerformanceChart } from "@/components/charts/performance-chart";
-import { ChartTooltip, RangeControlGroup, chartTick, exactDate, rangeControlClass, tone } from "@/components/charts/primitives";
+import { ChartTooltip, TimeRangeSelector, chartTick, exactDate, tone } from "@/components/charts/primitives";
 import { fmtAccounting, fmtPct } from "@/lib/format";
 import { availableRanges, normalizeObservations, performance, selectRange, type Observation, type TimeRange } from "@/lib/charts/series";
 import { cn } from "@/lib/utils";
@@ -45,13 +45,7 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
           {detailed ? "Simple view" : "Compare dates"}
         </button>
         {!detailed && options.length > 1 && (
-          <RangeControlGroup label="Chart time range">
-            {options.map((r) => (
-              <button key={r} type="button" aria-pressed={range === r} onClick={() => setRange(r)} className={rangeControlClass(range === r)}>
-                {r === "ALL" ? "All" : r}
-              </button>
-            ))}
-          </RangeControlGroup>
+          <TimeRangeSelector ranges={options} value={range} onChange={setRange} />
         )}
       </div>
       {detailed ? (

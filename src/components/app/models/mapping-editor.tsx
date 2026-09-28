@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect } from "@/components/app/native-select";
+import { Tabs } from "@/components/app/tabs";
 
 type Props = { modelId: string; workbook: WorkbookInfo; existing: { sheet: string; rowRef: number }[] };
 type ConceptHit = { concept: string; label: string; units: string[]; count: number };
@@ -168,13 +169,18 @@ export function MappingEditor({ modelId, workbook, existing }: Props) {
 
   return (
     <section className="panel overflow-hidden">
-      <div className="flex flex-wrap items-center gap-1 border-b bg-band px-3 py-2">
-        {workbook.sheets.map((s, i) => (
-          <button key={s.name} type="button" onClick={() => { setSheetIdx(i); setRow(null); }} className={cn("h-7 rounded-full px-3 text-xs", i === sheetIdx ? "bg-primary font-medium text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>
-            {s.name}
-          </button>
-        ))}
-        <span className="ml-auto text-[12.5px] text-muted-foreground">Click a row to map it. Shaded cells hold formulas and are never written.</span>
+      <div className="flex flex-wrap items-center gap-x-4 border-b bg-band px-3">
+        <Tabs
+          label="Sheets"
+          rule={false}
+          className="w-full flex-wrap"
+          onSelect={(k) => {
+            setSheetIdx(Number(k));
+            setRow(null);
+          }}
+          items={workbook.sheets.map((s, i) => ({ key: String(i), label: s.name, active: i === sheetIdx }))}
+        />
+        <span className="ml-auto py-2 text-[12.5px] text-muted-foreground">Click a row to map it. Shaded cells hold formulas and are never written.</span>
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">

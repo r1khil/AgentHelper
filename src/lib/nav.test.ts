@@ -46,6 +46,17 @@ describe("navModel", () => {
     expect(report.back).toEqual({ label: "Calendar", href: "/t/fund/earnings" });
   });
 
+  it("gives the ledger and the PT sheet read test a way back up to the page they hang off", () => {
+    const ledger = navModel({ pathname: "/attribution/ledger", ...exec });
+    expect(ledger.back).toEqual({ label: "Attribution", href: "/attribution" });
+    expect(ledger.tabs).toEqual([]);
+    expect(ledger.section).toBe("portfolio");
+    expect(navModel({ pathname: "/admin/pt-sheet", ...exec }).back).toEqual({ label: "Admin", href: "/admin" });
+    // The pages they hang off keep their tabs.
+    expect(navModel({ pathname: "/attribution", ...exec }).back).toBeNull();
+    expect(navModel({ pathname: "/admin", ...exec }).tabs.find((t) => t.active)?.key).toBe("admin");
+  });
+
   it("keeps the way back in the scope in view", () => {
     const team = { scope: { slug: "tech" }, fundWide: false, seesBook: false };
     expect(navModel({ pathname: "/t/tech/h/NVDA", ...team }).back).toEqual({ label: "Holdings", href: "/t/tech" });

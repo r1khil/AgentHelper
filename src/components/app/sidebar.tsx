@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { FUND_SCOPE_SLUG, ROLE_LABELS } from "@/lib/constants";
 import type { Role, Team } from "@/db/schema";
 import { OwlMark } from "./owl-mark";
+import { Segmented } from "./panel";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -487,27 +488,17 @@ function ThemeToggle() {
     <div className={prefRow}>
       <SunMoon className="size-4 shrink-0 text-muted-foreground" />
       <span className="min-w-0 flex-1 text-sm">Theme</span>
-      <div role="group" aria-label="Theme" className="flex rounded-md bg-muted p-0.5">
-        {THEMES.map(({ value, label, icon: Icon }) => {
-          const selected = mounted && theme === value;
-          return (
-            <button
-              key={value}
-              type="button"
-              title={label}
-              aria-label={label}
-              aria-pressed={selected}
-              onClick={() => setTheme(value)}
-              className={cn(
-                "grid size-6 place-items-center rounded-[5px] transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-                selected ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Icon className="size-3.5" />
-            </button>
-          );
-        })}
-      </div>
+      <Segmented
+        label="Theme"
+        segments={THEMES.map(({ value, label, icon: Icon }) => ({
+          key: value,
+          label: <Icon className="size-3.5" />,
+          ariaLabel: label,
+          title: label,
+          active: mounted && theme === value,
+          onClick: () => setTheme(value),
+        }))}
+      />
     </div>
   );
 }

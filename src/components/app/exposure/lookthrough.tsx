@@ -35,21 +35,14 @@ export const STOCK_ACTIVE_ANCHOR = "stock-active-detail";
  */
 export function SectorViewToggle({ basePath, lookback, throughEtfs, available, extra = "" }: { basePath: string; lookback: LookbackKey; throughEtfs: boolean; available: boolean; extra?: string }) {
   const href = (on: boolean) => `${basePath}?lookback=${lookback}${sectorViewQuery(on)}${extra}`;
-  if (!available) {
-    return (
-      <div role="group" aria-label="Sector weights" className="inline-flex shrink-0 items-center rounded-full bg-muted p-0.5 text-[12.5px]">
-        <span aria-current="true" className="flex h-7 items-center rounded-full bg-card px-3 font-semibold shadow-[0_1px_2px_rgba(60,40,20,.08)]">Direct holdings</span>
-        <span aria-disabled="true" title="No ETF holdings lists are stored yet" className="flex h-7 cursor-not-allowed items-center px-3 text-muted-foreground/60">Through ETFs</span>
-      </div>
-    );
-  }
   return (
     <Segmented
       label="Sector weights"
-      className="[&>*]:text-[12.5px]"
       segments={[
-        { key: "held", label: "Direct holdings", title: "Each ETF counted whole in its own sector", href: href(false), active: !throughEtfs },
-        { key: "etf", label: "Through ETFs", title: "Each ETF split into the companies it holds", href: href(true), active: throughEtfs },
+        { key: "held", label: "Direct holdings", title: "Each ETF counted whole in its own sector", href: available ? href(false) : undefined, active: !throughEtfs || !available },
+        available
+          ? { key: "etf", label: "Through ETFs", title: "Each ETF split into the companies it holds", href: href(true), active: throughEtfs }
+          : { key: "etf", label: "Through ETFs", title: "No ETF holdings lists are stored yet", active: false, disabled: true },
       ]}
     />
   );
