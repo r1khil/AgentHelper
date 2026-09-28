@@ -3,15 +3,16 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { getSetting } from "@/lib/settings";
 
 /** Models an admin can pick on the Admin page. All are free OpenRouter variants with tool support. */
+// DeepSeek V4 Flash and Ling 3.0 Flash Fin were dropped on 2026-09-28: OpenRouter withdrew both free variants.
+// (The PT sheet guard still names Ling on purpose; see pt-sheet-guard.ts.)
 export const AGENT_MODELS = [
-  { id: "deepseek/deepseek-v4-flash-0731:free", label: "DeepSeek V4 Flash" },
-  { id: "inclusionai/ling-3.0-flash-fin:free", label: "Ling 3.0 Flash Fin" },
+  { id: "qwen/qwen3.8-27b:free", label: "Qwen 3.8 27B" },
   { id: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "Nemotron 3 Ultra" },
 ] as const;
 
 export type AgentModelId = (typeof AGENT_MODELS)[number]["id"];
 
-export const DEFAULT_MODEL: AgentModelId = "deepseek/deepseek-v4-flash-0731:free";
+export const DEFAULT_MODEL: AgentModelId = "qwen/qwen3.8-27b:free";
 
 /** Key in app_settings holding the admin's choice. */
 export const AGENT_MODEL_SETTING = "agent_model";
