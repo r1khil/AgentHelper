@@ -201,24 +201,25 @@ function dueSpoken(iso: string, now: Date) {
   return `${due.toFormat("H:mm")} ET ${days <= 0 ? "today" : days === 1 ? "tomorrow" : days < 7 ? due.toFormat("cccc") : due.toFormat("LLL d")}`;
 }
 
-// Movement nudges about a write-up with no owner, or someone else's overdue one, say so in their id.
-const isUnassigned = (n: { id: string }) => n.id.includes(":unassigned");
-const isOwnWriteUp = (n: NudgeLike) => n.kind === "movement" && !!n.at && !isUnassigned(n) && !n.id.includes(":team:");
+// A write-up belongs to the whole team, so every one on the member's own team is theirs. Another team's overdue one,
+// which a lead or exec is shown, says so in its id.
+const isOwnWriteUp = (n: NudgeLike) => n.kind === "movement" && !!n.at && !n.id.includes(":team:");
 
 /**
- * What an analyst owes, from their own write-ups on the list: "You owe 1 write-up, due 12:00 ET Monday.", "You owe
- * 1 write-up, 2 days overdue.", "You owe 2 write-ups; the next is due 12:00 ET today." Null when they owe none.
+ * What the analyst's team owes, from its write-ups on the list: "Your team owes 1 write-up, due 12:00 ET Monday.",
+ * "Your team owes 1 write-up, 2 days overdue.", "Your team owes 2 write-ups; the next is due 12:00 ET today." Null
+ * when it owes none.
  */
 export function owedSentence(nudges: NudgeLike[], now: Date = new Date()): string | null {
   const owed = nudges.filter(isOwnWriteUp).sort((a, b) => a.at!.localeCompare(b.at!));
   if (!owed.length) return null;
   const late = owed.filter(isOverdue).length;
-  if (owed.length === 1) return `You owe 1 write-up, ${late ? overdueFor(owed[0].at!, now) : `due ${dueSpoken(owed[0].at!, now)}`}.`;
-  if (!late) return `You owe ${owed.length} write-ups; the next is due ${dueSpoken(owed[0].at!, now)}.`;
-  return `You owe ${owed.length} write-ups; ${late === owed.length ? (late === 2 ? "both are" : "all are") : `${word(late)} ${late === 1 ? "is" : "are"}`} overdue.`;
+  if (owed.length === 1) return `Your team owes 1 write-up, ${late ? overdueFor(owed[0].at!, now) : `due ${dueSpoken(owed[0].at!, now)}`}.`;
+  if (!late) return `Your team owes ${owed.length} write-ups; the next is due ${dueSpoken(owed[0].at!, now)}.`;
+  return `Your team owes ${owed.length} write-ups; ${late === owed.length ? (late === 2 ? "both are" : "all are") : `${word(late)} ${late === 1 ? "is" : "are"}`} overdue.`;
 }
 
-/** An analyst's line under the greeting: what they owe first, then the rest of the list. */
+/** An analyst's line under the greeting: what their team owes first, then the rest of the list. */
 export function analystSentence(nudges: NudgeLike[], now: Date = new Date()): string {
   const owed = owedSentence(nudges, now);
   if (!owed) return listSentence(nudges.length, nudges.filter(isOverdue).length);
@@ -234,7 +235,6 @@ export function nudgeWhen(n: NudgeLike, now: Date = new Date()): string {
   if (n.kind === "movement") {
     if (n.at) return isOverdue(n) ? overdueFor(n.at, now) : `Due ${dueStamp(n.at)}`;
     if (isOverdue(n)) return "Overdue";
-    if (isUnassigned(n)) return "No owner";
     const h = /due in (\d+)h/i.exec(n.title)?.[1];
     return h ? `Due in ${h}h` : "Due soon";
   }
@@ -257,7 +257,6 @@ export function nudgeWhen(n: NudgeLike, now: Date = new Date()): string {
     const pr = n.id.split(":")[1];
     return pr ? `PR #${pr}` : "New";
   }
-  if (n.kind === "holdings") return "No owner";
   return "";
 }
 
@@ -265,9 +264,7 @@ export function nudgeWhen(n: NudgeLike, now: Date = new Date()): string {
 export function nudgeAction(n: NudgeLike): string {
   switch (n.kind) {
     case "movement":
-      return isUnassigned(n) ? "Assign owner" : "Open write-up";
-    case "holdings":
-      return "Assign owners";
+      return "Open write-up";
     case "earnings":
       return n.id.endsWith(":expectations") ? "Write them" : "Open";
     case "sell_side":

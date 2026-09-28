@@ -12,7 +12,6 @@ const input = (over: Partial<NudgeInput> = {}): NudgeInput => ({
   soon: ["2026-09-23", "2026-09-24", "2026-09-25", "2026-09-28"],
   myMovements: [],
   teamMovements: [],
-  unownedHoldings: null,
   earnings: [],
   mySellSide: [],
   thesisProposals: [],
@@ -38,45 +37,43 @@ describe("buildNudges", () => {
     );
     expect(out.map((n) => n.id)).toEqual(["movement:m1:overdue", "movement:m2:due", "movement:m3:due"]);
     expect(out[0]).toMatchObject({ priority: 1, mood: "concerned", href: "/t/tech/movements/m1" });
-    expect(out[1].title).toBe("Your AAPL write-up is due in 22h");
-    expect(out[2]).toMatchObject({ priority: 5, title: "Your MSFT write-up is due Monday" });
+    expect(out[0].title).toBe("Your team's NVDA write-up is overdue");
+    expect(out[1].title).toBe("Your team's AAPL write-up is due in 22h");
+    expect(out[2]).toMatchObject({ priority: 5, title: "Your team's MSFT write-up is due Monday" });
   });
 
-  it("gives a lead or exec the team's unassigned and overdue write-ups, and one line for unowned holdings", () => {
+  it("gives a lead or exec only the overdue write-ups of the other teams they run, as the team's", () => {
     const out = buildNudges(
       input({
         teamMovements: [
-          { id: "t1", ticker: "META", teamSlug: "consumer", dueAt: new Date("2026-09-20T16:00:00Z"), ownerName: null },
-          { id: "t2", ticker: "JPM", teamSlug: "fig", dueAt: new Date("2026-09-23T16:00:00Z"), ownerName: null },
-          { id: "t3", ticker: "UNH", teamSlug: "healthcare", dueAt: new Date("2026-09-21T16:00:00Z"), ownerName: "Jane Doe" },
-          { id: "t4", ticker: "AAPL", teamSlug: "tech", dueAt: new Date("2026-09-23T16:00:00Z"), ownerName: "Sam Lee" },
+          { id: "t1", ticker: "META", teamSlug: "consumer", teamName: "Consumer", dueAt: new Date("2026-09-20T16:00:00Z") },
+          { id: "t2", ticker: "JPM", teamSlug: "fig", teamName: "FIG", dueAt: new Date("2026-09-23T16:00:00Z") },
+          { id: "t3", ticker: "UNH", teamSlug: "healthcare", teamName: "Healthcare", dueAt: new Date("2026-09-21T16:00:00Z") },
+          { id: "t4", ticker: "AAPL", teamSlug: "tech", teamName: "Tech", dueAt: null },
         ],
-        unownedHoldings: { count: 29, href: "/t/fund?filter=unassigned" },
       }),
     );
     expect(out.map((n) => [n.id, n.priority, n.title])).toEqual([
-      ["movement:t1:unassigned:overdue", 2, "META write-up has no owner"],
-      ["movement:t2:unassigned", 3, "JPM write-up has no owner"],
+      ["movement:t1:team:overdue", 3, "META write-up is overdue"],
       ["movement:t3:team:overdue", 3, "UNH write-up is overdue"],
-      ["holdings:unowned:29", 6, "29 holdings have no owner"],
     ]);
-    expect(out[0].href).toBe("/t/consumer/movements/t1");
-    expect(out[2].detail).toBe("Jane Doe owns it. Check in, or reassign it on the movement page.");
-    expect(out[3].href).toBe("/t/fund?filter=unassigned");
+    expect(out[0]).toMatchObject({ href: "/t/consumer/movements/t1", mood: "concerned", at: "2026-09-20T16:00:00.000Z" });
+    expect(out[1].detail).toBe("Healthcare hasn't finished it yet. Check in with the team.");
+    expect(out.some((n) => /owner/i.test(`${n.title} ${n.detail}`))).toBe(false);
   });
 
   it("links in the member's scope when it shows the item, else in the item's team", () => {
     const rows = {
       myMovements: [{ id: "m1", ticker: "NVDA", teamSlug: "tech", dueAt: new Date("2026-09-22T16:00:00Z") }],
       earnings: [{ id: "e1", ticker: "TSM", teamSlug: "tech", reportDate: "2026-09-22", reportHour: "bmo", expectationsLocked: false, mine: false }],
-      teamMovements: [{ id: "m2", ticker: "AAPL", teamSlug: "tech", dueAt: new Date("2026-09-23T16:00:00Z"), ownerName: null }],
+      teamMovements: [{ id: "m2", ticker: "AAPL", teamSlug: "tech", teamName: "Tech", dueAt: new Date("2026-09-21T16:00:00Z") }],
     };
     expect(buildNudges(input({ ...rows, scope: "fund" })).map((n) => n.href)).toEqual(["/t/fund/movements/m1", "/t/fund/earnings/e1", "/t/fund/movements/m2"]);
     expect(buildNudges(input({ ...rows, scope: "tech" })).map((n) => n.href)).toEqual(["/t/tech/movements/m1", "/t/tech/earnings/e1", "/t/tech/movements/m2"]);
     expect(buildNudges(input({ ...rows, scope: "consumer" })).map((n) => n.href)).toEqual(["/t/tech/movements/m1", "/t/tech/earnings/e1", "/t/tech/movements/m2"]);
   });
 
-  it("flags today's reports, asks owners to lock expectations, and rolls the rest of the week into one line", () => {
+  it("flags today's reports, asks the holding's team to lock expectations, and rolls the rest of the week into one line", () => {
     const out = buildNudges(
       input({
         earnings: [

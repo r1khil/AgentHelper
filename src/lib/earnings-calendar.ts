@@ -38,7 +38,6 @@ export type CalendarEvent = {
   teamId?: string;
   teamSlug?: string;
   teamName?: string;
-  ownerId?: string | null;
   status?: Earnings["status"];
   expectations?: ExpectationsState;
   // Bellwethers
@@ -239,7 +238,6 @@ export function toCalendarEvents(rows: HoldingEventRow[], bellwethers: Bellwethe
       teamId: r.h.teamId,
       teamSlug: r.teamSlug,
       teamName: r.teamName,
-      ownerId: r.h.ownerId ?? null,
       status: r.e.status,
       expectations: expectationsState(r.e),
     });
