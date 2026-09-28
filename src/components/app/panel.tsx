@@ -94,16 +94,17 @@ export function stripGrid(count: number, wrap?: boolean) {
 }
 
 /**
- * One panel split into equal cells: label, a big mono figure, a note. `wrap` (an even number of cells) puts two
- * cells a row while the strip is narrower than 36rem, so figures in a narrow column aren't cut off.
+ * One panel split into equal cells: label, a big mono figure, a note. Labels and notes wrap in a narrow window rather
+ * than cut off; the cells share their three rows (subgrid), so a two-line label keeps every figure on one line. `wrap`
+ * (an even number of cells) puts two cells a row while the strip is narrower than 36rem.
  */
 export function StatStrip({ cells, className, wrap, ...props }: { cells: StatCell[]; className?: string; wrap?: boolean } & Omit<React.ComponentProps<"section">, "children">) {
   const grid = stripGrid(cells.length, wrap);
   const strip = (
     <section className={cn("panel grid shrink-0 overflow-hidden", grid.className, className)} style={grid.style} {...props}>
       {cells.map((c, i) => (
-        <div key={i} className={cn("min-w-0 px-[18px] py-3.5", wrap ? wrapDivider(i) : i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
-          <div className="truncate text-body text-muted-foreground">{c.label}</div>
+        <div key={i} className={cn("row-span-3 grid min-w-0 grid-rows-subgrid px-[18px] py-3.5", wrap ? wrapDivider(i) : i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
+          <div className="self-end text-body text-muted-foreground">{c.label}</div>
           <div
             className={cn(
               "figure mt-1 truncate text-display leading-tight",
@@ -114,7 +115,7 @@ export function StatStrip({ cells, className, wrap, ...props }: { cells: StatCel
           >
             {c.value}
           </div>
-          {c.note && <div className="mt-1 truncate text-caption text-muted-foreground">{c.note}</div>}
+          {c.note && <div className="mt-1 text-caption text-muted-foreground">{c.note}</div>}
         </div>
       ))}
     </section>

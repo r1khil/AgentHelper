@@ -28,11 +28,10 @@ export function ComingUp({ items, today, moreCount, lastDate, calendarHref }: { 
       ) : (
         <ul className="flex flex-col pb-1">
           {items.map((i) => (
-            <li key={`${i.date}-${i.text}`} className="grid h-[38px] grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-2.5 px-[18px] text-body">
+            // A long day (several reports) wraps to a second line rather than cutting off tickers.
+            <li key={`${i.date}-${i.text}`} className="grid min-h-[38px] grid-cols-[84px_minmax(0,1fr)_auto] items-baseline gap-2.5 px-[18px] py-[9px] text-body">
               <span className="font-mono text-body font-semibold">{agendaDate(i.date)}</span>
-              <span className="truncate" title={i.text}>
-                {i.text}
-              </span>
+              <span className="text-pretty">{i.text}</span>
               <span className="text-body whitespace-nowrap text-muted-foreground">{daysAway(today, i.date)}</span>
             </li>
           ))}
