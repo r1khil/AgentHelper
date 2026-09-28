@@ -89,7 +89,7 @@ it("keeps cash out of provider calls while using the current unnormalized weight
   expect(vi.mocked(getAdjustedBarsRange).mock.calls.map((c) => c[0])).not.toContain("CASH");
 });
 
-it("opens on today's weights against SPY over the last year, without writing the provider cache", async () => {
+it("opens on today's weights against SPY over the last year", async () => {
   vi.mocked(getAdjustedBarsRange).mockResolvedValue([
     { date: "2024-01-05", close: 100 },
     { date: "2024-01-08", close: 102 },
@@ -108,8 +108,8 @@ it("opens on today's weights against SPY over the last year, without writing the
   expect(run.result.original.totalReturn).toBeCloseTo(0.08);
   expect(run.result.modified.totalReturn).toBe(run.result.original.totalReturn);
   expect(vi.mocked(getAdjustedBarsRange).mock.calls).toEqual([
-    ["SPY", "2023-12-23", "2025-01-06", { persist: false }],
-    ["A", "2023-12-23", "2025-01-06", { persist: false }],
+    ["SPY", "2023-12-23", "2025-01-06"],
+    ["A", "2023-12-23", "2025-01-06"],
   ]);
 });
 it("hands a failed opening replay back as a message instead of rejecting", async () => {

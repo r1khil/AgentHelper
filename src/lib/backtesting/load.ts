@@ -96,8 +96,6 @@ export async function runBacktest(
   benchmark: keyof typeof BENCHMARKS,
   from: string,
   to: string,
-  /** `persistCache: false` fetches without writing the provider cache table (opening the page never writes). */
-  { persistCache = true }: { persistCache?: boolean } = {},
 ) {
   validateRange(from, to);
   if (to > DateTime.now().setZone(NY).minus({ days: 1 }).toISODate()!)
@@ -123,9 +121,7 @@ export async function runBacktest(
     await Promise.all(
       symbols.slice(i, i + 4).map(async (symbol) => {
         try {
-          prices[symbol] = persistCache
-            ? await getAdjustedBarsRange(symbol, start, to)
-            : await getAdjustedBarsRange(symbol, start, to, { persist: false });
+          prices[symbol] = await getAdjustedBarsRange(symbol, start, to);
         } catch {
           throw new Error(
             `Adjusted history unavailable for ${symbol}. Try again or choose another date range.`,
@@ -141,8 +137,10 @@ export async function runBacktest(
 const OPENING_RUN_TIMEOUT_MS = 45_000;
 
 /**
- * The replay Backtesting opens with: today's weights against SPY over the default window ending `end`. Read-only
- * (no cache writes), and it never rejects: a failure or timeout comes back as a message for the replay panel.
+ * The replay Backtesting opens with: today's weights against SPY over the default window ending `end`. It saves no
+ * scenario and touches no profile; the prices it fetches go into the shared provider cache like any run's, so the
+ * next open and the first Run read them from there. It never rejects: a failure or timeout comes back as a message
+ * for the replay panel.
  */
 export async function openingRun(snapshot: Snapshot, end: string): Promise<OpeningRun> {
   const { weights, benchmark, from, to } = defaultScenario(snapshot, end);
@@ -151,7 +149,7 @@ export async function openingRun(snapshot: Snapshot, end: string): Promise<Openi
     timer = setTimeout(() => reject(new Error("The opening replay took too long. Run the replay to try again.")), OPENING_RUN_TIMEOUT_MS);
   });
   try {
-    const result = await Promise.race([runBacktest(snapshot, weights, benchmark, from, to, { persistCache: false }), timeout]);
+    const result = await Promise.race([runBacktest(snapshot, weights, benchmark, from, to), timeout]);
     return { result, from, to, benchmark };
   } catch (error) {
     console.error("[backtesting] opening replay", error);

@@ -44,13 +44,10 @@ function approxBytes(payload: unknown): number | undefined {
 
 /**
  * Cache a provider call. Memory first, then the provider_cache table, then the network.
- * The DB layer is optional so providers work in scripts and tests without a database. `persist: false` still reads
- * the table but keeps a fresh result in memory only, for requests that must not write (a page being opened).
+ * The DB layer is optional so providers work in scripts and tests without a database.
  * When a transparency trace is active, each lookup reports which layer answered it.
  */
-type CacheOpts = { db?: boolean; persist?: boolean };
-
-export async function cached<T>(key: string, ttlSeconds: number, fn: () => Promise<T>, opts: CacheOpts = {}): Promise<T> {
+export async function cached<T>(key: string, ttlSeconds: number, fn: () => Promise<T>, opts: { db?: boolean } = {}): Promise<T> {
   const trace = currentTrace();
   if (!trace) return cachedUntraced(key, ttlSeconds, fn, opts);
 
@@ -81,7 +78,7 @@ export async function cached<T>(key: string, ttlSeconds: number, fn: () => Promi
   trace.emit({ t: "fetch", host, key, layer: "network", ms: Date.now() - t0, bytes: approxBytes(payload), ttlSeconds, ok: true });
   const entry = { payload, expiresAt: now + ttlSeconds * 1000 };
   memory.set(key, entry);
-  if (opts.db !== false && opts.persist !== false && process.env.DATABASE_URL) await dbSet(key, entry);
+  if (opts.db !== false && process.env.DATABASE_URL) await dbSet(key, entry);
   return payload;
 }
 
@@ -107,7 +104,7 @@ export async function readCached<T>(key: string, opts: { db?: boolean } = {}): P
   return null;
 }
 
-async function cachedUntraced<T>(key: string, ttlSeconds: number, fn: () => Promise<T>, opts: CacheOpts): Promise<T> {
+async function cachedUntraced<T>(key: string, ttlSeconds: number, fn: () => Promise<T>, opts: { db?: boolean }): Promise<T> {
   const now = Date.now();
   const mem = memory.get(key);
   if (mem && mem.expiresAt > now) return mem.payload as T;
@@ -121,6 +118,6 @@ async function cachedUntraced<T>(key: string, ttlSeconds: number, fn: () => Prom
   const payload = await fn();
   const entry = { payload, expiresAt: now + ttlSeconds * 1000 };
   memory.set(key, entry);
-  if (opts.db !== false && opts.persist !== false && process.env.DATABASE_URL) await dbSet(key, entry);
+  if (opts.db !== false && process.env.DATABASE_URL) await dbSet(key, entry);
   return payload;
 }

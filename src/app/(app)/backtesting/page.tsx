@@ -110,7 +110,7 @@ export default async function BacktestingPage({ searchParams }: PageProps<"/back
     defaultTo: span.to,
     initial,
     // A plain open replays today's weights against SPY while the page streams, so the first view has results.
-    // Nothing is saved or cached to the database; a link to a scenario, trade or dates waits for Run instead.
+    // No scenario is saved and the profile is untouched; a link to a scenario, trade or dates waits for Run instead.
     openingRun: initial ? undefined : openingRun(snapshot, span.to),
     saveAudience: isFundWide(user) ? "the Fund's execs and admins" : `everyone on ${user.team?.name ?? "your team"}`,
     realizedHref,

@@ -169,8 +169,7 @@ export async function getBarsRange(symbol: string, from: string, to?: string): P
 }
 
 /** Dividend- and split-adjusted daily closes for total-return backtesting. Never fall back to raw close. */
-/** `persist: false` reads the shared cache but doesn't write to it (see `cached`). */
-export async function getAdjustedBarsRange(symbol: string, from: string, to: string, opts?: { persist?: boolean }): Promise<{ date: string; close: number }[]> {
+export async function getAdjustedBarsRange(symbol: string, from: string, to: string): Promise<{ date: string; close: number }[]> {
   return cached(`yahoo:backtest-adjusted:v1:${symbol}:${from}:${to}`, 60 * 15, async () => {
     let res;
     try {
@@ -217,7 +216,7 @@ export async function getAdjustedBarsRange(symbol: string, from: string, to: str
       if (!listedLater) throw new Error(`Adjusted history for ${symbol} starts late without a later listing date.`);
     }
     return bars;
-  }, opts);
+  });
 }
 
 export type SectorProfile = { sector: string | null; industry: string | null };
