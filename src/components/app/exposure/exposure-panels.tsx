@@ -1,4 +1,3 @@
-import { ScopedLink } from "@/components/app/shell/scope-context";
 import { Panel, PanelHeader } from "@/components/app/panel";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
 import type { Exposure } from "@/lib/risk/exposure";
@@ -10,6 +9,7 @@ import { InfoTip } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "../risk/explainers";
 import { rnum, rpct } from "../risk/format";
 import type { TeamNames } from "../risk/holdings-risk-table";
+import { RowLink } from "@/components/app/row-link";
 
 /** Active weight in basis points without the unit, e.g. "340" or "(125)"; the column or panel header names the unit. */
 const activeBp = (v: number | null) => rnum(v === null ? null : v * 10_000, 0);
@@ -90,9 +90,9 @@ export function ActiveBetsPanel({ report: r, x, lookthrough, teams, benchShort, 
           const n = names.get(b.key);
           const note = team?.name ?? (n?.sector ? SECTOR_LABELS[n.sector] : b.name);
           return (
-            <div key={b.key} className={cn(COLS, "min-h-10 border-b border-row text-[13.5px] last:border-b-0")} title={`${b.key} · ${b.name}`}>
+            <div key={b.key} className={cn(COLS, "relative min-h-10 border-b border-row text-[13.5px] last:border-b-0")} title={`${b.key} · ${b.name}`}>
               {team ? (
-                <ScopedLink owner={team.slug} path={`/h/${encodeURIComponent(b.key)}`} className="truncate font-mono text-[13px] font-semibold hover:underline">{b.key}</ScopedLink>
+                <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(b.key)}`} className="truncate font-mono text-[13px] font-semibold hover:underline">{b.key}</RowLink>
               ) : (
                 <span className="truncate font-mono text-[13px] font-semibold">{b.key}</span>
               )}

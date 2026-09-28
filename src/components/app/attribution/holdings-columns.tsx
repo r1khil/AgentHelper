@@ -1,9 +1,9 @@
-import { ScopedLink } from "@/components/app/shell/scope-context";
 import type { HoldingRow } from "@/lib/attribution/attribution";
 import { MagnitudeBar } from "./bars";
 import type { TeamLookup } from "./contributors-table";
 import { fmtAccounting, fmtPct } from "@/lib/format";
 import { bps, pct } from "./format";
+import { RowLink } from "@/components/app/row-link";
 
 /**
  * One column of holdings ranked by contribution: ticker, who owns it and its average weight, a bar scaled to the
@@ -22,9 +22,9 @@ export function HoldingsColumn({ rows, teams, caption }: { rows: HoldingRow[]; t
         const team = h.teamId ? teams.get(h.teamId) : undefined;
         const bp = Math.round(h.contribution * 10_000);
         return (
-          <div key={h.ticker} className="grid min-h-10 grid-cols-[3.5rem_1fr_3.5rem] items-center gap-2.5 border-b border-row text-[13.5px] last:border-b-0">
+          <div key={h.ticker} className="relative grid min-h-10 grid-cols-[3.5rem_1fr_3.5rem] items-center gap-2.5 border-b border-row text-[13.5px] last:border-b-0">
             {team ? (
-              <ScopedLink owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} className="truncate font-mono font-semibold hover:underline">{h.ticker}</ScopedLink>
+              <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} className="truncate font-mono font-semibold hover:underline">{h.ticker}</RowLink>
             ) : (
               <span className="truncate font-mono font-semibold">{h.ticker}</span>
             )}

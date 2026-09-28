@@ -30,6 +30,7 @@ export function CallWorkspace({
   children,
   header,
   chat,
+  expect,
 }: {
   callId: string;
   configured: boolean;
@@ -38,6 +39,11 @@ export function CallWorkspace({
   header?: { ticker: string; title: string; byline: string; sector?: string };
   /** The call's saved discussion; mounted the first time the Saved chat tab opens. */
   chat?: ReactNode;
+  /**
+   * What the page knows the call will show once its saved state loads: the timeline (it has transcribed speech) and
+   * the recording and processing card (it isn't ready yet). The loading line holds their place so the tabs don't move.
+   */
+  expect?: { timeline: boolean; recorder: boolean };
 }) {
   const router = useRouter();
   const [chosenTab, setChosenTab] = useState<Tab | null>(null);
@@ -429,9 +435,13 @@ export function CallWorkspace({
           )}
           {bars.length > 0 && <Timeline bars={bars} markers={markers} total={total} onJump={openTranscriptAt} />}
           {!data ? (
-            <p role="status" className="mt-3.5 text-[13.5px] text-muted-foreground">
-              {error || "Loading saved call…"}
-            </p>
+            error ? (
+              <p role="status" className="mt-3.5 text-[13.5px] text-muted-foreground">
+                {error}
+              </p>
+            ) : (
+              <LoadingCall timeline={!!expect?.timeline} recorder={!!expect?.recorder} />
+            )
           ) : (
             showRecorder && (
               <section aria-label="Recording and processing" className="mt-3.5 space-y-3 rounded-[10px] bg-band px-4 py-3">
@@ -631,6 +641,24 @@ export function CallWorkspace({
         )}
       </Panel>
     </CallPaneContext.Provider>
+  );
+}
+
+/**
+ * "Loading saved call…" in the space the loaded call will fill: the timeline's band (same size, so the timeline
+ * replaces it without a shift), the top of the recording card, or, when neither will show, nothing visible at all.
+ */
+function LoadingCall({ timeline, recorder }: { timeline: boolean; recorder: boolean }) {
+  const status = (
+    <p role="status" className={cn("text-[13px] text-muted-foreground", !timeline && !recorder && "sr-only")}>
+      Loading saved call…
+    </p>
+  );
+  return (
+    <>
+      {timeline && <div className="mt-3.5 flex h-9 items-center rounded-[10px] bg-band px-3">{!recorder && status}</div>}
+      {recorder ? <div className="mt-3.5 rounded-[10px] bg-band px-4 py-3">{status}</div> : !timeline && status}
+    </>
   );
 }
 
