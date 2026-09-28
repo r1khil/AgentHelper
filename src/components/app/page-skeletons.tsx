@@ -21,21 +21,23 @@ export function TodaySkeleton() {
     <SkeletonPage className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
       <div className="flex min-w-0 flex-col gap-5">
         {/* Greeting */}
-        <div className="flex h-[84px] shrink-0 items-center gap-4">
+        <div className="flex min-h-[84px] shrink-0 items-center gap-4">
           <Bone className="size-[84px] shrink-0 rounded-full" />
           <div className="min-w-0">
             <TextBone className="font-mono text-body" w="w-56" />
             <TextBone className="mt-0.5 text-display leading-tight" w="w-60" />
             <TextBone className="mt-0.5 text-emph" w="w-80" />
+            {/* Below xl the sentence runs to a second line. */}
+            <TextBone className="text-emph xl:hidden" w="w-40" />
           </div>
         </div>
-        {/* Hoot's list */}
+        {/* Hoot's list: below xl "when" moves under the title, so the row loses that column. */}
         <SkeletonPanel className="shrink-0">
           <SkeletonPanelHeader w="w-36" aside="w-52" />
           <SkeletonRows
             count={3}
-            row="grid h-[58px] grid-cols-[32px_minmax(0,1fr)_150px_116px_20px] gap-3"
-            cells={["size-8 rounded-full", "w-3/5", "w-20", "h-7 w-20 justify-self-end rounded-full", ""]}
+            row="grid h-[58px] grid-cols-[32px_minmax(0,1fr)_116px_20px] gap-3 xl:grid-cols-[32px_minmax(0,1fr)_150px_116px_20px]"
+            cells={["size-8 rounded-full", "w-3/5", "hidden w-20 xl:block", "h-7 w-20 justify-self-end rounded-full", ""]}
           />
         </SkeletonPanel>
         {/* Teams: a 52px row per team under a divider, as tall as its rows. */}
@@ -92,8 +94,10 @@ export function TodaySkeleton() {
 /* ------------------------------------------------------------------------------------------------ Holdings */
 
 /** components/app/holdings/holdings-table.tsx GRID. */
-const HOLDINGS_GRID = "grid grid-cols-[64px_minmax(0,1fr)_64px_64px_80px_76px_76px_96px_168px] items-center gap-3 px-4";
-const HOLDING_CELLS = ["w-11", "w-3/5", "w-10 justify-self-end", "w-10 justify-self-end", "w-12 justify-self-end", "w-10 justify-self-end", "w-10 justify-self-end", "w-16", "h-[22px] w-24 rounded-full"];
+const HOLDINGS_GRID =
+  "grid grid-cols-[64px_minmax(0,1fr)_56px_72px_68px_72px_84px_168px] items-center gap-3 px-4 xl:grid-cols-[64px_minmax(0,1fr)_64px_64px_80px_76px_76px_96px_168px]";
+/** The third cell is the 5-day sparkline, which only shows from xl. */
+const HOLDING_CELLS = ["w-11", "w-3/5", "hidden w-10 justify-self-end xl:block", "w-10 justify-self-end", "w-12 justify-self-end", "w-10 justify-self-end", "w-10 justify-self-end", "w-16", "h-[22px] w-24 rounded-full"];
 
 /** Holdings (`t/[team]/page.tsx`): the filter chips and market line, then the holdings table grouped by team. */
 export function HoldingsSkeleton() {
@@ -110,7 +114,7 @@ export function HoldingsSkeleton() {
         <div className="flex min-w-[920px] flex-col">
           <div className={cn(HOLDINGS_GRID, "h-9 shrink-0 border-b")}>
             {HOLDING_CELLS.map((_, i) => (
-              <Bone key={i} className={cn("h-2.5 w-10 rounded-[4px]", i > 1 && i < 7 && "justify-self-end")} />
+              <Bone key={i} className={cn("h-2.5 w-10 rounded-[4px]", i > 1 && i < 7 && "justify-self-end", i === 2 && "hidden xl:block")} />
             ))}
           </div>
           {[5, 4].map((rows, g) => (

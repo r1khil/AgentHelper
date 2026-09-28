@@ -33,8 +33,13 @@ export type HoldingGroup = { id: string; name: string; navPct: number | null; ro
 export type QuoteCells = Record<string, { price?: number; changePct?: number; relativePp?: number }>;
 
 // Desktop only. Company takes what is left; the minimum width fits a ~920 px content area (a 1,045 px window less the
-// rail and padding) without scrolling sideways.
-const GRID = "grid grid-cols-[64px_minmax(0,1fr)_64px_64px_80px_76px_76px_96px_168px] items-center gap-3 px-4";
+// rail and padding) without scrolling sideways. Below xl the 5-day sparkline yields first (the holding's page charts
+// it) and the number tracks tighten to what their figures need, which gives the company about 220 px, and a long
+// name wraps to a second line inside the 40 px row instead of cutting off.
+const GRID =
+  "grid grid-cols-[64px_minmax(0,1fr)_56px_72px_68px_72px_84px_168px] items-center gap-3 px-4 xl:grid-cols-[64px_minmax(0,1fr)_64px_64px_80px_76px_76px_96px_168px]";
+/** The sparkline column's header and cells: out of the layout and the table below xl, together. */
+const SPARK = "hidden xl:flex";
 const COLUMNS = 9;
 
 /**
@@ -60,7 +65,7 @@ export function HoldingsTable({ groups, quotes, grouped = true, empty }: { group
           <div role="row" className={cn(GRID, "h-9 shrink-0 border-b text-body text-muted-foreground")}>
             <span role="columnheader">Ticker</span>
             <span role="columnheader">Company</span>
-            <span role="columnheader"><ReadAs text="Last 5 days">5 days</ReadAs></span>
+            <span role="columnheader" className={SPARK}><ReadAs text="Last 5 days">5 days</ReadAs></span>
             <span role="columnheader" className="text-right"><ReadAs text="Weight, % of NAV">Weight</ReadAs></span>
             <span role="columnheader" className="text-right">Price</span>
             <span role="columnheader" className="text-right"><ReadAs text="Day change">Day</ReadAs></span>
@@ -114,15 +119,15 @@ function Row({ r, q, loading }: { r: HoldingListRow; q?: QuoteCells[string]; loa
   const [first, ...rest] = r.flags;
   const shares = r.shares != null ? `${fmtNumber(r.shares, 2)} shares` : "No shares recorded";
   return (
-    <div role="row" className={cn(GRID, "relative h-10 border-b border-row text-body transition-colors hover:bg-band")}>
+    <div role="row" className={cn(GRID, "relative min-h-10 border-b border-row text-body transition-colors hover:bg-band")}>
       {/* The ticker link stretches over the whole row; the pills sit above it and keep their own links. */}
       <span role="rowheader">
         <RowLink cover="stretch" href={r.href} aria-label={tickerName(r.ticker, r.company)} title={`${r.ticker} · ${shares}`} className="font-mono text-body font-semibold">
           {r.ticker}
         </RowLink>
       </span>
-      <span role="cell" className="truncate text-ink-2">{r.company}</span>
-      <span role="cell" className="flex">
+      <span role="cell" className="leading-4 text-ink-2">{r.company}</span>
+      <span role="cell" className={SPARK}>
         <Sparkline values={r.spark} />
       </span>
       <span role="cell" className="text-right font-mono text-body tabular-nums" title={`${shares}${r.weightPct != null ? ` · ${fmtPct(r.weightPct)} of NAV` : ""}`}>

@@ -21,7 +21,8 @@ export function SectorWeightsPanel({ x, benchShort, className }: { x: Exposure; 
   const rows = x.sectors.filter((s) => s.key !== "cash");
   const max = Math.max(...rows.flatMap((s) => [s.weight, s.benchWeight ?? 0]), 0);
   const w = (v: number | null) => `${max > 0 && v !== null ? Math.max(0, Math.min(100, (v / max) * 100)) : 0}%`;
-  const COLS = "grid grid-cols-[170px_minmax(0,1fr)_64px] items-center gap-3 px-4";
+  // The last track fits "Active, bp" and its info button on one line (64 px wrapped it over the first row).
+  const COLS = "grid grid-cols-[170px_minmax(0,1fr)_84px] items-center gap-3 px-4";
   return (
     <Panel id="sectors" className={cn("scroll-mt-4", className)}>
       <PanelHeader
@@ -39,7 +40,7 @@ export function SectorWeightsPanel({ x, benchShort, className }: { x: Exposure; 
           <span role="columnheader">
             <span className="sr-only">Weight</span>
           </span>
-          <span role="columnheader" className="flex items-center justify-end gap-1">
+          <span role="columnheader" className="flex items-center justify-end gap-1 whitespace-nowrap">
             <ReadAs text="Active weight, basis points">Active, bp</ReadAs>
             <InfoTip label="active weight">{RISK_EXPLAIN.activeWeight}</InfoTip>
           </span>
@@ -122,7 +123,8 @@ export function ActiveBetsPanel({ report: r, x, lookthrough, teams, benchShort, 
                     b.key
                   )}
                 </span>
-                <span role="cell" className="truncate text-ink-2">{note}</span>
+                {/* Wraps in its 40 px row where the panel is narrow (a 1,045 px window) rather than cutting off. */}
+                <span role="cell" className="min-w-0 py-1 leading-4 text-ink-2">{note}</span>
                 <span role="cell" className="text-right font-mono text-body">{rpct(b.fund)}</span>
                 <span role="cell" className="text-right font-mono text-body text-muted-foreground">{rpct(b.benchmark)}</span>
                 <span role="cell" className={cn("text-right font-mono text-body font-semibold", tone(b.active))}>{activeBp(b.active)}</span>

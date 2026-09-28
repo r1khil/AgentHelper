@@ -80,17 +80,44 @@ function MoverList({ title, rows }: { title: string; rows: { ticker: string; con
   );
 }
 
+/** The card's boxes line for line (header, hero, the 3-up, three movers a side), so the card lands without a shift. */
 export function LastSessionSkeleton() {
+  const bone = "bg-rail-2";
   return (
-    <section aria-busy="true" aria-label="Loading the last session" className="h-[274px] shrink-0 rounded-[14px] bg-rail px-5 py-[18px]">
-      <Skeleton className="h-3 w-40 bg-rail-2" />
-      <Skeleton className="mt-4 h-10 w-44 bg-rail-2" />
-      <div className="mt-4 grid grid-cols-3 gap-2.5">
+    <section aria-busy="true" aria-label="Loading the last session" className="shrink-0 rounded-[14px] bg-rail px-5 py-[18px]">
+      {/* 20 px: the Attribution link's text-body line sets the header's height. */}
+      <div className="flex h-5 items-center">
+        <Skeleton className={cn("h-3 w-40", bone)} />
+      </div>
+      <div className="mt-2.5 flex h-11 items-center">
+        <Skeleton className={cn("h-10 w-44", bone)} />
+      </div>
+      <div className="mt-3.5 grid grid-cols-3 gap-2.5">
         {[0, 1, 2].map((i) => (
-          <Skeleton key={i} className="h-9 bg-rail-2" />
+          <div key={i}>
+            <div className="flex h-4 items-center">
+              <Skeleton className={cn("h-2.5 w-16", bone)} />
+            </div>
+            <div className="flex h-[21px] items-center">
+              <Skeleton className={cn("h-4 w-20", bone)} />
+            </div>
+          </div>
         ))}
       </div>
-      <Skeleton className="mt-6 h-16 bg-rail-2" />
+      <div className="mt-3.5 grid grid-cols-2 gap-5 border-t border-rail-line pt-3">
+        {[0, 1].map((i) => (
+          <div key={i}>
+            <div className="mb-1 flex h-5 items-center">
+              <Skeleton className={cn("h-3 w-24", bone)} />
+            </div>
+            {[0, 1, 2].map((j) => (
+              <div key={j} className="flex h-6 items-center">
+                <Skeleton className={cn("h-3 w-full", bone)} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

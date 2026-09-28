@@ -13,7 +13,9 @@ import { INTERACTION_CLASS, InteractionSwitch } from "./interaction-toggle";
 import { SectorBreakdownPanel, type BreakdownQuery } from "./sector-breakdown";
 import { ReadAs } from "../read-as";
 
-const WITH_BENCH = "grid-cols-[minmax(0,1fr)_68px_68px_74px_74px_56px]";
+// Below xl (a 1,045 px window gives this panel ~530 px) the number tracks tighten to what their figures need and a
+// long sector name wraps to a second line in its 40 px row; nothing is cut off.
+const WITH_BENCH = "grid-cols-[minmax(0,1fr)_60px_60px_66px_66px_48px] xl:grid-cols-[minmax(0,1fr)_68px_68px_74px_74px_56px]";
 const NO_BENCH = "grid-cols-[minmax(0,1fr)_68px_74px_84px]";
 const upDown = (n: number) => (n > 0 ? "text-up" : n < 0 ? "text-down" : "text-muted-foreground");
 
@@ -98,7 +100,7 @@ export function SectorsPanel({ rows, hasBench, own = "Fund", breakdownQuery, cla
               <div
                 role="row"
                 className={cn(
-                  "group/row relative grid h-10 items-center gap-2.5 border-b border-row px-4 text-left text-body transition-colors hover:bg-band has-[button:focus-visible]:bg-band",
+                  "group/row relative grid min-h-10 items-center gap-2.5 border-b border-row px-4 text-left text-body transition-colors hover:bg-band has-[button:focus-visible]:bg-band",
                   cols,
                   isOpen && "bg-band",
                 )}
@@ -107,8 +109,8 @@ export function SectorsPanel({ rows, hasBench, own = "Fund", breakdownQuery, cla
                   className={cn("absolute top-1/2 left-1 size-3 -translate-y-1/2 text-muted-foreground opacity-0 transition group-hover/row:opacity-100", isOpen && "rotate-90 opacity-100")}
                   aria-hidden
                 />
-                <span role="rowheader" className="truncate">
-                  <button type="button" onClick={() => toggle(r.key)} aria-expanded={isOpen} className="max-w-full truncate text-left after:absolute after:inset-0 focus-visible:outline-none">
+                <span role="rowheader" className="min-w-0">
+                  <button type="button" onClick={() => toggle(r.key)} aria-expanded={isOpen} className="max-w-full text-left leading-4 after:absolute after:inset-0 focus-visible:outline-none">
                     {bucketLabel(r.key)}
                   </button>
                 </span>
@@ -129,8 +131,8 @@ export function SectorsPanel({ rows, hasBench, own = "Fund", breakdownQuery, cla
           );
         })}
       </div>
-      <div className="mt-auto flex min-h-10 shrink-0 items-center gap-3 bg-band-2 px-4 text-body text-muted-foreground">
-        <span className="truncate">
+      <div className="mt-auto flex min-h-10 shrink-0 items-center gap-3 bg-band-2 px-4 py-2 text-body text-muted-foreground">
+        <span className="min-w-0 text-pretty">
           {hasBench ? "Total effect vs sector benchmark, bp." : "Contribution, bp."} Select a sector for its {hasBench ? "effects" : "detail"}
           {breakdownQuery ? " and the daily working" : ""}.
         </span>

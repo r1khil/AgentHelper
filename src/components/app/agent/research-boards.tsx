@@ -196,12 +196,12 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
           >
             {h.ticker}
           </RowLink>
-          {/* Already in the link's name. */}
-          <span aria-hidden className="min-w-0 truncate text-body text-ink-2">
+          {/* Already in the link's name. Wraps under a narrow window (1,045 px) rather than cutting off. */}
+          <span aria-hidden className="min-w-0 text-body leading-4 text-ink-2">
             {h.name}
           </span>
         </div>
-        {who && <div className="mt-px truncate text-caption text-muted-foreground">{who}</div>}
+        {who && <div className="mt-px text-caption text-muted-foreground">{who}</div>}
       </div>
 
       <div role="cell" className="text-right">
@@ -214,11 +214,11 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
         {h.earnings ? (
           <>
             <div className="font-mono text-body">{fmtDay(h.earnings.reportDate)}</div>
-            <div className="truncate text-caption text-muted-foreground">
+            <div className="text-caption text-muted-foreground">
               {inDays(daysUntil(h.earnings.reportDate, now))} · {h.earnings.dateStatus}
             </div>
             {/* Under 1280px the Expectations column folds in here. */}
-            <div className={cn("truncate text-caption xl:hidden", h.earnings.hasExpectations ? "text-good-foreground" : flags.expectationsDue ? "text-caution-foreground" : "text-muted-foreground")}>
+            <div className={cn("text-caption xl:hidden", h.earnings.hasExpectations ? "text-good-foreground" : flags.expectationsDue ? "text-caution-foreground" : "text-muted-foreground")}>
               {h.earnings.hasExpectations ? "Expectations recorded" : "No expectations yet"}
             </div>
           </>
@@ -240,10 +240,10 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
       <div role="cell" className="min-w-0 text-body">
         {has ? (
           <>
-            <div className="truncate">
+            <div>
               <span className="font-mono text-body">{h.sources}</span> source{h.sources === 1 ? "" : "s"} · <span className="font-mono text-body">{h.chats}</span> chat{h.chats === 1 ? "" : "s"}
             </div>
-            <div className="truncate text-caption text-muted-foreground">Last {relativeTime(h.lastActivity)}</div>
+            <div className="text-caption text-muted-foreground">Last {relativeTime(h.lastActivity)}</div>
           </>
         ) : (
           <span className="text-body text-muted-foreground">No research yet</span>
@@ -286,9 +286,7 @@ function StatusCell({ h, flags }: { h: HoldingCardData; flags: ReturnType<typeof
     return (
       <div className="min-w-0">
         {pill}
-        <div className="mt-1 truncate text-caption text-muted-foreground" title={due}>
-          {due}
-        </div>
+        <div className="mt-1 text-caption text-muted-foreground">{due}</div>
         {running}
       </div>
     );

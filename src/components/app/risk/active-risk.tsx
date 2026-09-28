@@ -92,7 +92,7 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
               <TableRow className="text-muted-foreground">
                 <TableCell>
                   <Link href={`${basePath}${q}&all=1#${ACTIVE_RISK_ANCHOR}`} className="font-medium hover:underline">{rest.length} smaller holdings</Link>
-                  <div className="max-w-24 truncate text-caption sm:max-w-44" title={rest.map((h) => h.ticker).join(", ")}>{rest.map((h) => h.ticker).join(" · ")}</div>
+                  <div className="max-w-44 text-caption whitespace-normal">{rest.map((h) => h.ticker).join(" · ")}</div>
                 </TableCell>
                 <TableCell>
                   <Bars weight={rest.reduce((s, h) => s + h.weight, 0)} share={rest.reduce((s, h) => s + h.share, 0)} max={max} aggregate />
@@ -181,7 +181,7 @@ function HoldingRow({ h, max, teams }: { h: ActiveRiskRow; max: number; teams: T
             <span className="sr-only">: {h.source === "proxy" ? `too little price history; modeled with ${h.proxy}` : "no price history or sector; treated as riskless"}</span>
           </span>
         )}
-        <div className="max-w-24 truncate text-caption text-muted-foreground sm:max-w-44">{team?.name ?? h.name}</div>
+        <div className="max-w-44 text-caption whitespace-normal text-muted-foreground">{team?.name ?? h.name}</div>
       </TableCell>
       <TableCell><Bars weight={h.weight} share={h.share} max={max} /></TableCell>
       <TableCell className="text-right font-mono text-body">{rpct(h.teContribution, 2)}</TableCell>
