@@ -2,14 +2,13 @@ import { FilterChip } from "@/components/app/panel";
 import { fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export const HOLDING_FILTERS = ["all", "attention", "reporting", "unassigned"] as const;
+export const HOLDING_FILTERS = ["all", "attention", "reporting"] as const;
 export type HoldingFilter = (typeof HOLDING_FILTERS)[number];
 
 const LABELS: Record<HoldingFilter, string> = {
   all: "All holdings",
   attention: "Needs attention",
   reporting: "Reporting in 2 weeks",
-  unassigned: "Unassigned",
 };
 
 export function parseHoldingFilter(v: string | string[] | undefined): HoldingFilter {

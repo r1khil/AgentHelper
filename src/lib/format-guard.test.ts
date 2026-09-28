@@ -19,6 +19,7 @@ const PATTERNS: [RegExp, string][] = [
 const ALLOWED: Record<string, string> = {
   "src/app/dev/economic-calendar/page.tsx": "dev-only fixture data",
   "src/components/app/backtesting/use-backtesting.ts": "values written into weight inputs, not display",
+  "src/components/app/boot-splash.tsx": "a New York day as a storage key, not display",
   "src/components/app/chat/trace-panel.tsx": "token counts, timings and sizes in the admin trace",
   "src/components/app/hoot/hoot-sprite.tsx": "CSS transforms",
   "src/components/app/holdings/sparkline.tsx": "SVG coordinates",

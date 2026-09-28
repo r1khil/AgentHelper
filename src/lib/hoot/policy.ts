@@ -85,7 +85,7 @@ const TIPS: Tip[] = [
   { id: "tip:today", match: /^\/$/, title: "Hi, I'm Hoot!", detail: "I'll flag deadlines and earnings as they come up. Click me any time to ask a research question." },
   { id: "tip:holdings", match: /^\/t\/[^/]+$/, title: "Every holding has a research board", detail: "Open a ticker to see its thesis, notes and a board where the agent cites every fact." },
   { id: "tip:holding", match: /^\/t\/[^/]+\/h\/[^/]+$/, title: "Ask about this holding", detail: "Click me and I'll open a research chat pinned to this ticker." },
-  { id: "tip:movements", match: /^\/t\/[^/]+\/movements$/, title: "Movements", detail: "A holding lands here when it moves 400 bp or more against the S&P 500. The owner writes up why by noon the next trading day." },
+  { id: "tip:movements", match: /^\/t\/[^/]+\/movements$/, title: "Movements", detail: "A holding lands here when it moves 400 bp or more against the S&P 500. Anyone on the team can write up why, by noon the next trading day." },
   { id: "tip:earnings", match: /^\/t\/[^/]+\/earnings$/, title: "Earnings calendar", detail: "Write down expectations before the report. The prep pack gathers evidence, and the reflection afterwards checks your thesis." },
   { id: "tip:sell-side", match: /^\/t\/[^/]+\/sell-side$/, title: "Sell-side analyzer", detail: "Record a call, and you'll get a transcript, a brief and cross-checks against your team's files. I'll tell you when it's ready." },
   { id: "tip:models", match: /^\/t\/[^/]+\/models$/, title: "Models", detail: "Upload a model and map its cells. New filings are proposed as updates for you to approve, never written silently." },

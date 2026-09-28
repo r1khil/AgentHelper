@@ -22,7 +22,7 @@ import { ThesisProposal } from "@/components/app/thesis-proposal";
 import { PriceChart } from "@/components/app/price-chart";
 import { alignPrices } from "@/lib/charts/series";
 import { HoldingHeader, HoldingTabs, type HeaderQuote } from "@/components/app/holdings/holding-header";
-import { HoldingActions, OwnerChangeLink, type OwnerChoice } from "@/components/app/holdings/holding-actions";
+import { HoldingActions } from "@/components/app/holdings/holding-actions";
 import { ThesisPanel } from "@/components/app/holdings/thesis-panel";
 import { NotesPanel, NotesTab, monthDay, type NoteItem } from "@/components/app/holdings/notes";
 import { GlancePanel, LatestPanel, type GlanceRow, type LatestItem } from "@/components/app/holdings/overview-side";
@@ -48,7 +48,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
   const { user } = scope;
   const row = await getHolding(scope.teamIds, ticker);
   if (!row) notFound();
-  const { h, ownerName } = row;
+  const { h } = row;
   const team = itemTeam(scope, h.teamId);
 
   // Network sources load only on the tabs that show them: price history on Overview, EDGAR and news on Overview and Documents.
@@ -89,7 +89,8 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
   const quote: HeaderQuote = m?.quote
     ? { price: m.quote.price, currency: m.quote.currency, changePct: m.quote.changePct, relativePp: m.relativePp, when: quoteWhen(m.quote.asOf, m.quote.marketState, today) }
     : { error: market.error ?? m?.error ?? "Quote unavailable" };
-  const owner: OwnerChoice = { holdingId: h.id, ticker: h.ticker, ownerId: h.ownerId, members: members.map((mm) => ({ id: mm.id, fullName: mm.fullName })), locked: !manage && h.ownerId !== null && h.ownerId !== user.id };
+  // The holding belongs to the whole team; its movement and prep-pack email goes to the leads (see teamRecipients).
+  const leadNames = members.filter((mm) => mm.role === "lead_analyst").map((mm) => mm.fullName);
 
   // ── Earnings ──
   const upcoming = activity.reports.filter((e) => e.status === "upcoming" && e.reportDate >= today).sort((a, b) => a.reportDate.localeCompare(b.reportDate));
@@ -132,7 +133,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
         company={h.companyName}
         exited={!active}
         quote={quote}
-        actions={<HoldingActions ticker={h.ticker} holdingId={h.id} boardHref={boardHref} canUpload={active} uploadDisabledReason={driveNote} owner={owner} canExit={manage && active} links={menuLinks} />}
+        actions={<HoldingActions ticker={h.ticker} holdingId={h.id} boardHref={boardHref} canUpload={active} uploadDisabledReason={driveNote} canExit={manage && active} links={menuLinks} />}
       />
       <HoldingTabs tabs={tabs} />
 
@@ -144,7 +145,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
             <NotesPanel holdingId={h.id} notes={noteItems} className="flex-1" />
           </div>
           <div className="flex min-h-0 min-w-0 flex-col gap-5">
-            <GlancePanel rows={glanceRows({ h, ownerName, owner, next, moves: activity.moves, base, now })} />
+            <GlancePanel rows={glanceRows({ h, teamName: team.name, leadNames, next, moves: activity.moves, base, now })} />
             <LatestPanel
               className="flex-1"
               items={latestItems({
@@ -205,7 +206,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
 type HoldingRow = NonNullable<Awaited<ReturnType<typeof getHolding>>>;
 type Activity = Awaited<ReturnType<typeof loadHoldingActivity>>;
 
-function glanceRows({ h, ownerName, owner, next, moves, base, now }: { h: HoldingRow["h"]; ownerName: string | null; owner: OwnerChoice; next: Activity["reports"][number] | undefined; moves: Activity["moves"]; base: string; now: number }): GlanceRow[] {
+function glanceRows({ h, teamName, leadNames, next, moves, base, now }: { h: HoldingRow["h"]; teamName: string; leadNames: string[]; next: Activity["reports"][number] | undefined; moves: Activity["moves"]; base: string; now: number }): GlanceRow[] {
   const shares = h.shares != null ? `${fmtNumber(h.shares, 2)} sh` : null;
   const weight = h.weightPct != null ? `${fmtPct(h.weightPct, 1)} of NAV` : null;
   const open = moves.filter((mv) => mv.status !== "completed");
@@ -215,10 +216,9 @@ function glanceRows({ h, ownerName, owner, next, moves, base, now }: { h: Holdin
   const link = "text-[12.5px] font-semibold hover:underline";
   return [
     {
-      label: "Owner",
-      value: ownerName ?? <span className="text-caution-foreground">Unassigned</span>,
-      title: ownerName ? undefined : "No owner. Movement alerts fall back to the lead analyst.",
-      action: <OwnerChangeLink choice={owner} />,
+      label: "Team",
+      value: teamName,
+      title: leadNames.length ? `The whole team covers it. Movement alerts go to its ${leadNames.length > 1 ? "leads" : "lead"}, ${leadNames.join(", ")}.` : "The whole team covers it. It has no lead analyst yet, so movement alerts go to everyone on it.",
     },
     { label: "Position", value: shares || weight ? [shares, weight].filter(Boolean).join(" · ") : <span className="text-muted-foreground">Not recorded</span> },
     {

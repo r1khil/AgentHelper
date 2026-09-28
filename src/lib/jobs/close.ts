@@ -1,7 +1,7 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { holdings, jobRuns, movementRuns, movements, profiles, teams } from "@/db/schema";
+import { holdings, jobRuns, movementRuns, movements, teams } from "@/db/schema";
 import { getDailyBars, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { isTradingDay, movementDueAt, todayNY } from "@/lib/providers/calendar";
 import { qualifies, relativeMovePp, returnPct } from "@/lib/movement/math";
@@ -9,6 +9,7 @@ import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
 import { fmtBp, fmtDateTime, fmtDay, fmtPct } from "@/lib/format";
 import { gatherMovementEvidence } from "./evidence";
 import { queueNotification, sendPendingNotifications } from "./notify";
+import { teamRecipients } from "./recipients";
 import { upsertCloses } from "@/lib/prices";
 import { createJobReporter } from "./progress";
 
@@ -106,7 +107,7 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
       result.dataQuality[h.ticker] = b.error;
       await db
         .insert(movements)
-        .values({ holdingId: h.id, sessionDate, status: "open", ownerId: h.ownerId, dueAt: movementDueAt(sessionDate), dataQuality: b.error, evidenceStatus: "ready" })
+        .values({ holdingId: h.id, sessionDate, status: "open", dueAt: movementDueAt(sessionDate), dataQuality: b.error, evidenceStatus: "ready" })
         .onConflictDoNothing();
       continue;
     }
@@ -114,7 +115,6 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
     if (!qualifies(rel)) continue;
     result.qualified.push(h.ticker);
     progress.step("qualified", { ticker: h.ticker, relativeMovePp: Number(rel.toFixed(2)) });
-    const owner = h.ownerId ?? (await fallbackLead(h.teamId));
     const inserted = await db
       .insert(movements)
       .values({
@@ -124,7 +124,6 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
         spxReturnPct: returnPct(spx.close, spx.prevClose).toFixed(4),
         relativeMovePp: rel.toFixed(4),
         status: "open",
-        ownerId: owner,
         dueAt: movementDueAt(sessionDate),
         evidenceStatus: "pending",
       })
@@ -134,8 +133,8 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
     const id = inserted[0].id;
     result.created.push(h.ticker);
 
-    // Factual alert to owner and lead. Dedupe key ties it to the movement.
-    const recipients = await alertRecipients(h.teamId, owner);
+    // Factual alert to the team (its leads, or everyone when it has none). Dedupe key ties it to the movement.
+    const recipients = await teamRecipients(h.teamId);
     const link = `${process.env.APP_URL ?? ""}/t/${teamSlug}/movements/${id}`;
     const subject = `${h.ticker} moved ${fmtBp(rel * 100)} vs S&P 500 on ${fmtDay(sessionDate)}`;
     const body = [
@@ -147,7 +146,7 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
       `Due: ${fmtDateTime(movementDueAt(sessionDate))}`,
       `Workspace: ${link}`,
       "",
-      "This is an automated factual alert. The analyst writes the update.",
+      "This is an automated factual alert. Anyone on the team can write the update.",
     ].join("\n");
     for (const r of recipients) {
       const queued = await queueNotification({ kind: "movement_alert", recipientId: r.id, recipientEmail: r.email, refId: id, dedupeKey: `movement:${id}:${r.id}`, subject, body });
@@ -176,19 +175,4 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
     // Morning job retries.
   }
   return finish(result);
-}
-
-async function fallbackLead(teamId: string) {
-  const [lead] = await db.select({ id: profiles.id }).from(profiles).where(and(eq(profiles.teamId, teamId), eq(profiles.role, "lead_analyst"))).limit(1);
-  return lead?.id ?? null;
-}
-
-async function alertRecipients(teamId: string, ownerId: string | null) {
-  const leads = await db.select({ id: profiles.id, email: profiles.email }).from(profiles).where(and(eq(profiles.teamId, teamId), eq(profiles.role, "lead_analyst")));
-  const out = new Map(leads.map((l) => [l.id, l]));
-  if (ownerId) {
-    const [o] = await db.select({ id: profiles.id, email: profiles.email }).from(profiles).where(eq(profiles.id, ownerId)).limit(1);
-    if (o) out.set(o.id, o);
-  }
-  return [...out.values()];
 }

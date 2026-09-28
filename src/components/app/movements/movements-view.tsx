@@ -6,7 +6,6 @@ import { Panel, Pill } from "@/components/app/panel";
 import { Move } from "@/components/app/move";
 import { FeedbackPanel } from "@/components/app/feedback-panel";
 import { HootMoodFor } from "@/components/app/hoot/presence";
-import { OwnerPicker } from "./owner-picker";
 import { MovementListPopover } from "./list-popover";
 import { MovementWorkspace, type EvidenceRow } from "./workspace";
 import { citationFor } from "./cite";
@@ -82,8 +81,9 @@ function MovementList({ items, selectedId, className }: { items: MovementListIte
                   <Pill tone={pill.tone}>{pill.label}</Pill>
                 </div>
                 <div className="mt-[3px] truncate text-xs text-muted-foreground">
-                  {sessionShort(i.sessionDate)} · {i.ownerName ?? <span className="text-caution-foreground">Unassigned</span>}
+                  {sessionShort(i.sessionDate)}
                   {i.teamName && ` · ${i.teamName}`}
+                  {i.completedByName && ` · by ${i.completedByName}`}
                 </div>
               </Link>
             </li>
@@ -96,7 +96,7 @@ function MovementList({ items, selectedId, className }: { items: MovementListIte
 
 function MovementDetail({ d, list, items }: { d: MovementDetailData; list: React.ReactNode; items: MovementListItem[] }) {
   const open = items.filter((i) => i.status !== "completed").length;
-  const status = d.status === "completed" ? `Completed ${relativeTime(d.completedAt)}` : d.updateText?.trim() ? `Draft · ${wordCount(d.updateText)} words` : "Not started";
+  const status = d.status === "completed" ? `Completed ${relativeTime(d.completedAt)}${d.completedByName ? ` by ${d.completedByName}` : ""}` : d.updateText?.trim() ? `Draft · ${wordCount(d.updateText)} words` : "Not started";
   const latest = d.evidence.reduce<Date | null>((a, e) => (!a || e.retrievedAt > a ? e.retrievedAt : a), null);
   return (
     <div data-tour="movement-detail" className="flex min-h-0 min-w-0 flex-col gap-4">
@@ -176,7 +176,7 @@ function MetaStrip({ d }: { d: MovementDetailData }) {
     "Open"
   );
   const cells: { k: string; v: React.ReactNode }[] = [
-    { k: "Owner", v: <OwnerPicker movementId={d.id} ownerId={d.ownerId} ownerName={d.ownerName} members={d.members} locked={d.ownerLocked} /> },
+    { k: "Team", v: d.teamName },
     { k: d.leadNames.length > 1 ? "Leads" : "Lead", v: d.leadNames.length ? d.leadNames.join(", ") : <span className="text-muted-foreground">—</span> },
     { k: "Due", v: dueLabel(d.dueAt) },
     { k: "Status", v: status },

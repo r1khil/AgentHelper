@@ -42,7 +42,7 @@ export const TOUR_CARDS: TourCard[] = [
   {
     id: "holdings",
     title: "Holdings",
-    body: "Each ticker your team covers gets a live quote, its day move against the S&P 500, filings, news, notes, an owner, and the team's thesis.",
+    body: "Each ticker your team covers gets a live quote, its day move against the S&P 500, filings, news, notes, and the team's thesis. The whole team shares each holding and its movement write-ups.",
   },
   {
     id: "movements",

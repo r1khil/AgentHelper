@@ -124,7 +124,7 @@ describe("Today v2", () => {
   it("labels list items from what the nudge says", () => {
     const n = (id: string, kind: string, title = "", detail?: string) => ({ id, kind, title, detail });
     expect(nudgeWhen(n("movement:1:overdue", "movement"))).toBe("Overdue");
-    expect(nudgeWhen(n("movement:1:due", "movement", "Your UNH write-up is due in 5h"))).toBe("Due in 5h");
+    expect(nudgeWhen(n("movement:1:due", "movement", "Your team's UNH write-up is due in 5h"))).toBe("Due in 5h");
     expect(nudgeWhen(n("earnings:1:expectations", "earnings", "Write down expectations for JPM", "It reports Tuesday before the open."))).toBe("Reports Tue");
     expect(nudgeWhen(n("weekly:2026-09-25", "weekly"), new Date("2026-09-28T12:00:00Z"))).toBe("Week to Fri 25 Sep");
     expect(nudgeWhen(n("changelog:120", "changelog"))).toBe("PR #120");
@@ -140,13 +140,12 @@ describe("Today v2", () => {
     expect(nudgeWhen(m("movement:1:due", "2026-09-25T16:00:00Z"), new Date("2026-09-25T13:00:00Z"))).toBe("Due 12:00 ET");
     expect(nudgeWhen(m("movement:1:overdue", "2026-09-23T16:00:00Z"), now)).toBe("2 days overdue");
     expect(nudgeWhen(m("movement:1:team:overdue", "2026-09-25T16:00:00Z"), now)).toBe("6 hours overdue");
-    expect(nudgeWhen(m("movement:1:unassigned"), now)).toBe("No owner");
-    expect(nudgeAction(m("movement:1:unassigned:overdue"))).toBe("Assign owner");
-    expect(nudgeWhen({ id: "holdings:unowned:29", kind: "holdings", title: "" })).toBe("No owner");
-    expect(nudgeAction({ id: "holdings:unowned:29", kind: "holdings", title: "" })).toBe("Assign owners");
+    expect(nudgeWhen(m("movement:1:team:due", "2026-09-29T16:00:00Z"), now)).toBe("Due Tue 29 Sep");
+    expect(nudgeAction(m("movement:1:team:overdue", "2026-09-25T16:00:00Z"))).toBe("Open write-up");
+    expect(nudgeAction(m("movement:1:team:due", "2026-09-29T16:00:00Z"))).toBe("Open write-up");
   });
 
-  it("tells an analyst plainly what they owe", () => {
+  it("tells an analyst plainly what their team owes", () => {
     const now = new Date("2026-09-25T22:00:00Z");
     const m = (id: string, at: string) => ({ id: `movement:${id}`, kind: "movement", title: "", at });
     const monday = m("a:due", "2026-09-28T16:00:00Z");
@@ -154,17 +153,19 @@ describe("Today v2", () => {
     const tomorrow = m("c:due", "2026-09-26T16:00:00Z");
     const earnings = { id: "earnings:e:expectations", kind: "earnings", title: "Write down expectations for JPM" };
 
-    expect(owedSentence([monday], now)).toBe("You owe 1 write-up, due 12:00 ET Monday.");
-    expect(owedSentence([tomorrow], now)).toBe("You owe 1 write-up, due 12:00 ET tomorrow.");
-    expect(owedSentence([late], now)).toBe("You owe 1 write-up, 2 days overdue.");
-    expect(owedSentence([monday, tomorrow], now)).toBe("You owe 2 write-ups; the next is due 12:00 ET tomorrow.");
-    expect(owedSentence([monday, late], now)).toBe("You owe 2 write-ups; one is overdue.");
-    expect(owedSentence([late, m("d:overdue", "2026-09-24T16:00:00Z")], now)).toBe("You owe 2 write-ups; both are overdue.");
-    // Someone else's write-up or an unassigned one is not owed.
-    expect(owedSentence([m("x:team:overdue", "2026-09-23T16:00:00Z"), m("y:unassigned", "2026-09-28T16:00:00Z")], now)).toBeNull();
+    expect(owedSentence([monday], now)).toBe("Your team owes 1 write-up, due 12:00 ET Monday.");
+    expect(owedSentence([tomorrow], now)).toBe("Your team owes 1 write-up, due 12:00 ET tomorrow.");
+    expect(owedSentence([late], now)).toBe("Your team owes 1 write-up, 2 days overdue.");
+    expect(owedSentence([monday, tomorrow], now)).toBe("Your team owes 2 write-ups; the next is due 12:00 ET tomorrow.");
+    expect(owedSentence([monday, late], now)).toBe("Your team owes 2 write-ups; one is overdue.");
+    expect(owedSentence([late, m("d:overdue", "2026-09-24T16:00:00Z")], now)).toBe("Your team owes 2 write-ups; both are overdue.");
+    expect(owedSentence([monday, tomorrow, late], now)).toBe("Your team owes 3 write-ups; one is overdue.");
+    // Another team's write-up, overdue or not, which an exec is shown, is not their own team's to owe.
+    expect(owedSentence([m("x:team:overdue", "2026-09-23T16:00:00Z"), m("y:team:due", "2026-09-28T16:00:00Z")], now)).toBeNull();
+    expect(analystSentence([monday, m("x:team:overdue", "2026-09-23T16:00:00Z"), m("y:team:due", "2026-09-28T16:00:00Z")], now)).toBe("Your team owes 1 write-up, due 12:00 ET Monday. I found two more things for you.");
 
-    expect(analystSentence([monday], now)).toBe("You owe 1 write-up, due 12:00 ET Monday.");
-    expect(analystSentence([monday, earnings], now)).toBe("You owe 1 write-up, due 12:00 ET Monday. I found one more thing for you.");
+    expect(analystSentence([monday], now)).toBe("Your team owes 1 write-up, due 12:00 ET Monday.");
+    expect(analystSentence([monday, earnings], now)).toBe("Your team owes 1 write-up, due 12:00 ET Monday. I found one more thing for you.");
     expect(analystSentence([earnings], now)).toBe("I found one thing for you.");
     expect(analystSentence([], now)).toBe("Nothing on my list for you right now.");
   });

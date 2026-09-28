@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { holdings, movements, teams } from "@/db/schema";
-import { canManageTeam, requireTeamAccess } from "@/lib/auth";
+import { requireTeamAccess } from "@/lib/auth";
 import { fmtBp, fmtPct, ppToBp } from "@/lib/format";
 import { gatherMovementEvidence } from "@/lib/jobs/evidence";
 
@@ -38,15 +38,6 @@ export async function reopenMovement(fd: FormData) {
   const r = await load(String(fd.get("id") ?? ""));
   if (!r) return;
   await db.update(movements).set({ status: "in_progress", completedAt: null, completedBy: null }).where(eq(movements.id, r.m.id));
-  revalidatePath(r.path);
-}
-
-export async function claimMovement(fd: FormData) {
-  const r = await load(String(fd.get("id") ?? ""));
-  if (!r) return;
-  const ownerId = String(fd.get("ownerId") ?? "") || r.user.id;
-  if (ownerId !== r.user.id && !canManageTeam(r.user, r.h.teamId)) return;
-  await db.update(movements).set({ ownerId }).where(eq(movements.id, r.m.id));
   revalidatePath(r.path);
 }
 

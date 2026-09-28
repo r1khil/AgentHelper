@@ -23,7 +23,6 @@ export type HoldingListRow = {
   /** "Nov 18 est.", or null when no report is scheduled. */
   nextReport: string | null;
   flags: AttentionFlag[];
-  owner: string | null;
 };
 
 export type HoldingGroup = { id: string; name: string; navPct: number | null; rows: HoldingListRow[] };
@@ -31,7 +30,9 @@ export type HoldingGroup = { id: string; name: string; navPct: number | null; ro
 /** Streamed quotes by ticker; absent while Yahoo is still answering (the cells show skeletons). */
 export type QuoteCells = Record<string, { price?: number; changePct?: number; relativePp?: number }>;
 
-const GRID = "grid grid-cols-[64px_minmax(0,1fr)_72px_64px_84px_76px_76px_104px_176px_112px] items-center gap-3 px-4";
+// Desktop only. Company takes what is left; the minimum width fits a ~920 px content area (a 1,045 px window less the
+// rail and padding) without scrolling sideways.
+const GRID = "grid grid-cols-[64px_minmax(0,1fr)_64px_64px_80px_76px_76px_96px_168px] items-center gap-3 px-4";
 
 /** The Holdings table: one panel, team group rows that collapse, rows that open the holding. */
 export function HoldingsTable({ groups, quotes, grouped = true, empty }: { groups: HoldingGroup[]; quotes?: QuoteCells; grouped?: boolean; empty?: React.ReactNode }) {
@@ -47,7 +48,7 @@ export function HoldingsTable({ groups, quotes, grouped = true, empty }: { group
 
   return (
     <section data-tour="holdings-table" className="panel flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-hidden">
-      <div className="flex min-w-[1100px] flex-1 flex-col">
+      <div className="flex min-w-[920px] flex-1 flex-col">
         <div role="row" className={cn(GRID, "h-9 shrink-0 border-b text-xs text-muted-foreground")}>
           <span>Ticker</span>
           <span>Company</span>
@@ -58,7 +59,6 @@ export function HoldingsTable({ groups, quotes, grouped = true, empty }: { group
           <span className="text-right">vs S&amp;P</span>
           <span>Next report</span>
           <span>Needs attention</span>
-          <span>Owner</span>
         </div>
         {!any && <div className="px-4 py-10 text-center text-sm text-muted-foreground">{empty ?? "Nothing here."}</div>}
         {groups.map((g) => {
@@ -124,7 +124,6 @@ function Row({ r, q, loading }: { r: HoldingListRow; q?: QuoteCells[string]; loa
         {first ? <FlagPill f={first} /> : <span className="text-muted-foreground">—</span>}
         {rest.length > 0 && <span className="font-mono text-[11px] text-muted-foreground">+{rest.length}</span>}
       </span>
-      <span className={cn("truncate text-[13.5px]", !r.owner && "text-caution-foreground")}>{r.owner ?? "Unassigned"}</span>
     </div>
   );
 }

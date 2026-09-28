@@ -13,7 +13,7 @@ import { bulletCount, extractJsonObject, prepAttempts, selectPrepCandidates, val
 import type { PrepPack } from "@/lib/agent/prep-types";
 import { rememberMemory } from "@/lib/agent/memory/store";
 import { queueNotification } from "./notify";
-import { recipientsFor } from "./morning";
+import { teamRecipients } from "./recipients";
 
 /** Reports this many NY trading days ahead get a pack. */
 export const PREP_HORIZON_DAYS = 5;
@@ -83,7 +83,7 @@ export async function buildPrepPack(earningsId: string): Promise<{ ok: true; pac
     const appUrl = process.env.APP_URL ?? "";
     const boardUrl = `${appUrl}/t/${row.teamSlug}/agent/h/${h.ticker}`;
     const earningsUrl = `${appUrl}/t/${row.teamSlug}/earnings/${e.id}`;
-    for (const r of await recipientsFor(h.teamId, h.ownerId)) {
+    for (const r of await teamRecipients(h.teamId)) {
       await queueNotification({
         kind: "earnings",
         recipientId: r.id,

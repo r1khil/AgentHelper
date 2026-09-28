@@ -71,8 +71,6 @@ export type CalendarViewProps = {
   industries: string[];
   /** Holdings and bellwethers on the month's grid, already narrowed to the scope. */
   events: CalendarEvent[];
-  /** Owner id to name. */
-  ownerNames: Record<string, string>;
   accessibleTeamIds: string[];
   /** Notes about the data (missing bellwethers, sectors, industries). */
   notices: ReactNode[];
@@ -288,12 +286,11 @@ export function CalendarView(props: CalendarViewProps) {
           <ul className="mt-2.5 flex flex-col">
             {expectations.map((ev) => {
               const st = EXPECTATIONS[ev.expectations ?? "not_started"];
-              const owner = ev.ownerId ? props.ownerNames[ev.ownerId] : null;
               return (
                 <li key={ev.earningsId} className="border-t border-row">
                   <Link href={reportHref(ev.teamSlug, ev.earningsId)} className="-mx-1.5 flex h-10 items-center gap-2.5 rounded-lg px-1.5 text-[13.5px] hover:bg-band">
                     <span className="w-11 shrink-0 font-mono text-[13px] font-semibold">{ev.ticker}</span>
-                    <span className={cn("min-w-0 flex-1 truncate", owner ? "text-ink-2" : "text-caution-foreground")}>{owner ?? "No owner"}</span>
+                    <span className="min-w-0 flex-1 truncate text-ink-2">{ev.teamName ?? ev.name}</span>
                     <Pill tone={st.tone}>{st.pill}</Pill>
                   </Link>
                 </li>

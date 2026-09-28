@@ -40,6 +40,7 @@ export type Book =
 export type TeamHolding = {
   id: string;
   ticker: string;
+  company: string;
   href: string;
   price: number | null;
   /** The quote's ISO currency code. */
@@ -48,7 +49,6 @@ export type TeamHolding = {
   relativePp: number | null;
   /** "Oct 15" or "Oct 15 est.", or null. */
   nextReport: string | null;
-  owner: string | null;
 };
 
 export type TeamRowData = {

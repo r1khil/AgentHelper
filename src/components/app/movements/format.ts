@@ -44,10 +44,6 @@ export function gatheredAt(d: Date) {
   return fmtDateTime(d);
 }
 
-export function firstName(name: string | null) {
-  return name ? name.split(" ")[0] || name : null;
-}
-
 export function wordCount(text: string | null) {
   return text?.trim() ? text.trim().split(/\s+/).length : 0;
 }
