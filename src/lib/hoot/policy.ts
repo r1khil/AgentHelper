@@ -80,7 +80,7 @@ const TIPS: Tip[] = [
   { id: "tip:holding", match: /^\/t\/[^/]+\/h\/[^/]+$/, title: "Ask about this holding", detail: "Press ⌘K and ask: on this page, the question goes to this ticker's research." },
   { id: "tip:movements", match: /^\/t\/[^/]+\/movements$/, title: "Movements", detail: "A holding lands here when it moves 400 bp or more against the S&P 500. Anyone on the team can write up why, by noon the next trading day." },
   { id: "tip:earnings", match: /^\/t\/[^/]+\/earnings$/, title: "Earnings calendar", detail: "Write down expectations before the report. The prep pack gathers evidence, and the reflection afterwards checks your thesis." },
-  { id: "tip:sell-side", match: /^\/t\/[^/]+\/sell-side$/, title: "Sell-side analyzer", detail: "Record a call, and you'll get a transcript, a brief and cross-checks against your team's files. I'll tell you when it's ready." },
+  { id: "tip:sell-side", match: /^\/t\/[^/]+\/sell-side$/, title: "Sell-side calls", detail: "Record a call, and you'll get a transcript, a brief and cross-checks against your team's files. I'll tell you when it's ready." },
   { id: "tip:models", match: /^\/t\/[^/]+\/models$/, title: "Models", detail: "Upload a model and map its cells. New filings are proposed as updates for you to approve, never written silently." },
   { id: "tip:attribution", match: /^(\/t\/[^/]+)?\/attribution$/, title: "Reading attribution", detail: "Allocation is about which sectors we over- or under-weighted. Selection is about the stocks we picked within a sector." },
   { id: "tip:backtesting", match: /^\/backtesting$/, title: "Backtesting", detail: "Try weights on past prices. It's a sandbox and never changes the real portfolio." },

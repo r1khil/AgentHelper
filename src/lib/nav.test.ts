@@ -112,6 +112,6 @@ describe("navModel", () => {
 describe("destinations", () => {
   it("names pages the way Hoot's commands do", () => {
     const names = destinations(exec).map((d) => d.hoot).filter(Boolean);
-    expect(names).toEqual(expect.arrayContaining(["Today", "Holdings", "Research", "Sell-side analyzer", "Models", "Movements", "Earnings", "Economic calendar", "Attribution", "Risk", "Exposure", "Backtesting", "Weekly update", "Changelog", "Admin"]));
+    expect(names).toEqual(expect.arrayContaining(["Today", "Holdings", "Research", "Sell-side calls", "Models", "Movements", "Earnings", "Economic calendar", "Attribution", "Risk", "Exposure", "Backtesting", "Weekly update", "Changelog", "Admin"]));
   });
 });
