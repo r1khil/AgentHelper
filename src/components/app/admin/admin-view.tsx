@@ -6,7 +6,7 @@ import { addMcpServer, removeMcpServer, setMcpDailyCap, testMcpServerNow, toggle
 import type { DriveStatus } from "@/lib/drive/index";
 import type { McpServer } from "@/db/schema";
 import type { JobRunView } from "@/app/api/admin/job-runs/route";
-import { fmtDateTime } from "@/lib/format";
+import { fmtDate, fmtDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Panel, PanelFooter, PanelHeader, Pill } from "@/components/app/panel";
 import { NativeSelect } from "@/components/app/native-select";
@@ -90,7 +90,7 @@ export function AdminView(p: AdminViewProps) {
     {
       name: "SEC filings index",
       dot: p.filings.lastRun?.ok === false ? "down" : !p.filings.lastSync ? "caution" : "good",
-      line: `10-K, 10-Q, 8-K and EX-99.1 for every holding · ${p.filings.lastSync ? `last sync ${p.filings.lastSync}` : "never synced"}${p.filings.lastRun ? ` · last run ${p.filings.lastRun.ok === false ? "failed" : "ok"} ${fmtDateTime(p.filings.lastRun.at)}` : ""}`,
+      line: `10-K, 10-Q, 8-K and EX-99.1 for every holding · ${p.filings.lastSync ? `last sync ${fmtDate(p.filings.lastSync) || p.filings.lastSync}` : "never synced"}${p.filings.lastRun ? ` · last run ${p.filings.lastRun.ok === false ? "failed" : "ok"} ${fmtDateTime(p.filings.lastRun.at)}` : ""}`,
       title: "Also runs inside the morning sweep.",
       actions: canMutate ? (
         <>

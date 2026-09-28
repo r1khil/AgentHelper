@@ -11,7 +11,7 @@ import { startHootChat } from "@/lib/actions/chats";
 import { boardHref, holdingHref } from "@/lib/scope";
 import { markScopeIntent } from "./scope-intent";
 import type { CommandHolding } from "@/lib/nav-data";
-import { fmtBp, fmtCurrency, fmtPct, ppToBp } from "@/lib/format";
+import { fmtBp, fmtCurrency, fmtDay, fmtPct, ppToBp } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useHootCommand } from "../hoot/use-hoot-command";
 import { leaveHootQuestion } from "../hoot/handoff";
@@ -28,7 +28,7 @@ type Item =
   | { kind: "scope"; id: string; scope: CommandScope }
   | { kind: "theme"; id: string; theme: "dark" | "light" };
 
-const shortDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const shortDate = (iso: string) => fmtDay(iso);
 
 /**
  * ⌘K: jump to a holding or page, run a quick action, or turn the text into a question for Hoot (Tab).

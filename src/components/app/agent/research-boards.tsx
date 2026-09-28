@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense, use, useMemo, useState } from "react";
 import { ChevronRight, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtBp, fmtDate, fmtDateTime, fmtPct, ppToBp, relativeTime } from "@/lib/format";
+import { fmtBp, fmtDateTime, fmtDay, fmtPct, ppToBp, relativeTime } from "@/lib/format";
 import { CountChip, Panel, Pill, Segmented } from "@/components/app/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -205,7 +205,7 @@ function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; fla
       <div className="min-w-0 text-[13px]">
         {h.earnings ? (
           <>
-            <div className="font-mono text-[12.5px]">{fmtDate(h.earnings.reportDate).replace(/, \d{4}$/, "")}</div>
+            <div className="font-mono text-[12.5px]">{fmtDay(h.earnings.reportDate)}</div>
             <div className="truncate text-xs text-muted-foreground">
               {inDays(daysUntil(h.earnings.reportDate, now))} · {h.earnings.dateStatus}
             </div>

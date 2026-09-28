@@ -38,6 +38,7 @@ import {
   TimeRangeSelector,
   chartTick,
   exactDate,
+  tickDate,
   tone,
 } from "./primitives";
 import { fmtAccounting, fmtBp, fmtPct } from "@/lib/format";
@@ -249,7 +250,7 @@ function ChartSession({
               domain={[start.time, end.time]}
               scale="time"
               tickFormatter={(time: number) =>
-                new Date(time).toISOString().slice(5, 10)
+                tickDate(new Date(time).toISOString().slice(0, 10))
               }
               tick={chartTick}
               minTickGap={40}

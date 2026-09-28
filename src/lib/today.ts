@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { fmtBp, fmtPct } from "@/lib/format";
+import { fmtBp, fmtDateTime, fmtDay, fmtDayMonth, fmtPct, fmtTime } from "@/lib/format";
 import { isTradingDay, nextTradingDay, NY } from "@/lib/providers/calendar";
 
 export type UpcomingReport = { ticker: string; reportDate: string; reportHour: string | null; dateStatus: "confirmed" | "estimated" };
@@ -72,12 +72,10 @@ export function greeting(now: Date = new Date()) {
   return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 }
 
-/** "Friday, September 25". */
-export const longDate = (iso: string) => day(iso).toFormat("cccc, LLLL d");
-/** "Thu, Oct 15". */
-export const shortDate = (iso: string) => day(iso).toFormat("ccc, LLL d");
-/** "Oct 15". */
-export const monthDay = (iso: string) => day(iso).toFormat("LLL d");
+/** "Fri 25 Sep" (the app's day format). */
+export const longDate = (iso: string) => fmtDay(iso);
+/** "15 Oct", for tight columns. */
+export const monthDay = (iso: string) => fmtDayMonth(iso);
 
 /* --------------------------------------------------------------------------------- Today, Direction B v2 */
 
@@ -88,10 +86,10 @@ export function greetingWord(now: Date = new Date()) {
 
 /** "Friday". */
 export const weekdayName = (iso: string) => day(iso).toFormat("cccc");
-/** "FRI 25 SEP", the mono session stamp. */
-export const sessionStamp = (iso: string) => day(iso).toFormat("ccc d LLL").toUpperCase();
-/** "Tue 13 Oct", the mono agenda date. */
-export const agendaDate = (iso: string) => day(iso).toFormat("ccc d LLL");
+/** "Fri 25 Sep", the session stamp. */
+export const sessionStamp = (iso: string) => fmtDay(iso);
+/** "Tue 13 Oct", the agenda date. */
+export const agendaDate = (iso: string) => fmtDay(iso);
 
 /** "today", "tomorrow" or "15 days". */
 export function daysAway(today: string, date: string) {
@@ -105,23 +103,23 @@ const CLOSE_MIN = 16 * 60;
 function span(minutes: number) {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return h ? `${h}H ${m}M` : `${m}M`;
+  return h ? `${h}h ${m}m` : `${m}m`;
 }
 
 /**
- * The mono line over the greeting: "MON 28 SEP · MARKET OPENS IN 1H 12M" before the bell, "… · MARKET CLOSES IN
- * 2H 5M" during the session, "… · MARKET CLOSED · OPENS TUE 9:30" after it and on weekends and holidays.
+ * The mono line over the greeting: "Mon 28 Sep · Market opens in 1h 12m" before the bell, "… · Market closes in
+ * 2h 5m" during the session, "… · Market closed · opens Tue 29 Sep, 9:30 ET" after it and on weekends and holidays.
  */
 export function marketLine(now: Date = new Date()) {
   const t = DateTime.fromJSDate(now).setZone(NY);
-  const date = t.toFormat("ccc d LLL").toUpperCase();
   const iso = t.toISODate()!;
+  const date = fmtDay(iso, now);
   const minutes = t.hour * 60 + t.minute;
-  if (isTradingDay(iso) && minutes < OPEN_MIN) return `${date} · MARKET OPENS IN ${span(OPEN_MIN - minutes)}`;
-  if (isTradingDay(iso) && minutes < CLOSE_MIN) return `${date} · MARKET CLOSES IN ${span(CLOSE_MIN - minutes)}`;
-  const next = nextTradingDay(iso);
-  const when = day(next).diff(day(iso), "days").days === 1 ? "TOMORROW" : day(next).toFormat("ccc").toUpperCase();
-  return `${date} · MARKET CLOSED · OPENS ${when} 9:30`;
+  if (isTradingDay(iso) && minutes < OPEN_MIN) return `${date} · Market opens in ${span(OPEN_MIN - minutes)}`;
+  if (isTradingDay(iso) && minutes < CLOSE_MIN) return `${date} · Market closes in ${span(CLOSE_MIN - minutes)}`;
+  const next = day(nextTradingDay(iso)).set({ hour: 9, minute: 30 });
+  const when = next.diff(day(iso), "days").days < 2 ? `tomorrow ${fmtTime(next.toJSDate())}` : fmtDateTime(next.toJSDate(), now);
+  return `${date} · Market closed · opens ${when}`;
 }
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
@@ -175,8 +173,11 @@ export function listSentence(count: number, overdue: number) {
 
 type NudgeLike = { id: string; kind: string; title: string; detail?: string; at?: string };
 
-/** "Fri 12:00 ET" in New York, from an ISO time. */
-const dueStamp = (iso: string) => DateTime.fromISO(iso).setZone(NY).toFormat("ccc H:mm 'ET'");
+/** "12:00 ET" when it is due today, else "Mon 28 Sep". */
+function dueStamp(iso: string, now: Date) {
+  const due = DateTime.fromISO(iso).setZone(NY);
+  return due.hasSame(DateTime.fromJSDate(now).setZone(NY), "day") ? fmtTime(iso) : fmtDay(iso, now);
+}
 
 /** "2 days overdue", "3 hours overdue". */
 function overdueFor(iso: string, now: Date) {
@@ -185,11 +186,12 @@ function overdueFor(iso: string, now: Date) {
   return days >= 1 ? `${days} ${days === 1 ? "day" : "days"} overdue` : `${hours} ${hours === 1 ? "hour" : "hours"} overdue`;
 }
 
-/** "12:00 ET today", "12:00 ET Monday": when a write-up is due, as said in a sentence. */
+/** "12:00 ET today", "12:00 ET Monday" within the week, else "Mon 12 Oct, 12:00 ET": when a write-up is due, in a sentence. */
 function dueSpoken(iso: string, now: Date) {
   const due = DateTime.fromISO(iso).setZone(NY);
   const days = Math.round(due.startOf("day").diff(DateTime.fromJSDate(now).setZone(NY).startOf("day"), "days").days);
-  return `${due.toFormat("H:mm")} ET ${days <= 0 ? "today" : days === 1 ? "tomorrow" : days < 7 ? due.toFormat("cccc") : due.toFormat("LLL d")}`;
+  if (days >= 7) return fmtDateTime(iso, now);
+  return `${fmtTime(iso)} ${days <= 0 ? "today" : days === 1 ? "tomorrow" : due.toFormat("cccc")}`;
 }
 
 // Movement nudges about a write-up with no owner, or someone else's overdue one, say so in their id.
@@ -217,13 +219,13 @@ export function analystSentence(nudges: NudgeLike[], now: Date = new Date()): st
   return rest ? `${owed} I found ${word(rest)} more ${rest === 1 ? "thing" : "things"} for you.` : owed;
 }
 
-/** "Sep 24" in New York, from an ISO time or date. */
-const sinceStamp = (iso: string) => (iso.length === 10 ? day(iso) : DateTime.fromISO(iso).setZone(NY)).toFormat("LLL d");
+/** "Thu 24 Sep" in New York, from an ISO time or date. */
+const sinceStamp = (iso: string, now: Date) => fmtDay(iso, now);
 
 /** The mono "when" beside a list item, from the nudge's time or, without one, what its id and copy say. */
 export function nudgeWhen(n: NudgeLike, now: Date = new Date()): string {
   if (n.kind === "movement") {
-    if (n.at) return isOverdue(n) ? overdueFor(n.at, now) : `Due ${dueStamp(n.at)}`;
+    if (n.at) return isOverdue(n) ? overdueFor(n.at, now) : `Due ${dueStamp(n.at, now)}`;
     if (isOverdue(n)) return "Overdue";
     if (isUnassigned(n)) return "No owner";
     const h = /due in (\d+)h/i.exec(n.title)?.[1];
@@ -235,16 +237,16 @@ export function nudgeWhen(n: NudgeLike, now: Date = new Date()): string {
     if (wd) return `Reports ${wd.slice(0, 3)}`;
     return "Next few days";
   }
-  if (n.kind === "sell_side") return n.at ? `Since ${sinceStamp(n.at)}` : n.id.endsWith(":error") ? "Failed" : "Brief ready";
+  if (n.kind === "sell_side") return n.at ? `Since ${sinceStamp(n.at, now)}` : n.id.endsWith(":error") ? "Failed" : "Brief ready";
   if (n.kind === "proposal") return "Awaiting review";
   if (n.kind === "weekly") {
     // The pack goes out at noon New York time on the Sunday after the week ends.
-    if (n.at && /^\d{4}-\d{2}-\d{2}$/.test(n.at)) return `Sends ${day(n.at).plus({ days: 2 }).toFormat("ccc")} 12:00`;
+    if (n.at && /^\d{4}-\d{2}-\d{2}$/.test(n.at)) return `Sends ${fmtDay(day(n.at).plus({ days: 2 }).toISODate()!, now)}`;
     const week = n.id.split(":")[1];
-    return week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? `Week to ${monthDay(week)}` : "This week";
+    return week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? `Week to ${fmtDay(week, now)}` : "This week";
   }
   if (n.kind === "changelog") {
-    if (n.at) return `Since ${sinceStamp(n.at)}`;
+    if (n.at) return `Since ${sinceStamp(n.at, now)}`;
     const pr = n.id.split(":")[1];
     return pr ? `PR #${pr}` : "New";
   }

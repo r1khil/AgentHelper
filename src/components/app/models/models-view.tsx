@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Download, FileDown } from "lucide-react";
 import { approveAllProposed, deleteMapping, generateProposals, writeApproved } from "@/lib/actions/models";
-import { fmtNumber } from "@/lib/format";
+import { fmtDate, fmtDay, fmtNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { CountChip, Panel, PanelFooter, PanelHeader } from "@/components/app/panel";
 import { Button } from "@/components/ui/button";
@@ -489,13 +489,10 @@ function Banner({ tone, children }: { tone: "good" | "error"; children: React.Re
 
 // ---- small formatters ----
 
-function shortDate(d: Date) {
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" });
-}
+const shortDate = (d: Date) => fmtDay(d);
 
-function periodLabel(d: string) {
-  return new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
-}
+/** A fiscal period end, always with its year. */
+const periodLabel = (d: string) => fmtDate(d);
 
 function fmtValue(v: number | null) {
   return fmtNumber(v);

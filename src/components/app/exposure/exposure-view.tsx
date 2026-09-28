@@ -3,7 +3,7 @@ import { Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatStrip } from "@/components/app/panel";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtDay } from "@/lib/format";
 import { activeRiskBreakdown } from "@/lib/risk/active";
 import { buildExposure, type Exposure } from "@/lib/risk/exposure";
 import type { LookthroughState } from "@/lib/risk/lookthrough-report";
@@ -30,7 +30,7 @@ export { ExposureSection };
 
 /** The Fund toolbar's context line, e.g. "Today's positions by GICS sector against the S&P 500 sector weights (as of Sep 17)". */
 export function fundExposureContext(weightSetAsOf: string | null, throughEtfs: boolean) {
-  const asOf = weightSetAsOf ? ` (as of ${fmtDate(weightSetAsOf).replace(/, \d{4}$/, "")})` : "";
+  const asOf = weightSetAsOf ? ` (as of ${fmtDay(weightSetAsOf)})` : "";
   return `Today's positions${throughEtfs ? ", ETFs split into their holdings," : ""} by GICS sector against the S&P 500 sector weights${asOf}`;
 }
 

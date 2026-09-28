@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { DateTime } from "luxon";
 import { SlidersHorizontal } from "lucide-react";
 import { runBellwethersNow, runCloseNow, runDailyBriefNow, runEarningsPrepNow, runMorningNow, runPricesNow, runWeeklyNow } from "@/lib/actions/jobs";
 import { setWeeklyRecipients } from "@/lib/actions/admin";
@@ -10,10 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { fmtDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { summarizeJob } from "./job-runs-live";
 
-const NY = "America/New_York";
 
 /** A job's latest run, as the Scheduled jobs panel shows it. */
 export type JobLastRun = { startedAt: string; finishedAt: string | null; ok: boolean | null; summary: Record<string, unknown> };
@@ -32,28 +31,28 @@ type JobDef = { key: JobKey; name: string; when: string; run: (fd: FormData) => 
 
 function jobs(weeklyTo: string): JobDef[] {
   return [
-    { key: "close", name: "Close check", when: "Weekdays 5:00 pm · 400 bp movement rule", runs: "close", run: runCloseNow, options: true, detail: "Supabase pg_cron at 5:00 p.m. New York, with a 7 p.m. Vercel backstop. Opens a movement for any holding that moved 4 pp or more against the S&P 500." },
-    { key: "prices", name: "Price history", when: "Weekdays 5:00 pm · closes, dividends, splits", runs: "prices", run: runPricesNow, detail: "Attribution closes, dividends and splits. Vercel backstop at 7:30 p.m." },
+    { key: "close", name: "Close check", when: "Weekdays 17:00 ET · 400 bp movement rule", runs: "close", run: runCloseNow, options: true, detail: "Supabase pg_cron at 17:00 ET, with a 19:00 ET Vercel backstop. Opens a movement for any holding that moved 4 pp or more against the S&P 500." },
+    { key: "prices", name: "Price history", when: "Weekdays 17:00 ET · closes, dividends, splits", runs: "prices", run: runPricesNow, detail: "Attribution closes, dividends and splits. Vercel backstop at 19:30 ET." },
     {
       key: "brief",
       name: "Hoot's daily brief",
-      when: "Weekdays 5:05 pm · email 5:15 pm",
+      when: "Weekdays 17:05 ET · email 17:15 ET",
       runs: "daily_brief",
       run: runDailyBriefNow,
       options: true,
-      detail: "Prices and close check at 5:00 p.m., Hoot's analysis at 5:05, email to Aadi, Saad, Rikhil and Max at 5:15 (New York). If the email fails it is retried every 15 minutes until midnight, and admins are emailed once it is late. Run now emails only you unless you choose everyone.",
+      detail: "Prices and close check at 17:00 ET, Hoot's analysis at 17:05 ET, email to Aadi, Saad, Rikhil and Max at 17:15 ET. If the email fails it is retried every 15 minutes until midnight, and admins are emailed once it is late. Run now emails only you unless you choose everyone.",
     },
-    { key: "morning", name: "Morning sweep", when: "Weekdays 10:00 am · reminders, earnings, filings, Drive", runs: "morning", run: runMorningNow, detail: "Reminders, earnings, evidence, sector bellwethers, earnings prep packs, the SEC filings index and a full Drive crawl." },
+    { key: "morning", name: "Morning sweep", when: "Weekdays 10:00 ET · reminders, earnings, filings, Drive", runs: "morning", run: runMorningNow, detail: "Reminders, earnings, evidence, sector bellwethers, earnings prep packs, the SEC filings index and a full Drive crawl." },
     { key: "bellwethers", name: "Sector bellwethers", when: "Inside the morning sweep · ETF constituents, report dates", run: runBellwethersNow, detail: "ETF constituents, earnings dates and industries." },
     { key: "prep", name: "Earnings prep packs", when: "Inside the morning sweep · next 5 trading days", run: runEarningsPrepNow, detail: "Agent-gathered evidence for reports in the next five trading days, up to three per run." },
     {
       key: "weekly",
       name: "Weekly update pack",
-      when: `Sundays 12:00 pm · to ${weeklyTo}`,
+      when: `Sundays 12:00 ET · to ${weeklyTo}`,
       runs: "weekly",
       run: runWeeklyNow,
       options: true,
-      detail: "Builds the pack for last Friday, then Hoot emails it. Sunday 12:00 New York (Supabase pg_cron), Vercel backstop 19:00 UTC. A test account (*.owlfund.local) alone on the list pauses the email.",
+      detail: "Builds the pack for last Friday, then Hoot emails it. Sunday 12:00 ET (Supabase pg_cron), Vercel backstop 19:00 UTC. A test account (*.owlfund.local) alone on the list pauses the email.",
     },
   ];
 }
@@ -73,7 +72,7 @@ function status(key: JobKey, r: JobLastRun | null | undefined): { text: string; 
 
 const TONE: Record<Tone, string> = { good: "text-good-foreground", caution: "text-caution-foreground", down: "text-down", muted: "text-muted-foreground" };
 
-const stamp = (iso: string) => DateTime.fromISO(iso, { zone: NY }).toFormat("ccc h:mm:ss a").toLowerCase().replace(/^./, (c) => c.toUpperCase());
+const stamp = (iso: string) => fmtDateTime(iso);
 
 /** S16 right column, bottom: each scheduled job with its schedule, last result and a Run now. */
 export function JobsPanel({ canMutate, last, weekly }: JobsPanelProps) {
@@ -161,7 +160,7 @@ export function JobsPanel({ canMutate, last, weekly }: JobsPanelProps) {
             <>
               <DialogHeader>
                 <DialogTitle>Weekly update pack</DialogTitle>
-                <DialogDescription>Pack for last Friday, then Hoot emails it. Leave the date empty for today. Sunday 12:00 New York (Supabase pg_cron), Vercel backstop 19:00 UTC.</DialogDescription>
+                <DialogDescription>Pack for last Friday, then Hoot emails it. Leave the date empty for today. Sunday 12:00 ET (Supabase pg_cron), Vercel backstop 19:00 UTC.</DialogDescription>
               </DialogHeader>
               <form action={runWeeklyNow} className="grid gap-3">
                 <Field label="Run as if today were" htmlFor="weekly-date">

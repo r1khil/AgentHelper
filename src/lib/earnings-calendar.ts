@@ -2,6 +2,7 @@ import { DateTime } from "luxon";
 import type { Bellwether, Earnings, Holding } from "@/db/schema";
 import type { GicsSector } from "@/lib/attribution/sectors";
 import { NY, isTradingDay } from "@/lib/providers/calendar";
+import { fmtMonth } from "@/lib/format";
 
 /** Which events a team's calendar covers: the whole Fund, the team's sectors, or one industry. */
 export const CALENDAR_VIEWS = ["fund", "sector", "industry"] as const;
@@ -136,7 +137,7 @@ export function buildMiniMonth(month: string): MiniMonth {
       return d.month === first.month ? d.toISODate()! : null;
     }));
   }
-  return { month, label: first.toFormat("LLLL yyyy"), first: first.toISODate()!, last: last.toISODate()!, weeks };
+  return { month, label: fmtMonth(first.toISODate()), first: first.toISODate()!, last: last.toISODate()!, weeks };
 }
 
 const nthWeekday = (year: number, month: number, weekday: number, n: number) => {
@@ -209,7 +210,7 @@ export function buildMonthGrid(month: string): MonthGrid {
   }
   return {
     month,
-    label: first.toFormat("LLLL yyyy"),
+    label: fmtMonth(first.toISODate()),
     start: start.toISODate()!,
     end: end.toISODate()!,
     prevMonth: first.minus({ months: 1 }).toFormat("yyyy-LL"),

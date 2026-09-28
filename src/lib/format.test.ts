@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fixed, fmtAccounting, fmtBp, fmtCompact, fmtCurrency, fmtMoney, fmtNumber, fmtPct, fmtUsd, fmtUsdCompact, ppToBp } from "./format";
+import { fixed, fmtAccounting, fmtBp, fmtCompact, fmtCurrency, fmtDate, fmtDateTime, fmtDay, fmtDayMonth, fmtMonth, fmtMoney, fmtNumber, fmtPct, fmtTime, fmtUsd, fmtUsdCompact, ppToBp, relativeTime } from "./format";
 
 describe("fixed", () => {
   it("drops the minus from a value that rounds to zero", () => {
@@ -173,5 +173,68 @@ describe("fmtCurrency", () => {
     expect(fmtCurrency(null, "USD")).toBe("—");
     expect(fmtCurrency("", "USD")).toBe("—");
     expect(fmtCurrency("n/a", "USD")).toBe("—");
+  });
+});
+
+describe("dates, in New York time", () => {
+  // Mon 28 Sep 2026, 08:00 New York.
+  const now = new Date("2026-09-28T12:00:00Z");
+
+  it("fmtDay: weekday, day and month this year; the full date in another", () => {
+    expect(fmtDay("2026-09-28", now)).toBe("Mon 28 Sep");
+    expect(fmtDay("2026-10-05", now)).toBe("Mon 5 Oct");
+    expect(fmtDay("2025-09-22", now)).toBe("22 Sep 2025");
+    expect(fmtDay("2027-01-04", now)).toBe("4 Jan 2027");
+  });
+
+  it("reads a calendar date as that date, whatever the time zone", () => {
+    expect(fmtDay("2026-01-01", new Date("2026-06-01T12:00:00Z"))).toBe("Thu 1 Jan");
+    expect(fmtDate("2026-12-31")).toBe("31 Dec 2026");
+  });
+
+  it("reads an instant in New York, so a late-evening UTC time keeps its New York day", () => {
+    // 01:30 UTC on the 29th is 21:30 on the 28th in New York.
+    expect(fmtDay("2026-09-29T01:30:00Z", now)).toBe("Mon 28 Sep");
+    expect(fmtDate(new Date("2026-09-29T01:30:00Z"))).toBe("28 Sep 2026");
+  });
+
+  it("fmtDate always carries the year", () => {
+    expect(fmtDate("2026-10-28")).toBe("28 Oct 2026");
+    expect(fmtDate(new Date("2026-10-28T16:00:00Z"))).toBe("28 Oct 2026");
+  });
+
+  it("fmtTime is 24-hour, no seconds, marked ET, and follows daylight saving", () => {
+    expect(fmtTime("2026-09-28T16:00:00Z")).toBe("12:00 ET");
+    expect(fmtTime("2026-09-28T21:07:48Z")).toBe("17:07 ET");
+    expect(fmtTime("2026-09-28T13:30:00Z")).toBe("9:30 ET");
+    expect(fmtTime("2026-12-01T17:00:00Z")).toBe("12:00 ET");
+  });
+
+  it("fmtDateTime joins the day and the time", () => {
+    expect(fmtDateTime("2026-09-28T16:00:00Z", now)).toBe("Mon 28 Sep, 12:00 ET");
+    expect(fmtDateTime(new Date("2025-03-03T15:00:00Z"), now)).toBe("3 Mar 2025, 10:00 ET");
+  });
+
+  it("fmtDayMonth and fmtMonth for axes and calendar headings", () => {
+    expect(fmtDayMonth("2026-09-28")).toBe("28 Sep");
+    expect(fmtMonth("2026-09-01")).toBe("September 2026");
+  });
+
+  it("shows nothing for a missing or unreadable date", () => {
+    for (const f of [fmtDay, fmtDate, fmtTime, fmtDateTime, fmtDayMonth, fmtMonth]) {
+      expect(f(null)).toBe("");
+      expect(f(undefined)).toBe("");
+      expect(f("not a date")).toBe("");
+    }
+  });
+
+  it("relativeTime reads recent times relatively and older ones as a date", () => {
+    const t = now.getTime();
+    expect(relativeTime(new Date(t - 20_000), t)).toBe("just now");
+    expect(relativeTime(new Date(t - 5 * 60_000), t)).toBe("5m ago");
+    expect(relativeTime(new Date(t - 3 * 3_600_000), t)).toBe("3h ago");
+    expect(relativeTime(new Date(t - 2 * 86_400_000), t)).toBe("2d ago");
+    expect(relativeTime("2026-07-01T16:00:00Z", t)).toBe("1 Jul 2026");
+    expect(relativeTime(null, t)).toBe("");
   });
 });

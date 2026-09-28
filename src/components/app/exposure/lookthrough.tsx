@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Segmented } from "@/components/app/panel";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
-import { fmtDate } from "@/lib/format";
+import { fmtDate, fmtDay } from "@/lib/format";
 import { SOURCE_LABELS } from "@/lib/lookthrough/parse";
 import { describeExposure, type ActiveName, type EtfCoverage, type LookthroughReport, type NameExposure } from "@/lib/risk/lookthrough";
 import { STALE_AFTER_DAYS, type LookthroughState } from "@/lib/risk/lookthrough-report";
@@ -55,7 +55,6 @@ export function SectorViewToggle({ basePath, lookback, throughEtfs, available, e
   );
 }
 
-const shortDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 /**
  * The look-through sections for the Exposure page: coverage per ETF, combined exposure per company, and stock-level
@@ -164,7 +163,7 @@ function EtfCoverageTable({ etfs, stale }: { etfs: EtfCoverage[]; stale: string[
                   {/* On a phone the as-of column is hidden, so the date and source sit under the ETF. */}
                   {e.asOf && e.source && (
                     <div className={cn("text-[11px] text-muted-foreground sm:hidden", isStale && "font-medium text-caution-foreground")}>
-                      {shortDate(e.asOf)} · {SOURCE_LABELS[e.source]}{isStale && " · stale"}
+                      {fmtDay(e.asOf)} · {SOURCE_LABELS[e.source]}{isStale && " · stale"}
                     </div>
                   )}
                 </TableCell>
@@ -178,7 +177,7 @@ function EtfCoverageTable({ etfs, stale }: { etfs: EtfCoverage[]; stale: string[
                 <TableCell className="hidden text-xs sm:table-cell">
                   {e.asOf && e.source ? (
                     <>
-                      <span className={cn(isStale && "font-medium text-caution-foreground")}>{shortDate(e.asOf)}{isStale && " · stale"}</span>
+                      <span className={cn(isStale && "font-medium text-caution-foreground")}>{fmtDay(e.asOf)}{isStale && " · stale"}</span>
                       <div className="text-[11px] text-muted-foreground">{SOURCE_LABELS[e.source]}</div>
                     </>
                   ) : (

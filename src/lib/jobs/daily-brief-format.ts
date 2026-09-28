@@ -1,6 +1,5 @@
-import { DateTime } from "luxon";
 import type { AttributionSummary } from "@/lib/attribution/summary";
-import { fmtAccounting } from "@/lib/format";
+import { fmtAccounting, fmtDate, fmtDay } from "@/lib/format";
 import type { Source } from "@/lib/providers/types";
 
 /** Who gets Hoot's 5:15 p.m. daily attribution email, in the order they are addressed (first in To, the rest in Cc). */
@@ -116,16 +115,16 @@ export function cleanBrief(text: string): string {
 
 export function sourcesFooter(sources: Source[]): string {
   if (!sources.length) return "";
-  return ["Sources:", ...sources.map((s, i) => `[${i + 1}] ${s.title} (${s.publisher}${s.publishedAt ? `, ${s.publishedAt.slice(0, 10)}` : ""})${s.url ? ` ${s.url}` : ""}`)].join("\n");
+  return ["Sources:", ...sources.map((s, i) => `[${i + 1}] ${s.title} (${s.publisher}${s.publishedAt ? `, ${fmtDate(s.publishedAt)}` : ""})${s.url ? ` ${s.url}` : ""}`)].join("\n");
 }
 
-/** "Tuesday, September 22" for an ISO session date. */
+/** "Tue 22 Sep" for an ISO session date. */
 function longDate(iso: string) {
-  return DateTime.fromISO(iso).toFormat("cccc, LLLL d");
+  return fmtDay(iso);
 }
 
 export function briefEmail(opts: { sessionDate: string; facts: string; analysis: string | null; sources: Source[]; failure?: string; appUrl?: string }) {
-  const subject = `Owl Fund Daily Attribution Analysis (${DateTime.fromISO(opts.sessionDate).toFormat("dd-LLL-yyyy")})`;
+  const subject = `Owl Fund Daily Attribution Analysis (${fmtDate(opts.sessionDate)})`;
   const link = opts.appUrl ? `${opts.appUrl.replace(/\/$/, "")}/attribution` : null;
   const opening = opts.analysis
     ? [`Here's what drove the fund on ${longDate(opts.sessionDate)}.`, "", opts.analysis]
@@ -157,14 +156,14 @@ export function briefAlertEmail(opts: { sessionDate: string; final: boolean; err
     "Hi,",
     "",
     opts.final
-      ? `The daily attribution email for ${day} never went out. I tried at 5:15 p.m. and every 15 minutes after that until 11:45 p.m.`
+      ? `The daily attribution email for ${day} never went out. I tried at 17:15 ET and every 15 minutes after that until 23:45 ET.`
       : `The daily attribution email for ${day} hasn't gone out yet. I'll keep trying every 15 minutes until midnight New York time.`,
     "",
     `What went wrong: ${opts.error}`,
     "",
-    `To send it yourself, open ${admin}, set the date under "Hoot's daily attribution brief" to ${opts.sessionDate}, tick "Email everyone on the list, not just me" and press Run.`,
+    `To send it yourself, open ${admin}, set the date under "Hoot's daily attribution brief" to ${fmtDate(opts.sessionDate)}, tick "Email everyone on the list, not just me" and press Run.`,
     "",
     "Hoot",
   ].join("\n");
-  return { subject: `Daily attribution email not sent (${DateTime.fromISO(opts.sessionDate).toFormat("dd-LLL-yyyy")})`, body };
+  return { subject: `Daily attribution email not sent (${fmtDate(opts.sessionDate)})`, body };
 }

@@ -11,6 +11,9 @@ const ROOTS = ["src/app", "src/components"];
 const PATTERNS: [RegExp, string][] = [
   [/\.toFixed\(/, ".toFixed("],
   [/\.toLocaleString\(/, ".toLocaleString("],
+  [/\.toLocaleDateString\(/, ".toLocaleDateString("],
+  [/\.toLocaleTimeString\(/, ".toLocaleTimeString("],
+  [/Intl\.DateTimeFormat\(/, "Intl.DateTimeFormat("],
 ];
 
 const ALLOWED: Record<string, string> = {
@@ -19,7 +22,6 @@ const ALLOWED: Record<string, string> = {
   "src/components/app/chat/trace-panel.tsx": "token counts, timings and sizes in the admin trace",
   "src/components/app/hoot/hoot-sprite.tsx": "CSS transforms",
   "src/components/app/holdings/sparkline.tsx": "SVG coordinates",
-  "src/components/app/movements/format.ts": "session dates, until the date helpers replace them",
   "src/components/app/risk/format.ts": "rsci: daily decimals in the working panels",
   "src/components/app/tour/flying-hoot.tsx": "CSS transforms",
   "src/components/app/tour/placement.ts": "geometry",
@@ -34,7 +36,7 @@ function files(dir: string): string[] {
 }
 
 describe("display formatting goes through @/lib/format", () => {
-  it("has no hand-rolled number formatting in pages and components", () => {
+  it("has no hand-rolled number or date formatting in pages and components", () => {
     const offenders: string[] = [];
     for (const root of ROOTS) {
       for (const file of files(root)) {
@@ -47,7 +49,7 @@ describe("display formatting goes through @/lib/format", () => {
           });
       }
     }
-    expect(offenders, "Use fmtPct, fmtBp, fmtUsd, fmtAccounting and the rest from @/lib/format instead").toEqual([]);
+    expect(offenders, "Use fmtPct, fmtBp, fmtUsd, fmtAccounting, fmtDay, fmtDate, fmtTime, fmtDateTime and the rest from @/lib/format").toEqual([]);
   });
 
   it("allows only files that still exist", () => {

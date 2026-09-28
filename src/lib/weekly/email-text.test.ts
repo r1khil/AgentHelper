@@ -39,7 +39,7 @@ describe("weeklyEmailText", () => {
   const text = weeklyEmailText(input);
 
   it("lays the deck's sections out in its order and style", () => {
-    expect(weeklyEmailSubject("2026-09-25")).toBe("Weekly update data for the week ended September 25, 2026");
+    expect(weeklyEmailSubject("2026-09-25")).toBe("Weekly update data for the week ended 25 Sep 2026");
     expect(text.startsWith("Hi Aadi,\n")).toBe(true);
     const order = ["PORTFOLIO HIGHLIGHTS", "TOP 3 PERFORMERS", "WORST 3 PERFORMERS", "LAST WEEK'S AGENDA", "THIS WEEK'S AGENDA", "YTD PERFORMANCE CHART", "CHECKS"].map((h) => text.indexOf(h));
     expect(order.every((at, i) => at > 0 && (i === 0 || at > order[i - 1]))).toBe(true);

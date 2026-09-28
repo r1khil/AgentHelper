@@ -225,7 +225,7 @@ function FactorWorking({ f, downloads, fund }: { f: FactorReport; downloads: Rea
   return (
     <Working className="mt-2" title="Factor working">
       <Step label="Model">
-        rᵢ = α + β<sub>market</sub>·SPY + β<sub>size</sub>·(IWM − SPY) + β<sub>value</sub>·(IVE − IVW) + β<sub>momentum</sub>·(MTUM − SPY) + β<sub>rates</sub>·TLT + β<sub>dollar</sub>·UUP + β<sub>oil</sub>·USO + ε, daily total returns, OLS over {f.sample.n} days ({f.sample.from} to {f.sample.to}), {f.fund.df} degrees of freedom
+        rᵢ = α + β<sub>market</sub>·SPY + β<sub>size</sub>·(IWM − SPY) + β<sub>value</sub>·(IVE − IVW) + β<sub>momentum</sub>·(MTUM − SPY) + β<sub>rates</sub>·TLT + β<sub>dollar</sub>·UUP + β<sub>oil</sub>·USO + ε, daily total returns, OLS over {f.sample.n} days ({fmtDate(f.sample.from)} to {fmtDate(f.sample.to)}), {f.fund.df} degrees of freedom
       </Step>
       <Step label={`${fund ? "Fund" : "Team"} ${label} β = Σ wᵢ βᵢ`}>
         {shown.map((h) => fmtTerm(h.weight, h.betas[key].beta)).join(" + ")}

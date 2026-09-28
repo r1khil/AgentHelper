@@ -9,7 +9,7 @@ import { getBarsRange, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { listFilings } from "@/lib/providers/edgar";
 import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
 import { NY, todayNY } from "@/lib/providers/calendar";
-import { fmtCurrency, fmtPct, fmtNumber } from "@/lib/format";
+import { fmtCurrency, fmtDay, fmtNumber, fmtPct, fmtTime } from "@/lib/format";
 import { canManageTeam, isFundWide } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { effectiveRunStatus, listHoldingChats } from "@/lib/chats";
@@ -238,7 +238,7 @@ function glanceRows({ h, ownerName, owner, next, moves, base, now }: { h: Holdin
     {
       label: "Movements",
       value: open.length
-        ? `${open.length} open${overdue ? " · write-up overdue" : open[0].dueAt ? ` · due ${DateTime.fromJSDate(open[0].dueAt).setZone(NY).toFormat("MMM d")}` : ""}`
+        ? `${open.length} open${overdue ? " · write-up overdue" : open[0].dueAt ? ` · due ${fmtDay(open[0].dueAt)}` : ""}`
         : last
           ? `None open · last ${shortDate(last.sessionDate)}`
           : "None yet",
@@ -314,7 +314,7 @@ function hourLabel(hour: string | null) {
 function quoteWhen(asOf: string, marketState: string | undefined, today: string) {
   const t = DateTime.fromISO(asOf).setZone(NY);
   if (!t.isValid) return "latest";
-  if (marketState === "REGULAR") return `as of ${t.toFormat("h:mm a")}`;
+  if (marketState === "REGULAR") return `as of ${fmtTime(asOf)}`;
   return t.toISODate() === today ? "today's close" : `${t.toFormat("cccc")} close`;
 }
 

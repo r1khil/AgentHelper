@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { DateTime } from "luxon";
-import { NY } from "@/lib/providers/calendar";
 import { sessionStamp } from "@/lib/today";
-import { fmtAccounting, fmtBp } from "@/lib/format";
+import { fmtAccounting, fmtBp, fmtDateTime } from "@/lib/format";
 import { Acct } from "@/components/app/accounting";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -32,7 +30,7 @@ export function LastSessionCard({ book }: { book: Book }) {
   return (
     <section data-tour="today-result" aria-label="Last session" className="shrink-0 rounded-[14px] bg-rail px-5 py-[18px] text-cream">
       <div className="flex items-baseline justify-between gap-3 leading-4">
-        <span className="label-mono text-rail-label">Last session · {sessionStamp(book.sessionDate)}</span>
+        <span className="label-mono text-rail-label">Last session · <span className="normal-case">{sessionStamp(book.sessionDate)}</span></span>
         <Link href={book.href} className="text-[13px] font-medium whitespace-nowrap hover:underline">
           Attribution →
         </Link>
@@ -97,11 +95,9 @@ export function LastSessionSkeleton() {
   );
 }
 
-/** "Written 6:12 pm Friday". */
+/** "Written Fri 25 Sep, 18:12 ET". */
 function writtenLine(iso: string | null) {
-  if (!iso) return null;
-  const t = DateTime.fromISO(iso).setZone(NY);
-  return `Written ${t.toFormat("h:mm")} ${t.toFormat("a").toLowerCase()} ${t.toFormat("cccc")}`;
+  return iso ? `Written ${fmtDateTime(iso)}` : null;
 }
 
 /** Hoot's evening brief: the lead paragraph with its citations, the rest behind "Read the full brief". */

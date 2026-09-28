@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
 import { NY, isTradingDay, nextTradingDay, previousTradingDay } from "@/lib/providers/calendar";
+import { fmtDate, fmtDay } from "@/lib/format";
 
 /** Every pack is keyed by the Friday its week ended on. */
 export const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -78,9 +79,9 @@ export function weekdayLabel(iso: string): string {
   return d.isValid ? d.toFormat("cccc") : "";
 }
 
+/** "25 Sep 2026". */
 export function weekEndingLabel(weekEnding: string): string {
-  const d = at(weekEnding);
-  return d.isValid ? d.toFormat("MMMM d, yyyy") : weekEnding;
+  return fmtDate(weekEnding) || weekEnding;
 }
 
 /** "18th", "21st", "22nd", "23rd", "11th". */
@@ -90,17 +91,15 @@ function ordinal(n: number): string {
   return `${n}${suffix}`;
 }
 
-/** The deck's title line: "Update for the week ended September 18th, 2026". */
+/** The deck's title line, in the deck's own words and date style: "Update for the week ended September 18th, 2026". */
 export function packTitle(weekEnding: string): string {
   const d = at(weekEnding);
   return `Update for the week ended ${d.isValid ? `${d.toFormat("MMMM")} ${ordinal(d.day)}, ${d.year}` : weekEnding}`;
 }
 
-/** "September 21–25, 2026" for a Monday-to-Friday span. */
+/** "Mon 21 Sep – Fri 25 Sep" for a Monday-to-Friday span. */
 export function weekRangeLabel(from: string, to: string): string {
-  const a = at(from);
-  const b = at(to);
-  if (!a.isValid || !b.isValid) return `${from} to ${to}`;
-  const tail = a.month === b.month ? b.toFormat("d, yyyy") : b.toFormat("MMMM d, yyyy");
-  return `${a.toFormat("MMMM d")}–${tail}`;
+  const a = fmtDay(from);
+  const b = fmtDay(to);
+  return a && b ? `${a} – ${b}` : `${from} to ${to}`;
 }

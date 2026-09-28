@@ -4,7 +4,7 @@ import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState, type 
 import type { UIMessage } from "ai";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtBp, fmtDateTime, fmtMoney, fmtPct, ppToBp } from "@/lib/format";
+import { fmtBp, fmtDate, fmtDateTime, fmtMoney, fmtPct, ppToBp } from "@/lib/format";
 import type { RunStatus } from "@/lib/chats";
 import type { Source } from "@/lib/providers/types";
 import { collectSources } from "@/lib/agent/citations";
@@ -502,7 +502,7 @@ function BoardThread({
     }
   };
   const copyCitation = async (s: Source) => {
-    const date = s.publishedAt?.slice(0, 10);
+    const date = s.publishedAt ? fmtDate(s.publishedAt) : null;
     const text = [s.title, [s.publisher, date].filter(Boolean).join(", "), s.url].filter(Boolean).join(" — ");
     try {
       await navigator.clipboard.writeText(text);

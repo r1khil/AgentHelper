@@ -5,7 +5,7 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PerformanceChart } from "@/components/charts/performance-chart";
-import { ChartTooltip, chartGrid, chartTick, exactDate, tone } from "@/components/charts/primitives";
+import { ChartTooltip, chartGrid, chartTick, exactDate, tickDate, tone } from "@/components/charts/primitives";
 import { fmtBp, fmtPct } from "@/lib/format";
 
 /** Percent points: `portfolio` and `benchmark` are cumulative returns in percent from the period's base close. */
@@ -13,7 +13,6 @@ export type CumulativeChartPoint = { date: string; portfolio: number; benchmark:
 
 const FUND = "var(--series-1)";
 const BENCH = "var(--series-neutral)";
-const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
 /** The full interactive chart (scrub, drag-to-compare, observations table). Shown in the Details dialog. */
 export function CumulativeActiveChart({ data, portfolioLabel, benchmarkLabel }: { data: CumulativeChartPoint[]; portfolioLabel: string; benchmarkLabel: string }) {
@@ -33,14 +32,10 @@ export function CumulativeActiveChart({ data, portfolioLabel, benchmarkLabel }: 
   );
 }
 
-/** Tick labels like the design: "SEP 17" then day numbers, or "SEP 17" throughout when the period spans months. */
+/** Tick labels: "17 Sep" then day numbers, or "17 Sep" throughout when the period spans months. */
 function tickLabels(dates: string[]) {
   const spansMonths = dates.length > 1 && dates[0].slice(0, 7) !== dates.at(-1)!.slice(0, 7);
-  return (d: string, i?: number) => {
-    const [, m, day] = d.split("-");
-    const full = `${MONTHS[Number(m) - 1]} ${Number(day)}`;
-    return spansMonths || d === dates[0] || i === 0 ? full : String(Number(day));
-  };
+  return (d: string, i?: number) => (spansMonths || d === dates[0] || i === 0 ? tickDate(d) : String(Number(d.slice(8, 10))));
 }
 
 /** Compact cumulative-return panel body: thin lines, no dots, mono ticks, hover readout. */

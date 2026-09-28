@@ -1,7 +1,7 @@
 import { GICS_SECTORS, bucketLabel, type BucketKey, type GicsSector } from "@/lib/attribution/sectors";
 import type { ConstituentSource } from "@/lib/lookthrough/parse";
 import { issuerKey } from "@/lib/lookthrough/symbols";
-import { fmtPct } from "@/lib/format";
+import { fmtDay, fmtPct } from "@/lib/format";
 
 /**
  * ETF look-through: what the Fund owns once each ETF is replaced by its holdings. Pure; an exposure report,
@@ -296,9 +296,9 @@ export function describeExposure(n: NameExposure): string {
   return `${n.key} ${pctText(n.total)} = ${parts.join(" + ")}`;
 }
 
-/** "SOXX 99.9% looked through, as of Sep 23, iShares". */
+/** "SOXX 99.9% looked through, as of Wed 23 Sep, iShares". */
 export function describeCoverage(e: EtfCoverage, sourceLabel: (s: ConstituentSource) => string): string {
   if (!e.source || !e.asOf) return `${e.etf} not looked through (no holdings list)`;
-  const date = new Date(`${e.asOf}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const date = fmtDay(e.asOf);
   return `${e.etf} ${fmtPct(e.coverage * 100, 1)} looked through, as of ${date}, ${sourceLabel(e.source)}`;
 }

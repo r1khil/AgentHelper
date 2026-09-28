@@ -3,7 +3,7 @@ import { and, eq, isNull, lt, ne } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
 import { holdings, jobRuns, movements, profiles, teams } from "@/db/schema";
-import { NY, formatNY, todayNY } from "@/lib/providers/calendar";
+import { NY, todayNY } from "@/lib/providers/calendar";
 import { gatherMovementEvidence } from "./evidence";
 import { queueNotification, sendPendingNotifications } from "./notify";
 import { refreshEarningsCalendar } from "./earnings";
@@ -15,6 +15,7 @@ import { purgeExpiredMemories } from "@/lib/agent/memory/store";
 import { prepEarnings } from "./earnings-prep";
 import { syncFilings } from "./filings";
 import { runPricesJob } from "./prices";
+import { fmtDateTime, fmtDay, fmtTime } from "@/lib/format";
 
 export type MorningJobResult = {
   date: string;
@@ -74,8 +75,8 @@ export async function runMorningJob(): Promise<MorningJobResult> {
           recipientEmail: r.email,
           refId: m.id,
           dedupeKey: `reminder:${m.id}:${r.id}`,
-          subject: `Reminder: ${h.ticker} movement update due ${formatNY(m.dueAt, "h:mm a")} ET today`,
-          body: `The ${h.ticker} major-movement update for ${m.sessionDate} is due at ${formatNY(m.dueAt, "h:mm a")} ET today.\n\nWorkspace: ${link}`,
+          subject: `Reminder: ${h.ticker} movement update due ${fmtTime(m.dueAt)} today`,
+          body: `The ${h.ticker} major-movement update for ${fmtDay(m.sessionDate)} is due at ${fmtTime(m.dueAt)} today.\n\nWorkspace: ${link}`,
         });
         if (q) result.reminders++;
       }
@@ -87,8 +88,8 @@ export async function runMorningJob(): Promise<MorningJobResult> {
           recipientEmail: r.email,
           refId: m.id,
           dedupeKey: `overdue:${m.id}:${r.id}`,
-          subject: `Overdue: ${h.ticker} movement update (${m.sessionDate})`,
-          body: `The ${h.ticker} major-movement update for ${m.sessionDate} was due ${formatNY(m.dueAt, "cccc MMM d, h:mm a")} ET and is still open.\n\nWorkspace: ${link}`,
+          subject: `Overdue: ${h.ticker} movement update (${fmtDay(m.sessionDate)})`,
+          body: `The ${h.ticker} major-movement update for ${fmtDay(m.sessionDate)} was due ${fmtDateTime(m.dueAt)} and is still open.\n\nWorkspace: ${link}`,
         });
         if (q) result.overdue++;
       }

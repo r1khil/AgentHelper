@@ -7,7 +7,7 @@ import { Panel, PanelHeader, Segmented, StatStrip, type StatCell } from "@/compo
 import { PerformanceChart } from "@/components/charts/performance-chart";
 import type { BacktestResult } from "@/lib/backtesting/engine";
 import type { SavedScenarioSummary } from "@/lib/backtesting/saved";
-import { fmtBp, fmtPct } from "@/lib/format";
+import { fmtBp, fmtDay, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Explained } from "../../attribution/info-tip";
 import { LayoutSwitch } from "../layout-switch";
@@ -37,8 +37,7 @@ const NAMES = { original: "Today's weights", modified: "Scenario" } as const;
 
 const shownPct = (v: number) => fmtPct(shown(v) * 100);
 const toneOf = (v: number): StatCell["tone"] => (v > 1e-12 ? "up" : v < -1e-12 ? "down" : null);
-const day = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-const savedOn = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" });
+const day = (iso: string) => fmtDay(iso.slice(0, 10));
 
 /**
  * Backtesting, redesigned (S9): the weights on the left, the replay on the right. Same engine, endpoints and
@@ -279,7 +278,7 @@ function SavedPanel({
                   {s.name}
                 </Link>
                 <span className="text-[12.5px] whitespace-nowrap text-muted-foreground">
-                  {s.createdBy ?? "Someone"} · {savedOn(s.createdAt)}
+                  {s.createdBy ?? "Someone"} · {fmtDay(s.createdAt)}
                 </span>
                 <span className="w-[74px] text-right font-mono text-xs whitespace-nowrap text-muted-foreground" title={detail}>
                   {s.changes} change{s.changes === 1 ? "" : "s"}

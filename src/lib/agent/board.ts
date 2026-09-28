@@ -1,7 +1,7 @@
 import type { UIMessage } from "ai";
 import type { Source } from "@/lib/providers/types";
 import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
-import { fmtBp, fmtMoney, fmtPct } from "@/lib/format";
+import { fmtBp, fmtDay, fmtMoney, fmtPct } from "@/lib/format";
 import { CITATION_RE, resolveCitedId } from "./citations";
 import { enrichLegacySource } from "./source-resolution";
 import { hiddenPromptLabel } from "./hidden-prompt";
@@ -168,7 +168,7 @@ export function marketFigure(row: TurnSource): MarketFigure | null {
     const sub = [
       typeof last.holdingReturnPct === "number" && typeof last.spxReturnPct === "number" ? `${fmtPct(last.holdingReturnPct)} vs ${fmtPct(last.spxReturnPct)}` : null,
       `${fmtBp(MOVEMENT_THRESHOLD_PP * 100)} rule ${last.qualifies ? "met" : "not met"}`,
-      typeof last.date === "string" ? last.date : null,
+      typeof last.date === "string" ? fmtDay(last.date) : null,
     ]
       .filter(Boolean)
       .join(" · ");

@@ -1,3 +1,5 @@
+import { DateTime } from "luxon";
+
 /*
  * The app's one set of display formats. Every figure a reader sees goes through here, so a number reads the same on
  * Today, Holdings, Attribution, Risk, Research, Weekly, in Hoot's copy and in email.
@@ -15,6 +17,7 @@
 type Num = number | string | null | undefined;
 
 const DASH = "—";
+const NY = "America/New_York";
 
 function toNumber(n: Num): number | null {
   if (n === null || n === undefined || n === "") return null;
@@ -111,23 +114,63 @@ export function fmtCurrency(n: Num, currency: string | null | undefined, { digit
   return signWrap(v, `${!code ? "" : code === "USD" ? "$" : `${code} `}${grouped(Math.abs(v), digits, Math.max(digits, maxDigits ?? digits))}${suffix}`);
 }
 
-export function fmtDate(d: string | Date | null | undefined) {
-  if (!d) return "";
-  const dt = typeof d === "string" ? new Date(d.length === 10 ? `${d}T12:00:00Z` : d) : d;
-  return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+/* ------------------------------------------------------------------------------------------------------ dates */
+
+type When = string | Date | null | undefined;
+
+/** A "YYYY-MM-DD" is that calendar date; anything else is an instant, read in New York. */
+function toNY(d: When): DateTime | null {
+  if (!d) return null;
+  const dt =
+    typeof d === "string"
+      ? /^\d{4}-\d{2}-\d{2}$/.test(d)
+        ? DateTime.fromISO(d, { zone: NY })
+        : DateTime.fromISO(d).setZone(NY)
+      : DateTime.fromJSDate(d).setZone(NY);
+  return dt.isValid ? dt : null;
 }
 
-export function fmtDateTime(d: string | Date | null | undefined) {
-  if (!d) return "";
-  const dt = typeof d === "string" ? new Date(d) : d;
-  return dt.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " ET";
+const sameYear = (dt: DateTime, now: Date) => dt.year === DateTime.fromJSDate(now).setZone(NY).year;
+
+/** "28 Sep 2026": a full date, or any date where the year matters. */
+export function fmtDate(d: When) {
+  return toNY(d)?.toFormat("d LLL yyyy") ?? "";
 }
 
-export function relativeTime(d: string | Date | null | undefined) {
+/** "Mon 28 Sep" for a day this year; "28 Sep 2025" for one in another year. */
+export function fmtDay(d: When, now: Date = new Date()) {
+  const dt = toNY(d);
+  if (!dt) return "";
+  return sameYear(dt, now) ? dt.toFormat("ccc d LLL") : dt.toFormat("d LLL yyyy");
+}
+
+/** "28 Sep": chart axes and tight columns, where the weekday and year are clear from context. */
+export function fmtDayMonth(d: When) {
+  return toNY(d)?.toFormat("d LLL") ?? "";
+}
+
+/** "September 2026": a month, as a calendar heading. */
+export function fmtMonth(d: When) {
+  return toNY(d)?.toFormat("LLLL yyyy") ?? "";
+}
+
+/** "12:00 ET": 24-hour New York time, no seconds. */
+export function fmtTime(d: When) {
+  const dt = toNY(d);
+  return dt ? `${dt.toFormat("H:mm")} ET` : "";
+}
+
+/** "Mon 28 Sep, 12:00 ET"; "28 Sep 2025, 12:00 ET" in another year. */
+export function fmtDateTime(d: When, now: Date = new Date()) {
+  const dt = toNY(d);
+  return dt ? `${fmtDay(dt.toJSDate(), now)}, ${fmtTime(dt.toJSDate())}` : "";
+}
+
+/** "just now", "5m ago", "3h ago", "2d ago"; the full date after a month. */
+export function relativeTime(d: When, now: number = Date.now()) {
   if (!d) return "";
   const t = typeof d === "string" ? new Date(d).getTime() : d.getTime();
-  const diff = Date.now() - t;
-  const m = Math.round(diff / 60000);
+  const m = Math.round((now - t) / 60000);
   if (m < 1) return "just now";
   if (m < 60) return `${m}m ago`;
   const h = Math.round(m / 60);

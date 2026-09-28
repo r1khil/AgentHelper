@@ -88,7 +88,9 @@ describe("editReplyText", () => {
 
 describe("weekFromReplySubject", () => {
   it("finds the week in a reply to the Sunday email and nothing else", () => {
+    expect(weekFromReplySubject("Re: Weekly update data for the week ended 25 Sep 2026")).toBe("2026-09-25");
     expect(weekFromReplySubject("Re: Weekly update data for the week ended September 25, 2026")).toBe("2026-09-25");
+    expect(weekFromReplySubject("Re: Weekly update data for the week ended 24 Sep 2026")).toBeNull();
     expect(weekFromReplySubject("RE: Weekly update data for the week ended October 2, 2026")).toBe("2026-10-02");
     expect(weekFromReplySubject("Re: Weekly update data for the week ended September 24, 2026")).toBeNull();
     expect(weekFromReplySubject("Re: Owl Fund Daily Attribution Analysis (25-Sep-2026)")).toBeNull();

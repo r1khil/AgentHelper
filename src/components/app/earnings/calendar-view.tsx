@@ -26,7 +26,7 @@ import {
 import type { CalendarFactorContext } from "@/lib/economic-calendar/factor-lines";
 import type { EconomicEvent } from "@/lib/economic-calendar/types";
 import { nextRelease, todayIn } from "@/lib/economic-calendar/view";
-import { fmtCurrency, fmtDate } from "@/lib/format";
+import { fmtCurrency, fmtDay, fmtTime } from "@/lib/format";
 import { NY } from "@/lib/providers/calendar";
 import { cn } from "@/lib/utils";
 import { earningsHref } from "@/lib/scope";
@@ -114,7 +114,7 @@ const EXPECTATIONS: Record<ExpectationsState, { pill: string; row: string; tone:
 const ROW_GRID = "grid grid-cols-[52px_110px_minmax(0,1fr)_220px_180px] items-center gap-3 px-5";
 
 const dt = (d: string) => DateTime.fromISO(d, { zone: NY });
-const monoDay = (d: string) => dt(d).toFormat("ccc d LLL").toUpperCase();
+const monoDay = (d: string) => fmtDay(d);
 const minutesOf = (iso: string) => {
   const t = DateTime.fromISO(iso).setZone(NY);
   return t.hour * 60 + t.minute;
@@ -209,7 +209,7 @@ export function CalendarView(props: CalendarViewProps) {
     show.has("bellwethers") && plural(scopeItems.filter((i) => i.type === "bellwether").length, "bellwether"),
     show.has("economic") && (primary.feed || query.layout !== "week" ? plural(scopeItems.filter((i) => i.type === "economic").length, "release") : "loading releases…"),
   ].filter(Boolean);
-  const title = query.layout === "week" ? `Week of ${dt(week[0]).toFormat("LLLL d")}` : mini.label;
+  const title = query.layout === "week" ? `Week of ${fmtDay(week[0])}` : mini.label;
   const expectations = weekEvents.filter((ev) => ev.kind === "holding" && ev.teamId && accessible.has(ev.teamId));
   const coverage = primary.feed?.coverage;
 
@@ -532,7 +532,7 @@ function Row({ item, rowProps: r, wide = false }: { item: Item; rowProps: RowPro
         onClick={() => r.onRow(e.id)}
         className={cn(ROW_GRID, "h-9 w-full text-left text-[13.5px] outline-none hover:bg-band focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset", (open || isNext) && "bg-band")}
       >
-        <span className="truncate font-mono text-[12.5px] text-muted-foreground" title={e.time}>
+        <span className="truncate font-mono text-[12.5px] text-muted-foreground" title={e.timestamp ? fmtTime(e.timestamp) : e.time}>
           {releaseClock(e)}
         </span>
         {kind}
@@ -571,7 +571,7 @@ function WeekLayout({ week, items, rowProps }: { week: string[]; items: Item[]; 
         const weekday = day === today ? "today" : `on ${dt(day).toFormat("cccc")}`;
         const nowAt = day === today && nowMinutes !== null ? rows.findIndex((it) => it.sort > nowMinutes) : -2;
         return (
-          <section key={day} aria-label={dt(day).toFormat("cccc, LLL d")} className={cn("flex flex-col border-b border-border pb-2 last:border-b-0", rows.length ? "flex-1" : "flex-none")}>
+          <section key={day} aria-label={fmtDay(day)} className={cn("flex flex-col border-b border-border pb-2 last:border-b-0", rows.length ? "flex-1" : "flex-none")}>
             <div className="flex items-baseline gap-2 px-5 pt-2.5 pb-1">
               <span className={cn("font-mono text-[12.5px] font-semibold", day < today && "text-muted-foreground")}>{monoDay(day)}</span>
               {day === today && <Pill tone="ink" className="h-[18px] px-[7px] text-[11px]">Today</Pill>}
@@ -695,7 +695,7 @@ function ListLayout({ items, rowProps, reports, showTeam, today }: { items: Item
     <div className="flex flex-col">
       {days.length === 0 && <p className="px-5 py-6 text-[13.5px] text-muted-foreground">Nothing on the calendar this month.</p>}
       {days.map((day) => (
-        <section key={day} aria-label={dt(day).toFormat("cccc, LLL d")} className="border-b border-border pb-2">
+        <section key={day} aria-label={fmtDay(day)} className="border-b border-border pb-2">
           <div className="flex items-baseline gap-2 px-5 pt-2.5 pb-1">
             <span className={cn("font-mono text-[12.5px] font-semibold", day < today && "text-muted-foreground")}>{monoDay(day)}</span>
             {marketDayNote(day) && <span className="text-[12.5px] text-muted-foreground">{marketDayNote(day)}</span>}
@@ -749,7 +749,7 @@ function ReportTable({ title, rows, showTeam, reportHref }: { title: string; row
                 </TableCell>
                 {showTeam && <TableCell className="text-ink-2">{r.teamName}</TableCell>}
                 <TableCell className="font-mono text-[12.5px]">
-                  {fmtDate(r.reportDate)}
+                  {fmtDay(r.reportDate)}
                   {r.reportHour ? <span className="ml-1.5 text-muted-foreground">{r.reportHour.toUpperCase()}</span> : null}
                 </TableCell>
                 <TableCell className="text-ink-2">{r.dateStatus ?? "—"}</TableCell>

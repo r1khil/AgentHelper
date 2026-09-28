@@ -9,7 +9,7 @@ import { ContributorsTable, type TeamLookup } from "./contributors-table";
 import { CompactCumulativeChart, CumulativeDetails, type CumulativeChartPoint } from "./cumulative-active-chart";
 import { DataNoticesButton, type QualityNotice } from "./data-quality-notice";
 import { EXPLAIN } from "./explainers";
-import { fmtAccounting, fmtBp, fmtPct } from "@/lib/format";
+import { fmtAccounting, fmtBp, fmtDay, fmtPct } from "@/lib/format";
 import { bps, pct } from "./format";
 import { HoldingsColumn } from "./holdings-columns";
 import { Tip } from "./info-tip";
@@ -17,15 +17,8 @@ import { INTERACTION_CLASS } from "./interaction-toggle";
 import { PeriodSelector } from "./period-selector";
 import { SectorEffectsList, type SectorEffectPoint } from "./sector-effects-list";
 
-const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-/** "Sep 17", with the year only when it isn't the same as `other`'s. */
-function shortDate(iso: string, other: string) {
-  const [y, m, d] = iso.split("-");
-  return `${MONTH[Number(m) - 1]} ${Number(d)}${y === other.slice(0, 4) ? "" : `, ${y}`}`;
-}
-
 export function rangeText(start: string, end: string, days: number) {
-  return `${shortDate(start, end)} close through ${shortDate(end, start)} · ${days} trading ${days === 1 ? "day" : "days"}`;
+  return `${fmtDay(start)} close through ${fmtDay(end)} · ${days} trading ${days === 1 ? "day" : "days"}`;
 }
 
 export const LEDGER_HREF = "/attribution/ledger";
@@ -98,7 +91,7 @@ export function CumulativePanel({ data, portfolioLabel, benchmarkLabel, asOf, cl
       <PanelTitle
         aside={
           <>
-            <span className="font-mono text-[11px] uppercase">Prices as of {shortDate(asOf, asOf)} close</span>
+            <span className="font-mono text-[11px] uppercase">Prices as of <span className="normal-case">{fmtDay(asOf)}</span> close</span>
             {data.length >= 2 && <CumulativeDetails data={data} portfolioLabel={portfolioLabel} benchmarkLabel={benchmarkLabel} explain={EXPLAIN.cumulativeChart} />}
           </>
         }

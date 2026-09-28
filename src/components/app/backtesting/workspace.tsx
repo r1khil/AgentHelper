@@ -11,7 +11,7 @@ import {
   type BacktestResult,
   type Metrics,
 } from "@/lib/backtesting/engine";
-import { fmtAccounting, fmtBp, fmtPct } from "@/lib/format";
+import { fmtAccounting, fmtBp, fmtMonth, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { QuickTrade } from "./quick-trade";
@@ -538,11 +538,7 @@ export function DailyDifferences({
               return (
                 <div key={month}>
                   <h3 className="mb-2 text-sm font-medium">
-                    {first.toLocaleDateString("en-US", {
-                      month: "long",
-                      year: "numeric",
-                      timeZone: "UTC",
-                    })}
+                    {fmtMonth(`${month}-01`)}
                   </h3>
                   <div className="grid grid-cols-7 gap-1 text-center text-xs">
                     {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (

@@ -1,10 +1,9 @@
-import { DateTime } from "luxon";
 import type { Profile } from "@/db/schema";
-import { NY } from "@/lib/providers/calendar";
 import { factorMeaning, factorNoun, formatBeta, isClearExposure, T_STAT_THRESHOLD, type FactorFit, type FactorKey } from "@/lib/risk/factors";
 import { isFundWide } from "@/lib/roles";
 import { TRADINGVIEW_CATEGORIES } from "./tradingview-categories";
 import type { EconomicEvent } from "./types";
+import { fmtDateTime, fmtDay } from "@/lib/format";
 
 /**
  * Which factor each market-moving release tends to move, and a one-line reminder of the book's
@@ -87,14 +86,11 @@ export function bookExposure(subject: string, fit: Pick<FactorFit, "betas">): Bo
   return { subject, betas: Object.fromEntries(Object.entries(fit.betas).map(([k, c]) => [k, { beta: c.beta, t: c.t }])) };
 }
 
-/** "Thu 8:30" for a morning release, "Wed 2:00 PM" for an afternoon one, "Thu" when the feed has no time. */
-export function releaseWhen(e: Pick<EconomicEvent, "timestamp" | "date" | "time" | "tentative">) {
-  if (e.timestamp) {
-    const at = DateTime.fromISO(e.timestamp, { zone: "utc" }).setZone(NY);
-    return at.toFormat(at.hour < 12 ? "ccc h:mm" : "ccc h:mm a");
-  }
-  const day = DateTime.fromISO(e.date, { zone: NY }).toFormat("ccc");
-  return e.tentative || !e.time || /all day/i.test(e.time) ? day : `${day} ${e.time}`;
+/** "Thu 15 Oct, 8:30 ET"; "Thu 15 Oct" when the feed has no time. */
+export function releaseWhen(e: Pick<EconomicEvent, "timestamp" | "date" | "time" | "tentative">, now: Date = new Date()) {
+  if (e.timestamp) return fmtDateTime(e.timestamp, now);
+  const day = fmtDay(e.date, now);
+  return e.tentative || !e.time || /all day/i.test(e.time) ? day : `${day}, ${e.time}`;
 }
 
 /**

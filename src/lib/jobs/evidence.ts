@@ -7,7 +7,7 @@ import { listFilings } from "@/lib/providers/edgar";
 import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
 import { NY } from "@/lib/providers/calendar";
 import { SPX_SYMBOL } from "@/lib/providers/yahoo";
-import { fmtBp, fmtPct } from "@/lib/format";
+import { fmtBp, fmtDay, fmtPct } from "@/lib/format";
 
 /** Attach news, 8-Ks, peer moves, and upcoming earnings to a movement. Idempotent: clears and rewrites the movement's evidence. */
 export async function gatherMovementEvidence(movementId: string) {
@@ -76,7 +76,7 @@ export async function gatherMovementEvidence(movementId: string) {
   // Upcoming earnings, if known.
   const [nextEarnings] = await db.select().from(earnings).where(and(eq(earnings.holdingId, h.id), eq(earnings.status, "upcoming"))).limit(1);
   if (nextEarnings) {
-    items.push({ movementId, kind: "financial", title: `Next earnings ${nextEarnings.reportDate} (${nextEarnings.dateStatus})`, url: nextEarnings.dateSourceUrl, publisher: "Calendar", payload: { reportDate: nextEarnings.reportDate, dateStatus: nextEarnings.dateStatus } });
+    items.push({ movementId, kind: "financial", title: `Next earnings ${fmtDay(nextEarnings.reportDate)} (${nextEarnings.dateStatus})`, url: nextEarnings.dateSourceUrl, publisher: "Calendar", payload: { reportDate: nextEarnings.reportDate, dateStatus: nextEarnings.dateStatus } });
   }
 
   await db.transaction(async (tx) => {

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { TimeRange } from "@/lib/charts/series";
+import { fmtDate, fmtDayMonth } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /** Axis ticks: small muted mono, like every other figure in the app. */
@@ -12,13 +13,10 @@ export const tone = (value: number | null) =>
     : value > 0
       ? "text-up"
       : "text-down";
-export const exactDate = (date: string) =>
-  new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${date}T00:00:00Z`));
+/** A chart point's date in full, "28 Sep 2026", for tooltips and ranges. */
+export const exactDate = (date: string) => fmtDate(date);
+/** An axis tick, "28 Sep". */
+export const tickDate = (date: string) => fmtDayMonth(date);
 
 export function RangeControlGroup({
   label,
