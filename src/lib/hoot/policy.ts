@@ -83,7 +83,7 @@ type Tip = { id: string; match: RegExp; title: string; detail: string };
 
 const TIPS: Tip[] = [
   { id: "tip:today", match: /^\/$/, title: "Hi, I'm Hoot!", detail: "I'll flag deadlines and earnings as they come up. Click me any time to ask a research question." },
-  { id: "tip:holdings", match: /^\/t\/[^/]+$/, title: "Every holding has a research board", detail: "Open a ticker to see its thesis, notes and a board where the agent cites every fact." },
+  { id: "tip:holdings", match: /^\/t\/[^/]+$/, title: "Every holding has its own research", detail: "Open a ticker to see its thesis, notes and research chats where I cite every fact." },
   { id: "tip:holding", match: /^\/t\/[^/]+\/h\/[^/]+$/, title: "Ask about this holding", detail: "Click me and I'll open a research chat pinned to this ticker." },
   { id: "tip:movements", match: /^\/t\/[^/]+\/movements$/, title: "Movements", detail: "A holding lands here when it moves 4pp or more against the S&P 500. The owner writes up why by noon the next trading day." },
   { id: "tip:earnings", match: /^\/t\/[^/]+\/earnings$/, title: "Earnings calendar", detail: "Write down expectations before the report. The prep pack gathers evidence, and the reflection afterwards checks your thesis." },

@@ -51,11 +51,11 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
       out.push({ id: `movement:${m.id}:overdue`, kind: "movement", priority: 1, mood: "concerned", href, at, title: `Your ${m.ticker} write-up is overdue`, detail: "The team is waiting on why it moved. A short update with sources is enough." });
     } else if (left < 48 * HOUR) {
       const hours = Math.max(1, Math.round(left / HOUR));
-      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 2, mood: "alert", href, at, title: `Your ${m.ticker} write-up is due in ${hours}h`, detail: "I can pull the filings and news from that session. Open it and ask the agent." });
+      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 2, mood: "alert", href, at, title: `Your ${m.ticker} write-up is due in ${hours}h`, detail: "I can pull the filings and news from that session. Open it and ask me." });
     } else {
       // Due after a weekend or holiday: still owed, just not pressing yet.
       const day = m.dueAt.toLocaleDateString("en-US", { weekday: "long", timeZone: "America/New_York" });
-      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `Your ${m.ticker} write-up is due ${day}`, detail: "I can pull the filings and news from that session. Open it and ask the agent." });
+      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `Your ${m.ticker} write-up is due ${day}`, detail: "I can pull the filings and news from that session. Open it and ask me." });
     }
   }
 

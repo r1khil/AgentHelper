@@ -13,6 +13,7 @@ describe("Hoot UI commands", () => {
     ["Take me to holdings", "Holdings"], ["bring me to the risk page", "Risk"],
     ["Open sell-side analyzer", "Sell-side analyzer"], ["Can you take me to the economic calendar?", "Economic calendar"],
     ["go to backtesting", "Backtesting"], ["navigate to the weekly update section", "Weekly update"],
+    ["take me to research", "Research"], ["open hoot", "Research"], ["go to conversations", "Research"], ["open the agent page", "Research"],
   ])("recognizes %s", (text, destination) => expect(parseHootCommand(text)).toEqual({ kind: "navigate", destination }));
 
   it.each([

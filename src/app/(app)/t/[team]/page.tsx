@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DateTime } from "luxon";
-import { loadScope } from "@/lib/teams";
+import { getTeamBySlug, loadScope } from "@/lib/teams";
 import { holdingHref, scopeFor } from "@/lib/scope";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { listHoldingSignals, listRecentCloses, listTeamHoldings, listTeamMembers } from "@/lib/holdings";
@@ -15,8 +15,11 @@ import { HoldingsToolbar, MarketLine, parseHoldingFilter, type HoldingFilter } f
 import { attentionFlags, reportsWithin, shortDate } from "@/components/app/holdings/attention";
 
 export async function generateMetadata({ params }: { params: Promise<{ team: string }> }): Promise<Metadata> {
-  const { team } = await params;
-  return { title: team === FUND_SCOPE_SLUG ? "Fund holdings" : team };
+  const { team: slug } = await params;
+  if (slug === FUND_SCOPE_SLUG) return { title: "Fund holdings" };
+  // The team's name, not its URL slug ("Consumer holdings", not "consumer"). The page itself checks access.
+  const team = await getTeamBySlug(slug);
+  return { title: team ? `${team.name} holdings` : "Holdings" };
 }
 
 export default async function TeamHoldingsPage({ params, searchParams }: { params: Promise<{ team: string }>; searchParams: Promise<{ filter?: string | string[] }> }) {

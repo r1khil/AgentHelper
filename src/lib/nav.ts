@@ -72,7 +72,7 @@ export function navModel({ pathname, scope, fundWide, seesBook }: NavInput): Nav
       list.push({ key: "holdings", label: "Holdings", href: base }, { key: "movements", label: "Movements", href: `${base}/movements` }, { key: "models", label: "Models", href: `${base}/models` });
     }
     if (key === "research" && base) {
-      list.push({ key: "conversations", label: "Conversations", href: `${base}/agent` }, { key: "sell-side", label: "Sell-side calls", href: `${base}/sell-side` });
+      list.push({ key: "conversations", label: "Chats", href: `${base}/agent` }, { key: "sell-side", label: "Sell-side calls", href: `${base}/sell-side` });
     }
     if (key === "portfolio") {
       if (seesBook && bookBase !== null) {
@@ -111,7 +111,7 @@ export function navModel({ pathname, scope, fundWide, seesBook }: NavInput): Nav
 
 function tabActive(section: RailKey, tab: Omit<NavTab, "active">, pathname: string) {
   if (section === "holdings" && tab.key === "holdings") return pathname === tab.href || under(pathname, `${tab.href}/h`);
-  // A general conversation lives at /hoot/<id>, a holding board at /t/<scope>/agent/h/<ticker>.
+  // A general chat lives at /hoot/<id>, a holding's research at /t/<scope>/agent/h/<ticker>.
   if (section === "research" && tab.key === "conversations") return under(pathname, tab.href) || under(pathname, "/hoot");
   if (section === "portfolio") return new RegExp(`/${tab.key}(/|$)`).test(pathname);
   return under(pathname, tab.href);
@@ -130,7 +130,7 @@ export function destinations({ scope, fundWide, seesBook }: Omit<NavInput, "path
       { label: "Holdings", hoot: "Holdings", href: base, hint: "Every holding in scope", keywords: "portfolio positions" },
       { label: "Movements", hoot: "Movements", href: `${base}/movements`, hint: "4 pp moves and their write-ups" },
       { label: "Models", hoot: "Models", href: `${base}/models`, hint: "Proposed values from new filings", keywords: "xlsx excel" },
-      { label: "Conversations", hoot: "Hoot", href: `${base}/agent`, hint: "Research chats with Hoot", keywords: "hoot chat research agent" },
+      { label: "Research", hoot: "Research", href: `${base}/agent`, hint: "Chats with Hoot, by holding and general", keywords: "hoot ask chat chats conversations agent boards research boards holding boards" },
       { label: "Sell-side calls", hoot: "Sell-side analyzer", href: `${base}/sell-side`, hint: "Record a call, get a brief", keywords: "sell side analyzer record" },
       { label: "Calendar", hoot: "Earnings", href: `${base}/earnings`, hint: "Earnings and economic releases", keywords: "earnings reports" },
       { label: "Economic releases", hoot: "Economic calendar", href: `${base}/economic-calendar`, hint: "CPI, jobs, rates", keywords: "economic calendar macro cpi" },
