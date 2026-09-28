@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hootShortcut } from "./shortcuts";
+import { hootShortcut, withCommandKey } from "./shortcuts";
 const key = (extra: Record<string, string | boolean> = {}) => ({ code: "KeyS", key: "s", altKey: false, metaKey: false, ctrlKey: false, shiftKey: false, repeat: false, ...extra });
 describe("Hoot shortcuts", () => {
   it("toggles with Alt+S, including Option+S producing a different character on Mac", () => {
@@ -23,4 +23,10 @@ describe("Hoot shortcuts", () => {
     // AltGr on Windows arrives as Ctrl+Alt and types a character.
     expect(hootShortcut(key({ altKey: true, ctrlKey: true }))).toBeNull();
   });
+});
+describe("⌘K in copy", () => {
+  const tip = "Press ⌘K and ask. ⌘K works from any page.";
+  it("keeps ⌘K on a Mac", () => expect(withCommandKey(tip, true)).toBe(tip));
+  it("writes Ctrl K everywhere else, every time it appears", () => expect(withCommandKey(tip, false)).toBe("Press Ctrl K and ask. Ctrl K works from any page."));
+  it("leaves text without ⌘K alone", () => expect(withCommandKey("Open a ticker.", false)).toBe("Open a ticker."));
 });
