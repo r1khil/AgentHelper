@@ -7,32 +7,37 @@ import { indexReturn } from "@/lib/attribution/view";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
 import { listBellwethers } from "@/lib/earnings";
 import { composeWeeklyEmail, weeklyEmailRecipients } from "@/lib/weekly/email";
+import { packStatus } from "@/lib/weekly/status";
 import { getPack, listPacks, normalizeAgenda, packFigures } from "@/lib/weekly/store";
 import { agendaWeek, priceWindow, reviewWeek } from "@/lib/weekly/weeks";
 import type { EmailView, PackListItem, WeeklyPackProps, WeekStats } from "@/components/app/weekly/types";
 
 /** The packs list on the left: newest first, with what happened to each. */
 export async function loadPackList(): Promise<PackListItem[]> {
-  const packs = await listPacks();
-  return packs.map(listItem);
+  const [packs, recipients] = await Promise.all([listPacks(), weeklyEmailRecipients()]);
+  return packs.map((p) => listItem(p, !recipients.to));
 }
 
-function listItem(p: WeeklyUpdate): PackListItem {
+function listItem(p: WeeklyUpdate, paused: boolean): PackListItem {
   const email = p.sources?.email;
   return {
     weekEnding: p.weekEnding,
     status: p.status,
+    state: packStatus({ weekEnding: p.weekEnding, status: p.status, email }, { paused }),
     builtAt: p.builtAt?.toISOString() ?? null,
     sentAt: p.sentAt?.toISOString() ?? null,
     emailedAt: email?.status === "ok" ? email.at : null,
   };
 }
 
-/** First names for the addresses the pack goes to, so the page can say "to Aadi, Saad in CC". */
-async function firstNames(emails: string[]): Promise<Record<string, string>> {
-  if (!emails.length) return {};
+/** First and full names for the addresses the pack goes to, so the page can say "to Aadi, Saad in CC". */
+async function recipientNames(emails: string[]): Promise<{ names: Record<string, string>; fullNames: Record<string, string> }> {
+  if (!emails.length) return { names: {}, fullNames: {} };
   const rows = await db.select({ email: profiles.email, fullName: profiles.fullName }).from(profiles).where(inArray(profiles.email, emails));
-  return Object.fromEntries(rows.map((r) => [r.email.toLowerCase(), r.fullName.trim().split(/\s+/)[0] || r.email]));
+  return {
+    names: Object.fromEntries(rows.map((r) => [r.email.toLowerCase(), r.fullName.trim().split(/\s+/)[0] || r.email])),
+    fullNames: Object.fromEntries(rows.map((r) => [r.email.toLowerCase(), r.fullName.trim() || r.email])),
+  };
 }
 
 /**
@@ -68,12 +73,12 @@ export async function loadPackView(week: string): Promise<WeeklyPackProps | null
   const recipients = await weeklyEmailRecipients();
   const [draft, names, stats, teamRows, bellwethers] = await Promise.all([
     composeWeeklyEmail(week, recipients.to),
-    firstNames([recipients.to, ...recipients.cc].filter((e): e is string => Boolean(e))),
+    recipientNames([recipients.to, ...recipients.cc].filter((e): e is string => Boolean(e))),
     weekStats(week),
     db.select({ ticker: holdings.ticker, team: teams.name, status: holdings.status }).from(holdings).innerJoin(teams, eq(teams.id, holdings.teamId)),
     listBellwethers().catch(() => []),
   ]);
-  const email: EmailView | null = draft ? { ...recipients, ...draft, record: pack.sources?.email ?? null, names } : null;
+  const email: EmailView | null = draft ? { ...recipients, ...draft, record: pack.sources?.email ?? null, ...names } : null;
   // An active holding's team wins over an exited one's.
   const teamByTicker: Record<string, string> = {};
   for (const r of [...teamRows].sort((a, b) => (a.status === "active" ? 1 : 0) - (b.status === "active" ? 1 : 0))) teamByTicker[r.ticker.toUpperCase()] = r.team;
@@ -84,6 +89,7 @@ export async function loadPackView(week: string): Promise<WeeklyPackProps | null
     weekEnding: week,
     agendaRange: agendaWeek(week),
     status: pack.status,
+    state: packStatus({ weekEnding: week, status: pack.status, email: pack.sources?.email }, { paused: !recipients.to }),
     figures: packFigures(pack),
     performers: pack.performers,
     agenda: normalizeAgenda(pack.agenda),

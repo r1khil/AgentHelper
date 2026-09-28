@@ -20,7 +20,8 @@ export type NudgeInput = {
   mySellSide: { id: string; ticker: string; teamSlug: string; status: string; updatedAt: Date }[];
   thesisProposals: { ticker: string; teamSlug: string }[];
   modelProposals: { modelId: string; ticker: string; teamSlug: string; count: number }[];
-  weeklyDraft: { weekEnding: string } | null;
+  /** This week's pack while it is not Sent yet. */
+  weeklyPack: { weekEnding: string; state: "draft" | "scheduled" | "failed" } | null;
   latestChangelog: { prNumber: number; headline: string; mergedAt: Date } | null;
   dismissed: Record<string, string>;
 };
@@ -121,8 +122,17 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
     out.push({ id: `proposal:model:${m.modelId}:${m.count}`, kind: "proposal", priority: 6, mood: "idle", href: modelHref(i.scope, m.teamSlug, m.modelId), title: `${m.count} model ${m.count === 1 ? "update" : "updates"} to review for ${m.ticker}`, detail: "From the latest filing. Nothing is written until you approve it." });
   }
 
-  if (i.weeklyDraft) {
-    out.push({ id: `weekly:${i.weeklyDraft.weekEnding}`, kind: "weekly", priority: 6, mood: "idle", href: `/weekly/${i.weeklyDraft.weekEnding}`, at: i.weeklyDraft.weekEnding, title: "This week's update pack is drafted", detail: "Review the figures and agenda before it goes out." });
+  if (i.weeklyPack) {
+    // Same words as the Weekly page. Only a Scheduled pack has `at`, which the list shows as "Sends Sun 12:00".
+    // A failure gets its own id, so it shows even after the scheduled nudge was dismissed.
+    const { weekEnding, state } = i.weeklyPack;
+    const base = { kind: "weekly", priority: 6, href: `/weekly/${weekEnding}` } as const;
+    const byState: Record<typeof state, HootNudge> = {
+      scheduled: { ...base, id: `weekly:${weekEnding}`, mood: "idle", at: weekEnding, title: "This week's update pack is scheduled", detail: "Review the figures and agenda before it goes out." },
+      draft: { ...base, id: `weekly:${weekEnding}`, mood: "idle", title: "This week's update pack is a draft", detail: "It has not been sent. Review it, then send it from the pack." },
+      failed: { ...base, id: `weekly:${weekEnding}:failed`, mood: "concerned", title: "This week's update pack failed to send", detail: "The Email tab says why. Send it again from there." },
+    };
+    out.push(byState[state]);
   }
 
   if (i.latestChangelog && i.now.getTime() - i.latestChangelog.mergedAt.getTime() < 14 * DAY) {

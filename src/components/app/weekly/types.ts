@@ -1,3 +1,4 @@
+import type { PackStatus } from "@/lib/weekly/status";
 import type { SourceEntry, WeeklyAgenda, WeeklyFigures, WeeklyPerformers, WeeklySources } from "@/lib/weekly/types";
 
 /** The Sunday email as it would go out now, and what happened to it. */
@@ -11,12 +12,17 @@ export type EmailView = {
   record: SourceEntry | null;
   /** First names by lowercased address, for "to Aadi, Saad in CC". */
   names: Record<string, string>;
+  /** Full names by lowercased address, for the Send again confirmation. */
+  fullNames: Record<string, string>;
 };
 
 /** One row of the packs list. */
 export type PackListItem = {
   weekEnding: string;
+  /** Stored: "sent" once an exec marks it sent, which locks it. */
   status: "draft" | "sent";
+  /** What the page calls it (lib/weekly/status): Draft, Scheduled, Sent or Failed. */
+  state: PackStatus;
   builtAt: string | null;
   sentAt: string | null;
   /** When the Sunday email went out for this week, if it did. */
@@ -34,7 +40,10 @@ export type WeekStats = {
 export type WeeklyPackProps = {
   weekEnding: string;
   agendaRange: { from: string; to: string };
+  /** Stored: "sent" once an exec marks it sent, which locks it. */
   status: "draft" | "sent";
+  /** What the page calls it (lib/weekly/status): Draft, Scheduled, Sent or Failed. */
+  state: PackStatus;
   figures: WeeklyFigures;
   performers: WeeklyPerformers | null;
   agenda: WeeklyAgenda;

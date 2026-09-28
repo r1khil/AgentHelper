@@ -2,10 +2,11 @@ import "server-only";
 import { and, asc, count, desc, eq, gte, inArray, isNull, lte, ne } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
-import { changelogEntries, earnings, holdingProposals, holdings, modelProposals, models, movements, sellSideCalls, teams, weeklyUpdates } from "@/db/schema";
+import { changelogEntries, earnings, holdingProposals, holdings, modelProposals, models, movements, sellSideCalls, teams } from "@/db/schema";
 import { canManageTeam, isFundWide, listAccessibleTeams, type CurrentUser } from "@/lib/auth";
 import { isTradingDay, nextTradingDay, NY, todayNY } from "@/lib/providers/calendar";
 import { rememberedScope } from "@/lib/teams";
+import { latestPackStatus } from "@/lib/weekly/latest";
 import { buildNudges } from "./build";
 import type { HootFeed } from "./types";
 
@@ -98,9 +99,7 @@ export async function loadHootFeed(user: CurrentUser): Promise<HootFeed> {
           .groupBy(models.id, holdings.ticker, teams.slug)
           .limit(5)
       : none,
-    fundWide
-      ? db.select({ weekEnding: weeklyUpdates.weekEnding }).from(weeklyUpdates).where(and(eq(weeklyUpdates.status, "draft"), gte(weeklyUpdates.weekEnding, DateTime.fromISO(today).minus({ days: 3 }).toISODate()!))).orderBy(desc(weeklyUpdates.weekEnding)).limit(1)
-      : none,
+    fundWide ? latestPackStatus() : Promise.resolve(null),
     fundWide
       ? db.select({ prNumber: changelogEntries.prNumber, headline: changelogEntries.headline, mergedAt: changelogEntries.mergedAt }).from(changelogEntries).orderBy(desc(changelogEntries.mergedAt)).limit(1)
       : none,
@@ -118,7 +117,8 @@ export async function loadHootFeed(user: CurrentUser): Promise<HootFeed> {
     mySellSide,
     thesisProposals: thesis,
     modelProposals: modelRows,
-    weeklyDraft: weekly[0] ?? null,
+    // Only this week's pack (Fri to Mon), and only until it is Sent.
+    weeklyPack: weekly && weekly.state !== "sent" && weekly.weekEnding >= DateTime.fromISO(today).minus({ days: 3 }).toISODate()! ? { weekEnding: weekly.weekEnding, state: weekly.state } : null,
     latestChangelog: changelog[0] ?? null,
     dismissed,
   });

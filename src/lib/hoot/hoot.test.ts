@@ -16,7 +16,7 @@ const input = (over: Partial<NudgeInput> = {}): NudgeInput => ({
   mySellSide: [],
   thesisProposals: [],
   modelProposals: [],
-  weeklyDraft: null,
+  weeklyPack: null,
   latestChangelog: null,
   dismissed: {},
   ...over,
@@ -95,6 +95,14 @@ describe("buildNudges", () => {
   it("drops what the member dismissed", () => {
     const out = buildNudges(input({ latestChangelog: { prNumber: 50, headline: "Attribution redesign", mergedAt: NOW }, dismissed: { "changelog:50": NOW.toISOString() } }));
     expect(out).toEqual([]);
+  });
+
+  it("names this week's pack by the Weekly page's status, and gives a failed send its own id", () => {
+    const one = (state: "draft" | "scheduled" | "failed") => buildNudges(input({ weeklyPack: { weekEnding: "2026-09-25", state } }))[0];
+    expect(one("scheduled")).toMatchObject({ id: "weekly:2026-09-25", at: "2026-09-25", title: "This week's update pack is scheduled" });
+    expect(one("draft")).toMatchObject({ id: "weekly:2026-09-25", title: "This week's update pack is a draft" });
+    expect(one("draft").at).toBeUndefined();
+    expect(one("failed")).toMatchObject({ id: "weekly:2026-09-25:failed", mood: "concerned", title: "This week's update pack failed to send" });
   });
 
   it("only mentions sell-side calls that finished in the last week", () => {
