@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DateTime } from "luxon";
 import { RefreshCw } from "lucide-react";
 import { refreshChangelog, regenerateEntry } from "@/lib/actions/changelog";
@@ -25,8 +26,6 @@ export type ChangelogViewProps = {
   isAdmin: boolean;
   /** GitHub sync status for the header (streams in; see page.tsx). */
   status: React.ReactNode;
-  /** The model that writes the summaries, as configured. */
-  model: string;
   /** "Now" in ISO, for the month card. */
   now: string;
 };
@@ -34,11 +33,10 @@ export type ChangelogViewProps = {
 const day = (iso: string) => DateTime.fromISO(iso, { zone: NY });
 
 /** S15: every merged change, newest first, and how the page is written. */
-export function ChangelogView({ entries, isAdmin, status, model, now }: ChangelogViewProps) {
+export function ChangelogView({ entries, isAdmin, status, now }: ChangelogViewProps) {
   const today = day(now);
   const thisMonth = entries.filter((e) => day(e.mergedAt).hasSame(today, "month")).length;
   const lastWeek = entries.filter((e) => day(e.mergedAt) > today.minus({ days: 7 })).length;
-  const shortModel = model.replace(/^[^/]+\//, "").replace(/:free$/, "");
 
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -126,7 +124,12 @@ export function ChangelogView({ entries, isAdmin, status, model, now }: Changelo
           </p>
           <dl className="flex flex-col border-t border-row">
             {[
-              ["Summaries written by", <span key="m" title={model}>{shortModel}</span>],
+              [
+                "Summaries written by",
+                <Link key="m" href="/admin#agent" className="font-sans hover:underline">
+                  AI · model in Admin
+                </Link>,
+              ],
               ["GitHub checked", "every 15 min"],
               ["Shown to", "execs, admins"],
             ].map(([k, v]) => (

@@ -20,11 +20,11 @@ export function AskPanel({ ticker, configured, teamSlug, scopeName }: { ticker?:
           <HootOnPage />
           <HootSprite mood="idle" size={56} track className="-mt-1 shrink-0" />
           <div className="min-w-0 flex-1">
-            <h2 className="text-[17px] font-semibold tracking-[-0.015em]">Ask for evidence, not conclusions</h2>
+            <h2 className="text-[17px] font-semibold tracking-[-0.015em]">What should Hoot look into?</h2>
             <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
-              Hoot pulls prices, SEC filings, financials, news, economic data and your team&rsquo;s notes, with a source on every fact. It will not write your update or thesis.
+              Hoot pulls prices, SEC filings, financials, news, economic data and your team&rsquo;s notes, with a source on every fact.
             </p>
-            {!configured && <div className="mt-3 rounded-[10px] bg-caution px-3 py-2 text-[13px] text-caution-foreground">Hoot is not configured: set OPENROUTER_API_KEY.</div>}
+            {!configured && <div className="mt-3 rounded-[10px] bg-caution px-3 py-2 text-[13px] text-caution-foreground">Hoot isn&apos;t set up yet: an admin needs to turn it on.</div>}
             <AskHoot
               teamSlug={teamSlug}
               configured={configured}

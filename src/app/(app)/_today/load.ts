@@ -7,7 +7,7 @@ import { loadAttributionSeries, loadTeamSectors } from "@/lib/attribution/load";
 import { resolvePeriod } from "@/lib/attribution/periods";
 import { indexReturn } from "@/lib/attribution/view";
 import type { Source } from "@/lib/providers/types";
-import { sessionSentence, weekdayName } from "@/lib/today";
+import { scoreboard, sessionSentence, weekdayName } from "@/lib/today";
 import type { Book, Brief } from "./types";
 
 const bps = (x: number) => Math.round(x * 10_000);
@@ -26,13 +26,14 @@ export async function loadFundBook(): Promise<Book> {
     return {
       kind: "fund",
       sessionDate: period.end,
-      label: "Owl Fund",
-      ret: r.portfolioReturn * 100,
-      cells: [
-        { label: "S&P 500", value: spx === null ? null : spx * 100, unit: "%", tone: false },
-        { label: "Difference", value: diff, unit: " bp", tone: true },
-        { label: "vs sectors", value: r.activeReturn === null ? null : bps(r.activeReturn), unit: " bp", tone: true },
-      ],
+      ...scoreboard({
+        name: "Owl Fund",
+        vs: "the S&P 500",
+        ret: r.portfolioReturn * 100,
+        diffBps: diff,
+        benchmark: { label: "S&P 500", value: spx === null ? null : spx * 100, unit: "%", tone: false },
+        third: { label: "vs sectors", value: r.activeReturn === null ? null : bps(r.activeReturn), unit: " bp", tone: true },
+      }),
       effects: r.effects,
       holdings: r.holdings.map((h) => ({ ticker: h.ticker, teamId: h.teamId, ret: h.ret, contribution: h.contribution })),
       teams: Object.fromEntries(r.teams.filter((t) => t.teamId).map((t) => [t.teamId!, { ret: t.ret, contribution: t.contribution }])),
@@ -57,13 +58,14 @@ export async function loadTeamBook(team: Team): Promise<Book> {
     return {
       kind: "team",
       sessionDate: period.end,
-      label: team.name,
-      ret: r.portfolioReturn * 100,
-      cells: [
-        { label: "Sector benchmark", value: r.benchmarkReturn === null ? null : r.benchmarkReturn * 100, unit: "%", tone: false },
-        { label: "Difference", value: active, unit: " bp", tone: true },
-        { label: "To the Fund", value: bps(r.fundContribution), unit: " bp", tone: true },
-      ],
+      ...scoreboard({
+        name: team.name,
+        vs: "its sectors",
+        ret: r.portfolioReturn * 100,
+        diffBps: active,
+        benchmark: { label: "Sector benchmark", value: r.benchmarkReturn === null ? null : r.benchmarkReturn * 100, unit: "%", tone: false },
+        third: { label: "To the Fund", value: bps(r.fundContribution), unit: " bp", tone: true },
+      }),
       effects: r.effects,
       holdings: r.holdings.map((h) => ({ ticker: h.ticker, teamId: h.teamId ?? team.id, ret: h.ret, contribution: h.contribution })),
       teams: { [team.id]: { ret: r.portfolioReturn, contribution: r.fundContribution } },

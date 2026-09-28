@@ -1,5 +1,7 @@
 // Plain, serializable shapes the Today components render. The loaders in load.ts and today-view.tsx fill them.
 
+import type { ScoreCell, ScoreHero } from "@/lib/today";
+
 export type Effects = { allocation: number; selection: number; interaction: number };
 
 export type BriefSource = { id: string; title: string; url?: string; publisher: string };
@@ -18,12 +20,10 @@ export type Book =
   | {
       kind: "fund" | "team";
       sessionDate: string;
-      /** "Owl Fund" or the team's name, beside the hero figure. */
-      label: string;
-      /** Return in percent. */
-      ret: number;
-      /** The 3-up under the hero: benchmark %, then differences in bp. */
-      cells: { label: string; value: number | null; unit: "%" | " bp"; tone: boolean }[];
+      /** The big figure: the difference to the benchmark in bp ("Owl Fund vs the S&P 500"), or the return without one. */
+      hero: ScoreHero;
+      /** The 3-up under the hero: the return and benchmark in %, then a difference in bp. */
+      cells: ScoreCell[];
       /** Allocation, selection and interaction against the sector benchmark, in decimals. */
       effects: Effects | null;
       /** Per holding, in decimals. */

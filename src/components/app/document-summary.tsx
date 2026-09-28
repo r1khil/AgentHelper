@@ -1,10 +1,9 @@
 import type { DocSummary } from "@/lib/drive/summary";
-import { isEmptySummary } from "@/lib/drive/summary";
+import { isEmptySummary, isFailedSummary } from "@/lib/drive/summary";
 import { relativeTime } from "@/lib/format";
 
 type Props = {
   summary: DocSummary | null;
-  summaryError: string | null;
   summaryModel: string | null;
   summarizedAt: Date | null;
 };
@@ -25,13 +24,13 @@ function Row({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-/** What the app extracted from a document. Server component; a plain <details> so it needs no JS. */
-export function DocumentSummary({ summary, summaryError, summarizedAt }: Props) {
-  if (!summary || isEmptySummary(summary)) {
-    if (summaryError) return <p className="mt-1 text-xs text-muted-foreground">Summary unavailable: {summaryError}</p>;
-    if (summary?.evidenceNote) return <p className="mt-1 text-xs text-muted-foreground">{summary.evidenceNote}</p>;
-    return null;
-  }
+/**
+ * What the app extracted from a document. Server component; a plain <details> so it needs no JS. A missing or failed
+ * summary renders nothing, so the row shows only the file's name and date; the ingest job logs and retries failures.
+ */
+export function DocumentSummary({ summary, summarizedAt }: Props) {
+  if (!summary || isFailedSummary(summary)) return null;
+  if (isEmptySummary(summary)) return summary.evidenceNote ? <p className="mt-1 text-xs text-muted-foreground">{summary.evidenceNote}</p> : null;
   const headline = [summary.docDate ? `Dated ${summary.docDate}` : null, summary.rating ? `Rating ${summary.rating}` : null, summary.priceTarget ? `PT ${summary.priceTarget}` : null].filter(Boolean).join(" · ");
   return (
     <details className="mt-1 text-xs">

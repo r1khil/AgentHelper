@@ -27,6 +27,7 @@ import { effectiveTopic, extractPage, searchWeb, tavilyConfigured } from "@/lib/
 import { looksPaywalled, pageTier, publisherTier, TIER_LABEL } from "@/lib/web/sources";
 import { listPendingProposals } from "@/lib/holdings";
 import { searchFullText } from "@/lib/drive/read";
+import { isEmptySummary } from "@/lib/drive/summary";
 import { windowText } from "@/lib/drive/text";
 import { MARKET_FACT_TTL_DAYS, rememberMemory, searchMemories } from "@/lib/agent/memory/store";
 import { newestEvidenceDate } from "@/lib/agent/memory/distill";
@@ -495,7 +496,7 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
             driveFiles: files.map((f) => {
               const s = driveSource(f);
               sources.push(s);
-              return { fileId: f.id, name: f.name, kind: f.kind, documentType: documentLabel(f), path: f.path, modifiedTime: f.modifiedTime, docDate: f.docDate, summary: f.summary, sourceId: s.id };
+              return { fileId: f.id, name: f.name, kind: f.kind, documentType: documentLabel(f), path: f.path, modifiedTime: f.modifiedTime, docDate: f.docDate, summary: isEmptySummary(f.summary) ? null : f.summary, sourceId: s.id };
             }),
             indexedFilings: filings.map((f) => {
               const s = documentSource({ id: f.id, kind: "filing", title: f.title, form: f.form, url: f.url, publishedAt: f.publishedAt, docDate: f.docDate });

@@ -14,8 +14,6 @@ import { FetchRows, latestLabel, StepDivider, TraceHeader, type TraceView } from
 
 // The pieces every research conversation is built from (general chats, holding boards, a sell-side call's chat).
 
-export const LEARNING_BOUNDARY = "Hoot gathers evidence with a source on every fact. The update, thesis and conclusion stay yours.";
-
 const TOOL_LABELS: Record<string, string> = {
   get_quote: "Quote",
   get_price_history: "Price history",
@@ -23,7 +21,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_filings: "SEC filings",
   read_filing: "Read filing",
   list_filing_documents: "Filing documents",
-  search_financial_concepts: "Search XBRL concepts",
+  search_financial_concepts: "Find reported line items",
   get_financials: "Financials",
   get_key_financials: "Key financials",
   get_news: "News",
@@ -59,7 +57,7 @@ const TOOL_PROGRESS: Record<string, string> = {
   get_filings: "Listing SEC filings",
   read_filing: "Reading filing",
   list_filing_documents: "Listing filing documents",
-  search_financial_concepts: "Searching XBRL concepts",
+  search_financial_concepts: "Finding reported line items",
   get_financials: "Pulling financials",
   get_key_financials: "Pulling key financials",
   get_news: "Scanning news",
@@ -233,6 +231,11 @@ export function UserBubble({ children, page }: { children: ReactNode; page?: Pag
   );
 }
 
+/** Where a job, not a member, asked (a call brief): a quiet label in place of the question bubble. */
+export function PromptLabel({ children }: { children: ReactNode }) {
+  return <div className="text-[12px] font-medium text-muted-foreground">{children}</div>;
+}
+
 /** The conversation's header row: ticker, title and meta on the left, actions (Trace, etc.) on the right. */
 export function ThreadHeader({ ticker, title, meta, children }: { ticker?: string; title: string; meta?: ReactNode; children?: ReactNode }) {
   return (
@@ -325,7 +328,6 @@ export function Composer({
           )}
         </div>
       </ComposerBox>
-      <div className="mt-1.5 text-[11.5px] text-muted-foreground">{LEARNING_BOUNDARY}</div>
     </form>
   );
 }

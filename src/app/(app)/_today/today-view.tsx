@@ -87,6 +87,7 @@ export async function TodayView({ user, myTeams }: { user: CurrentUser; myTeams:
             name={firstName}
             dateLine={marketLine(now)}
             askHref={`/t/${scopeSlug}/agent`}
+            analyst={user.role === "associate_analyst"}
             lead={
               book && (
                 <Suspense fallback={null}>

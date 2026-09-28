@@ -35,7 +35,7 @@ export function ThesisPanel({ holdingId, thesis, meta, flash, proposal }: { hold
           className="mt-2 grid gap-2"
         >
           <input type="hidden" name="holdingId" value={holdingId} />
-          <Textarea name="thesis" defaultValue={text} rows={5} autoFocus placeholder="The team's position, in its own words. Hoot reads this for context but never edits it." />
+          <Textarea name="thesis" defaultValue={text} rows={5} autoFocus placeholder="Why the team owns it, and what would change that view." />
           <div className="flex justify-end gap-2">
             <Button type="button" size="sm" variant="outline" onClick={() => setEditing(false)}>
               Cancel
@@ -48,7 +48,7 @@ export function ThesisPanel({ holdingId, thesis, meta, flash, proposal }: { hold
       ) : text ? (
         <p className="mt-2 text-[14.5px] leading-[1.55] text-pretty whitespace-pre-wrap">{text}</p>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">No thesis written yet. The team&apos;s position, in its own words; Hoot reads it for context but never edits it.</p>
+        <p className="mt-2 text-sm text-muted-foreground">No thesis written yet. Write why the team owns it; Hoot checks movement updates and earnings reflections against it.</p>
       )}
     </section>
   );

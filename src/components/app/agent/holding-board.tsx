@@ -15,7 +15,7 @@ import { createHoldingChat, deleteChat } from "@/lib/actions/chats";
 import { boardHref } from "@/lib/scope";
 import { ResearchAnswer, ResearchSources, type CitationLinks } from "@/components/app/chat/research-answer";
 import { SourceViewer } from "@/components/app/chat/source-viewer";
-import { ActivityRow, Composer, shortDate, SourceNumber, ThinkingRow, ThreadHeader, ThreadNote, UserBubble } from "@/components/app/chat/thread-parts";
+import { ActivityRow, Composer, PromptLabel, shortDate, SourceNumber, ThinkingRow, ThreadHeader, ThreadNote, UserBubble } from "@/components/app/chat/thread-parts";
 import { TraceToggle } from "@/components/app/chat/trace-toggle";
 import { headerAction } from "@/components/app/chat/styles";
 import { useResearchChat } from "@/components/app/chat/use-research-chat";
@@ -401,7 +401,7 @@ function EmptyBoard({ header, loadError, holding, configured, busy, hasChats, on
             if (draft.trim()) onAsk(draft);
           }}
           disabled={busy || !configured}
-          placeholder={configured ? "Ask about a holding, a filing, a move…" : "Hoot is not configured: add OPENROUTER_API_KEY"}
+          placeholder={configured ? "Ask about a holding, a filing, a move…" : "Hoot isn't set up yet: an admin needs to turn it on"}
           sees={`${holding.ticker} research board`}
         />
       </CenterColumn>
@@ -569,9 +569,13 @@ function BoardThread({
               const trace = t === last ? traceView : null;
               return (
                 <div key={t.id} onClick={() => activate(t)} className={cn("flex flex-col gap-3", !isActive && "cursor-pointer")} aria-current={isActive && turns.length > 1 ? "true" : undefined}>
-                  <UserBubble>
-                    <p>{t.question}</p>
-                  </UserBubble>
+                  {t.label ? (
+                    <PromptLabel>{t.label}</PromptLabel>
+                  ) : (
+                    <UserBubble>
+                      <p>{t.question}</p>
+                    </UserBubble>
+                  )}
                   {t.assistant && (t.activity.length > 0 || turnLive || trace) && (
                     <div onClick={(e) => e.stopPropagation()}>
                       <ActivityRow parts={t.activity} live={turnLive && !t.answerText} trace={trace} now={now} thinking />
@@ -600,7 +604,7 @@ function BoardThread({
           onStop={stopWatching}
           streaming={streaming}
           disabled={!configured || catchingUp}
-          placeholder={!configured ? "Hoot is not configured: add OPENROUTER_API_KEY" : catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…"}
+          placeholder={!configured ? "Hoot isn't set up yet: an admin needs to turn it on" : catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…"}
           sees={`${holding.ticker} research board`}
         />
       </CenterColumn>

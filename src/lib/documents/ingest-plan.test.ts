@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ingestNeeds, ingestRunSummary, isIngestible, isTransientIngestError, pickIngestCandidates, type IngestRow } from "./ingest-plan";
-import { SUMMARY_VERSION } from "@/lib/drive/summary";
+import { EMPTY_SUMMARY, SUMMARY_VERSION } from "@/lib/drive/summary";
 
 const t1 = new Date("2025-01-01T00:00:00Z");
 const t2 = new Date("2025-02-01T00:00:00Z");
@@ -19,6 +19,7 @@ function row(over: Partial<IngestRow> = {}): IngestRow {
     summaryFor: null,
     summaryVersion: null,
     summaryError: null,
+    summary: null,
     embedModel: null,
     embedFor: null,
     ingestAttempts: 0,
@@ -76,6 +77,13 @@ describe("ingestNeeds", () => {
     expect(ingestNeeds({ ...base, summaryError: "boom" }, cfg)).toEqual({ text: true, summary: true, embed: false });
   });
 
+  it("re-summarizes a failed parse that older code stored as the summary", () => {
+    const base = row({ textFor: v1, summaryFor: v1, summaryVersion: SUMMARY_VERSION, embedFor: v1, embedModel: cfg.embedModel });
+    const legacy = { ...EMPTY_SUMMARY, evidenceNote: "The summary could not be parsed from the model's reply." };
+    expect(ingestNeeds({ ...base, summary: legacy }, cfg)).toEqual({ text: true, summary: true, embed: false });
+    expect(ingestNeeds({ ...base, summary: { ...EMPTY_SUMMARY, evidenceNote: "The file is a blank template." } }, cfg)).toEqual({ text: false, summary: false, embed: false });
+  });
+
   it("re-embeds when the embedding model changed, and skips embedding when disabled", () => {
     const base = row({ textFor: v1, summaryFor: v1, summaryVersion: SUMMARY_VERSION, embedFor: v1, embedModel: "openai/text-embedding-3-small" });
     expect(ingestNeeds(base, cfg)).toEqual({ text: true, summary: false, embed: true });
@@ -113,6 +121,14 @@ describe("pickIngestCandidates", () => {
     const { picked, remaining } = pickIngestCandidates([done, poison, recent, retry], cfg, opts);
     expect(picked.map((r) => r.id)).toEqual(["retry"]);
     expect(remaining).toBe(0);
+  });
+
+  it("retries a failed summary with backoff until the attempt cap", () => {
+    const failed = { textFor: v1, summaryFor: v1, summaryVersion: SUMMARY_VERSION, summaryError: "The summary reply was not parseable (finish stop)", embedFor: v1, embedModel: cfg.embedModel };
+    const due = row({ id: "due", ...failed, ingestAttempts: 2, ingestAttemptedAt: new Date(now.getTime() - 2 * 3600_000) });
+    const waiting = row({ id: "waiting", ...failed, ingestAttempts: 1, ingestAttemptedAt: new Date(now.getTime() - 60_000) });
+    const capped = row({ id: "capped", ...failed, ingestAttempts: 3, ingestAttemptedAt: new Date(now.getTime() - 48 * 3600_000) });
+    expect(pickIngestCandidates([due, waiting, capped], cfg, opts).picked.map((r) => r.id)).toEqual(["due"]);
   });
 });
 

@@ -86,12 +86,15 @@ export function useTeamSection() {
   return section === "/h" ? "" : section;
 }
 
-/** The previous sidebar, kept for the classic Backtesting layout. */
-export function Sidebar(props: Props) {
+/**
+ * The previous sidebar, kept for the classic Backtesting layout. Hoot, when he's on, is docked beside the account row
+ * (`hoot`); his bubbles and panel open to the sidebar's right, which is why it stacks above the content.
+ */
+export function Sidebar({ hoot, ...props }: Props & { hoot?: React.ReactNode }) {
   return (
     <>
-      <aside data-tour="sidebar" className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
-        <SidebarBody {...props} />
+      <aside data-tour="sidebar" className="sticky top-0 z-30 hidden h-screen w-60 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
+        <SidebarBody {...props} dock={hoot} />
       </aside>
       <MobileBar {...props} />
     </>
@@ -123,7 +126,7 @@ export function MobileBar(props: Props) {
   );
 }
 
-function SidebarBody({ user, teams, signOut }: Props) {
+function SidebarBody({ user, teams, signOut, dock }: Props & { dock?: React.ReactNode }) {
   const pathname = usePathname();
   const fundWide = user.role === "exec" || user.role === "admin";
   const current = useCurrentTeam(teams, user, fundWide);
@@ -196,8 +199,16 @@ function SidebarBody({ user, teams, signOut }: Props) {
         )}
       </div>
 
-      <div className="border-t p-3">
-        <AccountMenu user={user} fundWide={fundWide} signOut={signOut} />
+      <div className="flex items-center gap-1 border-t p-3">
+        <div className="min-w-0 flex-1">
+          <AccountMenu user={user} fundWide={fundWide} signOut={signOut} />
+        </div>
+        {/* Beside the account row, so he costs the navigation no height. */}
+        {dock && (
+          <div data-hoot-dock="sidebar" className="-my-2 grid size-[60px] shrink-0 place-items-center">
+            {dock}
+          </div>
+        )}
       </div>
     </>
   );
@@ -413,14 +424,14 @@ function HootIcon({ className }: { className?: string }) {
 
 const prefRow = "flex items-center gap-2.5 rounded-md px-1.5 py-1.5";
 
-/** Show or hide Hoot, the companion in the corner. Persisted on the profile. */
+/** Show or hide Hoot, the companion at the bottom of the menu. Persisted on the profile. */
 function HootToggle({ on }: { on: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return (
-    <label className={cn(prefRow, "cursor-pointer hover:bg-accent")} title="Hoot in the corner of every page: flags deadlines and takes quick questions">
+    <label className={cn(prefRow, "cursor-pointer hover:bg-accent")} title="Hoot at the bottom of the menu on every page: flags deadlines and takes quick questions">
       <HootIcon className="size-4 shrink-0" />
-      <span className="min-w-0 flex-1 text-sm">Floating Hoot</span>
+      <span className="min-w-0 flex-1 text-sm">Hoot in the menu</span>
       <Switch
         checked={on}
         disabled={pending}

@@ -215,6 +215,9 @@ describe("provider chain", () => {
     expect(result.coverage?.message).toMatch(/^TradingView \(not published this far ahead\) is unavailable/);
   });
   it("attaches Kalshi prices to the releases they cover, apart from consensus", async () => {
+    // Pinned before the markets close; loadKalshi skips a week that is already over.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-24T12:00:00Z"));
     const market = { strike_type: "greater_or_equal", close_time: "2026-09-24T12:25:00Z" };
     const result = await loadConfiguredCalendar(
       range,

@@ -5,12 +5,13 @@ import type { UIMessage } from "ai";
 import { TraceHeader } from "./trace-panel";
 import { ResearchAnswer, ResearchSources, useSourceViewer } from "./research-answer";
 import { useResearchChat } from "./use-research-chat";
-import { ActivityRow, Composer, SourceListCard, SourcesHeading, ThinkingRow, ThreadHeader, ThreadNote, UserBubble } from "./thread-parts";
+import { ActivityRow, Composer, PromptLabel, SourceListCard, SourcesHeading, ThinkingRow, ThreadHeader, ThreadNote, UserBubble } from "./thread-parts";
 import { clearHootQuestion, peekHootQuestion } from "@/components/app/hoot/handoff";
 import { HootHero } from "@/components/app/hoot/hoot-hero";
 import { HootOnPage } from "@/components/app/hoot/presence";
 import { CenterColumn, ListColumn, ResearchGrid, SideColumn } from "@/components/app/agent/research-columns";
 import { collectSources } from "@/lib/agent/citations";
+import { hiddenPromptLabel, isMemberQuestion } from "@/lib/agent/hidden-prompt";
 import { pageContextFromMessages, pageContextLabel, parsePageContext } from "@/lib/agent/page-context";
 import { splitAssistantParts } from "@/lib/agent/turn";
 import type { RunStatus } from "@/lib/chats";
@@ -106,7 +107,7 @@ function Thread({ chat, tickers, configured, sees }: { chat: GeneralChat; ticker
         streaming={streaming}
         disabled={!configured || catchingUp}
         sendDisabled={busy}
-        placeholder={configured ? (catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…") : "Hoot is not configured: add OPENROUTER_API_KEY"}
+        placeholder={configured ? (catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…") : "Hoot isn't set up yet: an admin needs to turn it on"}
         sees={ctx ? pageContextLabel(ctx) : sees}
       />
     </>
@@ -175,8 +176,8 @@ export function ChatWorkspace({
   actions?: ReactNode;
 }) {
   const chat = useGeneralChat(props);
-  const questions = chat.messages.filter((m) => m.role === "user").length;
-  const first = chat.messages.find((m) => m.role === "user");
+  const questions = chat.messages.filter(isMemberQuestion).length;
+  const first = chat.messages.find(isMemberQuestion);
   const firstText = first?.parts.map((p) => (p.type === "text" ? p.text : "")).join(" ").replace(/\s+/g, " ").trim();
   const shown = title === "New chat" ? firstText?.slice(0, 80) || "New conversation" : title;
   const meta = [team, author, `${questions} question${questions === 1 ? "" : "s"}`].filter(Boolean).join(" · ");
@@ -203,9 +204,9 @@ function EmptyIntro({ suggestions, onPick, disabled }: { suggestions: string[]; 
     <div className="mx-auto w-full max-w-[560px] pt-4 text-center">
       <HootOnPage />
       <HootHero size={112} className="mx-auto mb-1" />
-      <div className="text-[15px] font-semibold">Ask for evidence, not conclusions</div>
+      <div className="text-[15px] font-semibold">What should Hoot look into?</div>
       <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
-        Hoot pulls prices, SEC filings, financials, news, and your team&rsquo;s notes, with a source on every fact. It will not write your update or thesis.
+        Hoot pulls prices, SEC filings, financials, news, and your team&rsquo;s notes, with a source on every fact.
       </p>
       <div className="mt-5 grid gap-2 text-left">
         {suggestions.map((s) => (
@@ -228,6 +229,8 @@ function Message({ message, live, trace, now }: { message: UIMessage; live: bool
   const meta = (message.metadata ?? {}) as { uncited?: number; page?: unknown };
 
   if (message.role === "user") {
+    const label = hiddenPromptLabel(message);
+    if (label) return <PromptLabel>{label}</PromptLabel>;
     return (
       <UserBubble page={parsePageContext(meta.page)}>
         {message.parts.map((p, i) => (p.type === "text" ? <p key={i}>{p.text}</p> : null))}
@@ -243,8 +246,8 @@ function Message({ message, live, trace, now }: { message: UIMessage; live: bool
         <ResearchAnswer key={i} text={p.text} className="max-w-[700px] text-[15px] leading-[1.65] [&_p]:my-2.5 [&_p:first-child]:mt-0" />
       ))}
       {!live && meta.uncited !== undefined && meta.uncited > 0 && (
-        <div className="text-[11.5px] text-caution-foreground">
-          {meta.uncited} sentence{meta.uncited === 1 ? "" : "s"} with numbers carry no citation (heuristic). Check them against the sources.
+        <div className="text-[11.5px] text-muted-foreground" title="Counted automatically from lines that state a number without a source marker, so the count can be off by a few.">
+          {meta.uncited} {meta.uncited === 1 ? "line with a figure has" : "lines with figures have"} no source. Check {meta.uncited === 1 ? "it" : "them"} before relying on {meta.uncited === 1 ? "it" : "them"}.
         </div>
       )}
     </div>
