@@ -2,10 +2,11 @@ import Link from "next/link";
 import { CalendarRange } from "lucide-react";
 import { buildWeeklyNow } from "@/lib/actions/weekly";
 import { EmptyState } from "@/components/app/empty-state";
-import { Panel, PanelFooter, PanelHeader, Pill } from "@/components/app/panel";
+import { Panel, PanelFooter, PanelHeader } from "@/components/app/panel";
 import { Button } from "@/components/ui/button";
 import { fmtDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { PackStatusPill } from "./status-pill";
 import { WeeklyPack } from "./weekly-pack";
 import { whenBuilt } from "./when";
 import type { PackListItem, WeeklyPackProps } from "./types";
@@ -58,15 +59,8 @@ export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyView
         <div className="min-h-0 flex-1 overflow-y-auto">
           {packs.map((p) => {
             const on = p.weekEnding === selected;
-            const sent = p.status === "sent";
-            const emailed = !sent && Boolean(p.emailedAt);
-            const meta = sent
-              ? `Sent ${short(p.sentAt ?? p.emailedAt ?? p.weekEnding)}`
-              : emailed
-                ? `Emailed ${short(p.emailedAt!)}`
-                : p.builtAt
-                  ? `Built ${whenBuilt(p.builtAt)}`
-                  : "Not built yet";
+            const meta =
+              p.state === "sent" ? `Sent ${short(p.sentAt ?? p.emailedAt ?? p.weekEnding)}` : p.builtAt ? `Built ${whenBuilt(p.builtAt, p.weekEnding)}` : "Not built yet";
             return (
               <Link
                 key={p.weekEnding}
@@ -81,7 +75,7 @@ export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyView
                   <div className="truncate text-[13.5px] font-medium">Week ending {short(p.weekEnding)}</div>
                   <div className="mt-px truncate text-xs text-muted-foreground">{meta}</div>
                 </div>
-                {sent ? <Pill>Sent</Pill> : emailed ? <Pill title="The Sunday email went out; the pack is still an open draft">Emailed</Pill> : <Pill tone="hoot">Draft</Pill>}
+                <PackStatusPill state={p.state} title={p.state === "sent" && p.status !== "sent" ? "The Sunday email went out; the pack can still be edited" : undefined} />
               </Link>
             );
           })}

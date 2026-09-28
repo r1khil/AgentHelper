@@ -17,7 +17,7 @@ import { SecurityRowForm } from "./security-row-form";
 import { TeamSectorsForm } from "./team-sectors-form";
 import { TicketDialog } from "./ticket-dialog";
 import { TradeDialog } from "./trade-dialog";
-import { VoidButton } from "./void-button";
+import { VoidMenu } from "./void-menu";
 
 export const LEDGER_TABS = ["trades", "cash", "benchmark", "securities"] as const;
 export type LedgerTab = (typeof LEDGER_TABS)[number];
@@ -146,7 +146,15 @@ export function LedgerView({
                         <TableCell className={cn(num, "text-muted-foreground")}>{Number(t.fees) ? fmtMoney(t.fees) : ""}</TableCell>
                         <TableCell className="max-w-56 truncate text-muted-foreground">{t.note}</TableCell>
                         <TableCell className="pr-4 text-right no-underline">
-                          {t.voidedAt ? <Pill>Void</Pill> : <VoidButton id={t.id} action={voidTrade} what={`${t.side === "buy" ? "Buy" : "Sell"} ${Number(t.shares)} ${t.ticker} on ${fmtDate(t.tradeDate)}.`} />}
+                          {t.voidedAt ? (
+                            <Pill>Void</Pill>
+                          ) : (
+                            <VoidMenu
+                              id={t.id}
+                              action={voidTrade}
+                              entry={`${t.kind === "opening" ? "the opening position of" : t.side === "buy" ? "BUY" : "SELL"} ${Number(t.shares)} ${t.ticker} @ ${fmtMoney(t.price)} on ${fmtDate(t.tradeDate)}`}
+                            />
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -184,7 +192,11 @@ export function LedgerView({
                           <TableCell className={cn(num, !f.voidedAt && (inflow ? "text-up" : "text-down"))}>{fmtUsd(inflow ? Number(f.amount) : -Number(f.amount))}</TableCell>
                           <TableCell className="max-w-72 truncate text-muted-foreground">{f.note}</TableCell>
                           <TableCell className="pr-4 text-right">
-                            {f.voidedAt ? <Pill>Void</Pill> : <VoidButton id={f.id} action={voidCashFlow} what={`${CASH_LABELS[f.kind]} of ${fmtUsd(f.amount)} on ${fmtDate(f.flowDate)}.`} />}
+                            {f.voidedAt ? (
+                              <Pill>Void</Pill>
+                            ) : (
+                              <VoidMenu id={f.id} action={voidCashFlow} entry={`the ${CASH_LABELS[f.kind].toLowerCase()} of ${fmtUsd(f.amount)} on ${fmtDate(f.flowDate)}`} />
+                            )}
                           </TableCell>
                         </TableRow>
                       );

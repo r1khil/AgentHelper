@@ -2,8 +2,10 @@
 
 import { useRef, useState } from "react";
 import { DateTime } from "luxon";
-import { Copy, Ellipsis, Mail, RefreshCw, Send, Undo2 } from "lucide-react";
+import { useFormStatus } from "react-dom";
+import { Copy, Ellipsis, Lock, Mail, RefreshCw, Send, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,11 +14,13 @@ import { CountChip, Panel, PanelFooter, PanelHeader, Pill, StatStrip, type StatC
 import { Move } from "@/components/app/move";
 import { HootMoodFor } from "@/components/app/hoot/presence";
 import { CopyButton } from "./copy-button";
+import { PackStatusPill } from "./status-pill";
 import { buildWeeklyNow, fillWeeklyFromSheet, markWeeklySent, reopenWeekly, saveWeeklyField, saveWeeklyFigures, sendWeeklyEmailNow } from "@/lib/actions/weekly";
 import { WEEKDAYS, agendaLine, fmtAumK, fmtDeckPct, itemsToLines, packText, performerLine } from "@/lib/weekly/format";
 import { carriedFigureKeys, deriveRelative, parseFigureInput } from "@/lib/weekly/figures";
 import { AGENDA_LABELS, AGENDA_SECTIONS, type AgendaItem, type Performer, type WeeklyFigures } from "@/lib/weekly/types";
-import { packTitle, weekRangeLabel } from "@/lib/weekly/weeks";
+import type { PackStatus } from "@/lib/weekly/status";
+import { packTitle, reviewWeek, weekRangeLabel } from "@/lib/weekly/weeks";
 import { fmtBp, fmtDateTime, fmtDay, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { EmailView, WeeklyPackProps } from "./types";
@@ -102,16 +106,19 @@ export function WeeklyPack(props: WeeklyPackProps) {
             Rebuild
           </Button>
         </form>
-        {email && (
-          <form action={sendWeeklyEmailNow}>
-            <input type="hidden" name="week" value={props.weekEnding} />
-            <input type="hidden" name="mode" value="list" />
-            <Button type="submit" size="lg" variant={sentBefore ? "outline" : "default"} disabled={!email.to}>
-              <Send data-icon="inline-start" />
-              {sentBefore ? "Send again" : email.to ? `Send to ${name(email.to)}` : "Send now"}
-            </Button>
-          </form>
-        )}
+        {email &&
+          (sentBefore ? (
+            <SendAgainButton week={props.weekEnding} email={email} size="lg" />
+          ) : (
+            <form action={sendWeeklyEmailNow}>
+              <input type="hidden" name="week" value={props.weekEnding} />
+              <input type="hidden" name="mode" value="list" />
+              <Button type="submit" size="lg" disabled={!email.to}>
+                <Send data-icon="inline-start" />
+                {email.to ? `Send to ${name(email.to)}` : "Send now"}
+              </Button>
+            </form>
+          ))}
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button size="icon-lg" variant="outline" aria-label="More pack actions" />}>
             <Ellipsis />
@@ -128,9 +135,10 @@ export function WeeklyPack(props: WeeklyPackProps) {
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
+            {/* Marking sent locks the pack. Once the email has gone out the pack is already Sent, so all that's left is the lock. */}
             <DropdownMenuItem onClick={() => markRef.current?.requestSubmit()}>
-              {sent ? <Undo2 /> : <Send />}
-              {sent ? "Reopen as a draft" : "Mark sent"}
+              {sent ? <Undo2 /> : props.state === "sent" ? <Lock /> : <Send />}
+              {sent ? "Reopen for edits" : props.state === "sent" ? "Lock edits" : "Mark sent"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -172,7 +180,7 @@ export function WeeklyPack(props: WeeklyPackProps) {
       </nav>
 
       {tab === "summary" && <SummaryGrid {...props} />}
-      {tab === "email" && (email ? <EmailPanel week={props.weekEnding} email={email} name={name} /> : <Banner>The email can be written once the pack is built.</Banner>)}
+      {tab === "email" && (email ? <EmailPanel week={props.weekEnding} state={props.state} sentAt={props.sentAt} email={email} name={name} /> : <Banner>The email can be written once the pack is built.</Banner>)}
       {tab === "highlights" && (
         <HighlightsPanel
           week={props.weekEnding}
@@ -337,16 +345,19 @@ function DayPanel({ title, aside, label, items, from, note, mono }: { title: str
 
 /* ---------- Email ---------- */
 
-function emailStatus(email: EmailView): { text: string; tone: "ok" | "warn" | "info" } {
+/** The line beside the status pill: what happened to the email, agreeing with the pill. */
+function emailStatus(email: EmailView, state: PackStatus, sentAt: string | null): string {
   const r = email.record;
-  if (r?.status === "ok") return { text: `Sent ${fmtDateTime(r.at)} ${r.detail ?? ""}`.trim(), tone: "ok" };
-  if (r?.status === "failed") return { text: `Last send failed ${fmtDateTime(r.at)}: ${r.error ?? "unknown error"}`, tone: "warn" };
-  if (!email.to) return { text: `Paused: only test accounts are on the list (${email.skipped.join(", ")}). Change it on the Admin page.`, tone: "info" };
-  return { text: "Not sent yet. It goes out with the Sunday build at 12:00 New York time.", tone: "info" };
+  if (r?.status === "ok") return `Sent ${fmtDateTime(r.at)} ${r.detail ?? ""}`.trim();
+  if (state === "sent") return `Marked sent${sentAt ? ` ${fmtDateTime(sentAt)}` : ""}. Hoot has not emailed it to the list.`;
+  if (r?.status === "failed") return `Last send failed ${fmtDateTime(r.at)}: ${r.error ?? "unknown error"}`;
+  if (!email.to) return `Not sent. The list is paused: only test accounts are on it (${email.skipped.join(", ")}). Change it on the Admin page.`;
+  if (state === "scheduled") return "Not sent yet. It goes out with the Sunday build at 12:00 New York time.";
+  if (r?.status === "held") return `Not sent: ${r.detail ?? "held"}.`;
+  return "Not sent. The Sunday run has passed, so it goes out only if you send it.";
 }
 
-function EmailPanel({ week, email, name }: { week: string; email: EmailView; name: (a: string) => string }) {
-  const status = emailStatus(email);
+function EmailPanel({ week, state, sentAt, email, name }: { week: string; state: PackStatus; sentAt: string | null; email: EmailView; name: (a: string) => string }) {
   const sentBefore = email.record?.status === "ok";
   return (
     <Panel className="min-h-[420px] flex-1">
@@ -361,18 +372,22 @@ function EmailPanel({ week, email, name }: { week: string; email: EmailView; nam
           ) : null}
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <Pill tone={status.tone === "ok" ? "good" : status.tone === "warn" ? "caution" : "neutral"}>{status.tone === "ok" ? "Sent" : status.tone === "warn" ? "Failed" : email.to ? "Not sent" : "Paused"}</Pill>
-          <span className="text-[13px] text-muted-foreground">{status.text}</span>
+          <PackStatusPill state={state} />
+          <span className="text-[13px] text-muted-foreground">{emailStatus(email, state, sentAt)}</span>
         </div>
         <div className="flex flex-wrap gap-2">
-          <form action={sendWeeklyEmailNow}>
-            <input type="hidden" name="week" value={week} />
-            <input type="hidden" name="mode" value="list" />
-            <Button type="submit" variant={sentBefore ? "outline" : "default"} disabled={!email.to}>
-              <Send data-icon="inline-start" />
-              {sentBefore ? "Send again" : "Send now"}
-            </Button>
-          </form>
+          {sentBefore ? (
+            <SendAgainButton week={week} email={email} />
+          ) : (
+            <form action={sendWeeklyEmailNow}>
+              <input type="hidden" name="week" value={week} />
+              <input type="hidden" name="mode" value="list" />
+              <Button type="submit" disabled={!email.to}>
+                <Send data-icon="inline-start" />
+                Send now
+              </Button>
+            </form>
+          )}
           <form action={sendWeeklyEmailNow}>
             <input type="hidden" name="week" value={week} />
             <input type="hidden" name="mode" value="me" />
@@ -388,6 +403,51 @@ function EmailPanel({ week, email, name }: { week: string; email: EmailView; nam
         <pre className="min-h-0 flex-1 overflow-auto rounded-[10px] bg-band-2 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">{email.text}</pre>
       </div>
     </Panel>
+  );
+}
+
+/**
+ * "Send again" emails the whole list a second time, so it is a quiet button that asks first and names who gets it.
+ * Confirming submits the same action the button always did.
+ */
+function SendAgainButton({ week, email, size }: { week: string; email: EmailView; size?: "lg" }) {
+  const full = (addr: string) => email.fullNames[addr.toLowerCase()] ?? addr;
+  const first = (addr: string) => email.names[addr.toLowerCase()] ?? addr;
+  const review = reviewWeek(week);
+  const who = email.to ? `${full(email.to)}${email.cc.length ? ` (cc ${email.cc.map(first).join(", ")})` : ""}` : "the list";
+  return (
+    <Dialog>
+      <DialogTrigger render={<Button size={size} variant="ghost" disabled={!email.to} />}>
+        <Send data-icon="inline-start" />
+        Send again
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="pr-6 leading-snug">
+            Send the {weekRangeLabel(review.from, review.to)} pack to {who} again?
+          </DialogTitle>
+          <DialogDescription>
+            It already went out{email.record?.at ? ` ${fmtDateTime(email.record.at)}` : ""}. This emails the pack as it stands now, as a new message.
+          </DialogDescription>
+        </DialogHeader>
+        <form action={sendWeeklyEmailNow} className="flex justify-end gap-2">
+          <input type="hidden" name="week" value={week} />
+          <input type="hidden" name="mode" value="list" />
+          <DialogClose render={<Button type="button" variant="ghost" />}>Cancel</DialogClose>
+          <SendAgainSubmit />
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SendAgainSubmit() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending}>
+      <Send data-icon="inline-start" />
+      {pending ? "Sending…" : "Send again"}
+    </Button>
   );
 }
 
