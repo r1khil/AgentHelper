@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agendaDate, analystSentence, citationParts, daysAway, greeting, greetingWord, inDays, listNudges, listSentence, marketLine, nextReportByTicker, nextSunday, nudgeAction, nudgeWhen, owedSentence, reportDays, reportsLine, sessionHeading, sessionSentence, sessionStamp, signed, type UpcomingReport } from "./today";
+import { agendaDate, analystSentence, citationParts, daysAway, greeting, greetingWord, inDays, listNudges, listSentence, marketLine, nextReportByTicker, nextSunday, nudgeAction, nudgeWhen, owedSentence, reportDays, reportsLine, scoreboard, sessionHeading, sessionSentence, sessionStamp, signed, type UpcomingReport } from "./today";
 
 const r = (ticker: string, reportDate: string, reportHour: string | null, dateStatus: "confirmed" | "estimated" = "confirmed"): UpcomingReport => ({ ticker, reportDate, reportHour, dateStatus });
 
@@ -92,6 +92,24 @@ describe("Today v2", () => {
     expect(listSentence(1, 1)).toBe("I found one thing for you, and it's overdue.");
     expect(listSentence(3, 0)).toBe("I found three things for you.");
     expect(listSentence(0, 0)).toBe("Nothing on my list for you right now.");
+  });
+
+  it("leads the scoreboard with the result against the benchmark", () => {
+    const benchmark = { label: "S&P 500", value: 0.51, unit: "%" as const, tone: false };
+    const third = { label: "vs sectors", value: 5, unit: " bp" as const, tone: true };
+    // Sep 25: the fund made 0.49% but trailed by 2 bps, so the big figure is (2) bp, not a green 0.49%.
+    expect(scoreboard({ name: "Owl Fund", vs: "the S&P 500", ret: 0.49, diffBps: -2, benchmark, third })).toEqual({
+      hero: { label: "Owl Fund vs the S&P 500", value: -2, unit: " bp" },
+      cells: [{ label: "Owl Fund", value: 0.49, unit: "%", tone: true }, benchmark, third],
+    });
+    const sectors = { label: "Sector benchmark", value: 1.2, unit: "%" as const, tone: false };
+    const toFund = { label: "To the Fund", value: 12, unit: " bp" as const, tone: true };
+    expect(scoreboard({ name: "FIG", vs: "its sectors", ret: 0.96, diffBps: -24, benchmark: sectors, third: toFund }).hero).toEqual({ label: "FIG vs its sectors", value: -24, unit: " bp" });
+    // No benchmark that day: the return leads.
+    expect(scoreboard({ name: "FIG", vs: "its sectors", ret: 0.96, diffBps: null, benchmark: sectors, third: toFund })).toEqual({
+      hero: { label: "FIG", value: 0.96, unit: "%" },
+      cells: [sectors, { label: "Difference", value: null, unit: " bp", tone: true }, toFund],
+    });
   });
 
   it("orders the list and drops tips", () => {

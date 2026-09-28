@@ -158,6 +158,21 @@ export function sessionSentence(r: { subject: string; vs: string; diffBps: numbe
   return `${r.subject} ${r.diffBps > 0 ? "beat" : "trailed"} ${r.vs} by ${bps} ${bps === 1 ? "bp" : "bps"} on ${r.weekday}.`;
 }
 
+export type ScoreCell = { label: string; value: number | null; unit: "%" | " bp"; tone: boolean };
+export type ScoreHero = { label: string; value: number; unit: "%" | " bp" };
+
+/**
+ * The Last session card's big figure and the three under it. It leads with the result against the benchmark, the
+ * call Hoot's sentence makes, so a day the book made money but trailed reads red rather than green; the return
+ * moves into the row. Without a benchmark the return leads, as it did before.
+ */
+export function scoreboard(s: { name: string; vs: string; ret: number; diffBps: number | null; benchmark: ScoreCell; third: ScoreCell }): { hero: ScoreHero; cells: ScoreCell[] } {
+  if (s.diffBps === null) {
+    return { hero: { label: s.name, value: s.ret, unit: "%" }, cells: [s.benchmark, { label: "Difference", value: null, unit: " bp", tone: true }, s.third] };
+  }
+  return { hero: { label: `${s.name} vs ${s.vs}`, value: s.diffBps, unit: " bp" }, cells: [{ label: s.name, value: s.ret, unit: "%", tone: true }, s.benchmark, s.third] };
+}
+
 /** The second sentence: "I found four things for you, one of them overdue." */
 export function listSentence(count: number, overdue: number) {
   if (count === 0) return "Nothing on my list for you right now.";

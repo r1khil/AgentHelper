@@ -37,13 +37,15 @@ export function LastSessionCard({ book }: { book: Book }) {
           Attribution →
         </Link>
       </div>
-      <div className="mt-2.5 flex items-baseline gap-3">
-        <span className={cn("font-mono text-[44px] leading-none font-medium tracking-[-0.04em] tabular-nums", onRail(book.ret))}>{fmtAccounting(book.ret, 2, "%")}</span>
-        <span className="truncate text-[13px] text-rail-label">{book.label}</span>
+      <div className="mt-2.5 flex items-baseline gap-3" title={book.kind === "team" && book.hero.unit === " bp" ? effectsText(book.effects) : undefined}>
+        <span className={cn("font-mono text-[44px] leading-none font-medium tracking-[-0.04em] tabular-nums", onRail(book.hero.value))}>
+          {fmtAccounting(book.hero.value, book.hero.unit === "%" ? 2 : 0, book.hero.unit)}
+        </span>
+        <span className="truncate text-[13px] text-rail-label">{book.hero.label}</span>
       </div>
       <div className="mt-3.5 grid grid-cols-3 gap-2.5">
         {book.cells.map((c) => (
-          <div key={c.label} className="min-w-0" title={c.label === "vs sectors" || (c.label === "Difference" && book.kind === "team") ? effectsText(book.effects) : undefined}>
+          <div key={c.label} className="min-w-0" title={c.label === "vs sectors" ? effectsText(book.effects) : undefined}>
             <div className="truncate text-xs text-rail-label">{c.label}</div>
             <div className={cn("font-mono text-[17px] leading-[21px] font-medium tabular-nums", c.tone && onRail(c.value))}><Acct value={c.value} digits={c.unit === "%" ? 2 : 0} unit={c.unit} /></div>
           </div>
