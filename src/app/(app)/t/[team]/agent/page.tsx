@@ -47,13 +47,12 @@ export default async function AgentIndex({ params }: { params: Promise<{ team: s
     }
   }
 
-  const holdings: HoldingCardData[] = rows.map(({ h, ownerName }) => {
+  const holdings: HoldingCardData[] = rows.map(({ h }) => {
     const s = stats.get(h.id);
     return {
       id: h.id,
       ticker: h.ticker,
       name: h.companyName,
-      ownerName,
       teamName: scope.kind === "fund" ? teamById.get(h.teamId)?.name : undefined,
       href: boardHref(scope.slug, teamById.get(h.teamId)?.slug ?? scope.slug, h.ticker),
       chats: s?.chats ?? 0,

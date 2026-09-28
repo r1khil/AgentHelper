@@ -9,11 +9,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { NativeSelect } from "./native-select";
 
-type Member = { id: string; fullName: string };
-
-export function AddHoldingDialog({ teamId, members, defaultOwnerId }: { teamId: string; members: Member[]; defaultOwnerId?: string | null }) {
+/** Adds a holding to a team. It belongs to the whole team: anyone on it writes its movement updates. */
+export function AddHoldingDialog({ teamId }: { teamId: string }) {
   const [open, setOpen] = useState(false);
   const [, action, pending] = useActionState<ActionResult | null, FormData>(async (prev, fd) => {
     const result = await addHolding(prev, fd);
@@ -42,17 +40,6 @@ export function AddHoldingDialog({ teamId, members, defaultOwnerId }: { teamId: 
           <div className="grid gap-1.5">
             <Label htmlFor="ticker">Ticker</Label>
             <Input id="ticker" name="ticker" placeholder="NVDA" autoCapitalize="characters" autoFocus required />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="ownerId">Owner</Label>
-            <NativeSelect id="ownerId" name="ownerId" defaultValue={defaultOwnerId ?? ""}>
-              <option value="">Unassigned</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.fullName}
-                </option>
-              ))}
-            </NativeSelect>
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="thesis">Thesis (optional)</Label>

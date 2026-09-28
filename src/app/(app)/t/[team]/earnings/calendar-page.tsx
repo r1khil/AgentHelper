@@ -15,7 +15,6 @@ import {
   toCalendarEvents,
   type CalendarKind,
 } from "@/lib/earnings-calendar";
-import { listTeamHoldings } from "@/lib/holdings";
 import { NY, todayNY } from "@/lib/providers/calendar";
 import { calendarFactorContext } from "@/lib/risk/factor-context";
 import { loadScope } from "@/lib/teams";
@@ -47,9 +46,6 @@ export async function CalendarPage({ slug, sp, route, defaultShow }: { slug: str
     listAccessibleTeams(user),
   ]);
   const accessibleTeamIds = accessibleTeams.map((t) => t.id);
-  const owners = await listTeamHoldings(accessibleTeamIds, "all");
-  const ownerNames: Record<string, string> = {};
-  for (const o of owners) if (o.h.ownerId && o.ownerName) ownerNames[o.h.ownerId] = o.ownerName;
 
   const all = toCalendarEvents(holdingEvents, bellwethers).filter((ev) => ev.date >= grid.start && ev.date <= through);
   const events = filterCalendarEvents(all, { view: query.scope, teamId: team?.id ?? "", teamSectors: sectors, industry: query.industry });
@@ -115,7 +111,6 @@ export async function CalendarPage({ slug, sp, route, defaultShow }: { slug: str
       canScope={!!team}
       industries={industries}
       events={events}
-      ownerNames={ownerNames}
       accessibleTeamIds={accessibleTeamIds}
       notices={notices}
       reports={reports}

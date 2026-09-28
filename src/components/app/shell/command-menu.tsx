@@ -305,7 +305,6 @@ function HoldingPreview({ holding: h }: { holding: CommandHolding }) {
   }, [h.ticker]);
   const q = quoteCache.get(h.ticker);
   const rows: [string, React.ReactNode, string?][] = [
-    ["Owner", h.owner ?? "Unassigned", h.owner ? undefined : "text-caution-foreground"],
     ["Weight", h.weightPct != null ? `${h.weightPct.toFixed(1)}% of NAV` : "—"],
     ["vs S&P, last session", q?.relativePp != null ? `${q.relativePp > 0 ? "+" : ""}${q.relativePp.toFixed(1)} pp` : "—", q?.relativePp == null ? undefined : q.relativePp >= 0 ? "text-up" : "text-down"],
     ["Next report", h.nextReport ? `${shortDate(h.nextReport)}${h.nextReportEstimated ? " (est.)" : ""}` : "—"],

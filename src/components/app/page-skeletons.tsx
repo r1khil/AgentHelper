@@ -91,8 +91,8 @@ export function TodaySkeleton() {
 /* ------------------------------------------------------------------------------------------------ Holdings */
 
 /** components/app/holdings/holdings-table.tsx GRID. */
-const HOLDINGS_GRID = "grid grid-cols-[64px_minmax(0,1fr)_72px_64px_84px_76px_76px_104px_176px_112px] items-center gap-3 px-4";
-const HOLDING_CELLS = ["w-11", "w-3/5", "w-10 justify-self-end", "w-10 justify-self-end", "w-12 justify-self-end", "w-10 justify-self-end", "w-10 justify-self-end", "w-16", "h-[22px] w-24 rounded-full", "w-20"];
+const HOLDINGS_GRID = "grid grid-cols-[64px_minmax(0,1fr)_64px_64px_80px_76px_76px_96px_168px] items-center gap-3 px-4";
+const HOLDING_CELLS = ["w-11", "w-3/5", "w-10 justify-self-end", "w-10 justify-self-end", "w-12 justify-self-end", "w-10 justify-self-end", "w-10 justify-self-end", "w-16", "h-[22px] w-24 rounded-full"];
 
 /** Holdings (`t/[team]/page.tsx`): the filter chips and market line, then the holdings table grouped by team. */
 export function HoldingsSkeleton() {
@@ -102,12 +102,11 @@ export function HoldingsSkeleton() {
         <SkeletonPill className="w-[118px]" />
         <SkeletonPill className="w-[150px]" />
         <SkeletonPill className="w-[178px]" />
-        <SkeletonPill className="w-[112px]" />
         <span className="flex-1" />
         <TextBone className="text-[13px]" w="w-48" />
       </div>
       <section className="panel flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex min-w-[1100px] flex-1 flex-col">
+        <div className="flex min-w-[920px] flex-1 flex-col">
           <div className={cn(HOLDINGS_GRID, "h-9 shrink-0 border-b")}>
             {HOLDING_CELLS.map((_, i) => (
               <Bone key={i} className={cn("h-2.5 w-10 rounded-[4px]", i > 1 && i < 7 && "justify-self-end")} />
@@ -278,7 +277,7 @@ export function MovementsSkeleton() {
             </div>
           </div>
           <div className="panel flex shrink-0">
-            {["w-32", "w-20", "w-28", "w-16"].map((w, i) => (
+            {["w-40", "w-20", "w-28", "w-16"].map((w, i) => (
               <div key={i} className={cn("px-4 py-2", i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
                 <TextBone className="text-[11.5px]" w="w-10" />
                 <TextBone className="text-[13.5px] font-semibold" w={w} />
@@ -287,7 +286,7 @@ export function MovementsSkeleton() {
           </div>
         </div>
         <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)] 2xl:grid-cols-[minmax(0,1fr)_420px]">
-          {/* The owner's update */}
+          {/* The team's update */}
           <SkeletonPanel>
             <SkeletonPanelHeader w="w-32" aside="w-24" />
             <div className="min-h-40 flex-1 px-4 py-3">

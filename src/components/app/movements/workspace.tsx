@@ -9,16 +9,15 @@ import { Panel, PanelFooter, PanelHeader, Segmented } from "@/components/app/pan
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { insertAt } from "./cite";
-import { firstName } from "./format";
 import type { MovementDetailData, MovementEvidence } from "./types";
 
 /** A gathered source as the side list shows it; the dates are formatted on the server so hydration matches. */
 export type EvidenceRow = MovementEvidence & { n: number; meta: string; citation: string };
 
 /**
- * A movement's working area: the owner's update as the main column, tall and always in view, and beside it the
+ * A movement's working area: the team's update as the main column, tall and always in view, and beside it the
  * evidence Hoot gathered (and his feedback, once asked), which scrolls on its own. Cite drops a reference to a
- * source into the update at the cursor.
+ * source into the update at the cursor. The update belongs to the whole team: anyone on it can write and complete it.
  */
 export function MovementWorkspace({
   d,
@@ -28,7 +27,7 @@ export function MovementWorkspace({
   feedback,
 }: {
   d: MovementDetailData;
-  /** The update header's right side: "Draft · 120 words", "Completed 2 hours ago", … */
+  /** The update header's right side: "Draft · 120 words", "Completed 2 hours ago by Jane Doe", … */
   status: string;
   /** The evidence in display order. */
   evidence: EvidenceRow[];
@@ -41,7 +40,6 @@ export function MovementWorkspace({
   // Until the writer has been in the box its caret is meaningless, so citations go at the end.
   const visited = useRef(false);
   const completed = d.status === "completed";
-  const owner = firstName(d.ownerName);
 
   function cite(e: EvidenceRow) {
     const el = editor.current;
@@ -58,7 +56,7 @@ export function MovementWorkspace({
   return (
     <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)] 2xl:grid-cols-[minmax(0,1fr)_420px]">
       <Panel className="focus-within:shadow-[0_0_0_1px_var(--border-strong)]">
-        <PanelHeader title={owner ? `${owner}'s update` : "Update"} aside={status} />
+        <PanelHeader title="Team update" aside={status} />
         {completed ? (
           <>
             <p className="min-h-0 flex-1 overflow-y-auto px-4 py-3.5 text-[14.5px] leading-[1.6] whitespace-pre-wrap">{d.updateText}</p>
