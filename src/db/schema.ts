@@ -125,6 +125,7 @@ export const holdings = pgTable(
     ticker: text("ticker").notNull(),
     companyName: text("company_name").notNull(),
     cik: text("cik"),
+    /** @deprecated Unused since 2026-09-28: a holding belongs to its whole team. Kept (with its old values) so no data is dropped; the app neither reads nor writes it. */
     ownerId: uuid("owner_id").references(() => profiles.id, { onDelete: "set null" }),
     thesis: text("thesis"),
     thesisUpdatedAt: timestamp("thesis_updated_at", { withTimezone: true }),
@@ -286,6 +287,7 @@ export const movements = pgTable(
     spxReturnPct: numeric("spx_return_pct", { precision: 10, scale: 4 }),
     relativeMovePp: numeric("relative_move_pp", { precision: 10, scale: 4 }),
     status: movementStatusEnum("status").notNull().default("open"),
+    /** @deprecated Unused since 2026-09-28: a write-up belongs to the holding's whole team (see completedBy for who finished it). Kept so no data is dropped; the app neither reads nor writes it. */
     ownerId: uuid("owner_id").references(() => profiles.id, { onDelete: "set null" }),
     dueAt: timestamp("due_at", { withTimezone: true }),
     evidenceStatus: evidenceStatusEnum("evidence_status").notNull().default("pending"),

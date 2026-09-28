@@ -13,8 +13,6 @@ export type HoldingCardData = {
   ticker: string;
   name: string;
   href: string;
-  /** The holding's owner on the team. */
-  ownerName: string | null;
   /** The covering team, shown when the page spans the whole fund. */
   teamName?: string;
   chats: number;
@@ -71,7 +69,7 @@ export function ResearchBoards({ holdings, market, showTeam }: { holdings: Holdi
       if (filter === "attention" && !flags.get(h.id)!.any) return false;
       if (filter === "researched" && h.chats === 0) return false;
       if (filter === "none" && h.chats > 0) return false;
-      return !f || [h.ticker, h.name, h.ownerName ?? "", h.teamName ?? ""].some((s) => s.toLowerCase().includes(f));
+      return !f || [h.ticker, h.name, h.teamName ?? ""].some((s) => s.toLowerCase().includes(f));
     })
     .sort((a, b) => compare(a, b, sort, flags));
 
@@ -185,7 +183,7 @@ function compare(a: HoldingCardData, b: HoldingCardData, sort: Sort, flags: Map<
 
 function BoardRow({ h, flags, market, showTeam, now }: { h: HoldingCardData; flags: ReturnType<typeof attention>; market: Promise<MarketByTicker>; showTeam: boolean; now: number }) {
   const has = h.chats > 0;
-  const who = [h.ownerName, showTeam ? h.teamName : null].filter(Boolean).join(" · ");
+  const who = showTeam ? h.teamName : null;
   return (
     <RowLink href={h.href} className={cn(ROW, "group min-h-[54px] py-2 transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none")} title={has ? `Open ${h.ticker}'s research board` : `Start researching ${h.ticker}`}>
       <div className="min-w-0">

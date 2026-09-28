@@ -1,7 +1,7 @@
 import "server-only";
 import { and, desc, eq, ne } from "drizzle-orm";
 import { db } from "@/db/client";
-import { holdingNotes, holdings, movements, profiles, teams } from "@/db/schema";
+import { holdingNotes, holdings, movements, teams } from "@/db/schema";
 import { listPendingProposals } from "@/lib/holdings";
 import { summaryToPromptLines } from "@/lib/drive/summary";
 import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
@@ -66,9 +66,8 @@ export type ExternalToolsInfo = { servers: { name: string; toolCount: number }[]
 export async function buildInstructions(teamId: string, opts: { holdingId?: string | null; userName: string; userRole: string; purpose?: "chat" | "prep"; externalTools?: ExternalToolsInfo; portfolioTools?: boolean; ptSheet?: boolean; page?: PageContext | null }) {
   const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
   const rows = await db
-    .select({ h: holdings, ownerName: profiles.fullName })
+    .select({ h: holdings })
     .from(holdings)
-    .leftJoin(profiles, eq(profiles.id, holdings.ownerId))
     .where(and(eq(holdings.teamId, teamId), eq(holdings.status, "active")))
     .orderBy(holdings.ticker);
   const open = await db
@@ -105,7 +104,7 @@ export async function buildInstructions(teamId: string, opts: { holdingId?: stri
 
   const holdingsList = rows.length
     ? rows
-        .map((r) => `- ${r.h.ticker} (${r.h.companyName}) — owner: ${r.ownerName ?? "unassigned"}${r.h.thesis ? `; thesis: ${r.h.thesis.slice(0, 300).replace(/\s+/g, " ")}` : ""}`)
+        .map((r) => `- ${r.h.ticker} (${r.h.companyName})${r.h.thesis ? ` — thesis: ${r.h.thesis.slice(0, 300).replace(/\s+/g, " ")}` : ""}`)
         .join("\n")
     : "- (no holdings yet)";
   const openList = open.length

@@ -6,31 +6,22 @@ import { inTeams, type TeamIds } from "@/lib/team-filter";
 
 export async function listTeamMovements(teamId: TeamIds) {
   return db
-    .select({ m: movements, h: holdings, ownerName: profiles.fullName })
+    .select({ m: movements, h: holdings, completedByName: profiles.fullName })
     .from(movements)
     .innerJoin(holdings, eq(holdings.id, movements.holdingId))
-    .leftJoin(profiles, eq(profiles.id, movements.ownerId))
+    .leftJoin(profiles, eq(profiles.id, movements.completedBy))
     .where(inTeams(holdings.teamId, teamId))
     // Unfinished investigations sort ahead of completed ones so the row cap only ever trims history.
     .orderBy(sql`${movements.status} = 'completed'`, desc(movements.sessionDate), asc(holdings.ticker))
     .limit(200);
 }
 
-export async function listMyOpenMovements(userId: string) {
-  return db
-    .select({ m: movements, h: holdings })
-    .from(movements)
-    .innerJoin(holdings, eq(holdings.id, movements.holdingId))
-    .where(and(eq(movements.ownerId, userId), eq(movements.status, "open")))
-    .orderBy(asc(movements.dueAt));
-}
-
 export async function getMovement(id: string) {
   const [row] = await db
-    .select({ m: movements, h: holdings, ownerName: profiles.fullName })
+    .select({ m: movements, h: holdings, completedByName: profiles.fullName })
     .from(movements)
     .innerJoin(holdings, eq(holdings.id, movements.holdingId))
-    .leftJoin(profiles, eq(profiles.id, movements.ownerId))
+    .leftJoin(profiles, eq(profiles.id, movements.completedBy))
     .where(eq(movements.id, id))
     .limit(1);
   return row ?? null;
@@ -40,7 +31,7 @@ export async function listEvidence(movementId: string) {
   return db.select().from(evidenceItems).where(eq(evidenceItems.movementId, movementId)).orderBy(desc(evidenceItems.publishedAt));
 }
 
-/** The unfinished movement on a holding, if the analyst still owes an update. */
+/** The unfinished movement on a holding, if its team still owes an update. */
 export async function getOpenMovement(holdingId: string) {
   const [row] = await db
     .select()

@@ -14,7 +14,8 @@ export type MovementListItem = {
   overdue: boolean;
   /** YYYY-MM-DD */
   sessionDate: string;
-  ownerName: string | null;
+  /** Who completed the write-up; null while it is unfinished. */
+  completedByName: string | null;
   teamName: string | null;
 };
 
@@ -46,15 +47,14 @@ export type MovementDetailData = {
   overdue: boolean;
   dueAt: Date | null;
   completedAt: Date | null;
-  ownerId: string | null;
-  ownerName: string | null;
+  /** Who completed it. Anyone on the team can; a write-up belongs to the whole team. */
+  completedByName: string | null;
+  /** The team that holds the stock and owes the write-up. */
+  teamName: string;
   leadNames: string[];
   updateText: string | null;
   feedback: Feedback | null;
   evidenceStatus: string;
   evidence: MovementEvidence[];
-  members: { id: string; fullName: string }[];
-  /** Only a lead (or the owner, or anyone while unassigned) may change the owner. */
-  ownerLocked: boolean;
   agentConfigured: boolean;
 };
