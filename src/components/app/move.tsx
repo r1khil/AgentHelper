@@ -1,17 +1,19 @@
-import { fixed } from "@/lib/format";
+import { Acct } from "@/components/app/accounting";
+import { fmtAccounting } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-/** Signed number colored by direction. `unit` is appended (e.g. "pp" or "%"). */
-export function Move({ value, unit = "", digits = 1, className }: { value: number | string | null | undefined; unit?: string; digits?: number; className?: string }) {
+/**
+ * A figure in accounting style, colored by direction: "1.2%" in green, "(40 bp)" in red, a zero muted. `unit` goes
+ * inside the parentheses (e.g. " bp" or "%"). `align` keeps a right-aligned column of mixed signs on its digits.
+ */
+export function Move({ value, unit = "", digits = 1, align = false, className }: { value: number | string | null | undefined; unit?: string; digits?: number; align?: boolean; className?: string }) {
   if (value === null || value === undefined || value === "") return <span className={cn("text-muted-foreground", className)}>—</span>;
-  const n = Number(value);
-  const s = fixed(n, digits);
-  const tone = n > 0.005 ? "text-up" : n < -0.005 ? "text-down" : "text-muted-foreground";
+  // Color from the figure as shown, so a value that rounds to zero is never green or red.
+  const text = fmtAccounting(value, digits);
+  const tone = text.startsWith("(") ? "text-down" : /[1-9]/.test(text) ? "text-up" : "text-muted-foreground";
   return (
     <span className={cn("font-mono tnum", tone, className)}>
-      {Number(s) > 0 ? "+" : ""}
-      {s}
-      {unit}
+      <Acct value={value} digits={digits} unit={unit} align={align} />
     </span>
   );
 }

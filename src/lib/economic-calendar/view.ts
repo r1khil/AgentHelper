@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { NY } from "@/lib/providers/calendar";
 import type { CalendarRange, EconomicEvent } from "./types";
+import { fmtDate } from "@/lib/format";
 
 // Pure helpers behind the calendar page: what has come out, what is next, and how a print compares with consensus.
 
@@ -178,13 +179,7 @@ export function openingTab(range: CalendarRange, today: string | null) {
 
 /** "Sep 21 – 27, 2026", "Sep 28 – Oct 4, 2026", "Dec 28, 2026 – Jan 3, 2027". */
 export function rangeLabel(range: CalendarRange) {
-  const a = DateTime.fromISO(range.from);
-  const b = DateTime.fromISO(range.to);
-  if (a.year !== b.year)
-    return `${a.toFormat("MMM d, yyyy")} – ${b.toFormat("MMM d, yyyy")}`;
-  if (a.month !== b.month)
-    return `${a.toFormat("MMM d")} – ${b.toFormat("MMM d, yyyy")}`;
-  return `${a.toFormat("MMM d")} – ${b.toFormat("d, yyyy")}`;
+  return `${fmtDate(range.from)} – ${fmtDate(range.to)}`;
 }
 
 export function todayIn(now: number) {

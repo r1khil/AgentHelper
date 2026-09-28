@@ -12,7 +12,8 @@ import { AddHoldingDialog } from "@/components/app/add-holding-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HoldingsTable, type HoldingGroup, type HoldingListRow, type QuoteCells } from "@/components/app/holdings/holdings-table";
 import { HoldingsToolbar, MarketLine, parseHoldingFilter, type HoldingFilter } from "@/components/app/holdings/holdings-toolbar";
-import { attentionFlags, reportsWithin, shortDate } from "@/components/app/holdings/attention";
+import { attentionFlags, reportsWithin } from "@/components/app/holdings/attention";
+import { fmtDayMonth } from "@/lib/format";
 
 export async function generateMetadata({ params }: { params: Promise<{ team: string }> }): Promise<Metadata> {
   const { team: slug } = await params;
@@ -51,7 +52,7 @@ export default async function TeamHoldingsPage({ params, searchParams }: { param
       weightPct: h.weightPct == null ? null : Number(h.weightPct),
       shares: h.shares == null ? null : Number(h.shares),
       spark: closes.get(h.ticker) ?? [],
-      nextReport: next ? `${shortDate(next.reportDate)}${next.estimated ? " est." : ""}` : null,
+      nextReport: next ? `${fmtDayMonth(next.reportDate)}${next.estimated ? " est." : ""}` : null,
       flags: attentionFlags(
         { openMovement: s?.openMovement ?? null, nextReport: next, modelUpdates: s?.modelUpdates ?? 0, thesisProposed: s?.thesisProposed ?? false },
         // Flags link within the scope in view, like the row itself.

@@ -1,30 +1,22 @@
 import type { ReactNode } from "react";
 import type { TimeRange } from "@/lib/charts/series";
-import { fixed } from "@/lib/format";
+import { fmtDate, fmtDayMonth } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /** Axis ticks: small muted mono, like every other figure in the app. */
 export const chartTick = { fontSize: 10.5, fill: "var(--muted-foreground)", fontFamily: "var(--font-mono)" };
 /** Light gridlines in the row-divider color. */
 export const chartGrid = "var(--row)";
-export const signed = (value: number, digits = 2) => {
-  const s = fixed(value, digits);
-  return `${Number(s) > 0 ? "+" : ""}${s}`;
-};
-export const percent = (value: number) => `${signed(value)}%`;
 export const tone = (value: number | null) =>
   value === null || value === 0
     ? "text-foreground"
     : value > 0
       ? "text-up"
       : "text-down";
-export const exactDate = (date: string) =>
-  new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${date}T00:00:00Z`));
+/** A chart point's date in full, "28 Sep 2026", for tooltips and ranges. */
+export const exactDate = (date: string) => fmtDate(date);
+/** An axis tick, "28 Sep". */
+export const tickDate = (date: string) => fmtDayMonth(date);
 
 export function RangeControlGroup({
   label,

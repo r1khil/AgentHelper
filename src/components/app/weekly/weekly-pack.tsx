@@ -21,7 +21,7 @@ import { carriedFigureKeys, deriveRelative, parseFigureInput } from "@/lib/weekl
 import { AGENDA_LABELS, AGENDA_SECTIONS, type AgendaItem, type Performer, type WeeklyFigures } from "@/lib/weekly/types";
 import type { PackStatus } from "@/lib/weekly/status";
 import { packTitle, reviewWeek, weekRangeLabel } from "@/lib/weekly/weeks";
-import { fmtDateTime } from "@/lib/format";
+import { fmtBp, fmtDateTime, fmtDay, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { EmailView, WeeklyPackProps } from "./types";
 import { whenBuilt } from "./when";
@@ -33,7 +33,6 @@ const TABS = ["summary", "email", "highlights", "agenda", "checks"] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABELS: Record<Tab, string> = { summary: "Summary", email: "Email", highlights: "Highlights", agenda: "Agenda", checks: "Checks" };
 
-const pct = (n: number | null, digits = 2) => (n === null ? "—" : `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n * 100).toFixed(digits)}%`);
 
 export function WeeklyPack(props: WeeklyPackProps) {
   const sent = props.status === "sent";
@@ -66,9 +65,9 @@ export function WeeklyPack(props: WeeklyPackProps) {
   const name = (addr: string) => email?.names[addr.toLowerCase()] ?? addr;
   const sentBefore = email?.record?.status === "ok";
   const agendaCount = props.agenda.earnings.length + props.agenda.marketNews.length + props.agenda.processUpdates.length;
-  const title = DateTime.fromISO(props.weekEnding, { zone: NY }).toFormat("cccc, MMMM d");
+  const title = fmtDay(props.weekEnding);
   const meta = [
-    props.builtAt ? `Built ${whenBuilt(props.builtAt, props.weekEnding)}` : "Not built yet",
+    props.builtAt ? `Built ${whenBuilt(props.builtAt)}` : "Not built yet",
     props.editedAt ? `edited ${fmtDateTime(props.editedAt)}` : null,
     email?.to ? `to ${name(email.to)}${email.cc.length ? `, ${email.cc.map(name).join(", ")} in CC` : ""}` : email ? "email paused" : null,
     `${agendaCount} agenda ${agendaCount === 1 ? "item" : "items"}`,
@@ -84,9 +83,9 @@ export function WeeklyPack(props: WeeklyPackProps) {
   const { fund, spx, movementsOpened } = props.stats;
   const diffBp = fund !== null && spx !== null ? Math.round((fund - spx) * 10_000) : null;
   const cells: StatCell[] = [
-    { label: "Fund, week", value: pct(fund), tone: fund === null ? null : fund > 0 ? "up" : fund < 0 ? "down" : null },
-    { label: "S&P 500, week", value: pct(spx) },
-    { label: "Difference", value: diffBp === null ? "—" : `${diffBp > 0 ? "+" : diffBp < 0 ? "−" : ""}${Math.abs(diffBp)} bp`, tone: diffBp === null ? null : diffBp > 0 ? "up" : diffBp < 0 ? "down" : null },
+    { label: "Fund, week", value: fmtPct(fund === null ? null : fund * 100), tone: fund === null ? null : fund > 0 ? "up" : fund < 0 ? "down" : null },
+    { label: "S&P 500, week", value: fmtPct(spx === null ? null : spx * 100) },
+    { label: "Difference", value: fmtBp(diffBp), tone: diffBp === null ? null : diffBp > 0 ? "up" : diffBp < 0 ? "down" : null },
     { label: "Movements opened", value: movementsOpened ?? "—" },
   ];
 
@@ -314,9 +313,9 @@ function PerformerPanel({ title, section, list, teamOf, why }: { title: string; 
 /** One row per weekday of the agenda week (Monday first), so an empty day reads as empty rather than missing. */
 function DayPanel({ title, aside, label, items, from, note, mono }: { title: string; aside: string; label: string; items: AgendaItem[]; from: string; note?: (text: string) => string | undefined; mono?: boolean }) {
   const monday = DateTime.fromISO(from, { zone: NY });
-  const days: { key: string; stamp: string; items: AgendaItem[] }[] = WEEKDAYS.slice(0, 5).map((day, i) => ({ key: day as string, stamp: monday.plus({ days: i }).toFormat("ccc d LLL").toUpperCase(), items: items.filter((it) => it.day === day) }));
+  const days: { key: string; stamp: string; items: AgendaItem[] }[] = WEEKDAYS.slice(0, 5).map((day, i) => ({ key: day as string, stamp: fmtDay(monday.plus({ days: i }).toISODate()!), items: items.filter((it) => it.day === day) }));
   const other = items.filter((it) => !it.day || !WEEKDAYS.slice(0, 5).includes(it.day as (typeof WEEKDAYS)[number]));
-  if (other.length) days.push({ key: "other", stamp: "NO DAY", items: other });
+  if (other.length) days.push({ key: "other", stamp: "No day", items: other });
   return (
     <PanelShell title={title} aside={aside} copy={agendaLine(label, items)}>
       {days.map((d) => (

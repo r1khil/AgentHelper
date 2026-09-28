@@ -94,7 +94,7 @@ it("serves the last good copy, labeled, when every source fails", async () => {
     events: fresh.events,
     coverage: { status: "partial" },
   });
-  expect(stale.coverage?.message).toContain("Mon Sep 28 at 8:00 AM ET");
+  expect(stale.coverage?.message).toContain("Mon 28 Sep, 8:00 ET");
   expect(stale.sources?.map((s) => [s.name, s.status])).toEqual([
     ["Trading Economics", "unavailable"],
     ["TradingView", "unavailable"],

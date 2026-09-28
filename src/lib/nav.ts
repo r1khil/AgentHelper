@@ -149,7 +149,7 @@ export function destinations({ scope, fundWide, seesBook }: Omit<NavInput, "path
   if (base) {
     out.push(
       { label: "Holdings", hoot: "Holdings", href: base, hint: "Every holding in scope", keywords: "portfolio positions" },
-      { label: "Movements", hoot: "Movements", href: `${base}/movements`, hint: "4 pp moves and their write-ups" },
+      { label: "Movements", hoot: "Movements", href: `${base}/movements`, hint: "400 bp moves and their write-ups" },
       { label: "Models", hoot: "Models", href: `${base}/models`, hint: "Proposed values from new filings", keywords: "xlsx excel" },
       { label: "Research", hoot: "Research", href: `${base}/agent`, hint: "Chats with Hoot, by holding and general", keywords: "hoot ask chat chats conversations agent boards research boards holding boards" },
       { label: "Sell-side calls", hoot: "Sell-side analyzer", href: `${base}/sell-side`, hint: "Record a call, get a brief", keywords: "sell side analyzer record" },

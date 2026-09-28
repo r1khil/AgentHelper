@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { CalendarFeed } from "@/lib/economic-calendar/types";
+import { fmtTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { et } from "./release";
 import type { LoadError } from "./use-feed";
 
 /**
@@ -35,7 +35,7 @@ export function FeedStatus({ feed, error, loading, onRetry }: { feed: CalendarFe
     ) : (
       <p className="text-[12px] text-muted-foreground">Loading economic releases…</p>
     );
-  const at = et(feed.fetchedAt).toFormat("h:mm a");
+  const at = fmtTime(feed.fetchedAt);
   return (
     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] leading-5 text-muted-foreground">
       <span aria-hidden="true" className={cn("size-1.5 rounded-full", error || feed.mode === "demo" || feed.stale ? "bg-caution-foreground" : "bg-up")} />
@@ -45,7 +45,7 @@ export function FeedStatus({ feed, error, loading, onRetry }: { feed: CalendarFe
         </span>
       ) : (
         <span>
-          {feed.mode === "demo" ? "Synthetic preview" : "Live"} · <span className="font-mono">{at}</span> ET
+          {feed.mode === "demo" ? "Synthetic preview" : "Live"} · <span className="font-mono">{at}</span>
         </span>
       )}
       <button type="button" aria-label={error ? "Try again" : "Refresh now"} title={error ? "Try again" : "Refresh now"} disabled={loading} onClick={onRetry} className="grid size-5 place-items-center rounded-full hover:bg-muted hover:text-foreground disabled:opacity-50">

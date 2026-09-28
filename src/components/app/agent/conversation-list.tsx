@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Loader2, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
+import { fmtDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { startHootChat } from "@/lib/actions/chats";
 import { Button } from "@/components/ui/button";
@@ -33,9 +34,7 @@ export function listWhen(iso: string, now = Date.now()) {
   if (m < 60) return `${m}m ago`;
   const h = Math.round(m / 60);
   if (h < 24) return `${h}h ago`;
-  const d = new Date(t);
-  const sameYear = d.getFullYear() === new Date(now).getFullYear();
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) });
+  return fmtDay(new Date(t), new Date(now));
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;

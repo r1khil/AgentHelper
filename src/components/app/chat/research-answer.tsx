@@ -8,6 +8,7 @@ import type { Source } from "@/lib/providers/types";
 import { remarkCitations } from "@/lib/agent/citation-markdown";
 import { resolveCitedId } from "@/lib/agent/citations";
 import { externalUrl, resolveSource, sourceType } from "@/lib/agent/source-resolution";
+import { fmtDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { SourceViewer } from "./source-viewer";
 
@@ -85,7 +86,7 @@ export function Citation({ id: cited, full = false }: { id: string; full?: boole
       </span>
       <span className="mt-0.5 block text-muted-foreground">
         {source?.publisher || "Publisher unavailable"}
-        {source?.publishedAt ? ` · ${source.publishedAt.slice(0, 10)}` : ""}
+        {source?.publishedAt ? ` · ${fmtDate(source.publishedAt) || source.publishedAt.slice(0, 10)}` : ""}
       </span>
       {unavailable && <span>Source unavailable</span>}
     </>
@@ -115,7 +116,7 @@ export function Citation({ id: cited, full = false }: { id: string; full?: boole
           <Tooltip.Popup className="w-80 max-w-[calc(100vw-2rem)] rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
             <div className="font-semibold">{title}</div>
             <div className="mt-1 text-muted-foreground">
-              {source ? sourceType(source) : "Unknown source type"} · {source?.publishedAt?.slice(0, 10) || "Date unavailable"}
+              {source ? sourceType(source) : "Unknown source type"} · {fmtDate(source?.publishedAt) || "Date unavailable"}
             </div>
             {source?.location?.section && <div className="mt-1">{source.location.section}</div>}
             {source?.location?.page && <div>Page {source.location.page}</div>}
@@ -169,7 +170,7 @@ function ChipCitation({ id, n, title, source, unavailable, links }: { id: string
           <Tooltip.Popup className="w-80 max-w-[calc(100vw-2rem)] rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
             <div className="font-semibold">{title}</div>
             <div className="mt-1 text-muted-foreground">
-              {source ? sourceType(source) : "Unknown source type"} · {source?.publishedAt?.slice(0, 10) || "Date unavailable"}
+              {source ? sourceType(source) : "Unknown source type"} · {fmtDate(source?.publishedAt) || "Date unavailable"}
             </div>
             <p className="mt-2 line-clamp-4 whitespace-pre-wrap">{source?.excerpt?.slice(0, 360) || "Supporting excerpt unavailable. Open the source card to review it."}</p>
             {unavailable && <p className="mt-2 text-destructive">Source unavailable</p>}

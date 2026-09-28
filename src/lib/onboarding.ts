@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
+import { fmtBp } from "@/lib/format";
 
 /** First-sign-in setup, in order. Shared by the page, the flow component, and tests. */
 export const ONBOARDING_STEPS = [
@@ -46,7 +47,7 @@ export const TOUR_CARDS: TourCard[] = [
   {
     id: "movements",
     title: "Major movements",
-    body: `After each close, any holding whose daily return differs from the S&P 500 by ${MOVEMENT_THRESHOLD_PP.toFixed(1)} pp or more opens an investigation with evidence, and its update is due by noon New York on the next trading day.`,
+    body: `After each close, any holding whose daily return differs from the S&P 500 by ${fmtBp(MOVEMENT_THRESHOLD_PP * 100)} (${MOVEMENT_THRESHOLD_PP} percentage points) or more opens an investigation with evidence, and its update is due by noon New York on the next trading day.`,
   },
   {
     id: "earnings",

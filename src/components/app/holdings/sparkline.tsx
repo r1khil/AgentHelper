@@ -1,3 +1,5 @@
+import { fmtPct } from "@/lib/format";
+
 /** A tiny 64×18 line of the last few closes, green when the stretch is up and vermilion when it's down. */
 export function Sparkline({ values, className }: { values: number[]; className?: string }) {
   if (values.length < 2) return <span className="text-muted-foreground">—</span>;
@@ -12,7 +14,7 @@ export function Sparkline({ values, className }: { values: number[]; className?:
   const change = values.at(-1)! / values[0] - 1;
   const stroke = change > 0 ? "var(--up)" : change < 0 ? "var(--down)" : "var(--muted-foreground)";
   return (
-    <svg viewBox="0 0 64 18" className={className ?? "h-[18px] w-16"} role="img" aria-label={`${values.length}-day change ${(change * 100).toFixed(1)}%`}>
+    <svg viewBox="0 0 64 18" className={className ?? "h-[18px] w-16"} role="img" aria-label={`${values.length}-day change ${fmtPct(change * 100, 1)}`}>
       <polyline points={points} fill="none" stroke={stroke} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
     </svg>
   );

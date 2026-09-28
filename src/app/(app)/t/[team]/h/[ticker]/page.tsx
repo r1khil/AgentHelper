@@ -9,7 +9,7 @@ import { getBarsRange, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { listFilings } from "@/lib/providers/edgar";
 import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
 import { NY, todayNY } from "@/lib/providers/calendar";
-import { fmtCurrency } from "@/lib/format";
+import { fmtCurrency, fmtDay, fmtNumber, fmtPct, fmtTime } from "@/lib/format";
 import { canManageTeam, isFundWide } from "@/lib/auth";
 import { effectiveRunStatus, listHoldingChats } from "@/lib/chats";
 import { documentLabel } from "@/lib/drive/labels";
@@ -206,8 +206,8 @@ type HoldingRow = NonNullable<Awaited<ReturnType<typeof getHolding>>>;
 type Activity = Awaited<ReturnType<typeof loadHoldingActivity>>;
 
 function glanceRows({ h, teamName, leadNames, next, moves, base, now }: { h: HoldingRow["h"]; teamName: string; leadNames: string[]; next: Activity["reports"][number] | undefined; moves: Activity["moves"]; base: string; now: number }): GlanceRow[] {
-  const shares = h.shares != null ? `${Number(h.shares).toLocaleString("en-US", { maximumFractionDigits: 2 })} sh` : null;
-  const weight = h.weightPct != null ? `${Number(h.weightPct).toFixed(1)}% of NAV` : null;
+  const shares = h.shares != null ? `${fmtNumber(h.shares, 2)} sh` : null;
+  const weight = h.weightPct != null ? `${fmtPct(h.weightPct, 1)} of NAV` : null;
   const open = moves.filter((mv) => mv.status !== "completed");
   const overdue = open.find((mv) => mv.dueAt && mv.dueAt.getTime() < now);
   const last = moves[0];
@@ -237,7 +237,7 @@ function glanceRows({ h, teamName, leadNames, next, moves, base, now }: { h: Hol
     {
       label: "Movements",
       value: open.length
-        ? `${open.length} open${overdue ? " · write-up overdue" : open[0].dueAt ? ` · due ${DateTime.fromJSDate(open[0].dueAt).setZone(NY).toFormat("MMM d")}` : ""}`
+        ? `${open.length} open${overdue ? " · write-up overdue" : open[0].dueAt ? ` · due ${fmtDay(open[0].dueAt)}` : ""}`
         : last
           ? `None open · last ${shortDate(last.sessionDate)}`
           : "None yet",
@@ -313,7 +313,7 @@ function hourLabel(hour: string | null) {
 function quoteWhen(asOf: string, marketState: string | undefined, today: string) {
   const t = DateTime.fromISO(asOf).setZone(NY);
   if (!t.isValid) return "latest";
-  if (marketState === "REGULAR") return `as of ${t.toFormat("h:mm a")}`;
+  if (marketState === "REGULAR") return `as of ${fmtTime(asOf)}`;
   return t.toISODate() === today ? "today's close" : `${t.toFormat("cccc")} close`;
 }
 

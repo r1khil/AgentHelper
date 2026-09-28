@@ -1,5 +1,5 @@
-import { DateTime } from "luxon";
 import type { AttributionSummary } from "@/lib/attribution/summary";
+import { fmtAccounting, fmtDate, fmtDay } from "@/lib/format";
 import type { Source } from "@/lib/providers/types";
 
 /** Who gets Hoot's 5:15 p.m. daily attribution email, in the order they are addressed (first in To, the rest in Cc). */
@@ -10,21 +10,23 @@ export const DAILY_BRIEF_RECIPIENTS = [
   { name: "Max Schmieder", email: "mschmieder@theowlfund.com" },
 ];
 
-const signed = (x: number | null | undefined, unit: string) => (x === null || x === undefined ? "n/a" : `${x > 0 ? "+" : ""}${x}${unit}`);
+/** Accounting style, as the app shows it: "(0.29%)", "12 bp"; "n/a" when there is no figure. */
+const pct = (x: number | null | undefined) => (x === null || x === undefined ? "n/a" : fmtAccounting(x, 2, "%"));
+const bp = (x: number | null | undefined, unit = " bp") => (x === null || x === undefined ? "n/a" : fmtAccounting(x, 0, unit));
 
 /** The day's numbers, written by the app rather than the model, so the email's figures never depend on Hoot. */
 export function factsBlock(s: AttributionSummary): string {
   const h = s.headline as AttributionSummary["headline"] & { spxPriceReturnPct?: number | null; activeVsSpxBps?: number | null };
   const row = (r: { ticker: string; team: string | null; returnPct: number | null; contributionBps: number | null }) =>
-    `  ${r.ticker.padEnd(6)} ${signed(r.contributionBps, " bps").padStart(9)}  (return ${signed(r.returnPct, "%")}${r.team ? `, ${r.team}` : ""})`;
+    `  ${r.ticker.padEnd(6)} ${bp(r.contributionBps).padStart(9)}  (return ${pct(r.returnPct)}${r.team ? `, ${r.team}` : ""})`;
   const teams = "teams" in s && Array.isArray(s.teams) ? [...s.teams].sort((a, b) => (b.contributionBps ?? 0) - (a.contributionBps ?? 0)) : [];
   const lines = [
-    `Fund return: ${signed(h.returnPct, "%")}   S&P 500: ${signed(h.spxPriceReturnPct, "%")}   Active vs S&P 500: ${signed(h.activeVsSpxBps, " bps")}`,
-    `Vs sector benchmark: ${signed(h.activeVsSectorBenchmarkBps, " bps")} (allocation ${signed(h.allocationBps, "")}, selection ${signed(h.selectionBps, "")}, interaction ${signed(h.interactionBps, "")} bps)`,
+    `Fund return: ${pct(h.returnPct)}   S&P 500: ${pct(h.spxPriceReturnPct)}   Active vs S&P 500: ${bp(h.activeVsSpxBps)}`,
+    `Vs sector benchmark: ${bp(h.activeVsSectorBenchmarkBps)} (allocation ${bp(h.allocationBps, "")}, selection ${bp(h.selectionBps, "")}, interaction ${bp(h.interactionBps, "")} bp)`,
   ];
   if (s.topContributors.length) lines.push("", "Top contributors:", ...s.topContributors.slice(0, 5).map(row));
   if (s.bottomContributors.length) lines.push("", "Biggest detractors:", ...s.bottomContributors.slice(0, 5).map(row));
-  if (teams.length) lines.push("", "By team:", ...teams.map((t) => `  ${t.team}: ${signed(t.contributionBps, " bps")} (return ${signed(t.returnPct, "%")})`));
+  if (teams.length) lines.push("", "By team:", ...teams.map((t) => `  ${t.team}: ${bp(t.contributionBps)} (return ${pct(t.returnPct)})`));
   if (s.dataNotices.length) lines.push("", ...s.dataNotices.map((n) => `Note: ${n}`));
   return lines.join("\n");
 }
@@ -113,16 +115,16 @@ export function cleanBrief(text: string): string {
 
 export function sourcesFooter(sources: Source[]): string {
   if (!sources.length) return "";
-  return ["Sources:", ...sources.map((s, i) => `[${i + 1}] ${s.title} (${s.publisher}${s.publishedAt ? `, ${s.publishedAt.slice(0, 10)}` : ""})${s.url ? ` ${s.url}` : ""}`)].join("\n");
+  return ["Sources:", ...sources.map((s, i) => `[${i + 1}] ${s.title} (${s.publisher}${s.publishedAt ? `, ${fmtDate(s.publishedAt)}` : ""})${s.url ? ` ${s.url}` : ""}`)].join("\n");
 }
 
-/** "Tuesday, September 22" for an ISO session date. */
+/** "Tue 22 Sep" for an ISO session date. */
 function longDate(iso: string) {
-  return DateTime.fromISO(iso).toFormat("cccc, LLLL d");
+  return fmtDay(iso);
 }
 
 export function briefEmail(opts: { sessionDate: string; facts: string; analysis: string | null; sources: Source[]; failure?: string; appUrl?: string }) {
-  const subject = `Owl Fund Daily Attribution Analysis (${DateTime.fromISO(opts.sessionDate).toFormat("dd-LLL-yyyy")})`;
+  const subject = `Owl Fund Daily Attribution Analysis (${fmtDate(opts.sessionDate)})`;
   const link = opts.appUrl ? `${opts.appUrl.replace(/\/$/, "")}/attribution` : null;
   const opening = opts.analysis
     ? [`Here's what drove the fund on ${longDate(opts.sessionDate)}.`, "", opts.analysis]
@@ -154,14 +156,14 @@ export function briefAlertEmail(opts: { sessionDate: string; final: boolean; err
     "Hi,",
     "",
     opts.final
-      ? `The daily attribution email for ${day} never went out. I tried at 5:15 p.m. and every 15 minutes after that until 11:45 p.m.`
+      ? `The daily attribution email for ${day} never went out. I tried at 17:15 ET and every 15 minutes after that until 23:45 ET.`
       : `The daily attribution email for ${day} hasn't gone out yet. I'll keep trying every 15 minutes until midnight New York time.`,
     "",
     `What went wrong: ${opts.error}`,
     "",
-    `To send it yourself, open ${admin}, set the date under "Hoot's daily attribution brief" to ${opts.sessionDate}, tick "Email everyone on the list, not just me" and press Run.`,
+    `To send it yourself, open ${admin}, set the date under "Hoot's daily attribution brief" to ${fmtDate(opts.sessionDate)}, tick "Email everyone on the list, not just me" and press Run.`,
     "",
     "Hoot",
   ].join("\n");
-  return { subject: `Daily attribution email not sent (${DateTime.fromISO(opts.sessionDate).toFormat("dd-LLL-yyyy")})`, body };
+  return { subject: `Daily attribution email not sent (${fmtDate(opts.sessionDate)})`, body };
 }

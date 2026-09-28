@@ -56,7 +56,7 @@ describe("buildNudges", () => {
     expect(out.map((n) => [n.id, n.priority, n.title])).toEqual([
       ["movement:t1:team:overdue", 3, "META write-up is overdue"],
       ["movement:t3:team:overdue", 3, "UNH write-up is overdue"],
-      ["movement:t2:team:due", 5, "JPM write-up is due Wed 12:00 ET"],
+      ["movement:t2:team:due", 5, "JPM write-up is due Wed 23 Sep, 12:00 ET"],
     ]);
     expect(out[0]).toMatchObject({ href: "/t/consumer/movements/t1", mood: "concerned", at: "2026-09-20T16:00:00.000Z" });
     expect(out[1].detail).toBe("Healthcare hasn't finished it yet. Check in with the team.");

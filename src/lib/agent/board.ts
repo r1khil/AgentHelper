@@ -1,5 +1,7 @@
 import type { UIMessage } from "ai";
 import type { Source } from "@/lib/providers/types";
+import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
+import { fmtBp, fmtDay, fmtMoney, fmtPct } from "@/lib/format";
 import { CITATION_RE, resolveCitedId } from "./citations";
 import { enrichLegacySource } from "./source-resolution";
 import { hiddenPromptLabel } from "./hidden-prompt";
@@ -149,7 +151,6 @@ export function stepLabel(turn: Turn): string {
 /** A quote or relative-move source renders as a number card rather than a text card. */
 export type MarketFigure = { big: string; tone: "up" | "down" | "flat"; sub: string };
 
-const pct = (v: number) => `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
 const tone = (v: number): MarketFigure["tone"] => (v > 0.005 ? "up" : v < -0.005 ? "down" : "flat");
 
 export function marketFigure(row: TurnSource): MarketFigure | null {
@@ -157,21 +158,21 @@ export function marketFigure(row: TurnSource): MarketFigure | null {
   if (!d) return null;
   if (row.source.id.startsWith("yq-") && typeof d.price === "number") {
     const chg = typeof d.changePct === "number" ? d.changePct : undefined;
-    const sub = [chg !== undefined ? pct(chg) : null, typeof d.currency === "string" ? d.currency : null, typeof d.marketState === "string" ? d.marketState.toLowerCase() : null].filter(Boolean).join(" · ");
-    return { big: d.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), tone: chg === undefined ? "flat" : tone(chg), sub };
+    const sub = [chg !== undefined ? fmtPct(chg) : null, typeof d.currency === "string" ? d.currency : null, typeof d.marketState === "string" ? d.marketState.toLowerCase() : null].filter(Boolean).join(" · ");
+    return { big: fmtMoney(d.price), tone: chg === undefined ? "flat" : tone(chg), sub };
   }
   if (row.source.id.startsWith("yr-") && Array.isArray(d.sessions) && d.sessions.length > 0) {
     const last = d.sessions[d.sessions.length - 1] as Record<string, unknown>;
     if (typeof last.relativePp !== "number") return null;
     const rel = last.relativePp;
     const sub = [
-      typeof last.holdingReturnPct === "number" && typeof last.spxReturnPct === "number" ? `${pct(last.holdingReturnPct)} vs ${pct(last.spxReturnPct)}` : null,
-      `4 pp rule ${last.qualifies ? "met" : "not met"}`,
-      typeof last.date === "string" ? last.date : null,
+      typeof last.holdingReturnPct === "number" && typeof last.spxReturnPct === "number" ? `${fmtPct(last.holdingReturnPct)} vs ${fmtPct(last.spxReturnPct)}` : null,
+      `${fmtBp(MOVEMENT_THRESHOLD_PP * 100)} rule ${last.qualifies ? "met" : "not met"}`,
+      typeof last.date === "string" ? fmtDay(last.date) : null,
     ]
       .filter(Boolean)
       .join(" · ");
-    return { big: `${rel > 0 ? "+" : ""}${rel.toFixed(2)} pp`, tone: tone(rel), sub };
+    return { big: fmtBp(rel * 100), tone: tone(rel), sub };
   }
   return null;
 }

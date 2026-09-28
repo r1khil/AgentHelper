@@ -11,6 +11,7 @@ import { startHootChat } from "@/lib/actions/chats";
 import { isUpcoming, shownActual, surprise, untilText } from "@/lib/economic-calendar/view";
 import type { EconomicEvent } from "@/lib/economic-calendar/types";
 import { NY } from "@/lib/providers/calendar";
+import { fmtDateTime, fmtDay, fmtTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 // One economic release's pieces: its figures, its status against consensus, and everything else behind a click.
@@ -127,10 +128,10 @@ function hootQuestion(e: EconomicEvent, now: number) {
   const actual = shownActual(e, now);
   if (actual !== null)
     return `${name} came in at ${actual} against a consensus of ${e.estimate ?? "none published"}; the previous reading was ${e.previous ?? "not available"}. What does that mean for our holdings?`;
-  if (!e.timestamp) return `What should we know about ${name} on ${DateTime.fromISO(e.date).toFormat("cccc, MMM d")}? Which of our holdings could it affect?`;
-  const at = et(e.timestamp).toFormat("cccc h:mm a");
-  if (!isUpcoming(e, now)) return `What came out of ${name} on ${at} ET, and which of our holdings could it affect?`;
-  return `What should we watch in ${name}, due ${at} ET? Consensus is ${e.estimate ?? "not available"} and the previous reading was ${e.previous ?? "not available"}.${e.marketImplied ? ` ${e.marketImplied.source} traders price ${e.marketImplied.detail === "median" ? `a median of ${e.marketImplied.value}` : `${e.marketImplied.value} (${e.marketImplied.detail})`}.` : ""} Which of our holdings are most exposed to a surprise either way?`;
+  if (!e.timestamp) return `What should we know about ${name} on ${fmtDay(e.date)}? Which of our holdings could it affect?`;
+  const at = fmtDateTime(e.timestamp);
+  if (!isUpcoming(e, now)) return `What came out of ${name} on ${at}, and which of our holdings could it affect?`;
+  return `What should we watch in ${name}, due ${at}? Consensus is ${e.estimate ?? "not available"} and the previous reading was ${e.previous ?? "not available"}.${e.marketImplied ? ` ${e.marketImplied.source} traders price ${e.marketImplied.detail === "median" ? `a median of ${e.marketImplied.value}` : `${e.marketImplied.value} (${e.marketImplied.detail})`}.` : ""} Which of our holdings are most exposed to a surprise either way?`;
 }
 
 function AskHoot({ event: e, now, teamSlug, label }: { event: EconomicEvent; now: number; teamSlug: string | null; label: string }) {
@@ -170,8 +171,8 @@ export function ReleaseDetails({
   if (actual !== null)
     status = s?.dir === "above" || s?.dir === "below" ? `Released, ${s.text} consensus` : s?.dir === "inline" ? "Released, in line with consensus" : "Released";
   else if (at && isUpcoming(e, now))
-    status = isNext ? `Next release, ${untilText(at.toMillis() - now)}` : `Scheduled, ${e.date === today ? "today" : at.toFormat("cccc")} ${at.toFormat("h:mm a")} ET`;
-  else if (!at) status = `${e.time}, ${DateTime.fromISO(e.date).toFormat("cccc, MMM d")}`;
+    status = isNext ? `Next release, ${untilText(at.toMillis() - now)}` : `Scheduled, ${e.date === today ? `today ${fmtTime(at.toJSDate())}` : fmtDateTime(at.toJSDate())}`;
+  else if (!at) status = `${e.time}, ${fmtDay(e.date)}`;
   else status = e.estimate || e.previous ? "Time passed, no figure reported yet" : "Time passed";
   if (e.tentative) status += " (tentative)";
   const link = "underline decoration-border underline-offset-2 hover:decoration-foreground";

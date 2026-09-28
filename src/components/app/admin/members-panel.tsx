@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { fmtDateTime, fmtDay, fmtTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const NY = "America/New_York";
@@ -71,9 +72,9 @@ function lastActiveLabel(iso: string | null, now: DateTime): { text: string; sta
   const mins = now.diff(d, "minutes").minutes;
   const stale = now.diff(d, "days").days > STALE_DAYS;
   if (mins < 5) return { text: "Now", stale };
-  if (d.hasSame(now, "day")) return { text: `Today ${d.toFormat("h:mm")}`, stale };
+  if (d.hasSame(now, "day")) return { text: `Today ${fmtTime(iso)}`, stale };
   if (d.hasSame(now.minus({ days: 1 }), "day")) return { text: "Yesterday", stale };
-  return { text: d.hasSame(now, "year") ? d.toFormat("LLL d") : d.toFormat("LLL d, yyyy"), stale };
+  return { text: fmtDay(iso, now.toJSDate()), stale };
 }
 
 export function MembersPanel({ members, invitations, teams, canMutate, meId, activityKnown, now }: MembersPanelProps) {
@@ -137,7 +138,7 @@ export function MembersPanel({ members, invitations, teams, canMutate, meId, act
               <span>
                 <Pill tone={roleTone(m.role)}>{ROLE_LABELS[m.role]}</Pill>
               </span>
-              <span className={cn("text-[12.5px]", last.stale ? "text-hoot-foreground" : "text-muted-foreground")} title={m.lastActive ? `Last signed in or active ${DateTime.fromISO(m.lastActive, { zone: NY }).toFormat("LLL d, yyyy h:mm a")} New York` : undefined}>
+              <span className={cn("text-[12.5px]", last.stale ? "text-hoot-foreground" : "text-muted-foreground")} title={m.lastActive ? `Last signed in or active ${fmtDateTime(m.lastActive)}` : undefined}>
                 {last.text}
               </span>
               {canMutate ? (
@@ -277,7 +278,7 @@ function InvitationRowView({ i, canMutate }: { i: InvitationRow; canMutate: bool
       <span>
         <Pill tone={roleTone(i.role)}>{ROLE_LABELS[i.role]}</Pill>
       </span>
-      <span className="text-[12.5px] text-muted-foreground">Invited {DateTime.fromISO(i.createdAt, { zone: NY }).toFormat("LLL d")}</span>
+      <span className="text-[12.5px] text-muted-foreground">Invited {fmtDay(i.createdAt)}</span>
       {canMutate ? (
         <>
           <DropdownMenu>

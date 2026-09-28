@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtDate, relativeTime } from "@/lib/format";
+import { fmtDate, fmtDay, relativeTime } from "@/lib/format";
 import type { PrepPack } from "@/lib/agent/prep-types";
 import { bulletCount, cleanBulletText } from "@/lib/agent/prep-pack";
 import { resolveSource } from "@/lib/agent/source-resolution";
@@ -20,7 +20,7 @@ export function PrepPackCard({ pack, compact, actions, className }: { pack: Prep
         <ClipboardList className="size-3.5 text-muted-foreground" />
         <span className="label-mono text-muted-foreground">Earnings prep pack</span>
         <span className="text-xs text-muted-foreground">
-          reports {fmtDate(pack.reportDate)} · {n} sourced bullet{n === 1 ? "" : "s"} · built {relativeTime(pack.builtAt)}
+          reports {fmtDay(pack.reportDate)} · {n} sourced bullet{n === 1 ? "" : "s"} · built {relativeTime(pack.builtAt)}
         </span>
         {actions && <div className="ml-auto">{actions}</div>}
       </div>
@@ -62,7 +62,7 @@ export function PrepPackCard({ pack, compact, actions, className }: { pack: Prep
           <ol className="mt-4 grid gap-0.5 border-t pt-3 text-[11px] leading-4 text-muted-foreground md:grid-cols-2">
             {pack.sources.map((s, i) => {
               const t = resolveSource(s);
-              const label = `${s.title}${s.publishedAt ? ` · ${s.publishedAt.slice(0, 10)}` : ""}`;
+              const label = `${s.title}${s.publishedAt ? ` · ${fmtDate(s.publishedAt)}` : ""}`;
               return (
                 <li key={s.id} className="flex gap-1.5">
                   <span className="w-4 shrink-0 text-right font-mono">{i + 1}.</span>

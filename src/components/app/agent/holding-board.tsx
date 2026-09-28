@@ -4,7 +4,7 @@ import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState, type 
 import type { UIMessage } from "ai";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fixed, fmtDateTime, fmtMoney } from "@/lib/format";
+import { fmtBp, fmtDate, fmtDateTime, fmtMoney, fmtPct, ppToBp } from "@/lib/format";
 import type { RunStatus } from "@/lib/chats";
 import type { Source } from "@/lib/providers/types";
 import { collectSources } from "@/lib/agent/citations";
@@ -294,19 +294,11 @@ function BoardQuote({ market }: { market: Promise<BoardMarket> }) {
   const m = use(market);
   if (m.changePct === undefined) return <div className="mt-1 text-[11.5px] text-muted-foreground">Quote unavailable</div>;
   const tone = (v: number) => (v > 0.005 ? "text-up" : v < -0.005 ? "text-down" : "text-muted-foreground");
-  const pct = (v: number) => {
-    const s = fixed(Math.abs(v), 2);
-    return Number(s) === 0 ? `${s}%` : v < 0 ? `(${s}%)` : `+${s}%`;
-  };
-  const bps = (pp: number) => {
-    const n = Math.round(Math.abs(pp) * 100);
-    return n === 0 ? "0 bps" : pp < 0 ? `(${n} bps)` : `+${n} bps`;
-  };
   return (
     <div className="mt-1 flex flex-wrap items-baseline gap-x-2 font-mono text-xs tabular-nums" title={m.asOf ? `As of ${fmtDateTime(m.asOf)}` : undefined}>
       {m.price !== undefined && <span>{fmtMoney(m.price)}</span>}
-      <span className={cn("font-medium", tone(m.changePct))}>{pct(m.changePct)}</span>
-      {m.relativePp !== undefined && <span className="text-muted-foreground">{bps(m.relativePp)} vs S&amp;P</span>}
+      <span className={cn("font-medium", tone(m.changePct))}>{fmtPct(m.changePct)}</span>
+      {m.relativePp !== undefined && <span className="text-muted-foreground">{fmtBp(ppToBp(m.relativePp))} vs S&amp;P</span>}
     </div>
   );
 }
@@ -510,7 +502,7 @@ function BoardThread({
     }
   };
   const copyCitation = async (s: Source) => {
-    const date = s.publishedAt?.slice(0, 10);
+    const date = s.publishedAt ? fmtDate(s.publishedAt) : null;
     const text = [s.title, [s.publisher, date].filter(Boolean).join(", "), s.url].filter(Boolean).join(" — ");
     try {
       await navigator.clipboard.writeText(text);
