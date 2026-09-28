@@ -12,6 +12,7 @@ import { fmtBp } from "@/lib/format";
 import { rbp, rpct, rsci } from "./format";
 import type { TeamNames } from "./holdings-risk-table";
 import { Source, Step, Working } from "./working";
+import { tickerName } from "@/components/app/read-as";
 import { RowLink } from "@/components/app/row-link";
 
 const TOP = 10;
@@ -74,7 +75,7 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
         </ul>
       )}
       <Card className="overflow-x-auto p-0">
-        <Table>
+        <Table aria-label="Active risk by position">
           <TableHeader>
             <TableRow>
               <TableHead>Position</TableHead>
@@ -108,7 +109,7 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
                   <summary className="cursor-pointer text-muted-foreground select-none hover:text-foreground">By ETF ({a.benchmark.legs.length})</summary>
                   <table className="tnum mt-1">
                     <thead className="text-muted-foreground">
-                      <tr><th className="pr-3 text-left font-normal">ETF</th><th className="pr-3 text-right font-normal">Weight</th><th className="pr-3 text-right font-normal">Portfolio active</th><th className="text-right font-normal">Share</th></tr>
+                      <tr><th scope="col" className="pr-3 text-left font-normal">ETF</th><th scope="col" className="pr-3 text-right font-normal">Weight</th><th scope="col" className="pr-3 text-right font-normal">Portfolio active</th><th scope="col" className="text-right font-normal">Share</th></tr>
                     </thead>
                     <tbody>
                       {a.benchmark.legs.map((l) => (
@@ -173,10 +174,11 @@ function HoldingRow({ h, max, teams }: { h: ActiveRiskRow; max: number; teams: T
   return (
     <TableRow>
       <TableCell>
-        {team ? <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} className="font-mono font-semibold hover:underline">{h.ticker}</RowLink> : <span className="font-mono font-semibold">{h.ticker}</span>}
+        {team ? <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} aria-label={tickerName(h.ticker, h.name)} className="font-mono font-semibold hover:underline">{h.ticker}</RowLink> : <span className="font-mono font-semibold">{h.ticker}</span>}
         {h.source !== "own" && (
           <span className="ml-1.5 rounded border px-1 py-px text-[10px] text-muted-foreground" title={h.source === "proxy" ? `Too little price history; modeled with ${h.proxy}` : "No price history or sector; treated as riskless"}>
             {h.source === "proxy" ? `via ${h.proxy}` : "not modeled"}
+            <span className="sr-only">: {h.source === "proxy" ? `too little price history; modeled with ${h.proxy}` : "no price history or sector; treated as riskless"}</span>
           </span>
         )}
         <div className="max-w-24 truncate text-[11px] text-muted-foreground sm:max-w-44">{team?.name ?? h.name}</div>

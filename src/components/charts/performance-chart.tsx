@@ -377,9 +377,9 @@ function ChartSession({
             </caption>
             <thead>
               <tr>
-                <th className="p-2">Date</th>
+                <th scope="col" className="p-2">Date</th>
                 {series.map((s) => (
-                  <th key={s.key} className="p-2">
+                  <th scope="col" key={s.key} className="p-2">
                     {s.label}
                     {kind === "price" ? " · price / return" : " · return"}
                   </th>
@@ -389,7 +389,7 @@ function ChartSession({
             <tbody>
               {points.map((p) => (
                 <tr key={p.date} className="border-t">
-                  <th className="p-2 font-normal whitespace-nowrap">
+                  <th scope="row" className="p-2 font-normal whitespace-nowrap">
                     {p.date}
                   </th>
                   {series.map((s) => (

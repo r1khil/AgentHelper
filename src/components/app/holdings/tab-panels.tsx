@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { fmtDate, relativeTime } from "@/lib/format";
 import { PanelHeader, Pill } from "@/components/app/panel";
 import { Button } from "@/components/ui/button";
+import { ReadAs } from "@/components/app/read-as";
 import { RowLink } from "@/components/app/row-link";
 
 const ROW = "flex items-center gap-3 border-b border-row px-4 last:border-b-0";
@@ -250,22 +251,33 @@ export function EarningsTab({ rows, calendarHref }: { rows: EarningsRow[]; calen
       {rows.length === 0 ? (
         <Empty>No reports on file yet. The morning sweep adds the next report date once a provider has it.</Empty>
       ) : (
-        <div className="min-h-0 flex-1">
-          <div className="grid h-9 grid-cols-[120px_minmax(0,1fr)_110px_120px_150px_90px] items-center gap-3 border-b px-4 text-xs text-muted-foreground">
-            <span>Report</span>
-            <span>When</span>
-            <span>Period</span>
-            <span className="text-right">EPS est.</span>
-            <span>Expectations</span>
-            <span>Status</span>
+        <div role="table" aria-label="Earnings" className="min-h-0 flex-1">
+          <div role="row" className="grid h-9 grid-cols-[120px_minmax(0,1fr)_110px_120px_150px_90px] items-center gap-3 border-b px-4 text-xs text-muted-foreground">
+            <span role="columnheader">Report</span>
+            <span role="columnheader">When</span>
+            <span role="columnheader">Period</span>
+            <span role="columnheader" className="text-right">
+              <ReadAs text="EPS estimate">EPS est.</ReadAs>
+            </span>
+            <span role="columnheader">Expectations</span>
+            <span role="columnheader">Status</span>
           </div>
           {rows.map((r) => (
-            <RowLink key={r.id} href={r.href} className="grid h-10 grid-cols-[120px_minmax(0,1fr)_110px_120px_150px_90px] items-center gap-3 border-b border-row px-4 text-sm transition-colors last:border-b-0 hover:bg-band">
-              <span className="font-mono text-[13px]">{fmtDate(r.date)}</span>
-              <span className="truncate text-ink-2">{r.when || "—"}</span>
-              <span className="truncate font-mono text-[13px] text-ink-2">{r.period ?? "—"}</span>
-              <span className="text-right font-mono text-[13px]">{r.eps ?? "—"}</span>
-              <span>
+            // A table row; the report date links and stretches over the row, so the whole row opens the report.
+            <div
+              key={r.id}
+              role="row"
+              className="relative grid h-10 grid-cols-[120px_minmax(0,1fr)_110px_120px_150px_90px] items-center gap-3 border-b border-row px-4 text-sm transition-colors last:border-b-0 hover:bg-band"
+            >
+              <span role="rowheader" className="font-mono text-[13px]">
+                <RowLink cover="stretch" href={r.href}>
+                  {fmtDate(r.date)}
+                </RowLink>
+              </span>
+              <span role="cell" className="truncate text-ink-2">{r.when || "—"}</span>
+              <span role="cell" className="truncate font-mono text-[13px] text-ink-2">{r.period ?? "—"}</span>
+              <span role="cell" className="text-right font-mono text-[13px]">{r.eps ?? "—"}</span>
+              <span role="cell">
                 {r.expectations === "locked" ? (
                   <Pill tone="good">Locked in</Pill>
                 ) : r.expectations === "draft" ? (
@@ -276,8 +288,8 @@ export function EarningsTab({ rows, calendarHref }: { rows: EarningsRow[]; calen
                   <span className="text-muted-foreground">—</span>
                 )}
               </span>
-              <span className="text-[13px] text-muted-foreground">{STATUS[r.status]}</span>
-            </RowLink>
+              <span role="cell" className="text-[13px] text-muted-foreground">{STATUS[r.status]}</span>
+            </div>
           ))}
         </div>
       )}

@@ -94,12 +94,12 @@ export function TicketDialog({ emailTo }: { emailTo?: string }) {
               <table className="w-full text-sm">
                 <thead className="bg-muted text-xs text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-1.5 text-left font-medium">Ticket</th>
-                    <th className="px-3 py-1.5 text-left font-medium">Date</th>
-                    <th className="px-3 py-1.5 text-left font-medium">Side</th>
-                    <th className="px-3 py-1.5 text-right font-medium">Shares</th>
-                    <th className="px-3 py-1.5 text-right font-medium">Price</th>
-                    <th className="px-3 py-1.5 text-right font-medium">Amount</th>
+                    <th scope="col" className="px-3 py-1.5 text-left font-medium">Ticket</th>
+                    <th scope="col" className="px-3 py-1.5 text-left font-medium">Date</th>
+                    <th scope="col" className="px-3 py-1.5 text-left font-medium">Side</th>
+                    <th scope="col" className="px-3 py-1.5 text-right font-medium">Shares</th>
+                    <th scope="col" className="px-3 py-1.5 text-right font-medium">Price</th>
+                    <th scope="col" className="px-3 py-1.5 text-right font-medium">Amount</th>
                   </tr>
                 </thead>
                 <tbody>

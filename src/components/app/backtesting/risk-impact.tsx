@@ -82,12 +82,12 @@ export function RiskImpactBody({
       <div className="overflow-x-auto rounded-md border">
         <table className="w-full text-sm">
           <thead className="bg-muted/60 text-muted-foreground">
-            <tr><th className="px-3 py-2 text-left font-medium">Measure</th><th className={cell}>{names.original}</th><th className={cell}>{names.modified}</th><th className={cell}>Change</th></tr>
+            <tr><th scope="col" className="px-3 py-2 text-left font-medium">Measure</th><th scope="col" className={cell}>{names.original}</th><th scope="col" className={cell}>{names.modified}</th><th scope="col" className={cell}>Change</th></tr>
           </thead>
           <tbody>
             {ROWS.map((r) => (
               <tr key={r.key} className="border-t">
-                <th className="px-3 py-2 text-left font-normal">
+                <th scope="row" className="px-3 py-2 text-left font-normal">
                   <span className="inline-flex items-center gap-1">{r.label}<InfoTip label={r.label}>{r.explain}</InfoTip></span>
                 </th>
                 <td className={cell}>{r.fmt(data.before[r.key])}</td>
@@ -103,15 +103,15 @@ export function RiskImpactBody({
           <table className="w-full text-sm">
             <thead className="bg-muted/60 text-muted-foreground">
               <tr>
-                <th className="px-3 py-2 text-left font-medium">Holding</th>
-                <th className={cell}>Weight</th>
-                <th className={cell}><span className="inline-flex items-center gap-1">Share of risk<InfoTip label="Share of risk">{RISK_EXPLAIN.riskShare}</InfoTip></span></th>
+                <th scope="col" className="px-3 py-2 text-left font-medium">Holding</th>
+                <th scope="col" className={cell}>Weight</th>
+                <th scope="col" className={cell}><span className="inline-flex items-center gap-1">Share of risk<InfoTip label="Share of risk">{RISK_EXPLAIN.riskShare}</InfoTip></span></th>
               </tr>
             </thead>
             <tbody>
               {data.holdings.map((h) => (
                 <tr key={h.ticker} className="border-t">
-                  <th className="px-3 py-2 text-left font-medium">{h.ticker}</th>
+                  <th scope="row" className="px-3 py-2 text-left font-medium">{h.ticker}</th>
                   <td className={cell}>{arrow(pct(h.weightBefore), pct(h.weightAfter))}</td>
                   <td className={cell}>{arrow(pct(h.shareBefore, 1), pct(h.shareAfter, 1))}</td>
                 </tr>
@@ -124,15 +124,15 @@ export function RiskImpactBody({
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium">Sector</th>
-                  <th className={cell}><span className="inline-flex items-center gap-1">Active weight<InfoTip label="Active weight">{`${RISK_EXPLAIN.activeWeight} Against ${data.benchmarkLabel}.`}</InfoTip></span></th>
-                  <th className={cell}>Share of risk</th>
+                  <th scope="col" className="px-3 py-2 text-left font-medium">Sector</th>
+                  <th scope="col" className={cell}><span className="inline-flex items-center gap-1">Active weight<InfoTip label="Active weight">{`${RISK_EXPLAIN.activeWeight} Against ${data.benchmarkLabel}.`}</InfoTip></span></th>
+                  <th scope="col" className={cell}>Share of risk</th>
                 </tr>
               </thead>
               <tbody>
                 {data.sectors.map((s) => (
                   <tr key={s.label} className="border-t">
-                    <th className="px-3 py-2 text-left font-normal">{s.label}</th>
+                    <th scope="row" className="px-3 py-2 text-left font-normal">{s.label}</th>
                     <td className={cell}>{s.activeBefore === null ? "—" : arrow(pct(s.activeBefore, 1), pct(s.activeAfter, 1))}</td>
                     <td className={cell}>{arrow(pct(s.shareBefore, 1), pct(s.shareAfter, 1))}</td>
                   </tr>
