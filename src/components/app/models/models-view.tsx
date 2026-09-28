@@ -106,7 +106,7 @@ function ModelList({ items, uploadTargets, selectedHoldingId }: { items: ModelLi
 }
 
 function modelSummary(m: NonNullable<ModelListItem["model"]>): { text: string; warn?: boolean } {
-  if (m.mappings === 0) return { text: "anchor not mapped", warn: true };
+  if (m.mappings === 0) return { text: "no line items mapped yet", warn: true };
   const parts: string[] = [];
   if (m.proposed) parts.push(`${m.proposed} to review`);
   if (m.exceptions) parts.push(`${m.exceptions} exception${m.exceptions === 1 ? "" : "s"}`);
@@ -140,8 +140,13 @@ function ModelDetail({ d, uploadTargets }: { d: ModelDetailData; uploadTargets: 
             <span className="truncate text-sm font-normal tracking-normal text-muted-foreground">{d.companyName}</span>
           </div>
           <div className="mt-0.5 text-[13px] text-muted-foreground">
-            {d.uploader ?? "Unknown uploader"} · uploaded {shortDate(d.createdAt)} · {d.mappings.length} line item{d.mappings.length === 1 ? "" : "s"} mapped to XBRL ·{" "}
-            {d.cik ? `SEC CIK ${Number(d.cik)}` : <span className="text-caution-foreground">No SEC registrant: XBRL proposals unavailable</span>}
+            {d.uploader ?? "Unknown uploader"} · uploaded {shortDate(d.createdAt)} ·{" "}
+            {mapped ? (
+              `${d.mappings.length} line item${d.mappings.length === 1 ? "" : "s"} mapped to reported figures`
+            ) : (
+              <span className="text-caution-foreground">No line items mapped to reported figures yet</span>
+            )}{" "}
+            · {d.cik ? `SEC CIK ${Number(d.cik)}` : <span className="text-caution-foreground">Not an SEC filer, so no values can be proposed from filings</span>}
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[13px] text-muted-foreground">
             {d.versions.length > 1 && (
@@ -214,7 +219,7 @@ function ModelDetail({ d, uploadTargets }: { d: ModelDetailData; uploadTargets: 
           <ProposalsPanels d={d} counts={counts} />
         ) : (
           <div className="flex min-h-48 flex-1 flex-col items-center justify-center gap-3 rounded-[14px] border border-dashed px-6 text-center text-sm text-muted-foreground">
-            Map at least one line item first. You map the first period yourself; that is the anchor Hoot checks against.
+            Map at least one line item first. You enter its first period by hand; Hoot checks the other periods against that number.
             <Button nativeButton={false} render={<Link href={`${d.href}?tab=map`} scroll={false} />} size="sm">
               Map a line item
             </Button>
@@ -241,11 +246,11 @@ function ProposalsPanels({ d, counts }: { d: ModelDetailData; counts: Record<Mod
     <>
       <Panel className="flex-1">
         <PanelHeader title="Proposed values">
-          <span className="truncate text-[12.5px] text-muted-foreground">From SEC XBRL filings · pure data, no model writing · formula cells are never touched</span>
+          <span className="truncate text-[12.5px] text-muted-foreground">Straight from SEC filings, not written by AI · formula cells are never touched</span>
         </PanelHeader>
         {d.proposals.length === 0 ? (
           <div className="flex flex-1 flex-col items-start gap-3 px-4 py-4 text-[13.5px] text-muted-foreground">
-            Generate proposals to fill the other mapped periods from SEC XBRL facts. Each proposal carries its period, unit, reported label, filing, and derivation.
+            Generate proposals to fill the other mapped periods from the figures the company reported to the SEC. Each proposal carries its period, unit, reported label, filing, and derivation.
             <GenerateButton d={d} label="Generate proposals" primary />
           </div>
         ) : (
@@ -253,7 +258,7 @@ function ProposalsPanels({ d, counts }: { d: ModelDetailData; counts: Record<Mod
             <div className="flex min-w-[760px] flex-1 flex-col">
               <div className={cn(GRID, "h-[34px] shrink-0 border-b px-4 text-xs text-muted-foreground")}>
                 <span>Line item · cell</span>
-                <span>XBRL concept</span>
+                <span title="The XBRL tag the company used for this figure in its SEC filing">Reported figure</span>
                 <span>Period</span>
                 <span className="text-right">Proposed</span>
                 <span>Derivation</span>
@@ -283,7 +288,7 @@ function GenerateButton({ d, label, primary }: { d: ModelDetailData; label: stri
   return (
     <form action={generateProposals}>
       <input type="hidden" name="modelId" value={d.id} />
-      <Button type="submit" size="sm" variant={primary ? "default" : "outline"} disabled={!d.cik} title={d.cik ? "Keeps decisions already made; regenerates everything still open" : "No SEC registrant: XBRL facts are unavailable"}>
+      <Button type="submit" size="sm" variant={primary ? "default" : "outline"} disabled={!d.cik} title={d.cik ? "Keeps decisions already made; regenerates everything still open" : "Not an SEC filer, so there are no reported figures to propose from"}>
         {label}
       </Button>
     </form>

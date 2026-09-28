@@ -82,7 +82,7 @@ export function AskHoot({ teamSlug, configured, hint, className }: { teamSlug: s
               void submit();
             }
           }}
-          placeholder={configured ? "Ask Hoot anything: the portfolio, a sector, an upcoming report…" : "Hoot is not configured: add OPENROUTER_API_KEY"}
+          placeholder={configured ? "Ask Hoot anything: the portfolio, a sector, an upcoming report…" : "Hoot isn't set up yet: an admin needs to turn it on"}
           className="field-sizing-content max-h-40 min-h-11 w-full resize-none bg-transparent text-sm leading-[22px] outline-none placeholder:text-muted-foreground disabled:opacity-60"
         />
         <div className="flex items-center gap-2">

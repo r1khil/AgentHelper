@@ -186,7 +186,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
           edgarEmpty={h.cik ? "No filings found." : "No SEC registrant matched this ticker."}
           cikLabel={h.cik ? `CIK ${Number(h.cik)}` : "No CIK"}
           news={news.slice(0, 8).map((n) => ({ id: n.id, headline: n.headline, url: n.url, source: n.source, publishedAt: n.publishedAt }))}
-          newsNote={!finnhubConfigured() ? "News needs a Finnhub key (FINNHUB_API_KEY)." : news.length === 0 ? "No news in the window." : undefined}
+          newsNote={!finnhubConfigured() ? "News isn't set up yet: an admin needs to turn it on." : news.length === 0 ? "No news in the window." : undefined}
         />
       )}
 

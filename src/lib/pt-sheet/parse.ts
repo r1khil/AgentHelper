@@ -54,6 +54,18 @@ export function colLetter(index: number): string {
   return s;
 }
 
+/** The inverse of `colLetter`: "A" is 0, "AA" is 26. */
+export function colIndex(col: string): number {
+  return [...col].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+}
+
+/** Every column with a header label or a value, in sheet order: the columns of the tab drawn as a table. */
+export function tabColumns(tab: PtTab): { col: string; label: string | null }[] {
+  const labels = new Map<string, string | null>(tab.columns.map((c) => [c.col, c.label]));
+  for (const r of tab.rows) for (const c of r.cells) if (!labels.has(c.col)) labels.set(c.col, null);
+  return [...labels].map(([col, label]) => ({ col, label })).sort((a, b) => colIndex(a.col) - colIndex(b.col));
+}
+
 /** A1 notation for a whole tab: the name in single quotes, embedded quotes doubled. */
 export function quoteTab(name: string): string {
   return `'${name.replace(/'/g, "''")}'`;

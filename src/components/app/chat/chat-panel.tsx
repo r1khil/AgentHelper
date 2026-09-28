@@ -107,7 +107,7 @@ function Thread({ chat, tickers, configured, sees }: { chat: GeneralChat; ticker
         streaming={streaming}
         disabled={!configured || catchingUp}
         sendDisabled={busy}
-        placeholder={configured ? (catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…") : "Hoot is not configured: add OPENROUTER_API_KEY"}
+        placeholder={configured ? (catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…") : "Hoot isn't set up yet: an admin needs to turn it on"}
         sees={ctx ? pageContextLabel(ctx) : sees}
       />
     </>
@@ -246,8 +246,8 @@ function Message({ message, live, trace, now }: { message: UIMessage; live: bool
         <ResearchAnswer key={i} text={p.text} className="max-w-[700px] text-[15px] leading-[1.65] [&_p]:my-2.5 [&_p:first-child]:mt-0" />
       ))}
       {!live && meta.uncited !== undefined && meta.uncited > 0 && (
-        <div className="text-[11.5px] text-caution-foreground">
-          {meta.uncited} sentence{meta.uncited === 1 ? "" : "s"} with numbers carry no citation (heuristic). Check them against the sources.
+        <div className="text-[11.5px] text-muted-foreground" title="Counted automatically from lines that state a number without a source marker, so the count can be off by a few.">
+          {meta.uncited} {meta.uncited === 1 ? "line with a figure has" : "lines with figures have"} no source. Check {meta.uncited === 1 ? "it" : "them"} before relying on {meta.uncited === 1 ? "it" : "them"}.
         </div>
       )}
     </div>

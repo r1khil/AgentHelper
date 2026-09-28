@@ -398,7 +398,7 @@ function EmptyBoard({ header, loadError, holding, configured, busy, hasChats, on
             if (draft.trim()) onAsk(draft);
           }}
           disabled={busy || !configured}
-          placeholder={configured ? "Ask about a holding, a filing, a move…" : "Hoot is not configured: add OPENROUTER_API_KEY"}
+          placeholder={configured ? "Ask about a holding, a filing, a move…" : "Hoot isn't set up yet: an admin needs to turn it on"}
           sees={`${holding.ticker} research board`}
         />
       </CenterColumn>
@@ -601,7 +601,7 @@ function BoardThread({
           onStop={stopWatching}
           streaming={streaming}
           disabled={!configured || catchingUp}
-          placeholder={!configured ? "Hoot is not configured: add OPENROUTER_API_KEY" : catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…"}
+          placeholder={!configured ? "Hoot isn't set up yet: an admin needs to turn it on" : catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…"}
           sees={`${holding.ticker} research board`}
         />
       </CenterColumn>
