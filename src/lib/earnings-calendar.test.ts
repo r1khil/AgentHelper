@@ -3,6 +3,7 @@ import type { Bellwether } from "@/db/schema";
 import {
   EARNINGS_DEFAULT_SHOW,
   ECONOMIC_DEFAULT_SHOW,
+  EARNINGS_DEFAULT_LAYOUT,
   buildMiniMonth,
   buildMonthGrid,
   calendarHref,
@@ -15,8 +16,12 @@ import {
   groupByDate,
   hiddenKinds,
   industryOptions,
+  listPeriod,
   marketDayNote,
   parseCalendarQuery,
+  expectationsWord,
+  prepBuildDate,
+  prepPackWord,
   toCalendarEvents,
   toggleKind,
   weekDays,
@@ -303,5 +308,49 @@ describe("dayKinds", () => {
   });
   it("marks nothing when nothing is shown", () => {
     expect(dayKinds(events, releases, []).size).toBe(0);
+  });
+});
+
+describe("the Earnings page's own layout", () => {
+  it("opens as a list, and writes ?view= only when the layout differs from that", () => {
+    expect(EARNINGS_DEFAULT_LAYOUT).toBe("list");
+    const today = "2026-09-17";
+    expect(parseCalendarQuery({}, today, ["holdings"], "list").layout).toBe("list");
+    expect(parseCalendarQuery({ view: "week" }, today, ["holdings"], "list").layout).toBe("week");
+    const q = { scope: "fund", layout: "list", month: "2026-09", show: ["holdings"] } as const;
+    expect(calendarHref("/t/x/earnings", { ...q, show: [...q.show] }, ["holdings"], "list")).toBe("/t/x/earnings?scope=fund&month=2026-09");
+    expect(calendarHref("/t/x/earnings", { ...q, layout: "week", show: [...q.show] }, ["holdings"], "list")).toBe("/t/x/earnings?scope=fund&view=week&month=2026-09");
+  });
+  it("lists five weeks from today", () => {
+    expect(listPeriod("2026-09-29")).toEqual({ from: "2026-09-29", to: "2026-11-02" });
+  });
+});
+
+describe("expectationsWord", () => {
+  const report = { reportDate: "2026-10-29", reportHour: "amc" };
+  it("says locked, draft or not started in grey and ink until the report is near", () => {
+    expect(expectationsWord("locked", report, "2026-10-20")).toMatchObject({ text: "Locked", tone: "grey" });
+    expect(expectationsWord("draft", report, "2026-09-29")).toEqual({ text: "Draft", tone: "ink" });
+    expect(expectationsWord("not_started", report, "2026-09-29")).toEqual({ text: "Not started", tone: "grey" });
+  });
+  it("turns amber with the due day once the report is within two weeks", () => {
+    expect(expectationsWord("not_started", report, "2026-10-20")).toMatchObject({ text: "Due Oct 29", tone: "caution" });
+    expect(expectationsWord("draft", report, "2026-10-20")).toMatchObject({ text: "Draft · due Oct 29", tone: "caution" });
+    // A pre-market report is due the session before.
+    expect(expectationsWord("not_started", { reportDate: "2026-10-30", reportHour: "bmo" }, "2026-10-20").text).toBe("Due Oct 29");
+  });
+});
+
+describe("prepPackWord", () => {
+  it("counts back five trading days from the report to when the pack builds", () => {
+    expect(prepBuildDate("2026-10-29")).toBe("2026-10-22");
+    expect(prepBuildDate("2026-11-02")).toBe("2026-10-26");
+  });
+  it("says built, failed, on its way or when it builds", () => {
+    expect(prepPackWord({ reportDate: "2026-10-29", prepPackAt: "2026-10-23T10:00:00Z" }, "2026-10-24")).toEqual({ text: "Built Oct 23", tone: "grey" });
+    expect(prepPackWord({ reportDate: "2026-10-29", prepPackFailed: true }, "2026-10-24")).toEqual({ text: "Build failed", tone: "caution" });
+    expect(prepPackWord({ reportDate: "2026-10-29" }, "2026-10-24")).toEqual({ text: "Builds next sweep", tone: "grey" });
+    expect(prepPackWord({ reportDate: "2026-10-29" }, "2026-10-01")).toEqual({ text: "Builds Oct 22", tone: "grey" });
+    expect(prepPackWord({ reportDate: "2026-09-20", status: "reported" }, "2026-10-01")).toEqual({ text: "—", tone: "grey" });
   });
 });

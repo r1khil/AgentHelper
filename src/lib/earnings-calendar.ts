@@ -1,8 +1,9 @@
 import { DateTime } from "luxon";
 import type { Bellwether, Earnings, Holding } from "@/db/schema";
 import type { GicsSector } from "@/lib/attribution/sectors";
-import { NY, isTradingDay } from "@/lib/providers/calendar";
-import { fmtMonth } from "@/lib/format";
+import { NY, isTradingDay, previousTradingDay } from "@/lib/providers/calendar";
+import { expectationsDue, reportsWithin } from "@/components/app/holdings/attention";
+import { fmtDayMonth, fmtMonth } from "@/lib/format";
 
 /** Which events a team's calendar covers: the whole Fund, the team's sectors, or one industry. */
 export const CALENDAR_VIEWS = ["fund", "sector", "industry"] as const;
@@ -13,6 +14,11 @@ export const VIEW_LABELS: Record<CalendarView, string> = { fund: "Fund", sector:
 export const CALENDAR_LAYOUTS = ["week", "month", "list"] as const;
 export type CalendarLayout = (typeof CALENDAR_LAYOUTS)[number];
 export const LAYOUT_LABELS: Record<CalendarLayout, string> = { week: "Week", month: "Month", list: "List" };
+
+/** The Earnings page opens as a list of the coming weeks; the week and the month are a click away. */
+export const EARNINGS_DEFAULT_LAYOUT: CalendarLayout = "list";
+/** The List layout covers this many days from today: five weeks. */
+export const LIST_DAYS = 35;
 
 /** The Show filters: which kinds of event are listed. */
 export const CALENDAR_KINDS = ["holdings", "bellwethers", "economic"] as const;
@@ -48,6 +54,11 @@ export type CalendarEvent = {
   teamName?: string;
   status?: Earnings["status"];
   expectations?: ExpectationsState;
+  /** When the evidence pack was built (ISO), and whether its last build failed. */
+  prepPackAt?: string | null;
+  prepPackFailed?: boolean;
+  /** The fiscal period the report covers ("Q2 FY27"), when the feed gave one. */
+  fiscalPeriod?: string | null;
   // Bellwethers
   etf?: string;
   weightPct?: string | null;
@@ -76,11 +87,11 @@ const sameKinds = (a: readonly CalendarKind[], b: readonly CalendarKind[]) => a.
  * Read the calendar state from the URL; anything invalid falls back quietly. `?view=` is the layout, but a
  * scope in it (fund, sector, industry) still works, so links from before the Calendar merge keep their meaning.
  */
-export function parseCalendarQuery(q: SearchParams, today: string, defaultShow: readonly CalendarKind[] = CALENDAR_KINDS): CalendarQuery {
+export function parseCalendarQuery(q: SearchParams, today: string, defaultShow: readonly CalendarKind[] = CALENDAR_KINDS, defaultLayout: CalendarLayout = "week"): CalendarQuery {
   const rawView = one(q.view);
   const rawScope = one(q.scope);
   const scope = CALENDAR_VIEWS.find((v) => v === rawScope) ?? CALENDAR_VIEWS.find((v) => v === rawView) ?? "sector";
-  const layout = CALENDAR_LAYOUTS.find((v) => v === rawView) ?? "week";
+  const layout = CALENDAR_LAYOUTS.find((v) => v === rawView) ?? defaultLayout;
   const rawDay = one(q.day);
   const day = rawDay && DAY_RE.test(rawDay) && DateTime.fromISO(rawDay, { zone: NY }).isValid ? rawDay : undefined;
   const rawMonth = one(q.month);
@@ -97,9 +108,9 @@ export function parseCalendarQuery(q: SearchParams, today: string, defaultShow: 
 }
 
 /** The URL for a calendar state. `defaultShow` is the route's default, so the Show filters are written only when they differ. */
-export function calendarHref(base: string, q: CalendarQuery, defaultShow: readonly CalendarKind[] = CALENDAR_KINDS): string {
+export function calendarHref(base: string, q: CalendarQuery, defaultShow: readonly CalendarKind[] = CALENDAR_KINDS, defaultLayout: CalendarLayout = "week"): string {
   const p = new URLSearchParams({ scope: q.scope });
-  if (q.layout !== "week") p.set("view", q.layout);
+  if (q.layout !== defaultLayout) p.set("view", q.layout);
   p.set("month", q.month);
   if (q.day) p.set("day", q.day);
   if (q.industry) p.set("industry", q.industry);
@@ -125,6 +136,11 @@ export function calendarPeriod(layout: CalendarLayout, selectedDay: string, mont
   }
   const first = DateTime.fromISO(`${month}-01`, { zone: NY });
   return { from: first.toISODate()!, to: first.endOf("month").toISODate()! };
+}
+
+/** The List layout's days: today and the four weeks after it. */
+export function listPeriod(today: string): DateRange {
+  return { from: today, to: DateTime.fromISO(today, { zone: NY }).plus({ days: LIST_DAYS - 1 }).toISODate()! };
 }
 
 export type KindCounts = Record<CalendarKind, number>;
@@ -168,6 +184,38 @@ export function dayKinds(events: readonly Pick<CalendarEvent, "date" | "kind">[]
 export function expectationsState(e: Pick<Earnings, "preLockedAt" | "expectations">): ExpectationsState {
   if (e.preLockedAt) return "locked";
   return e.expectations?.trim() ? "draft" : "not_started";
+}
+
+/** Reports this many trading days ahead get an evidence pack; the morning sweep builds them (see jobs/earnings-prep). */
+export const PREP_BUILD_TRADING_DAYS = 5;
+
+export type Word = { text: string; tone: "ink" | "grey" | "caution" };
+
+/**
+ * Where a report's expectations stand, in words: locked, a draft or not started, and amber with the day they are due once
+ * the report is within two weeks and they aren't locked. `title` says what the word means.
+ */
+export function expectationsWord(state: ExpectationsState, r: { reportDate: string; reportHour: string | null }, today: string): Word & { title?: string } {
+  if (state === "locked") return { text: "Locked", tone: "grey", title: "Locked when the report landed, or by hand" };
+  const soon = reportsWithin(r.reportDate, today);
+  if (soon) return { text: `${state === "draft" ? "Draft · due" : "Due"} ${fmtDayMonth(expectationsDue(r.reportDate, r.reportHour))}`, tone: "caution", title: state === "draft" ? "A draft, not locked yet" : "Not started" };
+  return state === "draft" ? { text: "Draft", tone: "ink" } : { text: "Not started", tone: "grey" };
+}
+
+/** The trading day the morning sweep starts building a report's evidence pack. */
+export function prepBuildDate(reportDate: string): string {
+  let d = reportDate;
+  for (let i = 0; i < PREP_BUILD_TRADING_DAYS; i++) d = previousTradingDay(d);
+  return d;
+}
+
+/** The evidence pack's state in words: built (when), failed, on its way, or not due yet (when it builds). Nothing once the report is out. */
+export function prepPackWord(e: { reportDate: string; status?: Earnings["status"]; prepPackAt?: string | null; prepPackFailed?: boolean }, today: string): Word {
+  if (e.prepPackAt) return { text: `Built ${fmtDayMonth(e.prepPackAt)}`, tone: "grey" };
+  if (e.status && e.status !== "upcoming") return { text: "—", tone: "grey" };
+  if (e.prepPackFailed) return { text: "Build failed", tone: "caution" };
+  const on = prepBuildDate(e.reportDate);
+  return on <= today ? { text: "Builds next sweep", tone: "grey" } : { text: `Builds ${fmtDayMonth(on)}`, tone: "grey" };
 }
 
 /** Monday of the week holding `date`. */
@@ -300,6 +348,9 @@ export function toCalendarEvents(rows: HoldingEventRow[], bellwethers: Bellwethe
       teamName: r.teamName,
       status: r.e.status,
       expectations: expectationsState(r.e),
+      prepPackAt: r.e.prepPackAt?.toISOString() ?? null,
+      prepPackFailed: Boolean(r.e.prepPackError) && !r.e.prepPackAt,
+      fiscalPeriod: r.e.fiscalPeriod,
     });
   }
   for (const b of bellwethers) {

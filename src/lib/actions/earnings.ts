@@ -85,14 +85,18 @@ export async function requestEarningsFeedback(fd: FormData) {
   revalidatePath(r.path);
 }
 
-/** Leads and admins can rebuild the agent's pre-earnings evidence pack on demand. */
+/**
+ * Leads and admins can rebuild the agent's pre-earnings evidence pack on demand. Building it emails the team's leads the
+ * first time (queued for the next send), so the page asks first: `send` is "none" to build without emailing anyone, and a
+ * form that doesn't say sends nothing.
+ */
 export async function rebuildPrepPack(fd: FormData) {
   const row = await load(String(fd.get("id") ?? ""));
   if (!row) return;
   // Back to the report in the scope it was opened in (the fund's or its team's).
   const back = earningsHref(await rememberedScope(row.user), row.slug, row.e.id);
   if (!canManageTeam(row.user, row.h.teamId)) redirect(back);
-  const r = await buildPrepPack(row.e.id);
+  const r = await buildPrepPack(row.e.id, { notify: String(fd.get("send") ?? "none") === "list" });
   revalidatePath(row.path);
   revalidatePath(`/t/${row.slug}/agent/h/${row.h.ticker}`);
   redirect(r.ok ? back : `${back}?error=${encodeURIComponent(r.error)}`);

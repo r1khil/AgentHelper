@@ -12,8 +12,8 @@ import { mcpCapKey } from "@/lib/agent/mcp-budget";
 import { setSetting } from "@/lib/settings";
 
 function back(message?: string, ok = false): never {
-  const q = message ? `?${ok ? "ok" : "error"}=${encodeURIComponent(message)}` : "";
-  redirect(`/admin${q}#mcp`);
+  const q = message ? `&${ok ? "ok" : "error"}=${encodeURIComponent(message)}` : "";
+  redirect(`/admin?tab=jobs${q}#mcp`);
 }
 
 const serverSchema = z.object({

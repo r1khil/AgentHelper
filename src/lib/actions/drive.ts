@@ -35,7 +35,7 @@ function ingestInBackground(reason: string, opts: { budgetMs: number; maxFiles: 
 
 function back(message: string, ok: boolean): never {
   revalidatePath("/admin");
-  redirect(`/admin?${ok ? "ok" : "error"}=${encodeURIComponent(message)}`);
+  redirect(`/admin?tab=jobs&${ok ? "ok" : "error"}=${encodeURIComponent(message)}`);
 }
 
 export async function setDriveRoot(fd: FormData) {

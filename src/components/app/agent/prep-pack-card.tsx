@@ -11,7 +11,19 @@ import { resolveSource } from "@/lib/agent/source-resolution";
  * rebuild button in for leads and admins. `compact` (the research board's side column) shows a line about the pack and
  * opens it on request.
  */
-export function PrepPackCard({ pack, compact, actions, className }: { pack: PrepPack; compact?: boolean; actions?: ReactNode; className?: string }) {
+export function PrepPackCard({
+  pack,
+  compact,
+  actions,
+  className,
+}: {
+  pack: PrepPack;
+  compact?: boolean;
+  /** Kept for the report page: the pack is already a plain section, never a card. */
+  plain?: boolean;
+  actions?: ReactNode;
+  className?: string;
+}) {
   const n = bulletCount(pack);
   const summary = (
     <span className="text-caption text-ink-2">

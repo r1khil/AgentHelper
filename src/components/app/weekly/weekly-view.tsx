@@ -1,17 +1,16 @@
-import { CalendarRange } from "lucide-react";
 import { buildWeeklyNow } from "@/lib/actions/weekly";
 import { EmptyState } from "@/components/app/empty-state";
-import { Panel, PanelFooter, PanelHeader } from "@/components/app/panel";
-import { Button } from "@/components/ui/button";
-import { fmtDay } from "@/lib/format";
-import { cn } from "@/lib/utils";
-import { PackStatusPill } from "./status-pill";
-import { WeeklyPack } from "./weekly-pack";
-import { whenBuilt } from "./when";
-import type { PackListItem, WeeklyPackProps } from "./types";
+import { PageHead } from "@/components/app/page-head";
 import { RowLink } from "@/components/app/row-link";
-
-const short = (iso: string) => fmtDay(iso);
+import { Button } from "@/components/ui/button";
+import { fmtDateTime, fmtDay, fmtDayMonth } from "@/lib/format";
+import { todayNY } from "@/lib/providers/calendar";
+import { packText } from "@/lib/weekly/format";
+import { scheduledSendAt } from "@/lib/weekly/status";
+import { cn } from "@/lib/utils";
+import { PackActions } from "./pack-actions";
+import { WeeklyPack } from "./weekly-pack";
+import type { PackListItem, WeeklyPackProps } from "./types";
 
 export type WeeklyViewProps = {
   packs: PackListItem[];
@@ -23,77 +22,107 @@ export type WeeklyViewProps = {
   target: { week: string; label: string; exists: boolean };
 };
 
-/** S10: packs list on the left, the selected pack on the right. Both /weekly routes render this. */
+/** What the packs list says under a week, in words: whether it was built, and what happened to its email. */
+function packLine(p: PackListItem): { text: string; caution: boolean } {
+  if (p.state === "sent") return { text: p.status === "sent" ? "Built · sent · locked" : "Built · sent", caution: false };
+  if (p.state === "failed") return { text: "Built · send failed", caution: true };
+  if (p.state === "scheduled") return { text: `Built · sends ${fmtDateTime(scheduledSendAt(p.weekEnding).toJSDate())}`, caution: false };
+  return { text: p.listPaused ? "Built · not sent (list paused)" : "Built · not sent", caution: true };
+}
+
+/** The packs list beside the selected pack. Both /weekly routes render this. */
 export function WeeklyView({ packs, selected, pack, notice, target }: WeeklyViewProps) {
   const noticeEl = (notice.ok || notice.error) && (
-    <div role="status" className={cn("shrink-0 rounded-[10px] px-3.5 py-2 text-body", notice.error ? "bg-caution text-caution-foreground" : "bg-good text-good-foreground")}>
+    <div role="status" className={cn("mb-4 text-body font-medium", notice.error ? "text-caution-foreground" : "text-foreground")}>
       {notice.error ?? notice.ok}
     </div>
   );
   const buildForm = (week: string | null, label: string, primary = true) => (
     <form action={buildWeeklyNow}>
       {week && <input type="hidden" name="week" value={week} />}
-      <Button type="submit" variant={primary ? "default" : "outline"}>
-        <CalendarRange data-icon="inline-start" />
+      <Button type="submit" variant={primary ? "default" : "secondary"}>
         {label}
       </Button>
     </form>
   );
+  const head = (
+    <PageHead
+      crumbs={[{ label: "Manage" }, { label: "Weekly update" }]}
+      asof="Execs and admins"
+      tabs={false}
+      actions={
+        pack ? (
+          <PackActions
+            week={pack.weekEnding}
+            locked={pack.status === "sent"}
+            state={pack.state}
+            email={pack.email}
+            whole={packText({ weekEnding: pack.weekEnding, figures: pack.figures, performers: pack.performers, agenda: pack.agenda, lastWeekAgenda: pack.lastWeekAgenda })}
+          />
+        ) : null
+      }
+    />
+  );
 
   if (packs.length === 0 && !selected) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col gap-5">
+      <>
+        {head}
         {noticeEl}
         <EmptyState title="No packs yet" hoot="sleepy" action={buildForm(null, `Build pack for ${target.label}`)}>
           Every Sunday at 12:00 New York the app builds the pack for the Friday that just passed — the week&apos;s best and worst performers, the coming week&apos;s earnings and
           economic releases, and last week&apos;s agenda rolled forward — then Hoot emails it to Aadi, with Saad in CC. Build the first one now, or wait for Sunday.
         </EmptyState>
-      </div>
+      </>
     );
   }
 
+  // The Friday that just passed has no pack until the Sunday job builds it: list it first, so it can be opened and built by hand.
+  const pending = !target.exists && packs[0]?.weekEnding !== target.week;
+  const sunday = scheduledSendAt(target.week);
+  // The Sunday job still has to run when Sunday is today or ahead.
+  const sundayAhead = sunday.toISODate()! >= todayNY();
+  const listed: { weekEnding: string; line: { text: string; caution: boolean } }[] = [
+    ...(pending ? [{ weekEnding: target.week, line: { text: sundayAhead ? `Not built yet · builds ${fmtDay(sunday.toJSDate())}` : "Not built yet", caution: false } }] : []),
+    ...packs.map((p) => ({ weekEnding: p.weekEnding, line: packLine(p) })),
+  ];
+
   return (
-    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <Panel data-tour="weekly-packs" variant="plain" className="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-104px)]">
-        <PanelHeader title="Packs" aside="Every Sunday 12:00" className="px-3.5" />
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {packs.map((p) => {
+    <div data-full-bleed className="flex min-h-0 flex-1 flex-col">
+      {head}
+      <div className="flex min-h-0 flex-1">
+        <aside data-tour="weekly-packs" aria-label="Packs" className="w-60 shrink-0 border-r pt-[18px] pr-4 pl-10">
+          {listed.map((p) => {
             const on = p.weekEnding === selected;
-            const meta =
-              p.state === "sent" ? `Sent ${short(p.sentAt ?? p.emailedAt ?? p.weekEnding)}` : p.builtAt ? `Built ${whenBuilt(p.builtAt)}` : "Not built yet";
             return (
               <RowLink
                 key={p.weekEnding}
                 href={`/weekly/${p.weekEnding}`}
                 aria-current={on ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg px-3.5 py-2.5 transition-colors hover:bg-band focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset",
-                  on && "bg-band shadow-[inset_3px_0_0_var(--foreground)]",
-                )}
+                className="flex flex-col border-b border-row py-[9px] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset"
               >
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-body font-medium">Week ending {short(p.weekEnding)}</div>
-                  <div className="mt-px truncate text-caption text-muted-foreground">{meta}</div>
-                </div>
-                <PackStatusPill state={p.state} title={p.state === "sent" && p.status !== "sent" ? "The Sunday email went out; the pack can still be edited" : undefined} />
+                <span className={cn("text-body", on ? "font-semibold" : "text-ink-3")}>Week ended {fmtDayMonth(p.weekEnding)}</span>
+                <span className={cn("text-caption", p.line.caution ? "text-caution-foreground" : "text-muted-foreground")}>{p.line.text}</span>
               </RowLink>
             );
           })}
+          <p className="mt-3 text-caption text-muted-foreground">A pack builds every Sunday at 12:00 New York.</p>
+        </aside>
+        <div className="flex min-w-0 flex-1 flex-col px-8 pt-6 pb-24">
+          {noticeEl}
+          {pack ? (
+            <WeeklyPack key={pack.weekEnding} {...pack} />
+          ) : selected ? (
+            <div className="flex max-w-md flex-col items-start gap-3">
+              <span className="text-body text-muted-foreground">Week ended {fmtDay(selected)}</span>
+              <span className="hero-figure">Not built yet</span>
+              <span className="text-emph text-muted-foreground">
+                {selected === target.week && sundayAhead ? `The Sunday job builds it on ${fmtDay(sunday.toJSDate())} at 12:00 PM ET. ` : ""}Build it now to see the week&apos;s performers, agenda and email.
+              </span>
+              {buildForm(selected, "Build this pack")}
+            </div>
+          ) : null}
         </div>
-        {!target.exists && <PanelFooter className="justify-center py-3">{buildForm(null, `Build pack for ${short(target.week)}`, false)}</PanelFooter>}
-      </Panel>
-
-      <div className="flex min-h-0 min-w-0 flex-col gap-5">
-        {noticeEl}
-        {pack ? (
-          <WeeklyPack key={pack.weekEnding} {...pack} />
-        ) : selected ? (
-          <Panel className="items-center p-6 text-center">
-            <div className="text-emph font-semibold">Week ending {fmtDay(selected)}</div>
-            <p className="mx-auto mt-1 mb-4 max-w-md text-body text-muted-foreground">This pack has not been built yet.</p>
-            {buildForm(selected, "Build this pack")}
-          </Panel>
-        ) : null}
       </div>
     </div>
   );

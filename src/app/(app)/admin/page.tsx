@@ -5,33 +5,18 @@ import { invitations, jobRuns, profiles, teams } from "@/db/schema";
 import { requireRole, transparencyEnabled } from "@/lib/auth";
 import { EMBEDDING_MODELS, RERANK_MODELS, embeddingDims, embeddingModelId, rerankModelId } from "@/lib/agent/retrieval-models";
 import { embeddingConfigured } from "@/lib/agent/embeddings";
-import { embeddingStats } from "@/lib/documents/index";
 import { getSetting } from "@/lib/settings";
 import { WEEKLY_EMAIL_DEFAULT, WEEKLY_RECIPIENTS_SETTING } from "@/lib/weekly/email";
-import { FILINGS_LAST_SYNC_SETTING } from "@/lib/jobs/filings";
 import { changelogModelId } from "@/lib/changelog/summarize";
-import { tavilyConfigured } from "@/lib/web/tavily";
-import { listMcpServers } from "@/lib/agent/mcp";
 import { mcpBudgets } from "@/lib/agent/mcp-budget";
-import { driveStatus } from "@/lib/drive/index";
-import { emailConfigured } from "@/lib/jobs/notify";
-import { finnhubConfigured } from "@/lib/providers/finnhub";
-import { AGENT_MODELS, agentConfigured, agentModelId } from "@/lib/agent/model";
+import { AGENT_MODELS, agentModelId } from "@/lib/agent/model";
 import type { JobRunView } from "@/app/api/admin/job-runs/route";
 import { AdminView } from "@/components/app/admin/admin-view";
-import type { JobLastRun } from "@/components/app/admin/jobs-panel";
+import { loadAdminStatus } from "./status";
 
 export const metadata: Metadata = { title: "Admin" };
 // Jobs started from this page run inside its server actions; give them the same budget as the cron routes.
 export const maxDuration = 300;
-
-/** `job_runs.job` names the Scheduled jobs and Connections panels show a last run for. */
-const TRACKED_JOBS = ["close", "prices", "daily_brief", "morning", "weekly", "drive_sync", "filings_sync"] as const;
-
-async function lastRun(job: string) {
-  const [r] = await db.select().from(jobRuns).where(eq(jobRuns.job, job)).orderBy(desc(jobRuns.startedAt)).limit(1);
-  return r ?? null;
-}
 
 /**
  * When each member was last signed in or active: the later of Supabase Auth's last sign-in and their newest session's
@@ -52,31 +37,28 @@ async function lastActivity(): Promise<Map<string, string> | null> {
   }
 }
 
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string; tab?: string }> }) {
   // Execs see everything an admin sees; only admins can change anything (the server actions enforce this too).
   const me = await requireRole("exec", "admin");
   const canMutate = me.role === "admin";
-  const { ok, error } = await searchParams;
+  const { ok, error, tab } = await searchParams;
   const transparency = transparencyEnabled(me);
 
-  const [runRows, drive, currentModelId, mcp, embedId, rerankId, filingsLastSync, weeklyRecipients, lastRuns, allTeams, members, pending, activity] = await Promise.all([
+  const [runRows, status, currentModelId, embedId, rerankId, weeklyRecipients, allTeams, members, pending, activity] = await Promise.all([
     db.select().from(jobRuns).orderBy(desc(jobRuns.startedAt)).limit(12),
-    driveStatus(),
+    loadAdminStatus(),
     agentModelId(),
-    listMcpServers().catch(() => []),
     embeddingModelId(),
     rerankModelId(),
-    getSetting(FILINGS_LAST_SYNC_SETTING),
     getSetting(WEEKLY_RECIPIENTS_SETTING),
-    Promise.all(TRACKED_JOBS.map(async (j) => [j, await lastRun(j)] as const)).then((e) => Object.fromEntries(e)),
     db.select().from(teams).orderBy(asc(teams.sortOrder)),
     db.select({ p: profiles, teamName: teams.name }).from(profiles).leftJoin(teams, eq(teams.id, profiles.teamId)).orderBy(asc(profiles.role), asc(profiles.fullName)),
     db.select().from(invitations).where(isNull(invitations.acceptedAt)).orderBy(desc(invitations.createdAt)),
     lastActivity(),
   ]);
-  const [mcpBudget, retrieval, changelogModel] = await Promise.all([
+  const { drive, mcp, last, driveUnmatched, services, filings, retrievalStats: retrieval, connections, attention } = status;
+  const [mcpBudget, changelogModel] = await Promise.all([
     mcpBudgets(mcp.map((m) => m.name)).catch(() => ({}) as Awaited<ReturnType<typeof mcpBudgets>>),
-    embeddingStats(embedId).catch(() => null),
     changelogModelId(),
   ]);
 
@@ -90,11 +72,6 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     current: r.progress.at(-1) ?? null,
     progress: transparency ? r.progress : null,
   }));
-  const last: Record<string, JobLastRun | null> = Object.fromEntries(
-    Object.entries(lastRuns).map(([job, r]) => [job, r ? { startedAt: r.startedAt.toISOString(), finishedAt: r.finishedAt?.toISOString() ?? null, ok: r.ok, summary: r.summary } : null]),
-  );
-  const lastDriveRun = lastRuns.drive_sync;
-  const lastFilingsRun = lastRuns.filings_sync;
   const currentModel = AGENT_MODELS.find((m) => m.id === currentModelId);
   const embedModel = EMBEDDING_MODELS.find((m) => m.id === embedId);
   const embedDims = (() => {
@@ -105,12 +82,17 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     }
   })();
   const weeklyTo = weeklyRecipients?.trim() || `${WEEKLY_EMAIL_DEFAULT.join(", ")} (default)`;
+  const activeTab = tab === "jobs" ? "jobs" : "members";
   // A roster sorted by role enum order puts associates first; the design leads with the fund-wide roles.
   const roleOrder = { admin: 0, exec: 1, lead_analyst: 2, associate_analyst: 3 } as const;
   const sortedMembers = [...members].sort((a, b) => roleOrder[a.p.role] - roleOrder[b.p.role] || a.p.fullName.localeCompare(b.p.fullName));
 
   return (
     <AdminView
+      tab={activeTab}
+      attention={attention}
+      connections={connections}
+      meEmail={me.email}
       canMutate={canMutate}
       transparency={transparency}
       notice={{ ok, error }}
@@ -141,12 +123,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           createdAt: i.createdAt.toISOString(),
         })),
       }}
-      jobs={{ canMutate, last, weekly: { recipients: weeklyRecipients, to: weeklyTo } }}
+      jobs={{ canMutate, last, weekly: { recipients: weeklyRecipients, to: weeklyTo }, meEmail: me.email }}
       runs={runs}
-      services={{ agent: agentConfigured(), news: finnhubConfigured(), email: emailConfigured(), webSearch: tavilyConfigured() }}
+      services={services}
       drive={drive}
-      driveUnmatched={((lastDriveRun?.summary as { unmatched?: string[] } | undefined)?.unmatched ?? []).slice(0, 12)}
-      filings={{ lastSync: filingsLastSync, lastRun: lastFilingsRun ? { ok: lastFilingsRun.ok, at: lastFilingsRun.startedAt.toISOString() } : null }}
+      driveUnmatched={driveUnmatched}
+      filings={filings}
       agent={{ id: currentModelId, label: currentModel?.label ?? null, options: AGENT_MODELS.map((m) => ({ id: m.id, label: m.label })) }}
       changelogModel={changelogModel}
       retrieval={{

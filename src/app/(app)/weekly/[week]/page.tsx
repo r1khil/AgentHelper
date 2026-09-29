@@ -10,12 +10,12 @@ export const metadata: Metadata = { title: "Weekly update" };
 export const maxDuration = 300;
 
 export default async function WeeklyPackPage({ params, searchParams }: PageProps<"/weekly/[week]">) {
-  await requireRole("exec", "admin");
+  const me = await requireRole("exec", "admin");
   const { week } = await params;
   // Packs are keyed by the Friday the week ended on; anything else is not a pack.
   if (!isFriday(week)) notFound();
   const { ok, error } = await searchParams;
-  const [packs, pack] = await Promise.all([loadPackList(), loadPackView(week)]);
+  const [packs, pack] = await Promise.all([loadPackList(), loadPackView(week, me.email)]);
   const target = lastFriday(todayNY());
   return (
     <WeeklyView

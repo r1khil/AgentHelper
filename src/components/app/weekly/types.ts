@@ -7,6 +7,8 @@ export type EmailView = {
   cc: string[];
   /** Test accounts on the list, which are never emailed. */
   skipped: string[];
+  /** The signed-in exec's address, for "Send a copy to me". */
+  me: string;
   subject: string;
   text: string;
   record: SourceEntry | null;
@@ -27,6 +29,8 @@ export type PackListItem = {
   sentAt: string | null;
   /** When the Sunday email went out for this week, if it did. */
   emailedAt: string | null;
+  /** The Sunday list is paused (only test accounts on it), so the email will not go out on its own. */
+  listPaused: boolean;
 };
 
 /** Headline figures for the week the pack reports on. Returns are fractions (0.0192 = 1.92%). */
@@ -34,6 +38,8 @@ export type WeekStats = {
   fund: number | null;
   spx: number | null;
   movementsOpened: number | null;
+  /** The movements the close check opened that week, oldest first; the move is against the S&P in percentage points. */
+  movements: { ticker: string; sessionDate: string; relativePp: number | null }[];
   window: { start: string; end: string };
 };
 

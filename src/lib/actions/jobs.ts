@@ -14,20 +14,27 @@ import { syncFilings } from "@/lib/jobs/filings";
 import { runIngest } from "@/lib/jobs/ingest";
 import { runWeeklyJob } from "@/lib/weekly/job";
 
+/**
+ * A job that emails people asks first (the Admin page's confirmation) and posts `send`: "none" runs it without sending
+ * anything, "list" lets it email who it normally would, and for the daily brief "me" emails only the admin pressing the button.
+ * A form that doesn't say sends nothing.
+ */
+const sendChoice = (fd: FormData | undefined) => String(fd?.get("send") ?? "none");
+
 export async function runCloseNow(fd: FormData) {
   await requireAdmin();
   const date = String(fd.get("date") ?? "").trim() || undefined;
   const force = fd.get("force") === "on";
-  const r = await runCloseJob({ sessionDate: date, force });
+  const r = await runCloseJob({ sessionDate: date, force, notify: sendChoice(fd) === "list" });
   revalidatePath("/admin");
-  redirect(`/admin?${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Close job ${r.sessionDate}: ${r.status}${r.reason ? ` (${r.reason})` : ""}; qualified ${r.qualified.join(", ") || "none"}; created ${r.created.length}`)}`);
+  redirect(`/admin?tab=jobs&${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Close job ${r.sessionDate}: ${r.status}${r.reason ? ` (${r.reason})` : ""}; qualified ${r.qualified.join(", ") || "none"}; created ${r.created.length}`)}`);
 }
 
-export async function runMorningNow() {
+export async function runMorningNow(fd?: FormData) {
   await requireAdmin();
-  const r = await runMorningJob();
+  const r = await runMorningJob({ notify: sendChoice(fd) === "list" });
   revalidatePath("/admin");
-  redirect(`/admin?ok=${encodeURIComponent(`Morning job: evidence ${r.evidenceFinished}, reminders ${r.reminders}, overdue ${r.overdue}, email ${JSON.stringify(r.email)}`)}`);
+  redirect(`/admin?tab=jobs&ok=${encodeURIComponent(`Morning job: evidence ${r.evidenceFinished}, reminders ${r.reminders}, overdue ${r.overdue}, email ${JSON.stringify(r.email)}`)}`);
 }
 
 export async function runPricesNow() {
@@ -36,7 +43,7 @@ export async function runPricesNow() {
   revalidatePath("/admin");
   revalidatePath("/attribution", "layout");
   const failed = Object.keys(r.failed);
-  redirect(`/admin?${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Prices job: ${r.status}${r.reason ? ` (${r.reason})` : ""}; updated ${r.updated.length}${failed.length ? `; failed ${failed.join(", ")}` : ""}${r.remaining.length ? `; remaining ${r.remaining.length}` : ""}`)}`);
+  redirect(`/admin?tab=jobs&${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Prices job: ${r.status}${r.reason ? ` (${r.reason})` : ""}; updated ${r.updated.length}${failed.length ? `; failed ${failed.join(", ")}` : ""}${r.remaining.length ? `; remaining ${r.remaining.length}` : ""}`)}`);
 }
 
 export async function runBellwethersNow() {
@@ -46,7 +53,7 @@ export async function runBellwethersNow() {
   revalidatePath("/admin");
   revalidatePath("/t/[team]/earnings", "page");
   const failed = Object.keys(r.errors);
-  redirect(`/admin?ok=${encodeURIComponent(`Bellwethers: ${r.tickers} names across ${r.etfs} sector ETFs, ${r.dated} with a report date; industries filled ${industries.filled}/${industries.checked}${failed.length ? `; failed ${failed.join(", ")}` : ""}`)}`);
+  redirect(`/admin?tab=jobs&ok=${encodeURIComponent(`Bellwethers: ${r.tickers} names across ${r.etfs} sector ETFs, ${r.dated} with a report date; industries filled ${industries.filled}/${industries.checked}${failed.length ? `; failed ${failed.join(", ")}` : ""}`)}`);
 }
 
 /** Filings sync runs after the redirect (listing EDGAR and embedding take minutes); repeated presses continue the queue. */
@@ -61,14 +68,14 @@ export async function syncFilingsNow() {
   await requireAdmin();
   filingsInBackground({ backfill: false });
   revalidatePath("/admin");
-  redirect(`/admin?ok=${encodeURIComponent("Syncing SEC filings in the background (new 10-K, 10-Q, 8-K since the last sync). Watch the filings_sync and ingest rows; press again to continue a rate-limited queue.")}`);
+  redirect(`/admin?tab=jobs&ok=${encodeURIComponent("Syncing SEC filings in the background (new 10-K, 10-Q, 8-K since the last sync). Watch the filings_sync and ingest rows; press again to continue a rate-limited queue.")}`);
 }
 
 export async function backfillFilingsNow() {
   await requireAdmin();
   filingsInBackground({ backfill: true });
   revalidatePath("/admin");
-  redirect(`/admin?ok=${encodeURIComponent("Backfilling SEC filings in the background (two years of 10-K/10-Q, ninety days of 8-K). Embedding continues a few documents per run; press again after a minute if the ingest row says rate_limited.")}`);
+  redirect(`/admin?tab=jobs&ok=${encodeURIComponent("Backfilling SEC filings in the background (two years of 10-K/10-Q, ninety days of 8-K). Embedding continues a few documents per run; press again after a minute if the ingest row says rate_limited.")}`);
 }
 
 /** Re-embed every document whose vectors are not from the current model (a model switch requeues them all). */
@@ -79,37 +86,42 @@ export async function reembedNow() {
     if (r.status !== "ok") console.warn(`[ingest] reembed ${r.status}${r.reason ? `: ${r.reason}` : ""}`);
   });
   revalidatePath("/admin");
-  redirect(`/admin?ok=${encodeURIComponent("Re-embedding in the background with the current model, newest documents first. The counts update as it goes; a rate_limited ingest row means the free-model budget is spent for now.")}`);
+  redirect(`/admin?tab=jobs&ok=${encodeURIComponent("Re-embedding in the background with the current model, newest documents first. The counts update as it goes; a rate_limited ingest row means the free-model budget is spent for now.")}`);
 }
 
-export async function runEarningsPrepNow() {
+export async function runEarningsPrepNow(fd?: FormData) {
   await requireAdmin();
-  const r = await prepEarnings();
+  const r = await prepEarnings({ notify: sendChoice(fd) === "list" });
   revalidatePath("/admin");
   const failed = Object.entries(r.failed);
-  redirect(`/admin?${failed.length && !r.built.length ? "error" : "ok"}=${encodeURIComponent(`Prep packs (${r.window.from} to ${r.window.to}): ${r.candidates} upcoming; built ${r.built.join(", ") || "none"}${failed.length ? `; failed ${failed.map(([t, e]) => `${t} (${e.slice(0, 80)})`).join("; ")}` : ""}`)}`);
+  redirect(`/admin?tab=jobs&${failed.length && !r.built.length ? "error" : "ok"}=${encodeURIComponent(`Prep packs (${r.window.from} to ${r.window.to}): ${r.candidates} upcoming; built ${r.built.join(", ") || "none"}${failed.length ? `; failed ${failed.map(([t, e]) => `${t} (${e.slice(0, 80)})`).join("; ")}` : ""}`)}`);
 }
 
 /** The Sunday weekly run, by hand. A date builds the pack for the Friday on or before it. */
 export async function runWeeklyNow(fd: FormData) {
   await requireAdmin();
   const today = String(fd.get("date") ?? "").trim() || undefined;
-  const r = await runWeeklyJob({ today });
+  const r = await runWeeklyJob({ today, send: sendChoice(fd) === "list" });
   revalidatePath("/admin");
   revalidatePath("/weekly");
   const build = r.build && "error" in r.build ? `build failed (${r.build.error})` : `built${r.build?.failed.length ? ` with ${r.build.failed.join(", ")} missing` : ""}`;
   const email = !r.email ? "no email" : "error" in r.email ? `email failed (${r.email.error})` : r.email.status === "sent" ? `emailed ${r.email.to}` : `email ${r.email.status}${r.email.reason ? ` (${r.email.reason})` : ""}`;
-  redirect(`/admin?${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Weekly job for week ending ${r.weekEnding}: ${r.reason ?? `${build}; ${email}`}`)}`);
+  redirect(`/admin?tab=jobs&${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Weekly job for week ending ${r.weekEnding}: ${r.reason ?? `${build}; ${email}`}`)}`);
 }
 
-/** Hoot's daily attribution brief, by hand: write it, then email it (to the pressing admin only, unless "everyone" is ticked). */
+/** Hoot's daily attribution brief, by hand: write it, then email it as chosen: "none" writes it and sends nothing, "me" emails the pressing admin only, "list" the whole list. */
 export async function runDailyBriefNow(fd: FormData) {
   const admin = await requireAdmin();
   const date = String(fd.get("date") ?? "").trim() || undefined;
-  const everyone = fd.get("everyone") === "on";
+  const choice = sendChoice(fd);
   const a = await runDailyBriefAnalysis({ sessionDate: date });
+  if (choice !== "me" && choice !== "list") {
+    revalidatePath("/admin");
+    redirect(`/admin?tab=jobs&${a.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Daily brief ${a.sessionDate}: analysis ${a.status}${a.reason ? ` (${a.reason})` : ""}; nothing was emailed`)}`);
+  }
+  const everyone = choice === "list";
   const s = await sendDailyBrief({ sessionDate: a.sessionDate, force: everyone, to: everyone ? undefined : [admin.email] });
   revalidatePath("/admin");
   const failed = Object.keys(s.failed);
-  redirect(`/admin?${a.status === "failed" && s.status !== "ok" ? "error" : "ok"}=${encodeURIComponent(`Daily brief ${a.sessionDate}: analysis ${a.status}${a.reason ? ` (${a.reason})` : ""}; email ${s.status}${s.reason ? ` (${s.reason})` : ""}, ${s.analysis}, sent to ${s.sent.join(", ") || "nobody"}${failed.length ? `; failed ${failed.join(", ")}` : ""}`)}`);
+  redirect(`/admin?tab=jobs&${a.status === "failed" && s.status !== "ok" ? "error" : "ok"}=${encodeURIComponent(`Daily brief ${a.sessionDate}: analysis ${a.status}${a.reason ? ` (${a.reason})` : ""}; email ${s.status}${s.reason ? ` (${s.reason})` : ""}, ${s.analysis}, sent to ${s.sent.join(", ") || "nobody"}${failed.length ? `; failed ${failed.join(", ")}` : ""}`)}`);
 }

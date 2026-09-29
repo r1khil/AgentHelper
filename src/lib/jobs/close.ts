@@ -31,7 +31,7 @@ const BUDGET_MS = 240_000;
  * The daily close check. Idempotent per session date: creating a movement twice is impossible
  * (unique index), and a completed run is not repeated unless `force` is set.
  */
-export async function runCloseJob(opts: { sessionDate?: string; force?: boolean } = {}): Promise<CloseJobResult> {
+export async function runCloseJob(opts: { sessionDate?: string; force?: boolean; notify?: boolean } = {}): Promise<CloseJobResult> {
   const started = Date.now();
   const sessionDate = opts.sessionDate ?? todayNY();
   const base: CloseJobResult = { sessionDate, status: "ok", tickers: 0, qualified: [], created: [], dataQuality: {}, evidencePending: 0, notifications: 0 };
@@ -148,7 +148,7 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
       "",
       "This is an automated factual alert. Anyone on the team can write the update.",
     ].join("\n");
-    for (const r of recipients) {
+    for (const r of opts.notify === false ? [] : recipients) {
       const queued = await queueNotification({ kind: "movement_alert", recipientId: r.id, recipientEmail: r.email, refId: id, dedupeKey: `movement:${id}:${r.id}`, subject, body });
       if (queued) result.notifications++;
     }
@@ -167,6 +167,10 @@ export async function runCloseJob(opts: { sessionDate?: string; force?: boolean 
     }
   }
 
+  if (opts.notify === false) {
+    progress.step("no notifications", { reason: "run without sending" });
+    return finish(result);
+  }
   progress.step("send notifications", { queued: result.notifications });
   try {
     await sendPendingNotifications();

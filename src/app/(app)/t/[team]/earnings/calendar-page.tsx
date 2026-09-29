@@ -4,6 +4,8 @@ import { isFundWide, listAccessibleTeams } from "@/lib/auth";
 import { loadTeamSectors } from "@/lib/attribution/load";
 import { listBellwethers, listCalendarHoldingEvents, listHoldingIndustries, listTeamEarnings } from "@/lib/earnings";
 import {
+  EARNINGS_DEFAULT_LAYOUT,
+  LIST_DAYS,
   buildMonthGrid,
   defaultSelectedDay,
   expectationsState,
@@ -17,39 +19,39 @@ import {
   type CalendarKind,
 } from "@/lib/earnings-calendar";
 import { NY, todayNY } from "@/lib/providers/calendar";
-import { calendarFactorContext } from "@/lib/risk/factor-context";
 import { loadScope } from "@/lib/teams";
 import { CalendarView, type ReportRow } from "@/components/app/earnings/calendar-view";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
 /**
- * The Calendar: the Fund's and bellwethers' earnings merged with the economic releases, one week at a time.
- * /t/[team]/earnings opens on the Fund's own reports and /t/[team]/economic-calendar on the releases; the Show
- * filters (the `?show=` param) add the rest.
- * Earnings load here; the releases stream in on the client from /api/economic-calendar and refresh every minute.
+ * The Calendar's Earnings tab: the Fund's reports (and, when ticked under Show, sector bellwethers and economic releases)
+ * as a list of the coming weeks, a week or a month. The Fund's own reports are what it opens on. Earnings load here; the
+ * releases, when shown, stream in on the client from /api/economic-calendar.
  */
-export async function CalendarPage({ slug, sp, route, defaultShow }: { slug: string; sp: SearchParams; route: "earnings" | "economic-calendar"; defaultShow: CalendarKind[] }) {
+export async function CalendarPage({ slug, sp, defaultShow }: { slug: string; sp: SearchParams; defaultShow: CalendarKind[] }) {
   const scope = await loadScope(slug);
   const { team, user, teamById } = scope;
   const today = todayNY();
-  const parsed = parseCalendarQuery(sp, today, defaultShow);
+  const parsed = parseCalendarQuery(sp, today, defaultShow, EARNINGS_DEFAULT_LAYOUT);
   // Sector and Industry are relative to one team's sectors, so the fund-wide page always shows the Fund calendar.
   const query = team ? parsed : { ...parsed, scope: "fund" as const, industry: undefined };
   const grid = buildMonthGrid(query.month);
-  // The grid ends on a Friday; reach through that weekend so the last week is whole.
-  const through = DateTime.fromISO(grid.end, { zone: NY }).plus({ days: 2 }).toISODate()!;
+  // The grid ends on a Friday; reach through that weekend so the last week is whole. The list runs five weeks from today.
+  const listEnd = DateTime.fromISO(today, { zone: NY }).plus({ days: LIST_DAYS - 1 }).toISODate()!;
+  const through = [DateTime.fromISO(grid.end, { zone: NY }).plus({ days: 2 }).toISODate()!, listEnd].sort().at(-1)!;
+  const from = [grid.start, today].sort()[0];
   const sectors = team ? ((await loadTeamSectors()).get(team.id) ?? []) : [];
   const [rows, holdingEvents, bellwethers, holdingIndustries, accessibleTeams] = await Promise.all([
     listTeamEarnings(scope.teamIds),
-    listCalendarHoldingEvents(grid.start, through),
+    listCalendarHoldingEvents(from, through),
     listBellwethers(),
     team ? listHoldingIndustries(team.id, sectors) : [],
     listAccessibleTeams(user),
   ]);
   const accessibleTeamIds = accessibleTeams.map((t) => t.id);
 
-  const all = toCalendarEvents(holdingEvents, bellwethers).filter((ev) => ev.date >= grid.start && ev.date <= through);
+  const all = toCalendarEvents(holdingEvents, bellwethers).filter((ev) => ev.date >= from && ev.date <= through);
   const events = filterCalendarEvents(all, { view: query.scope, teamId: team?.id ?? "", teamSectors: sectors, industry: query.industry });
   // The week to open on follows what is shown, so a month of bellwethers doesn't pick it for a Fund-only calendar.
   const byDate = groupByDate(events.filter((ev) => query.show.includes(kindOf(ev))));
@@ -91,6 +93,7 @@ export async function CalendarPage({ slug, sp, route, defaultShow }: { slug: str
     return {
       id: e.id,
       ticker: h.ticker,
+      name: h.companyName ?? h.ticker,
       teamSlug: t?.slug ?? null,
       teamName: t?.name ?? null,
       reportDate: e.reportDate,
@@ -105,9 +108,11 @@ export async function CalendarPage({ slug, sp, route, defaultShow }: { slug: str
 
   return (
     <CalendarView
-      base={`/t/${scope.slug}/${route}`}
+      base={`/t/${scope.slug}/earnings`}
+      economicBase={`/t/${scope.slug}/economic-calendar`}
       scopeSlug={scope.slug}
       defaultShow={defaultShow}
+      defaultLayout={EARNINGS_DEFAULT_LAYOUT}
       query={query}
       today={today}
       selectedDay={selectedDay}
@@ -118,9 +123,6 @@ export async function CalendarPage({ slug, sp, route, defaultShow }: { slug: str
       notices={notices}
       reports={reports}
       showTeam={!team}
-      teamSlug={slug}
-      // Not awaited: the calendar renders at once and the factor lines stream in when the risk report is ready.
-      factorContext={calendarFactorContext(user)}
     />
   );
 }
