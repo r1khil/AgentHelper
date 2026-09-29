@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { rejectHeldTicket } from "@/lib/attribution/held-tickets";
-import { markRepeats, recordable, ticketsToCsv, type TicketRead } from "@/lib/attribution/ticket";
-import { checkLedger, checkPrices, MAX_TICKET_BYTES, readTicketDocx, recordTickets } from "@/lib/attribution/ticket-record";
+import { markRepeats, MAX_PASTED_TICKETS, recordable, ticketsToCsv, type TicketRead } from "@/lib/attribution/ticket";
+import { checkLedger, checkPastedTickets, checkPrices, MAX_TICKET_BYTES, readTicketDocx, recordTickets } from "@/lib/attribution/ticket-record";
+import { pastedTicketsSummary } from "@/lib/attribution/pasted-tickets";
 import { previewLedgerImport, type ImportPreview } from "./ledger";
 import type { ActionResult } from "./holdings";
 
@@ -64,6 +65,23 @@ export async function applyTradeTickets(fd: FormData): Promise<ActionResult> {
   if (!r.ok) return r;
   const n = r.trades;
   return { ok: true, message: `Recorded ${n} trade${n === 1 ? "" : "s"} from tickets.${r.warning ? ` ${r.warning}` : ""}` };
+}
+
+/**
+ * Records trade tickets an exec or admin pasted into a Hoot chat, once they click Confirm on Hoot's card. Re-reads
+ * and re-checks the text rather than trusting the card: trades the ledger already has are skipped, and a price more
+ * than 5% from that day's close is held for the Ledger page, as for an emailed ticket.
+ */
+export async function recordPastedTradeTickets(texts: string[]): Promise<ActionResult> {
+  const user = await requireRole("exec", "admin");
+  if (!Array.isArray(texts) || !texts.length || texts.length > MAX_PASTED_TICKETS || texts.some((t) => typeof t !== "string" || t.length > 5000)) {
+    return { ok: false, error: "Those tickets can't be read." };
+  }
+  const check = await checkPastedTickets(texts);
+  if (!check.ready.length) return { ok: false, error: `Nothing to record. ${pastedTicketsSummary(check, 0)}`.trim() };
+  const r = await recordTickets(check.ready, user.id);
+  if (!r.ok) return r;
+  return { ok: true, message: `${pastedTicketsSummary(check, r.trades)}${r.warning ? ` ${r.warning}` : ""}` };
 }
 
 /** Takes a ticket Hoot held back off the review list. It is not recorded; the emailed ticket stays in the log. */

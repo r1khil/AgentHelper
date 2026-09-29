@@ -46,6 +46,14 @@ describe("scoreTurn", () => {
     expect(errored.checks.find((c) => c.name === "answered")?.pass).toBe(false);
   });
 
+  it("passes a proposal only when the change tool returned a card, not a refusal", () => {
+    const c: EvalCase = { ...backtest, expect: { proposes: ["add_note"] } };
+    const proposal = { kind: "add_note", forUserId: "u", summary: "Add a note to AXP", expiresAt: "2026-09-29T16:00:00Z", holdingId: "h", ticker: "AXP", teamName: "FIG", body: "Guided to 8%." };
+    expect(scoreTurn(c, message([tool("add_note", { ticker: "AXP" }, { data: { proposal, note: "n" } }), { type: "text", text: "Confirm the card." }])).pass).toBe(true);
+    const refused = scoreTurn(c, message([tool("add_note", { ticker: "ZZZ" }, { data: null, error: "ZZZ isn't an active holding" }), { type: "text", text: "No." }]));
+    expect(refused.checks.find((x) => x.name === "proposes add_note")).toMatchObject({ pass: false, detail: "ZZZ isn't an active holding" });
+  });
+
   it("accepts either tool of an a|b expectation", () => {
     const c: EvalCase = { ...backtest, expect: { calls: ["get_news|search_web"] } };
     expect(scoreTurn(c, message([tool("search_web", { query: "x" }, { data: {} }), { type: "text", text: "ok" }])).pass).toBe(true);

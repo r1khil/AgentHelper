@@ -127,6 +127,24 @@ export function parseTicket(text: string, file: string): TicketRead {
   return done(ticket);
 }
 
+/** At most this many tickets are read from one pasted message, the same cap as the Ledger page's upload. */
+export const MAX_PASTED_TICKETS = 15;
+const MAX_TICKET_TEXT = 5000;
+
+/**
+ * Trade tickets pasted into a message as text: one per "Action (Buy, Sell):" line, running to the next one. A block
+ * counts only when it also has two of the Equity, Price and Number of Shares lines, so a sentence that happens to
+ * start with "Action:" isn't a ticket. Quote markers ("> ") from a forward are dropped.
+ */
+export function ticketsInText(text: string): string[] {
+  const lines = text.replace(/\r\n/g, "\n").split("\n").map((l) => l.replace(/^\s*(>\s?)+/, ""));
+  const starts = lines.flatMap((l, i) => (/^\s*Action\s*(\([^)]*\))?\s*:/i.test(l) ? [i] : []));
+  const blocks = starts.map((s, k) => lines.slice(s, starts[k + 1] ?? lines.length).join("\n").trim().slice(0, MAX_TICKET_TEXT));
+  return blocks
+    .filter((b) => ["equity", "price", "number of shares"].filter((l) => new RegExp(`^\\s*${l}\\b[^:\\n]{0,30}:`, "im").test(b)).length >= 2)
+    .slice(0, MAX_PASTED_TICKETS);
+}
+
 export function ticketNote(t: TradeTicket): string {
   return ["Trade ticket", t.time, t.semester, t.sector].filter(Boolean).join(" · ").slice(0, 500);
 }
