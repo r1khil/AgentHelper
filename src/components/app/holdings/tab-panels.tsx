@@ -10,7 +10,8 @@ import { RowLink } from "@/components/app/row-link";
 const ROW = "flex items-center gap-3 border-b border-row px-4 last:border-b-0";
 
 function Tag({ children, hot }: { children: React.ReactNode; hot?: boolean }) {
-  return <span className={cn("grid h-5 min-w-[50px] shrink-0 place-items-center rounded-full px-1.5 font-mono text-caption font-medium", hot ? "bg-hoot text-hoot-foreground" : "bg-muted text-ink-2")}>{children}</span>;
+  // A kind is a word, not a badge: grey, and ink for something filed in the last few days.
+  return <span className={cn("w-[50px] shrink-0 text-caption font-semibold", hot ? "text-foreground" : "text-muted-foreground")}>{children}</span>;
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
@@ -48,7 +49,7 @@ export function ResearchTab({ ticker, chats, boardHref }: { ticker: string; chat
                     {c.author ?? "Someone"} · {c.questions} question{c.questions === 1 ? "" : "s"}
                   </span>
                 </span>
-                {c.running && <Pill tone="hoot">Answering…</Pill>}
+                {c.running && <Pill tone="caution">Answering…</Pill>}
                 <span className="shrink-0 font-mono text-body text-muted-foreground">{relativeTime(c.updatedAt)}</span>
               </RowLink>
             </li>

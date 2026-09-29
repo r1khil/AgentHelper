@@ -90,6 +90,15 @@ export function fmtChangeUsd(n: Num, digits = 2) {
   return plus(n, fmtUsd(n, digits));
 }
 
+/**
+ * A move in money and percent together: "+$17,294.21 (+0.39%)" up, "($49,570.01) (1.06%)" down. A percentage already
+ * in parentheses isn't wrapped again. `money` is already formatted (dollars or a plain amount).
+ */
+export function fmtChangePair(money: string, pct: Num, digits = 2) {
+  const p = fmtChangePct(pct, digits);
+  return p.startsWith("(") ? `${money} ${p}` : `${money} (${p})`;
+}
+
 /** Percentage points to basis points (1 pp = 100 bp), keeping a missing value missing. */
 export function ppToBp(pp: Num): number | null {
   const v = toNumber(pp);

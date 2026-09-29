@@ -1,6 +1,8 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
+import { rejectHeldTicket } from "@/lib/attribution/held-tickets";
 import { markRepeats, recordable, ticketsToCsv, type TicketRead } from "@/lib/attribution/ticket";
 import { checkLedger, checkPrices, MAX_TICKET_BYTES, readTicketDocx, recordTickets } from "@/lib/attribution/ticket-record";
 import { previewLedgerImport, type ImportPreview } from "./ledger";
@@ -62,4 +64,13 @@ export async function applyTradeTickets(fd: FormData): Promise<ActionResult> {
   if (!r.ok) return r;
   const n = r.trades;
   return { ok: true, message: `Recorded ${n} trade${n === 1 ? "" : "s"} from tickets.${r.warning ? ` ${r.warning}` : ""}` };
+}
+
+/** Takes a ticket Hoot held back off the review list. It is not recorded; the emailed ticket stays in the log. */
+export async function rejectTicket(id: string): Promise<ActionResult> {
+  const user = await requireRole("exec", "admin");
+  if (!/^[0-9a-f-]{36}:\d{1,3}$/.test(id)) return { ok: false, error: "That ticket is not on the list." };
+  await rejectHeldTicket(id, user.id);
+  revalidatePath("/attribution/ledger");
+  return { ok: true, message: "Rejected. It is not in the ledger." };
 }

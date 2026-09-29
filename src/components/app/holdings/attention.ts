@@ -1,14 +1,14 @@
 import { DateTime } from "luxon";
 import { previousTradingDay } from "@/lib/providers/calendar";
-import { fmtDay } from "@/lib/format";
+import { fmtChangeBp, fmtDay, fmtDayMonth } from "@/lib/format";
 import type { PillTone } from "@/components/app/panel";
 
 /** A "Needs attention" pill on the Holdings list. Pink only for an overdue write-up (hot); caution for due/missing. */
-export type AttentionFlag = { tone: Extract<PillTone, "hoot" | "caution" | "neutral">; label: string; href?: string };
+export type AttentionFlag = { tone: Extract<PillTone, "hoot" | "caution" | "neutral">; label: string; /** A grey line under the label: why, or what to do. */ detail?: string; href?: string };
 
 /** The subset of `HoldingSignals` (src/lib/holdings.ts) the flags are derived from; plain data, no server imports. */
 export type AttentionInput = {
-  openMovement: { id: string; dueAt: Date | null } | null;
+  openMovement: { id: string; dueAt: Date | null; sessionDate?: string; /** Its move against the S&P 500, in percentage points. */ relativeMovePp?: number | null } | null;
   nextReport: { id: string; reportDate: string; reportHour: string | null; locked: boolean } | null;
   modelUpdates: number;
   thesisProposed: boolean;
@@ -43,13 +43,15 @@ export function attentionFlags(s: AttentionInput, ctx: { teamSlug: string; ticke
   if (s.openMovement) {
     const due = s.openMovement.dueAt;
     const href = `${base}/movements/${s.openMovement.id}`;
-    if (due && due.getTime() < ctx.now) out.push({ tone: "hoot", label: "Write-up overdue", href });
-    else out.push({ tone: "caution", label: due ? `Write-up due ${fmtDay(due)}` : "Write-up open", href });
+    const { relativeMovePp, sessionDate } = s.openMovement;
+    const moved = relativeMovePp != null && sessionDate ? `Moved ${fmtChangeBp(relativeMovePp * 100)} on ${fmtDayMonth(sessionDate)}` : undefined;
+    if (due && due.getTime() < ctx.now) out.push({ tone: "hoot", label: "Write-up overdue", detail: moved, href });
+    else out.push({ tone: "caution", label: due ? `Write-up due ${fmtDay(due)}` : "Write-up open", detail: moved, href });
   }
   if (s.nextReport && !s.nextReport.locked && reportsWithin(s.nextReport.reportDate, ctx.today)) {
-    out.push({ tone: "caution", label: `Expectations due ${shortDate(expectationsDue(s.nextReport.reportDate, s.nextReport.reportHour))}`, href: `${base}/earnings/${s.nextReport.id}` });
+    out.push({ tone: "caution", label: `Expectations due ${shortDate(expectationsDue(s.nextReport.reportDate, s.nextReport.reportHour))}`, detail: "Lock them before the report", href: `${base}/earnings/${s.nextReport.id}` });
   }
-  if (s.modelUpdates > 0) out.push({ tone: "neutral", label: `${s.modelUpdates} model update${s.modelUpdates === 1 ? "" : "s"}`, href: `${base}/models` });
-  if (s.thesisProposed) out.push({ tone: "neutral", label: "Thesis proposed", href: `${base}/h/${encodeURIComponent(ctx.ticker)}` });
+  if (s.modelUpdates > 0) out.push({ tone: "neutral", label: `${s.modelUpdates} model update${s.modelUpdates === 1 ? "" : "s"}`, detail: "Values to decide", href: `${base}/models` });
+  if (s.thesisProposed) out.push({ tone: "neutral", label: "Thesis proposed", detail: "Accept or dismiss it", href: `${base}/h/${encodeURIComponent(ctx.ticker)}` });
   return out;
 }

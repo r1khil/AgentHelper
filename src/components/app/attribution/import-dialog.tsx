@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Upload } from "lucide-react";
 import { toast } from "sonner";
 import { applyLedgerImport, previewLedgerImport, type ImportPreview } from "@/lib/actions/ledger";
 import { IMPORT_TEMPLATE } from "@/lib/attribution/csv";
@@ -49,8 +48,7 @@ export function ImportDialog() {
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
-      <DialogTrigger render={<Button size="sm" variant="outline" />}>
-        <Upload />
+      <DialogTrigger render={<Button size="sm" variant="secondary" />}>
         Import CSV
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">

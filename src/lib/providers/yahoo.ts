@@ -161,6 +161,38 @@ export async function getEarningsDate(symbol: string): Promise<EarningsDate | nu
   });
 }
 
+/** A company's headline statistics from Yahoo's summary, for a holding's page. Any of them can be missing (an ETF has no P/E). */
+export type KeyStats = {
+  marketCap?: number;
+  /** Forward price-to-earnings (next twelve months). */
+  forwardPE?: number;
+  fiftyTwoWeekLow?: number;
+  fiftyTwoWeekHigh?: number;
+  /** Average daily volume over three months, in shares. */
+  avgVolume?: number;
+  /** In percent. */
+  dividendYield?: number;
+  /** Five-year monthly beta against the S&P 500, as Yahoo reports it. */
+  beta?: number;
+};
+
+export async function getKeyStats(symbol: string): Promise<KeyStats> {
+  return cached(`yahoo:keystats:${symbol}`, 60 * 15, async () => {
+    const res = await spaced(HOST, GAP_MS, () => retry(() => yf().quoteSummary(symbol, { modules: ["summaryDetail"] })));
+    const d = res.summaryDetail;
+    if (!d) return {};
+    return {
+      marketCap: d.marketCap,
+      forwardPE: d.forwardPE,
+      fiftyTwoWeekLow: d.fiftyTwoWeekLow,
+      fiftyTwoWeekHigh: d.fiftyTwoWeekHigh,
+      avgVolume: d.averageVolume,
+      dividendYield: d.dividendYield === undefined ? undefined : d.dividendYield * 100,
+      beta: d.beta,
+    };
+  });
+}
+
 /**
  * Five-minute closes for one session (regular hours only), as UTC ISO times. Cached five minutes while the session can
  * still move and a day once it is over, in the shared cache so every viewer of the Daily page reuses one fetch.

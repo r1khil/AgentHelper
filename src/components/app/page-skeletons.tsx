@@ -1,4 +1,5 @@
 import { LastSessionSkeleton } from "@/app/(app)/_today/last-session";
+import { SkeletonPageHead } from "@/components/app/page-head";
 import { StressPanelFallback } from "@/components/app/risk/stress-panel";
 import { cn } from "@/lib/utils";
 import { SkeletonPageHead } from "./page-head";
@@ -101,141 +102,215 @@ export function TodaySkeleton() {
   );
 }
 
-/* ------------------------------------------------------------------------------------------------ Holdings */
+/* ------------------------------------------------------------------------------------------------ Portfolio and team */
 
-/** components/app/holdings/holdings-table.tsx GRID. */
-const HOLDINGS_GRID =
-  "grid grid-cols-[64px_minmax(0,1fr)_56px_72px_68px_72px_84px_168px] items-center gap-3 px-4 xl:grid-cols-[64px_minmax(0,1fr)_64px_64px_80px_76px_76px_96px_168px]";
-/** The third cell is the 5-day sparkline, which only shows from xl. */
-const HOLDING_CELLS = ["w-11", "w-3/5", "hidden w-10 justify-self-end xl:block", "w-10 justify-self-end", "w-12 justify-self-end", "w-10 justify-self-end", "w-10 justify-self-end", "w-16", "h-[22px] w-24 rounded-full"];
-
-/** Holdings (`t/[team]/page.tsx`): the filter chips and market line, then the holdings table grouped by team. */
-export function HoldingsSkeleton() {
+/**
+ * The Overview's body (`t/[team]/fund-overview.tsx`, components/app/portfolio/*): the fund's label, value and change,
+ * the 220px chart with its range row, the six-number strip, Needs you beside This week, then the positions table.
+ */
+export function OverviewSkeletonBody() {
   return (
-    <SkeletonPage className="flex flex-col gap-4">
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <SkeletonPill className="w-[118px]" />
-        <SkeletonPill className="w-[150px]" />
-        <SkeletonPill className="w-[178px]" />
+    <div className="flex flex-col">
+      <TextBone className="text-body" w="w-16" />
+      <TextBone className="hero-figure" w="w-72" />
+      <TextBone className="text-emph" w="w-96" />
+      <SkeletonChart className="mt-[22px] h-[220px]" />
+      <div className="mt-3 flex items-center gap-1 border-b pb-3.5">
+        {range(6).map((i) => (
+          <Bone key={i} className="h-7 w-10 rounded-lg" />
+        ))}
+        <span className="flex-1" />
+        <TextBone className="text-caption" w="w-80" />
+      </div>
+      <div className="grid grid-cols-6 gap-4 border-b pt-[18px] pb-5">
+        {range(6).map((i) => (
+          <div key={i} className="flex min-w-0 flex-col gap-[3px]">
+            <TextBone className="text-caption" w="w-20" />
+            <TextBone className="figure text-title" w="w-16" />
+            <TextBone className="text-caption" w="w-24" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-14 pt-[22px] pb-1.5">
+        {[4, 4].map((rows, s) => (
+          <div key={s}>
+            <TextBone className="mb-1 text-body font-bold" w="w-16" />
+            {range(rows).map((i) => (
+              <div key={i} className="grid min-h-10 grid-cols-[70px_minmax(0,1fr)_auto] items-center gap-3 border-b border-row">
+                <Bone className="h-3 w-12 rounded-[4px]" />
+                <Bone className="h-3 w-3/4 rounded-[4px]" />
+                <Bone className="h-3 w-20 rounded-[4px]" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 flex items-center gap-2">
+        <TextBone className="flex-1 text-title font-bold" w="w-28" />
+        {["w-16", "w-24", "w-20", "w-16"].map((w, i) => (
+          <Bone key={i} className={cn("h-7 rounded-lg", w)} />
+        ))}
+      </div>
+      <div className="mt-2.5 flex flex-col">
+        <div className="flex h-8 items-center border-b">
+          <Bone className="h-2.5 w-12 rounded-[4px]" />
+        </div>
+        {range(9).map((i) => (
+          <div key={i} className={cn("flex items-center border-b", i === 0 ? "h-9" : "h-10 border-row")}>
+            <Bone className={cn("h-3 rounded-[4px]", i === 0 ? "w-40" : "ml-4 w-28")} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Portfolio · Overview (`t/[team]/fund-overview.tsx`): the body, under the header the shell draws. */
+export function OverviewSkeleton() {
+  return (
+    <>
+      <SkeletonPageHead tabs={6} />
+      <SkeletonPage>
+        <OverviewSkeletonBody />
+      </SkeletonPage>
+    </>
+  );
+}
+
+/** A team's page (`t/[team]/team-page.tsx`): the label, value and line, four figures, the filter row, the holdings table. */
+export function TeamSkeleton() {
+  return (
+    <>
+      <SkeletonPageHead />
+      <SkeletonPage className="flex flex-col">
+      <TextBone className="text-body" w="w-64" />
+      <TextBone className="hero-figure" w="w-56" />
+      <TextBone className="text-emph" w="w-96" />
+      <SkeletonStatStrip cells={4} className="mt-[18px]" />
+      <div className="mt-[22px] flex shrink-0 flex-wrap items-center gap-1">
+        <TextBone className="mr-3 text-title font-bold" w="w-24" />
+        <Bone className="h-7 w-16 rounded-lg" />
+        <Bone className="h-7 w-32 rounded-lg" />
+        <Bone className="h-7 w-44 rounded-lg" />
         <span className="flex-1" />
         <TextBone className="text-body" w="w-48" />
       </div>
-      <section className="panel flex flex-col overflow-hidden">
-        <div className="flex min-w-[920px] flex-col">
-          <div className={cn(HOLDINGS_GRID, "h-9 shrink-0 border-b")}>
-            {HOLDING_CELLS.map((_, i) => (
-              <Bone key={i} className={cn("h-2.5 w-10 rounded-[4px]", i > 1 && i < 7 && "justify-self-end", i === 2 && "hidden xl:block")} />
-            ))}
-          </div>
-          {[5, 4].map((rows, g) => (
-            <div key={g}>
-              <div className="flex h-9 items-center gap-2.5 border-b bg-band px-4">
-                <Bone className="h-3 w-28 rounded-[4px]" />
-                <Bone className="h-3 w-16 rounded-[4px]" />
-              </div>
-              {range(rows).map((i) => (
-                <div key={i} className={cn(HOLDINGS_GRID, "h-10 border-b border-row")}>
-                  {HOLDING_CELLS.map((c, j) => (
-                    <Bone key={j} className={cn("h-3 rounded-[4px]", c)} />
-                  ))}
-                </div>
-              ))}
-            </div>
-          ))}
+      <div className="mt-2.5 flex flex-col">
+        <div className="flex h-8 items-center border-b">
+          <Bone className="h-2.5 w-16 rounded-[4px]" />
         </div>
-      </section>
-    </SkeletonPage>
+        {range(5).map((i) => (
+          <div key={i} className="flex h-12 items-center border-b border-row">
+            <Bone className="h-3 w-24 rounded-[4px]" />
+          </div>
+        ))}
+      </div>
+      </SkeletonPage>
+    </>
   );
 }
 
 /* ------------------------------------------------------------------------------------------------ Holding */
 
+/** components/app/holdings/holding-sections.tsx KeyValueSection: a title over two columns of 40px rows. */
+function SkeletonKeyValues({ rows }: { rows: number }) {
+  return (
+    <section className="min-w-0">
+      <TextBone className="text-title font-bold" w="w-32" />
+      <div className="mt-2 grid grid-cols-2 gap-x-6">
+        {range(rows * 2).map((i) => (
+          <div key={i} className="flex h-10 items-center justify-between border-b border-row">
+            <Bone className="h-3 w-24 rounded-[4px]" />
+            <Bone className="h-3 w-14 rounded-[4px]" />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /**
- * A holding's Overview tab (`t/[team]/h/[ticker]/page.tsx`, holdings/holding-header.tsx and tab-panels.tsx): the
- * ticker line and actions, the tabs, then the price chart, thesis and notes beside At a glance and Latest.
+ * A holding's Overview tab (`t/[team]/h/[ticker]/page.tsx`): the header with its five tabs, the company and ticker,
+ * the price and its change, the chart with its range row, Fund position beside Key statistics, the thesis and notes
+ * beside Research and Coverage, then Latest beside the price against the S&P 500.
  */
 export function HoldingSkeleton() {
   return (
-    <SkeletonPage className="flex min-h-0 flex-1 flex-col gap-4 md:-mt-1">
-      <div className="flex shrink-0 flex-wrap items-end gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <TextBone className="font-mono text-display leading-tight" w="w-20" />
-            {/* Company · team, then the price, the day's move and the move against the S&P 500. */}
-            <TextBone className="text-emph" w="w-80" />
-            <TextBone className="ml-2 font-mono text-title" w="w-16" />
-            <TextBone className="text-body" w="w-14" />
-            <TextBone className="text-body" w="w-36" />
-          </div>
+    <>
+      <SkeletonPageHead tabs={5} />
+      <SkeletonPage className="flex min-w-0 flex-col">
+        <div className="flex flex-col">
+          <TextBone className="text-emph font-semibold" w="w-40" />
+          <TextBone className="text-caption" w="w-56" />
         </div>
-        <span className="flex-1" />
-        <div className="flex items-center gap-2">
-          <SkeletonPill className="h-[34px] w-[150px]" />
-          <SkeletonPill className="h-[34px] w-[150px]" />
-          <SkeletonPill className="size-9" />
+        <TextBone className="hero-figure" w="w-52" />
+        <TextBone className="text-emph" w="w-96" />
+        <SkeletonChart className="mt-[22px] h-[220px]" />
+        <div className="mt-3 flex items-center gap-1 border-b pb-3.5">
+          {range(6).map((i) => (
+            <Bone key={i} className="h-7 w-10 rounded-lg" />
+          ))}
         </div>
-      </div>
-      <SkeletonTabs widths={["w-16", "w-16", "w-36", "w-16", "w-12"]} />
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="flex min-h-0 min-w-0 flex-col gap-5">
-          {/* Price chart */}
-          <section className="panel min-w-0 shrink-0 px-4 py-3.5">
-            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
-              <TextBone className="text-emph font-semibold" w="w-32" />
-              <TextBone className="text-body" w="w-24" />
-              <TextBone className="text-body" w="w-24" />
-              <span className="flex-1" />
-              <TextBone className="text-body" w="w-20" />
-              <SkeletonPill className="w-52" />
-            </div>
-            <SkeletonChart className="mt-2.5 h-[200px]" />
-          </section>
-          {/* Thesis: a plain section */}
-          <section className="panel-plain shrink-0 px-4 py-2">
-            <TextBone className="text-emph font-semibold" w="w-16" />
-            <div className="mt-2">
-              {["w-full", "w-full", "w-11/12", "w-2/3"].map((w, i) => (
-                <TextBone key={i} className="text-emph leading-[1.55]" w={w} />
-              ))}
-            </div>
-          </section>
-          {/* Team notes: a plain section, no dividers */}
-          <SkeletonPanel variant="plain">
-            <SkeletonPanelHeader w="w-24" aside="w-48" />
-            {range(3).map((i) => (
-              <div key={i} className="flex gap-3 px-4 py-2.5">
-                <Bone className="size-[26px] shrink-0 rounded-full" />
-                <div className="min-w-0 flex-1">
-                  <TextBone className="text-body" w="w-40" />
-                  <TextBone className="mt-0.5 text-body" w="w-4/5" />
-                </div>
+        <div className="mt-[26px] grid grid-cols-2 gap-14">
+          <SkeletonKeyValues rows={4} />
+          <SkeletonKeyValues rows={4} />
+        </div>
+        <div className="mt-[30px] grid grid-cols-2 items-start gap-14">
+          <div className="flex min-w-0 flex-col gap-6">
+            <section>
+              <TextBone className="text-title font-bold" w="w-16" />
+              <div className="mt-2">
+                {["w-full", "w-full", "w-11/12", "w-2/3"].map((w, i) => (
+                  <TextBone key={i} className="text-emph" w={w} />
+                ))}
               </div>
-            ))}
-          </SkeletonPanel>
-        </div>
-        <div className="flex min-h-0 min-w-0 flex-col gap-5">
-          {/* At a glance */}
-          <SkeletonPanel className="shrink-0">
-            <SkeletonRows count={5} row="flex h-[42px] gap-2.5" cells={["w-20", "ml-[28px] w-32"]} />
-          </SkeletonPanel>
-          {/* Latest: a plain section of 48px rows, no dividers */}
-          <SkeletonPanel variant="plain">
-            <SkeletonPanelHeader w="w-14" aside="w-36" />
-            <div className="flex flex-col">
-              {range(7).map((i) => (
-                <div key={i} className="flex min-h-[48px] items-center gap-2.5 px-4 py-1.5">
-                  <Bone className="h-5 w-[50px] shrink-0 rounded-full" />
+            </section>
+            <section>
+              <TextBone className="text-title font-bold" w="w-24" />
+              {range(2).map((i) => (
+                <div key={i} className="flex gap-3 border-b border-row py-2.5">
+                  <Bone className="size-[26px] shrink-0 rounded-full" />
                   <div className="min-w-0 flex-1">
-                    <TextBone className="text-body leading-snug" w="w-4/5" />
-                    <TextBone className="mt-px text-caption" w="w-24" />
+                    <TextBone className="text-body" w="w-40" />
+                    <TextBone className="mt-0.5 text-body" w="w-4/5" />
                   </div>
                 </div>
               ))}
-            </div>
+            </section>
+          </div>
+          <div className="flex min-w-0 flex-col gap-6">
+            <section>
+              <TextBone className="mb-1.5 text-title font-bold" w="w-24" />
+              {range(6).map((i) => (
+                <div key={i} className="grid h-[42px] grid-cols-[90px_minmax(0,1fr)_auto] items-center gap-3 border-b border-row">
+                  <Bone className="h-3 w-14 rounded-[4px]" />
+                  <Bone className="h-3 w-3/4 rounded-[4px]" />
+                  <Bone className="h-3 w-16 rounded-[4px]" />
+                </div>
+              ))}
+            </section>
+          </div>
+        </div>
+        <div className="mt-[30px] grid grid-cols-2 items-start gap-14">
+          <section>
+            <TextBone className="text-title font-bold" w="w-16" />
+            {range(5).map((i) => (
+              <div key={i} className="grid min-h-12 grid-cols-[58px_minmax(0,1fr)] items-center gap-3 border-b border-row py-1.5">
+                <Bone className="h-3 w-10 rounded-[4px]" />
+                <div>
+                  <TextBone className="text-body leading-snug" w="w-4/5" />
+                  <TextBone className="text-caption" w="w-24" />
+                </div>
+              </div>
+            ))}
+          </section>
+          <SkeletonPanel className="shrink-0 px-4 py-3.5">
+            <TextBone className="text-emph font-semibold" w="w-32" />
+            <SkeletonChart className="mt-2.5 h-[200px]" />
           </SkeletonPanel>
         </div>
-      </div>
-    </SkeletonPage>
+      </SkeletonPage>
+    </>
   );
 }
 
@@ -865,34 +940,50 @@ export function AttributionSkeleton() {
   );
 }
 
-/** The ledger (attribution/ledger-view.tsx, Trades tab): the title line, the strip, the PT sheet check, the tabs, the trades table. */
+/**
+ * Portfolio · Activity (`attribution/ledger/page.tsx`, portfolio/activity-view.tsx): the header with the portfolio's tabs,
+ * the History row with its filters and buttons, the totals line, then the entries by day. Tickets to review, when
+ * there are any, push it down.
+ */
 export function LedgerSkeleton() {
   return (
-    <SkeletonPage className="flex min-h-0 flex-1 flex-col gap-5">
-      <div className="flex shrink-0 flex-wrap items-center gap-3">
-        <TextBone className="text-title font-semibold" w="w-16" />
-        <TextBone className="text-body" w="w-72" />
-      </div>
-      <SkeletonStatStrip cells={4} />
-      <TextBone className="text-body" w="w-72" />
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <SkeletonTabs widths={["w-12", "w-10", "w-32", "w-16"]} />
-        <SkeletonPanel className="flex-1">
-          <div className="flex h-11 shrink-0 items-center gap-2 border-b px-4">
-            <TextBone className="text-emph font-semibold" w="w-16" />
-            <span className="flex-1" />
-            <SkeletonPill className="h-7 w-20" />
-            <SkeletonPill className="h-7 w-20" />
-            <SkeletonPill className="h-7 w-28" />
+    <>
+      <SkeletonPageHead tabs={6} />
+      <SkeletonPage className="flex max-w-[1000px] flex-col">
+        <div className="mt-[34px] flex flex-wrap items-center gap-1">
+          <TextBone className="mr-3 text-title font-bold" w="w-20" />
+          <Bone className="h-7 w-10 rounded-lg" />
+          <Bone className="h-7 w-16 rounded-lg" />
+          <Bone className="h-7 w-12 rounded-lg" />
+          <Bone className="h-7 w-20 rounded-lg" />
+          <span className="flex-1" />
+          <div className="flex items-center gap-2">
+            <Bone className="h-7 w-24 rounded-lg" />
+            <Bone className="h-7 w-36 rounded-lg" />
+            <Bone className="h-7 w-24 rounded-lg" />
           </div>
-          <SkeletonRows
-            count={11}
-            row="grid h-10 grid-cols-[96px_64px_80px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_64px_minmax(0,1.5fr)] gap-3"
-            cells={["w-20", "w-12", "w-12", "w-14 justify-self-end", "w-14 justify-self-end", "w-16 justify-self-end", "w-10 justify-self-end", "w-40"]}
-          />
-        </SkeletonPanel>
-      </div>
-    </SkeletonPage>
+        </div>
+        <TextBone className="mt-2.5 text-caption" w="w-4/5" />
+        {[3, 2, 2].map((rows, d) => (
+          <div key={d}>
+            <div className="border-b pt-[18px] pb-1.5">
+              <TextBone className="text-caption" w="w-24" />
+            </div>
+            {range(rows).map((i) => (
+              <div key={i} className="grid min-h-14 grid-cols-[36px_minmax(0,1fr)_140px_150px] items-center gap-3.5 border-b border-row">
+                <Bone className="size-8 rounded-full" />
+                <div className="min-w-0">
+                  <TextBone className="text-body font-semibold" w="w-64" />
+                  <TextBone className="text-caption" w="w-96" />
+                </div>
+                <Bone className="ml-auto h-3 w-20 rounded-[4px]" />
+                <Bone className="ml-auto h-3 w-16 rounded-[4px]" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </SkeletonPage>
+    </>
   );
 }
 

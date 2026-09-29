@@ -72,7 +72,7 @@ export async function listRecentCloses(tickers: string[], n = 6): Promise<Map<st
 /** What each holding has waiting on it, for the Holdings list's "Needs attention" column and filter chips. */
 export type HoldingSignals = {
   /** The newest unfinished movement write-up. */
-  openMovement: { id: string; sessionDate: string; dueAt: Date | null } | null;
+  openMovement: { id: string; sessionDate: string; dueAt: Date | null; /** Its move against the S&P 500, in percentage points. */ relativeMovePp: number | null } | null;
   /** The soonest upcoming report on or after `today`. */
   nextReport: { id: string; reportDate: string; reportHour: string | null; estimated: boolean; locked: boolean } | null;
   /** Model values waiting for an analyst to approve or reject. */
@@ -87,10 +87,11 @@ export async function listHoldingSignals(holdingIds: string[], today: string): P
   if (!holdingIds.length) return out;
   const [moves, reports, modelRows, thesisRows] = await Promise.all([
     db
-      .select({ id: movements.id, holdingId: movements.holdingId, sessionDate: movements.sessionDate, dueAt: movements.dueAt })
+      .select({ id: movements.id, holdingId: movements.holdingId, sessionDate: movements.sessionDate, dueAt: movements.dueAt, relativeMovePp: movements.relativeMovePp })
       .from(movements)
       .where(and(inArray(movements.holdingId, holdingIds), ne(movements.status, "completed")))
-      .orderBy(desc(movements.sessionDate)),
+      // The oldest unfinished write-up first: it's the one due soonest, or already overdue.
+      .orderBy(asc(movements.sessionDate)),
     db
       .select({ id: earnings.id, holdingId: earnings.holdingId, reportDate: earnings.reportDate, reportHour: earnings.reportHour, dateStatus: earnings.dateStatus, preLockedAt: earnings.preLockedAt })
       .from(earnings)
@@ -114,7 +115,7 @@ export async function listHoldingSignals(holdingIds: string[], today: string): P
   };
   for (const m of moves) {
     const s = get(m.holdingId);
-    if (!s.openMovement) s.openMovement = { id: m.id, sessionDate: m.sessionDate, dueAt: m.dueAt };
+    if (!s.openMovement) s.openMovement = { id: m.id, sessionDate: m.sessionDate, dueAt: m.dueAt, relativeMovePp: m.relativeMovePp === null ? null : Number(m.relativeMovePp) };
   }
   for (const r of reports) {
     const s = get(r.holdingId);

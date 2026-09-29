@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { FileText } from "lucide-react";
 import { toast } from "sonner";
 import { applyTradeTickets, previewTradeTickets, type TicketPreview } from "@/lib/actions/tickets";
 import { Button } from "@/components/ui/button";
@@ -56,9 +55,8 @@ export function TicketDialog({ emailTo }: { emailTo?: string }) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
-      <DialogTrigger render={<Button size="sm" variant="outline" />}>
-        <FileText />
-        Upload tickets
+      <DialogTrigger render={<Button size="sm" variant="secondary" />}>
+        Upload ticket (.docx)
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
