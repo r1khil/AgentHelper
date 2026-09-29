@@ -7,7 +7,7 @@ import { expectationsWord, prepBuildDate } from "@/lib/earnings-calendar";
 import { gatherResults, lockChecklist, markReviewed, requestEarningsFeedback, saveChecklist, saveReflection } from "@/lib/actions/earnings";
 import { PrepPackCard } from "@/components/app/agent/prep-pack-card";
 import { expectationsDue } from "@/components/app/holdings/attention";
-import { fmtCurrency, fmtDateTime, fmtDay, fmtDayMonth, relativeTime } from "@/lib/format";
+import { fmtCurrency, fmtDateTime, fmtDay, fmtDayMonth, relativeTime, readableTitle } from "@/lib/format";
 import { NY } from "@/lib/providers/calendar";
 import { cn } from "@/lib/utils";
 import { PageHead, PageHero } from "@/components/app/page-head";
@@ -210,7 +210,7 @@ export function ReportView({ e, h, team, scopeSlug, evidence, recipients, canBui
                       <li key={ev.id} className="flex flex-wrap items-baseline gap-x-2 border-b border-row py-2">
                         {ev.url ? (
                           <a href={ev.url} target="_blank" rel="noreferrer" className="hover:underline">
-                            {ev.title}
+                            {readableTitle(ev.title)}
                           </a>
                         ) : (
                           ev.title

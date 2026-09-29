@@ -5,6 +5,7 @@ import { bookExposure, factorLineAudience, type CalendarFactorContext } from "@/
 import { isFactorReport } from "./factors";
 import { loadRisk } from "./load";
 import { DEFAULT_LOOKBACK, LOOKBACKS } from "./model";
+import { fmtDate } from "@/lib/format";
 
 export type { CalendarFactorContext };
 
@@ -26,7 +27,7 @@ export async function calendarFactorContext(user: Pick<CurrentUser, "role" | "te
       audience: audience.kind,
       exposure: bookExposure(team ? `the ${team.name} book` : "the book", f.fund),
       href,
-      basis: `${LOOKBACKS[DEFAULT_LOOKBACK].label} of daily returns to ${f.sample.to}`,
+      basis: `${LOOKBACKS[DEFAULT_LOOKBACK].label} of daily returns to ${fmtDate(f.sample.to)}`,
     };
   } catch (e) {
     console.error("[calendar] factor context failed", e);

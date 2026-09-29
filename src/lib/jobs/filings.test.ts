@@ -39,7 +39,7 @@ describe("filingDocumentRows", () => {
       externalId: "0000004962-26-000010/axp-20260630.htm",
       holdingId: "h1",
       ticker: "AXP",
-      title: "AMERICAN EXPRESS CO 10-Q filed 2026-07-20",
+      title: "AMERICAN EXPRESS CO 10-Q filed Jul 20, 2026",
       url: filing({}).url,
       publisher: "SEC EDGAR",
       docDate: "2026-06-30",
@@ -61,7 +61,7 @@ describe("filingDocumentRows", () => {
     };
     const rows = filingDocumentRows(h, [k8, filing({})], exhibits, { backfill: true, lastSync: null, now });
     expect(rows.map((r) => r.form)).toEqual(["8-K", "EX-99.1", "10-Q"]);
-    expect(rows[1]).toMatchObject({ externalId: "0000004962-26-000020/ex991.htm", title: "AMERICAN EXPRESS CO EX-99.1 (Press release) filed 2026-07-18", url: "https://www.sec.gov/x/ex991.htm", version: "0000004962-26-000020" });
+    expect(rows[1]).toMatchObject({ externalId: "0000004962-26-000020/ex991.htm", title: "AMERICAN EXPRESS CO EX-99.1 (Press release) filed Jul 18, 2026", url: "https://www.sec.gov/x/ex991.htm", version: "0000004962-26-000020" });
   });
 
   it("drops forms outside the set and filings older than their form's window", () => {

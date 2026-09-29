@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fixed, fmtAccounting, fmtBp, fmtChangeBp, fmtChangeMoney, fmtChangePair, fmtChangePct, fmtChangeUsd, fmtCompact, fmtCurrency, fmtDate, fmtDateTime, fmtDay, fmtDayMonth, fmtMonth, fmtMoney, fmtNumber, fmtPct, fmtTime, fmtUsd, fmtUsdCompact, ppToBp, relativeTime } from "./format";
+import { fixed, fmtAccounting, fmtBp, fmtChangeBp, fmtChangeMoney, fmtChangePair, fmtChangePct, fmtChangeUsd, fmtCompact, fmtCurrency, fmtDate, fmtDateTime, fmtDay, fmtDayMonth, fmtMonth, fmtMoney, fmtNumber, fmtPct, fmtTime, fmtUsd, fmtUsdCompact, humanDates, joinSentences, ppToBp, readableTitle, relativeTime } from "./format";
 
 describe("fixed", () => {
   it("drops the minus from a value that rounds to zero", () => {
@@ -286,5 +286,22 @@ describe("fmtChangePair", () => {
   it("wraps an up percentage and leaves a down one in its own parentheses", () => {
     expect(fmtChangePair("+$17,294.21", 0.39)).toBe("+$17,294.21 (+0.39%)");
     expect(fmtChangePair("($49,570.01)", -1.06)).toBe("($49,570.01) (1.06%)");
+  });
+});
+
+describe("humanDates, readableTitle and joinSentences", () => {
+  it("reads saved ISO days the app's way, leaving timestamps", () => {
+    expect(humanDates("Broadcom Inc. 10-Q filed 2026-09-10")).toBe("Broadcom Inc. 10-Q filed Sep 10, 2026");
+    expect(humanDates("Next earnings 2026-10-28 (estimated)")).toBe("Next earnings Oct 28, 2026 (estimated)");
+    expect(humanDates("at 2026-09-10T14:00:00Z")).toBe("at 2026-09-10T14:00:00Z");
+  });
+  it("drops an exhibit type repeated in brackets", () => {
+    expect(readableTitle("STRYKER CORP EX-99.1 (EX-99.1) filed 2026-07-31")).toBe("STRYKER CORP EX-99.1 filed Jul 31, 2026");
+    expect(readableTitle("NEXTERA ENERGY INC EX-99.2 (EXHIBIT 99.2) filed 2026-09-14")).toBe("NEXTERA ENERGY INC EX-99.2 filed Sep 14, 2026");
+    expect(readableTitle("AMEX EX-99.1 (Press release) filed 2026-07-18")).toBe("AMEX EX-99.1 (Press release) filed Jul 18, 2026");
+  });
+  it("never doubles a period between sentences", () => {
+    expect(joinSentences(["Check in with the team.", "4 days overdue"])).toBe("Check in with the team. 4 days overdue");
+    expect(joinSentences(["Accept or dismiss it on the holding page.", null, "Awaiting review"])).toBe("Accept or dismiss it on the holding page. Awaiting review");
   });
 });

@@ -1,5 +1,8 @@
 import { earningsHref, holdingHref, modelHref, movementHref, sellSideHref } from "@/lib/scope";
-import { fmtDateTime } from "@/lib/format";
+import { fmtDateTime, fmtDay } from "@/lib/format";
+
+/** "META's Sep 24 move": which write-up, when a holding has two open at once. */
+const moveName = (m: { ticker: string; sessionDate?: string | null }, now: Date) => (m.sessionDate ? `${m.ticker} ${fmtDay(m.sessionDate, now)}` : m.ticker);
 import type { HootNudge } from "./types";
 
 // Plain rows, so the ranking is testable without a database. The loader in nudges.ts fills these.
@@ -12,9 +15,9 @@ export type NudgeInput = {
   /** The next few trading days after today, New York dates. */
   soon: string[];
   /** Unfinished write-ups on this member's own team. A write-up belongs to the whole team, so each one is theirs. */
-  myMovements: { id: string; ticker: string; teamSlug: string; dueAt: Date | null }[];
+  myMovements: { id: string; ticker: string; teamSlug: string; dueAt: Date | null; sessionDate?: string | null }[];
   /** Unfinished write-ups on the other teams this member runs (an exec or admin runs every team, and has none of their own). */
-  teamMovements: { id: string; ticker: string; teamSlug: string; teamName: string; dueAt: Date | null }[];
+  teamMovements: { id: string; ticker: string; teamSlug: string; teamName: string; dueAt: Date | null; sessionDate?: string | null }[];
   /** `mine`: the holding is on this member's own team. */
   earnings: { id: string; ticker: string; teamSlug: string; reportDate: string; reportHour: string | null; expectationsLocked: boolean; mine: boolean }[];
   mySellSide: { id: string; ticker: string; teamSlug: string; status: string; updatedAt: Date }[];
@@ -50,14 +53,14 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
     const href = movementHref(i.scope, m.teamSlug, m.id);
     const at = m.dueAt.toISOString();
     if (left < 0) {
-      out.push({ id: `movement:${m.id}:overdue`, kind: "movement", priority: 1, mood: "concerned", href, at, title: `Your team's ${m.ticker} write-up is overdue`, detail: "Anyone on the team can write it. A short update on why it moved, with sources, is enough." });
+      out.push({ id: `movement:${m.id}:overdue`, kind: "movement", priority: 1, mood: "concerned", href, at, title: `Your team's ${moveName(m, i.now)} write-up is overdue`, detail: "Anyone on the team can write it. A short update on why it moved, with sources, is enough." });
     } else if (left < 48 * HOUR) {
       const hours = Math.max(1, Math.round(left / HOUR));
-      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 2, mood: "alert", href, at, title: `Your team's ${m.ticker} write-up is due in ${hours}h`, detail: "I can pull the filings and news from that session. Open it and ask me." });
+      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 2, mood: "alert", href, at, title: `Your team's ${moveName(m, i.now)} write-up is due in ${hours}h`, detail: "I can pull the filings and news from that session. Open it and ask me." });
     } else {
       // Due after a weekend or holiday: still owed, just not pressing yet.
       const day = m.dueAt.toLocaleDateString("en-US", { weekday: "long", timeZone: "America/New_York" });
-      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `Your team's ${m.ticker} write-up is due ${day}`, detail: "I can pull the filings and news from that session. Open it and ask me." });
+      out.push({ id: `movement:${m.id}:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `Your team's ${moveName(m, i.now)} write-up is due ${day}`, detail: "I can pull the filings and news from that session. Open it and ask me." });
     }
   }
 
@@ -66,10 +69,10 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
     const href = movementHref(i.scope, m.teamSlug, m.id);
     const at = m.dueAt.toISOString();
     if (m.dueAt.getTime() < i.now.getTime()) {
-      out.push({ id: `movement:${m.id}:team:overdue`, kind: "movement", priority: 3, mood: "concerned", href, at, title: `${m.ticker} write-up is overdue`, detail: `${m.teamName} hasn't finished it yet. Check in with the team.` });
+      out.push({ id: `movement:${m.id}:team:overdue`, kind: "movement", priority: 3, mood: "concerned", href, at, title: `${moveName(m, i.now)} write-up is overdue`, detail: `${m.teamName} hasn't finished it yet. Check in with the team.` });
     } else {
       // Not late yet: worth knowing about, not worth a speech bubble.
-      out.push({ id: `movement:${m.id}:team:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `${m.ticker} write-up is due ${fmtDateTime(at, i.now)}`, detail: `${m.teamName} is on it.` });
+      out.push({ id: `movement:${m.id}:team:due`, kind: "movement", priority: 5, mood: "idle", href, at, title: `${moveName(m, i.now)} write-up is due ${fmtDateTime(at, i.now)}`, detail: `${m.teamName} is on it.` });
     }
   }
 

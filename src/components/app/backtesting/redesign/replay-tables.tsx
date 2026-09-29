@@ -5,7 +5,7 @@ import { Segmented } from "@/components/app/panel";
 import { CenterBar, SectionHead, Signed } from "@/components/app/portfolio/parts";
 import type { BacktestResult, Metrics } from "@/lib/backtesting/engine";
 import type { ScenarioMetrics, ScenarioRisk } from "@/lib/risk/compare";
-import { fmtAccounting, fmtBp, fmtChangeBp, fmtDay, fmtMonth, fmtPct } from "@/lib/format";
+import { fmtAccounting, fmtBp, fmtChangeBp, fmtDate, fmtDay, fmtMonth, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Tip } from "../../attribution/info-tip";
 import { RISK_EXPLAIN } from "../../risk/explainers";
@@ -346,7 +346,7 @@ export function ScenarioRiskSection({ data, busy, error, stale, names }: { data:
       <SectionHead
         id="bt-risk"
         title={<Tip label="Risk impact">{RISK_IMPACT_EXPLAIN}</Tip>}
-        sub={data ? `Today's weights against the scenario, ${data.window.days} daily returns to the ${data.window.to} close` : "Today's weights against the scenario"}
+        sub={data ? `Today's weights against the scenario, ${data.window.days} daily returns to the ${fmtDate(data.window.to)} close` : "Today's weights against the scenario"}
       />
       {error ? (
         <p role="alert" className="mt-2 text-body"><b className="font-semibold text-caution-foreground">Failed</b> <span className="text-ink-3">{error}</span></p>
@@ -411,4 +411,4 @@ export function ScenarioRiskSection({ data, busy, error, stale, names }: { data:
   );
 }
 
-export const riskWindowLabel = (data: ScenarioRisk | null) => (data ? `${data.window.days} daily returns to the ${data.window.to} close` : undefined);
+export const riskWindowLabel = (data: ScenarioRisk | null) => (data ? `${data.window.days} daily returns to the ${fmtDate(data.window.to)} close` : undefined);

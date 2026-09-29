@@ -226,7 +226,7 @@ function SummaryGrid(props: WeeklyPackProps & { highlights: string[]; onPreview:
           ) : (
             props.agenda.processUpdates.map((it, i) => <AgendaRow key={`${it.text}-${i}`} item={it} />)
           )}
-          <span className="mt-1 text-caption text-muted-foreground">From the fund calendar .xlsx</span>
+          <span className="mt-1 text-caption text-muted-foreground">From the fund calendar spreadsheet</span>
         </Section>
       </div>
 
@@ -342,7 +342,7 @@ function CopyIcon({ text, label }: { text: string; label: string }) {
 function emailStatus(email: EmailView, state: PackStatus, sentAt: string | null): string {
   const r = email.record;
   const first = (a: string) => email.names[a.toLowerCase()] ?? a;
-  const to = email.to ? `to ${first(email.to)}${email.cc.length ? `, ${email.cc.map(first).join(", ")} in CC` : ""}` : "";
+  const to = email.to ? `to ${first(email.to)}${email.cc.length ? `, CC ${email.cc.map(first).join(", ")}` : ""}` : "";
   if (r?.status === "ok") return `Sent ${fmtDateTime(r.at)} ${to} · via OpenMail · sending again asks first`.replace(/\s+/g, " ");
   if (state === "sent") return `Marked sent${sentAt ? ` ${fmtDateTime(sentAt)}` : ""}. Hoot has not emailed it to the list.`;
   if (r?.status === "failed") return `Last send failed ${fmtDateTime(r.at)}: ${r.error ?? "unknown error"}`;

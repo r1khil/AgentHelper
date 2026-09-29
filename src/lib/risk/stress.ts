@@ -1,6 +1,7 @@
 import { ETF_BY_SECTOR, GICS_SECTORS, type GicsSector } from "@/lib/attribution/sectors";
 import type { DateSeries } from "@/lib/attribution/types";
 import { MARKET, type RiskReport } from "./model";
+import { fmtDate } from "@/lib/format";
 
 /**
  * Historical stress tests: today's positions, bought at a past window's starting close and held
@@ -41,7 +42,7 @@ export type StressHolding = StressPosition & {
   /** Symbol whose closes were used: the holding's own, or its stand-in. */
   series: string;
   proxied: boolean;
-  /** Why it was stood in for, e.g. "first stored close 2021-06-29". */
+  /** Why it was stood in for, e.g. "first stored close Jun 29, 2021". */
   proxyReason: string | null;
   /** Total return of `series` over the window, dividends reinvested. */
   ret: number;
@@ -144,7 +145,7 @@ export function runStressTest(input: StressInput, window: StressWindow): StressR
   const start = onOrBefore(marketDates, window.from);
   const end = onOrBefore(marketDates, window.to);
   if (!start || !end || end <= start) {
-    return { ...window, status: "no-data", reason: `Stored ${MARKET} closes do not cover ${window.from} to ${window.to} yet; the nightly price run backfills them.` };
+    return { ...window, status: "no-data", reason: `Stored ${MARKET} closes do not cover ${fmtDate(window.from)} to ${fmtDate(window.to)} yet; the nightly price run backfills them.` };
   }
   const dates = marketDates.filter((d) => d >= start && d <= end);
   const path = (sym: string) => growthPath(input.prices, input.dividends, sym, dates);
@@ -159,7 +160,7 @@ export function runStressTest(input: StressInput, window: StressWindow): StressR
     const own = path(h.ticker);
     if (own) return { h, series: h.ticker, g: own, reason: null as string | null };
     const first = input.firstClose?.get(h.ticker) ?? sortedKeys(input.prices.get(h.ticker))[0];
-    const reason = first && first > start ? `first stored close ${first}` : `no stored close on ${start}`;
+    const reason = first && first > start ? `first stored close ${fmtDate(first)}` : `no stored close on ${fmtDate(start)}`;
     const etf = h.sector ? ETF_BY_SECTOR[h.sector] : null;
     const g = etf ? etfPath(etf) : null;
     return g ? { h, series: etf!, g, reason } : { h, series: MARKET, g: marketPath, reason: h.sector ? `${reason}; ${etf} missing too` : `${reason}; no sector set` };

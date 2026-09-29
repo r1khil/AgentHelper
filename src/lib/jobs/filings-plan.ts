@@ -2,6 +2,7 @@
 import { randomUUID } from "node:crypto";
 import type { DocumentInsert } from "@/db/schema";
 import type { Filing } from "@/lib/providers/types";
+import { fmtDate } from "@/lib/format";
 
 export const FILING_FORMS = ["10-K", "10-Q", "8-K"] as const;
 export const FILING_PUBLISHER = "SEC EDGAR";
@@ -52,12 +53,20 @@ export function filingDocumentRows(h: HoldingRef, filings: Filing[], exhibits: R
     if (!(FILING_FORMS as readonly string[]).includes(base)) continue;
     if (f.filedAt < sinceFor(base, opts)) continue;
     const common = { kind: "filing" as const, holdingId: h.id, ticker: h.ticker, publisher: FILING_PUBLISHER, publishedAt: dateAt(f.filedAt), docDate: f.reportDate ?? null, version: f.accession };
-    out.push({ ...common, id: randomUUID(), externalId: filingExternalId(f.accession, f.primaryDocument), title: `${h.companyName} ${form} filed ${f.filedAt}`, url: f.url, form });
+    out.push({ ...common, id: randomUUID(), externalId: filingExternalId(f.accession, f.primaryDocument), title: `${h.companyName} ${form} filed ${fmtDate(f.filedAt)}`, url: f.url, form });
     if (base !== "8-K") continue;
     for (const e of (exhibits[f.accession] ?? []).filter(isEarningsExhibit)) {
       const type = (e.type ?? "EX-99.1").toUpperCase();
-      out.push({ ...common, id: randomUUID(), externalId: filingExternalId(f.accession, e.name), title: `${h.companyName} ${type}${e.description ? ` (${e.description})` : ""} filed ${f.filedAt}`, url: e.url, form: type });
+      out.push({ ...common, id: randomUUID(), externalId: filingExternalId(f.accession, e.name), title: `${h.companyName} ${type}${exhibitNote(type, e.description)} filed ${fmtDate(f.filedAt)}`, url: e.url, form: type });
     }
   }
   return out;
+}
+
+/** An exhibit's description in brackets, unless it only repeats the type ("EX-99.1 (EXHIBIT 99.1)"). */
+export function exhibitNote(type: string, description: string | null | undefined): string {
+  const d = description?.trim();
+  if (!d) return "";
+  const bare = (x: string) => x.toUpperCase().replace(/^EX(HIBIT)?[-\s]*/, "").replace(/\s+/g, "");
+  return bare(d) === bare(type) ? "" : ` (${d})`;
 }

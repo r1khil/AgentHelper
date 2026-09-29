@@ -11,7 +11,7 @@ import { resolveSource } from "@/lib/agent/source-resolution";
 import { turnPageLinks } from "@/lib/agent/turn-links";
 import { summarizeActivity, type Part } from "@/lib/agent/turn";
 import { proposalsOf } from "@/lib/hoot/proposals";
-import { fmtDateTime, fmtDay, fmtTime } from "@/lib/format";
+import { fmtDateTime, fmtDay, fmtTime, readableTitle } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Tabs, tabPanelProps } from "@/components/app/tabs";
 import { ProposalCard } from "./proposal-card";
@@ -171,7 +171,7 @@ function SourceRows({ rows, live }: { rows: TurnSource[]; live: boolean }) {
       {rows.map(({ source: s, n }) => {
         const target = resolveSource(s);
         const unavailable = target.kind === "unavailable";
-        const title = unavailable && !s.title?.trim() ? "Source unavailable" : s.title?.trim() || "Untitled source";
+        const title = unavailable && !s.title?.trim() ? "Source unavailable" : readableTitle(s.title?.trim() || "Untitled source");
         const meta = [unavailable ? null : cardKind(s), s.publisher || "Publisher unavailable", shortDate(s.publishedAt)].filter(Boolean).join(", ");
         const body = (
           <>

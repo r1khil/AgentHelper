@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Source } from "@/lib/providers/types";
 import { documentId, externalUrl, supportingRange } from "@/lib/agent/source-resolution";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { readableTitle } from "@/lib/format";
 
 type Document = { title: string; text: string | null; url: string | null };
 
@@ -74,7 +75,7 @@ function DocumentBody({ source, chatId }: { source: Source; chatId: string }) {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2 text-body text-muted-foreground">
-        <span>{doc.title}</span>
+        <span>{readableTitle(doc.title)}</span>
         {original && (
           <a className="underline" href={original} target="_blank" rel="noopener noreferrer">
             Open original document ↗

@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 import { dismissHootNudge } from "@/lib/actions/preferences";
 import type { HootFeed, HootNudge } from "@/lib/hoot/types";
 import { isOverdue, listNudges, nudgeWhen } from "@/lib/today";
-import { fmtTime } from "@/lib/format";
+import { fmtTime, joinSentences } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -159,7 +159,7 @@ export function Bell() {
                     </span>
                     <span suppressHydrationWarning className="truncate text-caption text-muted-foreground">
                       {/* A title that already says when it's due doesn't say it again underneath. */}
-                      {[item.detail, / due /i.test(item.title) ? null : nudgeWhen(item)].filter(Boolean).join(". ")}
+                      {joinSentences([item.detail, / due /i.test(item.title) ? null : nudgeWhen(item)])}
                     </span>
                   </Link>
                   <button

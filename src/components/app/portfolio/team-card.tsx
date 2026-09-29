@@ -23,7 +23,7 @@ export async function TeamCard({ team, scopeSlug, today }: { team: Team; scopeSl
   const next = reports[0];
 
   const facts: { label: string; value: React.ReactNode; note?: React.ReactNode; tone?: "down" }[] = [
-    { label: "Leads", value: leads.length ? leads.map((l) => l.fullName).join(", ") : "None", note: leads.length ? "Get the movement and prep emails" : "No lead yet, so everyone on the team gets them" },
+    { label: "Leads", value: leads.length ? leads.map((l) => l.fullName).join(", ") : "None", note: leads.length ? "Get the movement and prep emails" : "No lead yet, so every member gets the movement and prep emails" },
     { label: "Members", value: members.length, note: associates.length ? `${associates.length} associate ${associates.length === 1 ? "analyst" : "analysts"}` : leads.length ? "Leads only" : undefined },
     {
       label: "Open write-ups",
