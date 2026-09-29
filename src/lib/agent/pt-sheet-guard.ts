@@ -11,10 +11,11 @@ export const PT_SHEET_TOOL = "read_pt_sheet";
 export const PT_SHEET_SOURCE_PREFIX = "ptsheet";
 
 /**
- * The only model that may receive sheet data: Rikhil confirmed on 2026-09-26 that this route is zero-data-retention.
- * The fallbacks (DeepSeek, Nemotron) are not confirmed, so a turn that has the sheet in context never falls back.
+ * The only model that may receive sheet data. Rikhil approved GPT-6 Luna for it on 2026-09-28, when OpenRouter withdrew
+ * Ling's free variant (the model approved on 2026-09-26). The fallbacks are not approved for the sheet, so a turn that
+ * has the sheet in context never falls back.
  */
-export const PT_SHEET_MODEL_ID = "inclusionai/ling-3.0-flash-fin:free";
+export const PT_SHEET_MODEL_ID = "openai/gpt-6-luna";
 
 export const PT_SHEET_MODEL_UNAVAILABLE =
   "Hoot's sheet-safe model is unavailable right now, so it can't answer from the price target sheet. Try again in a few minutes.";
