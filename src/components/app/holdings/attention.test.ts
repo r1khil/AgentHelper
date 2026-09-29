@@ -24,9 +24,14 @@ describe("attentionFlags", () => {
     expect(flags[1]).toMatchObject({ tone: "neutral", label: "1 model update" });
   });
 
+  it("says how far the stock moved under an open write-up", () => {
+    const flags = attentionFlags({ ...none, openMovement: { id: "m1", dueAt: new Date("2026-09-25T16:00:00Z"), sessionDate: "2026-09-25", relativeMovePp: -4.3 } }, ctx);
+    expect(flags[0].detail).toBe("Moved (430 bp) on Sep 25");
+  });
+
   it("flags expectations only for an unlocked report within two weeks", () => {
     const soon = { id: "e1", reportDate: "2026-10-06", reportHour: "bmo", locked: false };
-    expect(attentionFlags({ ...none, nextReport: soon }, ctx)).toEqual([{ tone: "caution", label: "Expectations due Mon, Oct 5", href: "/t/tech/earnings/e1" }]);
+    expect(attentionFlags({ ...none, nextReport: soon }, ctx)).toEqual([{ tone: "caution", label: "Expectations due Mon, Oct 5", detail: "Lock them before the report", href: "/t/tech/earnings/e1" }]);
     expect(attentionFlags({ ...none, nextReport: { ...soon, locked: true } }, ctx)).toEqual([]);
     expect(attentionFlags({ ...none, nextReport: { ...soon, reportDate: "2026-11-18" } }, ctx)).toEqual([]);
   });

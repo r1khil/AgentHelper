@@ -12,6 +12,7 @@ import { DayTable } from "./attribution/sector-breakdown";
 import { SectorsPanel } from "./attribution/sectors-panel";
 import { ActiveBetsPanel, SectorWeightsPanel } from "./exposure/exposure-panels";
 import { HoldingsTable } from "./holdings/holdings-table";
+import { PositionsTable } from "./portfolio/positions-table";
 import { EarningsTab } from "./holdings/tab-panels";
 import { StressPanelFallback } from "./risk/stress-panel";
 import type { Exposure } from "@/lib/risk/exposure";
@@ -104,7 +105,7 @@ function checkTables(html: string) {
 
 const render = (el: ReactElement) => renderToStaticMarkup(el);
 
-const holdingRow = (ticker: string, company: string, flags: { label: string; tone: "hoot" | "caution" | "neutral"; href?: string }[] = []) => ({
+const holdingRow = (ticker: string, company: string, flags: { label: string; detail?: string; tone: "hoot" | "caution" | "neutral"; href?: string }[] = []) => ({
   id: ticker,
   ticker,
   company,
@@ -117,30 +118,54 @@ const holdingRow = (ticker: string, company: string, flags: { label: string; ton
 });
 
 describe("div grids read as tables", () => {
-  it("Holdings: header row, team row groups with a spanning collapse button, ticker row headers", () => {
-    const groups = [
-      { id: "t", name: "Tech", navPct: 20, rows: [holdingRow("NVDA", "NVIDIA Corporation", [{ label: "Movement open", tone: "caution" }, { label: "Report soon", tone: "neutral" }]), holdingRow("AAPL", "AAPL")] },
-      { id: "e", name: "Energy", navPct: 5, rows: [holdingRow("XOM", "Exxon Mobil")] },
+  it("Holdings: header row and a row per holding, ticker row headers, the flag's reason under its label", () => {
+    const rows = [
+      { ...holdingRow("NVDA", "NVIDIA Corporation", [{ label: "Write-up overdue", detail: "Moved (430 bp) on Sep 25", tone: "hoot" }, { label: "Report soon", tone: "neutral" }]) },
+      holdingRow("AAPL", "AAPL"),
+      holdingRow("XOM", "Exxon Mobil"),
     ];
     for (const quotes of [undefined, { NVDA: { price: 100, changePct: 1, relativePp: -0.4 } }]) {
-      const html = render(h(HoldingsTable, { groups, quotes }));
+      const html = render(h(HoldingsTable, { rows, quotes }));
       const nodes = checkTables(html);
-      const button = nodes.find((n) => n.tag === "button")!;
-      expect(button.attrs["aria-expanded"]).toBe("true");
-      expect(role(button.parent!)).toBe("cell");
-      expect(button.parent!.attrs["aria-colspan"]).toBe("9");
+      expect(nodes.filter((n) => role(n) === "columnheader")).toHaveLength(8);
       const links = nodes.filter((n) => n.tag === "a" && role(n.parent!) === "rowheader");
       expect(links.map((a) => a.attrs["aria-label"])).toEqual(["NVDA, NVIDIA Corporation", "AAPL", "XOM, Exxon Mobil"]);
       // The row's pending overlay is decorative.
       expect(links.every((a) => a.children.some((c) => c.attrs.class === "row-pending" && "aria-hidden" in c.attrs))).toBe(true);
     }
-    const html = render(h(HoldingsTable, { groups }));
+    const html = render(h(HoldingsTable, { rows }));
     expect(html).toContain("Day versus S&amp;P 500, basis points");
+    expect(html).toContain("Moved (430 bp) on Sep 25");
     expect(html).toContain("Also: Report soon");
   });
 
+  it("Holdings without position sizes drop the Weight column and the share count", () => {
+    const html = render(h(HoldingsTable, { rows: [holdingRow("NVDA", "NVIDIA Corporation")], showWeight: false }));
+    const nodes = checkTables(html);
+    expect(nodes.filter((n) => role(n) === "columnheader")).toHaveLength(7);
+    expect(html).not.toContain("Weight");
+    expect(html).not.toContain("shares");
+    expect(html).not.toContain("4.20%");
+  });
+
   it("Holdings with nothing in it still has a named table and a spanning message", () => {
-    checkTables(render(h(HoldingsTable, { groups: [], empty: "No holdings match." })));
+    checkTables(render(h(HoldingsTable, { rows: [], empty: "No holdings match." })));
+  });
+
+  it("The Overview's positions: team groups with a collapse button, a row header per holding, cash last", () => {
+    const line = (ticker: string, name: string) => ({ ticker, name, href: `/t/fund/h/${ticker}`, shares: 100, price: 50, dayPct: 1.2, dayPnl: 60, value: 5000, weight: 1.1, gain: 300, cost: 4700 });
+    const groups = [
+      { id: "t", name: "Information Technology", lines: [line("MSFT", "Microsoft"), line("AVGO", "Broadcom")] },
+      { id: "h", name: "Healthcare", lines: [line("THC", "Tenet Healthcare")] },
+    ];
+    const nodes = checkTables(render(h(PositionsTable, { groups, cash: { value: 118420, weightPct: 2.65 }, asOf: "2026-09-28" })));
+    const toggles = nodes.filter((n) => n.tag === "button" && "aria-expanded" in n.attrs && role(n.parent!) === "cell");
+    // The first team is open, the rest start closed; Expand all opens them.
+    expect(toggles.map((b) => b.attrs["aria-expanded"])).toEqual(["true", "false"]);
+    expect(toggles.every((b) => role(b.parent!) === "cell")).toBe(true);
+    const links = nodes.filter((n) => n.tag === "a" && role(n.parent!) === "rowheader");
+    expect(links.map((a) => a.attrs["aria-label"])).toEqual(["MSFT, Microsoft", "AVGO, Broadcom"]);
+    expect(nodes.filter((n) => role(n) === "columnheader").map((n) => all(n).map((c) => c.text).join("").trim())).toEqual(["Name", "Intraday", "Last", "Today", "Market value", "Weight", "Total gain"]);
   });
 
   it("Today's teams, with and without the book", () => {

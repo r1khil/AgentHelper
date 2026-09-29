@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 /** Adds a holding to a team. It belongs to the whole team: anyone on it writes its movement updates. */
-export function AddHoldingDialog({ teamId }: { teamId: string }) {
+export function AddHoldingDialog({ teamId, primary }: { teamId: string; /** The page header's action: an ink button, no icon. */ primary?: boolean }) {
   const [open, setOpen] = useState(false);
   const [, action, pending] = useActionState<ActionResult | null, FormData>(async (prev, fd) => {
     const result = await addHolding(prev, fd);
@@ -26,8 +26,8 @@ export function AddHoldingDialog({ teamId }: { teamId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" />}>
-        <Plus className="size-3.5" />
+      <DialogTrigger render={primary ? <Button /> : <Button variant="outline" />}>
+        {!primary && <Plus className="size-3.5" />}
         Add holding
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
