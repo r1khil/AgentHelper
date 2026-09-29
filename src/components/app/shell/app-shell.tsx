@@ -10,6 +10,7 @@ import { destinations, navModel } from "@/lib/nav";
 import type { CommandHolding, NavData, RecentChat, TabCount } from "@/lib/nav-data";
 import { resolveScope } from "@/lib/scope";
 import { cn } from "@/lib/utils";
+import { HootAnswerPanel } from "../hoot/answer-panel";
 import { HootCorner } from "../hoot/hoot-corner";
 import { DefaultHead } from "../page-head";
 import { MobileBar, Sidebar, useTeamSection, type SidebarUser } from "../sidebar";
@@ -126,19 +127,23 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
   const loaded = data && data.scope === homeSlug ? data : null;
   const shell = { nav, counts: loaded?.counts ?? {}, badges: loaded?.badges ?? {}, teams, current, fundWide };
   const command = (
-    <CommandMenu
-      open={palette !== null}
-      mode={palette ?? "ask"}
-      onOpenChange={(open) => !open && setPalette(null)}
-      holdings={loaded?.holdings ?? []}
-      recent={loaded?.recent ?? []}
-      pages={dests}
-      scopes={fundWide ? switchable : []}
-      scopeLabel={current === "fund" ? "Whole fund" : current?.name}
-      pathname={pathname}
-      teamSlug={scopeSlug === FUND_SCOPE_SLUG ? (ownTeam?.slug ?? null) : scopeSlug}
-      scopeSlug={scopeSlug}
-    />
+    <>
+      <CommandMenu
+        open={palette !== null}
+        mode={palette ?? "ask"}
+        onOpenChange={(open) => !open && setPalette(null)}
+        holdings={loaded?.holdings ?? []}
+        recent={loaded?.recent ?? []}
+        pages={dests}
+        scopes={fundWide ? switchable : []}
+        scopeLabel={current === "fund" ? "Whole fund" : current?.name}
+        pathname={pathname}
+        teamSlug={scopeSlug === FUND_SCOPE_SLUG ? (ownTeam?.slug ?? null) : scopeSlug}
+        scopeSlug={scopeSlug}
+      />
+      {/* A question asked from the palette is answered here, sliding in over the page. */}
+      <HootAnswerPanel holdings={loaded?.holdings ?? []} />
+    </>
   );
   const corner = hoot && <HootCorner onAsk={() => openPalette("ask")} suppressed={palette !== null} />;
 
