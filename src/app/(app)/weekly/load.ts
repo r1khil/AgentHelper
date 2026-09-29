@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/db/client";
 import { holdings, movements, profiles, teams, type WeeklyUpdate } from "@/db/schema";
 import { loadAttributionSeries } from "@/lib/attribution/load";
@@ -27,6 +27,7 @@ function listItem(p: WeeklyUpdate, paused: boolean): PackListItem {
     builtAt: p.builtAt?.toISOString() ?? null,
     sentAt: p.sentAt?.toISOString() ?? null,
     emailedAt: email?.status === "ok" ? email.at : null,
+    listPaused: paused,
   };
 }
 
@@ -49,10 +50,12 @@ async function weekStats(weekEnding: string): Promise<WeekStats> {
   const review = reviewWeek(weekEnding);
   const [opened, series] = await Promise.all([
     db
-      .select({ n: count() })
+      .select({ ticker: holdings.ticker, sessionDate: movements.sessionDate, relativePp: movements.relativeMovePp })
       .from(movements)
+      .innerJoin(holdings, eq(holdings.id, movements.holdingId))
       .where(and(gte(movements.sessionDate, review.from), lte(movements.sessionDate, review.to)))
-      .then((r) => r[0]?.n ?? 0)
+      .orderBy(asc(movements.sessionDate), asc(holdings.ticker))
+      .then((r) => r.map((m) => ({ ticker: m.ticker, sessionDate: m.sessionDate, relativePp: m.relativePp === null ? null : Number(m.relativePp) })))
       .catch(() => null),
     loadAttributionSeries().catch(() => null),
   ]);
@@ -63,11 +66,11 @@ async function weekStats(weekEnding: string): Promise<WeekStats> {
     if (days.length && days.at(-1)!.date === window.end) fund = days.reduce((g, d) => g * (1 + d.ret), 1) - 1;
     spx = indexReturn(series, window);
   }
-  return { fund, spx, movementsOpened: opened, window };
+  return { fund, spx, movementsOpened: opened === null ? null : opened.length, movements: opened ?? [], window };
 }
 
 /** Everything the pack view needs, or null when the week has no pack. */
-export async function loadPackView(week: string): Promise<WeeklyPackProps | null> {
+export async function loadPackView(week: string, meEmail: string): Promise<WeeklyPackProps | null> {
   const pack = await getPack(week);
   if (!pack) return null;
   const recipients = await weeklyEmailRecipients();
@@ -78,7 +81,7 @@ export async function loadPackView(week: string): Promise<WeeklyPackProps | null
     db.select({ ticker: holdings.ticker, team: teams.name, status: holdings.status }).from(holdings).innerJoin(teams, eq(teams.id, holdings.teamId)),
     listBellwethers().catch(() => []),
   ]);
-  const email: EmailView | null = draft ? { ...recipients, ...draft, record: pack.sources?.email ?? null, ...names } : null;
+  const email: EmailView | null = draft ? { ...recipients, ...draft, record: pack.sources?.email ?? null, ...names, me: meEmail } : null;
   // An active holding's team wins over an exited one's.
   const teamByTicker: Record<string, string> = {};
   for (const r of [...teamRows].sort((a, b) => (a.status === "active" ? 1 : 0) - (b.status === "active" ? 1 : 0))) teamByTicker[r.ticker.toUpperCase()] = r.team;

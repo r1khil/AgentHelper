@@ -11,12 +11,12 @@ export const maxDuration = 300;
 
 /** /weekly shows the latest pack; /weekly/[week] shows that week. Same layout. */
 export default async function WeeklyIndexPage({ searchParams }: PageProps<"/weekly">) {
-  await requireRole("exec", "admin");
+  const me = await requireRole("exec", "admin");
   const { ok, error } = await searchParams;
   const packs = await loadPackList();
   const target = lastFriday(todayNY());
   const selected = packs[0]?.weekEnding ?? null;
-  const pack = selected ? await loadPackView(selected) : null;
+  const pack = selected ? await loadPackView(selected, me.email) : null;
   return (
     <WeeklyView
       packs={packs}
