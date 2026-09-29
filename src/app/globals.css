@@ -131,6 +131,8 @@
     --radius-2xl: calc(var(--radius) * 1.8);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
+    /* The places you type to Hoot: the ask box, the thread composer and the ⌘J palette. */
+    --radius-composer: 12px;
 }
 
 /* The new look: a white page, zinc greys, ink for text and the primary control. Green and red mean up and down and
@@ -152,7 +154,8 @@
     --muted-foreground: #71717a;
     --accent: #f4f4f5;
     --accent-foreground: #0a0a0a;
-    --destructive: #d12d35;
+    /* Errors and failures read amber, with a word; red is only for down and overdue. */
+    --destructive: var(--caution-foreground);
     /* Section dividers: under a header, a table's column row, a stat strip. */
     --border: #ededed;
     /* Input outlines and underlines, and the composer's frame. */
@@ -243,7 +246,7 @@
     --muted-foreground: #a1a1aa;
     --accent: #1f1f23;
     --accent-foreground: #fafafa;
-    --destructive: #ff6369;
+    --destructive: var(--caution-foreground);
     --border: #26262b;
     --border-strong: #3f3f46;
     --input: #3f3f46;

@@ -84,7 +84,7 @@ export function SectorBreakdownPanel({ sector, query }: { sector: BucketKey; que
 function Block({ title, explain, children }: { title: string; explain: string; children: React.ReactNode }) {
   return (
     <section className="grid gap-1.5">
-      <h4 className="text-caption font-semibold uppercase tracking-wide text-muted-foreground">
+      <h4 className="text-caption font-semibold text-muted-foreground">
         <Explained label={title}>{explain}</Explained>
       </h4>
       {children}

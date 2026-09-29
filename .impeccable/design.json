@@ -1,0 +1,708 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-29T13:15:59.077704+00:00",
+  "title": "Design System: Owl Fund",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "#0a0a0a",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "up-text": {
+        "role": "secondary",
+        "displayName": "Up Green (text)",
+        "canonical": "#007a45",
+        "tonalRamp": [
+          "#003d22",
+          "#005a33",
+          "#007a45",
+          "#009456",
+          "#2fbf71",
+          "#3dd68c",
+          "#9fe8c4",
+          "#e6f7ee"
+        ]
+      },
+      "up-line": {
+        "role": "secondary",
+        "displayName": "Up Green (chart)",
+        "canonical": "#009456",
+        "tonalRamp": [
+          "#003d22",
+          "#005a33",
+          "#007a45",
+          "#009456",
+          "#2fbf71",
+          "#3dd68c",
+          "#9fe8c4",
+          "#e6f7ee"
+        ]
+      },
+      "down-text": {
+        "role": "secondary",
+        "displayName": "Down Red (text)",
+        "canonical": "#d12d35",
+        "tonalRamp": [
+          "#5c1216",
+          "#8f1c22",
+          "#d12d35",
+          "#e5484d",
+          "#f2555a",
+          "#ff6369",
+          "#f8b4b6",
+          "#fdecec"
+        ]
+      },
+      "down-line": {
+        "role": "secondary",
+        "displayName": "Down Red (chart)",
+        "canonical": "#e5484d",
+        "tonalRamp": [
+          "#5c1216",
+          "#8f1c22",
+          "#d12d35",
+          "#e5484d",
+          "#f2555a",
+          "#ff6369",
+          "#f8b4b6",
+          "#fdecec"
+        ]
+      },
+      "down-fill": {
+        "role": "secondary",
+        "displayName": "Drawdown Fill",
+        "canonical": "#fdecec",
+        "tonalRamp": [
+          "#5c1216",
+          "#8f1c22",
+          "#d12d35",
+          "#e5484d",
+          "#f2555a",
+          "#ff6369",
+          "#f8b4b6",
+          "#fdecec"
+        ]
+      },
+      "caution": {
+        "role": "secondary",
+        "displayName": "Check Amber",
+        "canonical": "#b45309",
+        "tonalRamp": [
+          "#3a1f04",
+          "#6b3a07",
+          "#b45309",
+          "#d97706",
+          "#f0a64a",
+          "#f5c27f",
+          "#fae3c0",
+          "#fdf6ec"
+        ]
+      },
+      "caution-fill": {
+        "role": "secondary",
+        "displayName": "Notice Amber Fill",
+        "canonical": "#fdf6ec",
+        "tonalRamp": [
+          "#3a1f04",
+          "#6b3a07",
+          "#b45309",
+          "#d97706",
+          "#f0a64a",
+          "#f5c27f",
+          "#fae3c0",
+          "#fdf6ec"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "band": {
+        "role": "neutral",
+        "displayName": "Band",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "secondary-fill": {
+        "role": "neutral",
+        "displayName": "Secondary Fill",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "row-divider": {
+        "role": "neutral",
+        "displayName": "Row Divider",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "section-divider": {
+        "role": "neutral",
+        "displayName": "Section Divider",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "control-outline": {
+        "role": "neutral",
+        "displayName": "Control Outline",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "panel-ring": {
+        "role": "neutral",
+        "displayName": "Panel Ring",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "meta-grey": {
+        "role": "neutral",
+        "displayName": "Meta Grey",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Ink 2",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Ink 3",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "series-grey": {
+        "role": "neutral",
+        "displayName": "Series Grey",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "bench-grey": {
+        "role": "neutral",
+        "displayName": "Benchmark Grey",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "sidebar-accent": {
+        "role": "neutral",
+        "displayName": "Sidebar Accent",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "sidebar-border": {
+        "role": "neutral",
+        "displayName": "Sidebar Border",
+        "tonalRamp": [
+          "#09090b",
+          "#18181b",
+          "#27272a",
+          "#3f3f46",
+          "#52525b",
+          "#71717a",
+          "#a1a1aa",
+          "#d4d4d8"
+        ]
+      },
+      "night-background": {
+        "role": "neutral",
+        "displayName": "Night Background (dark mode)"
+      },
+      "night-popover": {
+        "role": "neutral",
+        "displayName": "Night Popover (dark mode)"
+      },
+      "night-band": {
+        "role": "neutral",
+        "displayName": "Night Band (dark mode)"
+      },
+      "night-secondary": {
+        "role": "neutral",
+        "displayName": "Night Secondary (dark mode)"
+      },
+      "night-divider": {
+        "role": "neutral",
+        "displayName": "Night Divider (dark mode)"
+      },
+      "night-row": {
+        "role": "neutral",
+        "displayName": "Night Row (dark mode)"
+      },
+      "night-ink": {
+        "role": "neutral",
+        "displayName": "Night Ink (dark mode)"
+      },
+      "night-meta": {
+        "role": "neutral",
+        "displayName": "Night Meta (dark mode)"
+      },
+      "night-up-text": {
+        "role": "secondary",
+        "displayName": "Night Up Text (dark mode)",
+        "tonalRamp": [
+          "#003d22",
+          "#005a33",
+          "#007a45",
+          "#009456",
+          "#2fbf71",
+          "#3dd68c",
+          "#9fe8c4",
+          "#e6f7ee"
+        ]
+      },
+      "night-up-line": {
+        "role": "secondary",
+        "displayName": "Night Up Line (dark mode)",
+        "tonalRamp": [
+          "#003d22",
+          "#005a33",
+          "#007a45",
+          "#009456",
+          "#2fbf71",
+          "#3dd68c",
+          "#9fe8c4",
+          "#e6f7ee"
+        ]
+      },
+      "night-down-text": {
+        "role": "secondary",
+        "displayName": "Night Down Text (dark mode)",
+        "tonalRamp": [
+          "#5c1216",
+          "#8f1c22",
+          "#d12d35",
+          "#e5484d",
+          "#f2555a",
+          "#ff6369",
+          "#f8b4b6",
+          "#fdecec"
+        ]
+      },
+      "night-down-line": {
+        "role": "secondary",
+        "displayName": "Night Down Line (dark mode)",
+        "tonalRamp": [
+          "#5c1216",
+          "#8f1c22",
+          "#d12d35",
+          "#e5484d",
+          "#f2555a",
+          "#ff6369",
+          "#f8b4b6",
+          "#fdecec"
+        ]
+      },
+      "night-caution": {
+        "role": "secondary",
+        "displayName": "Night Caution (dark mode)",
+        "tonalRamp": [
+          "#3a1f04",
+          "#6b3a07",
+          "#b45309",
+          "#d97706",
+          "#f0a64a",
+          "#f5c27f",
+          "#fae3c0",
+          "#fdf6ec"
+        ]
+      },
+      "night-caution-fill": {
+        "role": "secondary",
+        "displayName": "Night Caution Fill (dark mode)",
+        "tonalRamp": [
+          "#3a1f04",
+          "#6b3a07",
+          "#b45309",
+          "#d97706",
+          "#f0a64a",
+          "#f5c27f",
+          "#fae3c0",
+          "#fdf6ec"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "hero": {
+        "displayName": "Hero",
+        "purpose": "The one big number that opens a page."
+      },
+      "display": {
+        "displayName": "Display",
+        "purpose": "Item titles on a detail page, sign-in and dialog titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Panel and section headings."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Figures in a stat strip."
+      },
+      "emph": {
+        "displayName": "Emph",
+        "purpose": "The line under the big number; reading text."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Tables, lists, controls, buttons, breadcrumbs, tabs."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "The floor: labels, meta, counts, status words."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Key hints and typed tickers."
+      },
+      "hoot-prose": {
+        "displayName": "Hoot Prose",
+        "purpose": "Hoot's own words only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "hairline-ring",
+        "value": "0 0 0 1px var(--border)",
+        "purpose": "Outlined panel frame; structural, not lifted."
+      },
+      {
+        "name": "hoot-corner",
+        "value": "0 4px 14px rgb(10 10 10 / 0.10)",
+        "purpose": "Hoot's corner button at rest."
+      },
+      {
+        "name": "hoot-corner-hover",
+        "value": "0 10px 24px rgb(10 10 10 / 0.16)",
+        "purpose": "Hoot's corner button on hover, with a 2px lift."
+      },
+      {
+        "name": "tip",
+        "value": "0 6px 18px rgb(10 10 10 / 0.18)",
+        "purpose": "Ink ⌘J tooltip and Hoot's note (0.08 on the white note)."
+      },
+      {
+        "name": "palette",
+        "value": "0 24px 60px rgb(10 10 10 / 0.28), 0 2px 6px rgb(10 10 10 / 0.08)",
+        "purpose": "⌘K / ⌘J palette over a rgb(10 10 10 / 0.28) scrim."
+      },
+      {
+        "name": "answer-panel",
+        "value": "-16px 0 40px rgb(10 10 10 / 0.08)",
+        "purpose": "The right-hand slide-in answer panel."
+      }
+    ],
+    "motion": [
+      {
+        "name": "answer-panel-slide",
+        "value": "transform 220ms ease-out",
+        "purpose": "Answer panel slides in from the right; none under reduced motion."
+      },
+      {
+        "name": "palette-fade",
+        "value": "opacity 150ms",
+        "purpose": "Palette and scrim fade, motion-safe only."
+      },
+      {
+        "name": "chart-range-fade",
+        "value": "opacity 0.65 → 1, 120ms ease-out",
+        "purpose": "New chart range fades in; prices never morph."
+      },
+      {
+        "name": "row-pending",
+        "value": "tint 80ms ease-out; 2px ink bar after 150ms, sliding 1.1s ease-in-out",
+        "purpose": "Feedback on a clicked table row while the next page loads."
+      },
+      {
+        "name": "hoot-corner-lift",
+        "value": "transform, box-shadow 200ms ease-out",
+        "purpose": "Corner button hover lift."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "desktop-only",
+        "value": "no mobile layouts; content pane ~1045px beside the 232px sidebar"
+      }
+    ],
+    "themes": {
+      "dark": "`.dark` class via next-themes; every role remaps through CSS variables (night-* tokens).",
+      "classic": "`.theme-classic` keeps the pre-redesign look (Inter, oklch greys, blue/orange series) for the opt-in classic Backtesting layout only; not part of this system."
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one ink action in a page header.",
+      "html": "<button class=\"ds-btn-primary\">Record trade</button>",
+      "css": ".ds-btn-primary{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);height:30px;padding:0 12px;border:1px solid transparent;border-radius:6px;background:var(--primary,#0a0a0a);color:var(--primary-foreground,#fff);font-size:13px;line-height:20px;font-weight:500;cursor:pointer;transition:background-color .15s}.ds-btn-primary:hover{background:color-mix(in oklab,var(--primary,#0a0a0a),var(--background,#fff) 18%)}.ds-btn-primary:focus-visible{outline:2px solid var(--ring,#0a0a0a);outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Every other action: grey fill, ink words.",
+      "html": "<button class=\"ds-btn-secondary\">Export CSV</button>",
+      "css": ".ds-btn-secondary{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);height:30px;padding:0 12px;border:1px solid transparent;border-radius:6px;background:var(--secondary,#f4f4f5);color:var(--secondary-foreground,#0a0a0a);font-size:13px;line-height:20px;font-weight:500;cursor:pointer;transition:background-color .15s}.ds-btn-secondary:hover{background:color-mix(in oklab,var(--secondary,#f4f4f5),var(--foreground,#0a0a0a) 6%)}.ds-btn-secondary:focus-visible{outline:2px solid var(--ring,#0a0a0a);outline-offset:2px}"
+    },
+    {
+      "name": "Range Buttons",
+      "kind": "chip",
+      "refersTo": "segment-active",
+      "description": "Segmented choice: chosen is filled ink, the rest bare words.",
+      "html": "<div class=\"ds-seg\"><button>1D</button><button>1W</button><button aria-pressed=\"true\">1M</button><button>3M</button><button>1Y</button><button>All</button></div>",
+      "css": ".ds-seg{display:inline-flex;gap:2px}.ds-seg button{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);height:28px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--ink-3,#3f3f46);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;cursor:pointer;transition:background-color .15s,color .15s}.ds-seg button:hover{background:var(--secondary,#f4f4f5);color:var(--foreground,#0a0a0a)}.ds-seg button[aria-pressed=true]{background:var(--primary,#0a0a0a);color:var(--primary-foreground,#fff)}.ds-seg button:focus-visible{outline:2px solid var(--ring,#0a0a0a);outline-offset:2px}"
+    },
+    {
+      "name": "Tabs",
+      "kind": "nav",
+      "refersTo": "tabs",
+      "description": "Section tabs: 13px, active 600 ink with a 2px underline; a count is grey, ink when it needs action, red only when overdue.",
+      "html": "<nav class=\"ds-tabs\"><a aria-current=\"page\">Overview</a><a>Holdings <b>12</b></a><a>Activity <b class=\"hot\">2</b></a></nav>",
+      "css": ".ds-tabs{display:flex;gap:22px;height:44px;border-bottom:1px solid var(--border,#ededed)}.ds-tabs a{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--muted-foreground,#71717a);text-decoration:none;cursor:pointer}.ds-tabs a:hover{color:var(--foreground,#0a0a0a)}.ds-tabs a[aria-current=page]{font-weight:600;color:var(--foreground,#0a0a0a);box-shadow:inset 0 -2px 0 var(--foreground,#0a0a0a)}.ds-tabs b{font-size:12px;font-weight:600;color:var(--muted-foreground,#71717a)}.ds-tabs b.hot{color:var(--down,#d12d35)}"
+    },
+    {
+      "name": "Page Hero",
+      "kind": "custom",
+      "refersTo": "hero",
+      "description": "Label, the one big number, and the sentence that explains it.",
+      "html": "<div class=\"ds-hero\"><span class=\"l\">Fund value</span><span class=\"n\">$4,462,310</span><span class=\"s\"><b>+$18,204 (0.41%)</b> <i>today, led by AVGO and KRE</i></span></div>",
+      "css": ".ds-hero{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);display:flex;flex-direction:column}.ds-hero .l{font-size:13px;color:var(--muted-foreground,#71717a)}.ds-hero .n{font-size:44px;line-height:52px;font-weight:700;letter-spacing:-.035em;font-variant-numeric:tabular-nums;color:var(--foreground,#0a0a0a)}.ds-hero .s{font-size:15px;line-height:24px}.ds-hero b{font-weight:600;color:var(--up,#007a45)}.ds-hero i{font-style:normal;color:var(--muted-foreground,#71717a)}"
+    },
+    {
+      "name": "Stat Strip",
+      "kind": "custom",
+      "refersTo": "stat-strip",
+      "description": "Equal cells between two hairlines; no boxes.",
+      "html": "<section class=\"ds-strip\"><div><span>Day</span><b class=\"up\">+0.41%</b><em>vs S&amp;P +0.22%</em></div><div><span>Since inception</span><b class=\"down\">(1.42%)</b><em>relative (38 bp)</em></div><div><span>Cash</span><b>$212,040</b><em>4.8% of fund</em></div></section>",
+      "css": ".ds-strip{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);display:grid;grid-template-columns:repeat(3,1fr);column-gap:16px;padding:18px 0;border-top:1px solid var(--border,#ededed);border-bottom:1px solid var(--border,#ededed)}.ds-strip div{display:flex;flex-direction:column;gap:3px}.ds-strip span,.ds-strip em{font-size:12px;line-height:17px;font-style:normal;color:var(--muted-foreground,#71717a)}.ds-strip b{font-size:17px;line-height:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--foreground,#0a0a0a)}.ds-strip .up{color:var(--up,#007a45)}.ds-strip .down{color:var(--down,#d12d35)}"
+    },
+    {
+      "name": "Outlined Panel with Table",
+      "kind": "card",
+      "refersTo": "panel-outlined",
+      "description": "An object you act on: 1px hairline ring, 44px header, row dividers, status as words.",
+      "html": "<section class=\"ds-panel\"><header><h2>Holdings</h2><span>12</span></header><table><thead><tr><th>Ticker</th><th>Weight</th><th>Day</th><th>Status</th></tr></thead><tbody><tr><td>AVGO</td><td>6.2%</td><td class=\"up\">+1.84%</td><td class=\"w\">Held</td></tr><tr><td>KRE</td><td>3.1%</td><td class=\"down\">(0.72%)</td><td class=\"g\">Reviewed</td></tr></tbody></table></section>",
+      "css": ".ds-panel{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);border-radius:8px;box-shadow:0 0 0 1px var(--border,#ededed);overflow:hidden;font-variant-numeric:tabular-nums}.ds-panel header{display:flex;align-items:center;gap:8px;height:44px;padding:0 16px;border-bottom:1px solid var(--border,#ededed)}.ds-panel h2{margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em}.ds-panel header span{font-size:12px;font-weight:600;color:var(--muted-foreground,#71717a)}.ds-panel table{width:100%;border-collapse:collapse;font-size:13px}.ds-panel th{height:40px;padding:0 8px;text-align:left;font-weight:400;color:var(--muted-foreground,#71717a);border-bottom:1px solid var(--border,#ededed)}.ds-panel td{height:40px;padding:0 8px;border-bottom:1px solid var(--row,#f4f4f5)}.ds-panel th:first-child,.ds-panel td:first-child{padding-left:16px}.ds-panel tr:last-child td{border-bottom:0}.ds-panel tbody tr:hover{background:var(--band,#fafafa)}.ds-panel .up{color:var(--up,#007a45)}.ds-panel .down{color:var(--down,#d12d35)}.ds-panel .w{font-size:12px;font-weight:600;color:var(--caution-foreground,#b45309)}.ds-panel .g{font-size:12px;font-weight:600;color:var(--muted-foreground,#71717a)}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "32px, 6px corners, grey outline that turns ink on focus.",
+      "html": "<input class=\"ds-input\" placeholder=\"Ticker\" />",
+      "css": ".ds-input{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);height:32px;padding:4px 10px;border:1px solid var(--input,#d4d4d8);border-radius:6px;background:var(--card,#fff);color:var(--foreground,#0a0a0a);font-size:13px;outline:none;transition:border-color .15s}.ds-input::placeholder{color:var(--muted-foreground,#71717a)}.ds-input:focus-visible{border-color:var(--foreground,#0a0a0a)}"
+    },
+    {
+      "name": "Hoot Corner",
+      "kind": "custom",
+      "refersTo": "hoot-corner",
+      "description": "Hoot's face in the bottom-right; opens the ⌘J palette.",
+      "html": "<button class=\"ds-hoot\" aria-label=\"Ask Hoot\"><svg width=\"26\" height=\"26\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 9c0-3 3-5 7-5s7 2 7 5v6c0 3-3 5-7 5s-7-2-7-5z\"/><circle cx=\"9\" cy=\"10.5\" r=\"2\"/><circle cx=\"15\" cy=\"10.5\" r=\"2\"/></svg></button>",
+      "css": ".ds-hoot{display:grid;place-items:center;width:52px;height:52px;border-radius:9999px;border:1px solid var(--hoot-panel-ring,#e4e4e7);background:var(--popover,#fff);color:var(--foreground,#0a0a0a);box-shadow:0 4px 14px rgb(10 10 10/.10);cursor:pointer;transition:transform .2s ease-out,box-shadow .2s ease-out}.ds-hoot:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgb(10 10 10/.16)}.ds-hoot:focus-visible{outline:2px solid var(--ring,#0a0a0a);outline-offset:3px}"
+    },
+    {
+      "name": "Hoot Prose",
+      "kind": "custom",
+      "refersTo": "hoot-prose",
+      "description": "Hoot's own words in Source Serif 4 with sans citation markers.",
+      "html": "<p class=\"ds-prose\">KRE lagged because regional bank deposits fell again in the H.8 release<sup>1</sup>, while AVGO carried the day on the custom-silicon guide<sup>2</sup>.</p>",
+      "css": ".ds-prose{font-family:var(--font-serif,'Source Serif 4',ui-serif,Georgia,serif);font-size:17px;line-height:27px;max-width:760px;color:color-mix(in oklab,var(--foreground,#0a0a0a) 92%,var(--background,#fff))}.ds-prose sup{font-family:var(--font-sans,Geist,sans-serif);font-size:12px;line-height:0;font-weight:600;padding:0 1px;text-decoration:underline;text-underline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Brokerage Book, Ruled in Hairlines",
+    "overview": "Owl Fund is a student-run fund's book, read at a desk during market hours. The look joins two things. From consumer brokerages it takes the portfolio page: one big number, one big chart, and a sentence saying why it moved. From Linear it takes the structure: a white page divided by 1px hairlines, not boxes, with ink as the only strong colour. Conversation surfaces (Home, Research, Hoot threads) read like Claude or Perplexity instead: a centred 760px column, a large composer, and Hoot's own words set in a serif. Every page follows the same order: its number and the sentence explaining it, then what needs you, then the detail table.\n\nDensity is high but quiet. Six text sizes, tabular figures everywhere, greys for anything that isn't the point. Colour has a job or it doesn't appear: green and red for up and down, one amber for \"check this\". Hoot, the fund's AI, has no column on the page. He is a face in the bottom-right corner, a ⌘J palette, and an answer panel that slides in from the right.\n\nThese looks were rejected and should not come back: cream/charcoal, boxed rounded cards, Fidelity/Schwab boxiness, a dark terminal, editorial/newspaper, soft fintech cards, and a dashboard of panels. The app is desktop-only, so there is no phone layout.",
+    "keyCharacteristics": [
+      "White page, a #FAFAFA sidebar band, zinc greys, ink (#0A0A0A) for text, primary buttons and selection.",
+      "Hairlines instead of boxes: #EDEDED section dividers, #F4F4F5 row dividers, and a 1px ring only around a panel you act on.",
+      "One big number (44px, 700) plus a 220px chart and a sentence on portfolio pages.",
+      "Geist and Geist Mono with tabular figures; Source Serif 4 only for Hoot's words.",
+      "Status is always a word. Green and red mean up and down; amber means check this.",
+      "Accounting format everywhere: negatives in parentheses, bp for relative figures, % for returns."
+    ],
+    "rules": [
+      {
+        "name": "The Up-and-Down Rule",
+        "body": "Green and red appear only for a signed figure: up or down, gain or loss, above or below zero. Red may also mark an overdue count. Nothing else gets them: not success, not \"open\", not a brand accent.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Amber Rule",
+        "body": "Anything needing a second look (stale, held, missing, failed) uses the same amber and always comes with a word. A failure is amber with the word \"Failed\", never red.",
+        "section": "colors"
+      },
+      {
+        "name": "The Word-First Rule",
+        "body": "Every status is a word in 12px semibold, coloured by tone. Never use a colour alone, a dot alone, or a filled pill.",
+        "section": "colors"
+      },
+      {
+        "name": "The Six Steps Rule",
+        "body": "Only six sizes exist: 12, 13, 15, 17, 22 and 44px. Hierarchy comes from moving a whole step, or from weight and colour. An arbitrary `text-[Npx]` fails lint (owl/type-scale), and a test pins globals.css to the codemod's scale.",
+        "section": "typography"
+      },
+      {
+        "name": "The Serif Is Hoot Rule",
+        "body": "Source Serif 4 sets Hoot's own words and nothing else. It is not for headings, marketing text or quotations from documents.",
+        "section": "typography"
+      },
+      {
+        "name": "The Accounting Rule",
+        "body": "Every figure and date goes through the shared formatter (a guard test fails on hand-rolled `toFixed` / `toLocaleString` / `Intl.DateTimeFormat`). Negatives go in parentheses with the unit inside: \"(0.29%)\", \"(2 bp)\", \"($1,234.50)\". A change carries a plus when it's up. Relative figures (active weight, moves against the benchmark) are in \"bp\", never \"bps\". Returns are in %.",
+        "section": "typography"
+      },
+      {
+        "name": "The Number-Sentence-Table Rule",
+        "body": "A page opens with its number and the sentence that explains it, then what needs you, then the detail. A page never opens with a grid of panels.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Page Rule",
+        "body": "Anything that is part of the page has no shadow. Only something floating above the page (Hoot's corner, the palette, the answer panel, menus) casts one.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No-Box Rule",
+        "body": "A section of a page is set apart by its 17px title and the space around it, not by a frame. Only an object you act on (a table, an editor) gets the 1px panel ring. There are no filled cards and no nested frames.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do open every page with PageHead: breadcrumb, grey as-of note, and at most one ink primary action.",
+      "Do put a portfolio page's story in the hero: the 44px number, the 15px sentence, the 220px chart, then a stat strip.",
+      "Do write every status as a word in 12px semibold: grey for done or neutral, amber (#B45309) for check/stale/held/failed, red only for overdue.",
+      "Do format every figure through the shared formatter: negatives in parentheses, \"bp\" for relative figures, \"%\" for returns.",
+      "Do keep Hoot to the corner face, ⌘J and the slide-in answer panel, with his words in Source Serif 4.",
+      "Do make anything that emails people ask first and name its recipients (\"Send to 6 people: …\", with a \"Send to me only\" option).",
+      "Do carry the night tokens through the CSS variables. Never hard-code a day hex into a component."
+    ],
+    "donts": [
+      "Don't use green or red for anything but up, down and overdue: not success, not \"open\", not a live dot, not a destructive-looking status.",
+      "Don't colour a failure red. Failures and error messages are amber with a word; the `destructive` token is amber in this world.",
+      "Don't add a Hoot column or sidebar to a page.",
+      "Don't box sections into filled or shadowed cards, or build a dashboard of equal panels.",
+      "Don't bring back cream/charcoal, a dark terminal, an editorial/newspaper look, soft fintech cards, or Fidelity/Schwab boxiness.",
+      "Don't use a size outside the six-step scale, or set anything but Hoot's words in serif.",
+      "Don't use chart gradients. The only chart fill is the pale red under a drawdown.",
+      "Don't design phone layouts. The app is desktop-only."
+    ]
+  }
+}

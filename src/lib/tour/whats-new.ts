@@ -131,7 +131,7 @@ export const WHATS_NEW_TOUR: Tour = {
           target: '[data-tour="holdings-filters"]',
           title: "Filter to what matters",
           what: "Needs attention and Reporting in 2 weeks, each with a count. The S&P 500's move today sits on the right.",
-          how: "Needs attention turns pink when a write-up is overdue.",
+          how: "Needs attention turns red when a write-up is overdue.",
         },
         {
           id: "holdings-table",

@@ -33,7 +33,7 @@ export function PanelHeader({
 }: {
   title: React.ReactNode;
   count?: React.ReactNode;
-  /** The count is something Hoot found or that needs action (pink). */
+  /** The count needs action: ink rather than grey. */
   hot?: boolean;
   /** Right-aligned: a meta line, a link or a button. */
   aside?: React.ReactNode;
@@ -56,9 +56,9 @@ export function PanelFooter({ className, children }: { className?: string; child
   return <div className={cn("flex min-h-10 shrink-0 items-center gap-3 border-t px-4 py-2 text-caption text-muted-foreground group-data-[variant=plain]/panel:border-t-0 group-data-[variant=plain]/panel:px-0", className)}>{children}</div>;
 }
 
-/** A count beside a title or tab: plain 12px figures, red when something is overdue or needs action, grey otherwise. */
-export function CountChip({ hot, className, children }: { hot?: boolean; className?: string; children: React.ReactNode }) {
-  return <span className={cn("text-caption font-semibold tabular-nums", hot ? "text-down" : "text-muted-foreground", className)}>{children}</span>;
+/** A count beside a title or tab: plain 12px figures, red only when something is overdue, ink when it needs action, grey otherwise. */
+export function CountChip({ hot, overdue, className, children }: { hot?: boolean; overdue?: boolean; className?: string; children: React.ReactNode }) {
+  return <span className={cn("text-caption font-semibold tabular-nums", overdue ? "text-down" : hot ? "text-foreground" : "text-muted-foreground", className)}>{children}</span>;
 }
 
 export type StatCell = {
@@ -268,7 +268,7 @@ export function BackLink({ href, label }: { href: string; label: string }) {
   );
 }
 
-/** Small uppercase mono label, e.g. MON 28 SEP. */
+/** A small grey label in sentence case, e.g. "Mon, Sep 28". */
 export function MonoLabel({ className, children }: { className?: string; children: React.ReactNode }) {
   return <div className={cn("label-mono text-muted-foreground", className)}>{children}</div>;
 }

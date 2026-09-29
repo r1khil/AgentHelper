@@ -10,6 +10,9 @@ import { fmtDay, fmtTime } from "@/lib/format";
 /** One line of "This week": a day, what happens, and when in the day. */
 export type WeekItem = { date: string; day: string; text: string; when: string };
 
+/** The big economic releases landing at one time on one day: "Nonfarm Payrolls and Unemployment Rate", "8:30 AM ET". */
+export type WeekRelease = { date: string; text: string; when: string; sort: string };
+
 const AHEAD_DAYS = 7;
 const SHOWN = 6;
 const HOUR: Record<string, string> = { bmo: "before the open", amc: "after the close", dmh: "during the session" };
@@ -19,13 +22,32 @@ function join(xs: string[]) {
 }
 
 /**
+ * The big economic releases (importance 3) from `from` to `to`, releases at the same moment joined into one line, in
+ * time order. Null when the calendar feed is down.
+ */
+export async function loadReleases(from: string, to: string): Promise<WeekRelease[] | null> {
+  const feed = await getEconomicCalendar({ from, to }).catch(() => null);
+  if (!feed) return null;
+  const groups = new Map<string, WeekRelease & { names: string[] }>();
+  for (const e of feed.events) {
+    if (e.importance !== 3 || e.date < from || e.date > to) continue;
+    const when = e.timestamp && !e.tentative ? fmtTime(e.timestamp) : e.tentative ? "Time to be set" : e.time;
+    const key = `${e.date}|${when}`;
+    const g = groups.get(key) ?? { date: e.date, text: "", when, sort: `${e.date}|${e.timestamp ?? e.time}`, names: [] };
+    if (!g.names.includes(e.name)) g.names.push(e.name);
+    groups.set(key, g);
+  }
+  return [...groups.values()].map(({ names, ...g }) => ({ ...g, text: join(names) })).sort((a, b) => a.sort.localeCompare(b.sort));
+}
+
+/**
  * What lands in the next week: the fund's earnings reports and the big economic releases (importance 3), in date
  * order. The releases come from the calendar feed, which can be down; the earnings still show then.
  */
 export async function loadWeek(teamIds: string[]): Promise<{ items: WeekItem[]; releasesUnavailable: boolean }> {
   const today = todayNY();
   const to = DateTime.fromISO(today, { zone: NY }).plus({ days: AHEAD_DAYS }).toISODate()!;
-  const [reports, feed] = await Promise.all([
+  const [reports, releases] = await Promise.all([
     teamIds.length
       ? db
           .select({ ticker: holdings.ticker, date: earnings.reportDate, hour: earnings.reportHour, dateStatus: earnings.dateStatus })
@@ -34,7 +56,7 @@ export async function loadWeek(teamIds: string[]): Promise<{ items: WeekItem[]; 
           .where(and(inArray(holdings.teamId, teamIds), eq(holdings.status, "active"), eq(earnings.status, "upcoming"), between(earnings.reportDate, today, to)))
           .orderBy(asc(earnings.reportDate))
       : Promise.resolve([]),
-    getEconomicCalendar({ from: today, to }).catch(() => null),
+    loadReleases(today, to),
   ]);
 
   const items: (WeekItem & { sort: string })[] = [];
@@ -49,10 +71,7 @@ export async function loadWeek(teamIds: string[]): Promise<{ items: WeekItem[]; 
   for (const g of groups.values()) {
     items.push({ date: g.date, day: fmtDay(g.date), text: `${join(g.tickers)} ${g.tickers.length === 1 ? "reports" : "report"}${g.estimated ? " (est.)" : ""}`, when: HOUR[g.hour] ?? "", sort: `${g.date}|${g.hour === "bmo" ? "0" : "9"}` });
   }
-  for (const e of feed?.events ?? []) {
-    if (e.importance !== 3 || e.date < today || e.date > to) continue;
-    items.push({ date: e.date, day: fmtDay(e.date), text: e.name, when: e.timestamp && !e.tentative ? fmtTime(e.timestamp) : e.tentative ? "Time to be set" : e.time, sort: `${e.date}|${e.timestamp ?? e.time}` });
-  }
+  for (const r of releases ?? []) items.push({ ...r, day: fmtDay(r.date) });
   items.sort((a, b) => a.sort.localeCompare(b.sort));
-  return { items: items.slice(0, SHOWN).map((x) => ({ date: x.date, day: x.day, text: x.text, when: x.when })), releasesUnavailable: feed === null };
+  return { items: items.slice(0, SHOWN).map((x) => ({ date: x.date, day: x.day, text: x.text, when: x.when })), releasesUnavailable: releases === null };
 }

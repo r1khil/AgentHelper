@@ -69,7 +69,7 @@ export function AskComposer({
         e.preventDefault();
         void submit();
       }}
-      className={cn("w-full rounded-xl border border-border-strong bg-background px-4 pt-4 pb-3 focus-within:border-foreground", COMPOSER_SHADOW)}
+      className={cn("w-full rounded-composer border border-border-strong bg-background px-4 pt-4 pb-3 focus-within:border-foreground", COMPOSER_SHADOW)}
     >
       <label htmlFor={id} className="sr-only">
         Ask Hoot

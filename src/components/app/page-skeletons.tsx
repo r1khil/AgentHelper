@@ -46,7 +46,7 @@ export function TodaySkeleton() {
         <TextBone className="mt-3.5 text-hero" w="w-[26rem]" />
         <TextBone className="mt-2.5 text-emph" w="w-[30rem]" />
         {/* The question box: two 26px lines of text and the control row. */}
-        <div className="mt-[26px] flex w-full flex-col rounded-xl border border-border-strong px-4 pt-4 pb-3">
+        <div className="mt-[26px] flex w-full flex-col rounded-composer border border-border-strong px-4 pt-4 pb-3">
           <div className="h-[52px]" />
           <div className="mt-2.5 flex items-center gap-2">
             <Bone className="h-[30px] w-28 rounded-md" />
@@ -569,7 +569,7 @@ export function ThreadSkeleton() {
           </div>
         </div>
         <div className="absolute inset-x-0 bottom-0 flex flex-col items-center bg-linear-to-b from-transparent to-background to-35% px-10 pt-6 pb-4">
-          <div className="flex h-[52px] w-[760px] max-w-full items-center gap-2 rounded-xl border border-border-strong py-2 pr-2 pl-4">
+          <div className="flex h-[52px] w-[760px] max-w-full items-center gap-2 rounded-composer border border-border-strong py-2 pr-2 pl-4">
             <span className="flex-1" />
             <Bone className="size-[34px] rounded-lg" />
           </div>
@@ -593,7 +593,7 @@ export function ResearchHomeSkeleton() {
         <Bone className="size-11 rounded-full" />
         <TextBone className="mt-3 text-hero" w="w-[28rem]" />
         <TextBone className="mt-2 text-emph" w="w-[40rem]" />
-        <div className="mt-6 flex w-full flex-col rounded-xl border border-border-strong px-4 pt-4 pb-3">
+        <div className="mt-6 flex w-full flex-col rounded-composer border border-border-strong px-4 pt-4 pb-3">
           <div className="h-[52px]" />
           <div className="mt-2.5 flex items-center gap-2">
             <Bone className="h-[30px] w-28 rounded-md" />

@@ -59,7 +59,7 @@ export const TourCard = forwardRef<HTMLDivElement, { view: CardView; onAction: (
       style={{ width: TOUR_CARD_WIDTH, maxWidth: "calc(100vw - 2rem)", translate: `${Math.round(x)}px ${Math.round(y)}px` }}
     >
       <div key={view.key}>
-        {view.eyebrow && <div className="mb-1 text-caption font-medium tracking-wide text-muted-foreground uppercase">{view.eyebrow}</div>}
+        {view.eyebrow && <div className="mb-1 text-caption font-semibold text-muted-foreground">{view.eyebrow}</div>}
         <h2 id={titleId} className="text-emph leading-snug font-semibold text-balance">
           {withCommandKey(view.title)}
         </h2>
@@ -133,7 +133,7 @@ export const TourCard = forwardRef<HTMLDivElement, { view: CardView; onAction: (
 function Line({ label, text }: { label: string; text: string }) {
   return (
     <div>
-      <dt className="text-caption font-medium tracking-wide text-muted-foreground uppercase">{label}</dt>
+      <dt className="text-caption font-semibold text-muted-foreground">{label}</dt>
       <dd className="mt-0.5">{text}</dd>
     </div>
   );

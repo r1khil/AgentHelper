@@ -3,7 +3,8 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 // One control vocabulary: ink primary, grey secondary, 6px corners, 30px tall. Outline is the secondary look (the new
-// look draws no outlined buttons); destructive is a grey button with red words.
+// look draws no outlined buttons); destructive is a grey button whose word says what it removes (red is only for down
+// and overdue).
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-body font-medium whitespace-nowrap transition-colors outline-none select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:bg-border-strong disabled:text-ink-2 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
@@ -13,7 +14,7 @@ const buttonVariants = cva(
         outline: "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklab,var(--secondary),var(--foreground)_6%)] aria-expanded:bg-[color-mix(in_oklab,var(--secondary),var(--foreground)_6%)]",
         secondary: "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklab,var(--secondary),var(--foreground)_6%)] aria-expanded:bg-[color-mix(in_oklab,var(--secondary),var(--foreground)_6%)]",
         ghost: "text-ink-3 hover:bg-secondary hover:text-foreground aria-expanded:bg-secondary aria-expanded:text-foreground",
-        destructive: "bg-secondary text-destructive hover:bg-[color-mix(in_oklab,var(--secondary),var(--destructive)_10%)]",
+        destructive: "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklab,var(--secondary),var(--foreground)_6%)]",
         link: "text-foreground underline-offset-4 hover:underline",
       },
       size: {

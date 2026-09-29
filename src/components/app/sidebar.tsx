@@ -219,7 +219,7 @@ function NavGroup({ label, links, active }: { label: string; links: NavLink[]; a
   if (!links.length) return null;
   return (
     <nav aria-label={label} className="mt-4 flex flex-col gap-px">
-      <div className="px-2.5 pb-1 text-caption font-medium tracking-wide text-muted-foreground uppercase">{label}</div>
+      <div className="px-2.5 pb-1 text-caption font-semibold text-muted-foreground">{label}</div>
       {links.map((n) => (
         <NavItem key={n.href} href={n.href} label={n.label} icon={n.icon} active={active(n)} />
       ))}
