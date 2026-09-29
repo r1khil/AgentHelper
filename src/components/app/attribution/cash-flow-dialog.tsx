@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import type { ActionResult } from "@/lib/actions/holdings";
 import { recordCashFlow } from "@/lib/actions/ledger";
@@ -26,8 +25,7 @@ export function CashFlowDialog({ today }: { today: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="sm" />}>
-        <Plus />
+      <DialogTrigger render={<Button size="sm" variant="secondary" />}>
         Record cash
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
