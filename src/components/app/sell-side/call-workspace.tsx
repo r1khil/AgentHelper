@@ -448,7 +448,7 @@ export function CallWorkspace({
                 </div>
                 {recording && (
                   <div className="flex items-center gap-2">
-                    <span className={cn("size-2 rounded-full bg-foreground", !paused && "animate-pulse")} />
+                    <span className={cn("text-caption font-semibold", paused ? "text-caution-foreground" : "text-foreground")}>{paused ? "Paused" : "Recording"}</span>
                     <meter min={0} max={100} value={level} aria-label="Audio input level" />
                   </div>
                 )}

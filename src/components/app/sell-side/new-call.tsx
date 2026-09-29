@@ -123,7 +123,6 @@ export function NewCall({ team, teamId, holdings, teams, scope, onCreated }: Pro
       )}
       <Input aria-label="Call title" name="title" required maxLength={160} placeholder="Title, e.g. “MS semis desk”" disabled={busy} />
       <Button type="submit" disabled={busy || !current || (!holding && company !== "other")} className="self-end">
-        <span aria-hidden className="size-[9px] rounded-full bg-primary-foreground" />
         {busy ? "Creating…" : "Start recording"}
       </Button>
       {error && (

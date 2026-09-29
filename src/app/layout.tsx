@@ -15,7 +15,7 @@ const sourceSerif = Source_Serif_4({ subsets: ["latin"], weight: ["400", "500", 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", preload: false });
 
 export const metadata: Metadata = {
-  title: { default: "The Owl's Nest", template: "%s · The Owl's Nest" },
+  title: { default: "The Owl's Nest", template: "%s | The Owl's Nest" },
   description: "Research workspace for Owl Fund sector teams.",
 };
 
