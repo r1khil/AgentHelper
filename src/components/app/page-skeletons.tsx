@@ -243,105 +243,71 @@ export function HoldingSkeleton() {
 
 /**
  * Movements (movements/movements-view.tsx and workspace.tsx), with a movement selected as it nearly always is: the
- * list on the left from xl (a "Movements" button in the title row below it), the title and meta strip, then the
- * write-up as the main column beside the evidence Hoot gathered, one window tall.
+ * list on the left, the big number, facts row and write-up in the middle, the evidence Hoot gathered on the right,
+ * one window tall under the 53px page header.
  */
 export function MovementsSkeleton() {
   return (
-    <SkeletonPage className="grid min-h-0 flex-1 gap-5 lg:h-[calc(100dvh-6.5rem)] lg:flex-none lg:grid-rows-[minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
-      <SkeletonPanel className="hidden xl:flex">
-        <div className="shrink-0 border-b px-4 py-3.5">
-          <div className="flex items-baseline gap-2">
-            <TextBone className="text-emph font-semibold" w="w-24" />
-            <span className="flex-1" />
-            <TextBone className="font-mono text-caption" w="w-28" />
+    <SkeletonPage fullBleed className="flex h-[calc(100dvh-53px)] min-h-0">
+      <aside className="flex w-[260px] shrink-0 flex-col overflow-hidden border-r pt-3.5 pr-4 pl-10">
+        <Bone className="mb-1.5 h-7 w-24 self-start rounded-lg" />
+        {range(9).map((i) => (
+          <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto] gap-y-0.5 border-b border-row py-2.5">
+            <TextBone className="text-body font-semibold" w="w-10" />
+            <TextBone className="text-body" w="w-14" />
+            <TextBone className="text-caption" w="w-16" />
+            <TextBone className="text-caption" w="w-24" />
           </div>
-          {["w-full", "w-full", "w-1/2"].map((w, i) => (
-            <TextBone key={i} className={cn("text-body leading-[1.45]", i === 0 && "mt-0.5")} w={w} />
+        ))}
+      </aside>
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden px-8 pt-[26px]">
+        <div className="flex items-baseline gap-3.5">
+          <TextBone className="hero-figure" w="w-56" />
+          <TextBone className="text-emph" w="w-72" />
+        </div>
+        <div className="mt-3 flex gap-x-7 border-b pb-3.5">
+          {["w-28", "w-44", "w-40", "w-32"].map((w, i) => (
+            <TextBone key={i} className="text-body" w={w} />
           ))}
         </div>
-        <div className="min-h-0 flex-1 overflow-hidden">
-          {range(10).map((i) => (
-            <div key={i} className="border-b border-row px-4 py-2.5">
-              <div className="flex items-center gap-2">
-                <Bone className="h-3 w-11 shrink-0 rounded-[4px]" />
-                <Bone className="h-3 w-14 rounded-[4px]" />
-                <span className="flex-1" />
-                <Bone className="h-[22px] w-20 rounded-full" />
-              </div>
-              <TextBone className="mt-[3px] text-caption" w="w-44" />
-            </div>
+        <div className="mt-[18px] flex items-baseline">
+          <TextBone className="flex-1 text-title font-bold" w="w-28" />
+          <TextBone className="text-caption" w="w-24" />
+        </div>
+        <div className="mt-2 min-h-40 border-y border-row py-3">
+          {["w-full", "w-full", "w-5/6", "w-full", "w-3/4"].map((w, i) => (
+            <TextBone key={i} className="text-emph leading-6" w={w} />
           ))}
         </div>
-      </SkeletonPanel>
-      <div className="flex min-h-0 min-w-0 flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          <div className="flex min-w-0 flex-1 basis-[22rem] items-center gap-4">
-            <SkeletonPill className="h-7 w-[178px] xl:hidden" />
-            {/* Pieces that wrap like the real title: ticker, "Friday, September 25 · Company", then the three moves. */}
-            <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-              <TextBone className="font-mono text-display font-semibold" w="w-20" />
-              <span className="flex flex-wrap gap-x-1">
-                <TextBone className="text-emph" w="w-40" />
-                <TextBone className="text-emph" w="w-32" />
-              </span>
-              <span className="flex flex-wrap gap-x-4 gap-y-1">
-                {["w-20", "w-28", "w-28"].map((w, i) => (
-                  <TextBone key={i} className="text-body" w={w} />
-                ))}
-              </span>
-            </div>
-          </div>
-          <div className="panel flex shrink-0">
-            {["w-40", "w-20", "w-28", "w-16"].map((w, i) => (
-              <div key={i} className={cn("px-4 py-2", i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
-                <TextBone className="text-caption" w="w-10" />
-                <TextBone className="text-body font-semibold" w={w} />
+        <div className="mt-3 flex items-center gap-2">
+          <Bone className="h-[30px] w-44 rounded-lg" />
+          <Bone className="h-[30px] w-24 rounded-lg" />
+          <span className="flex-1" />
+          <Bone className="h-[30px] w-28 rounded-lg" />
+        </div>
+      </div>
+      <aside className="flex w-80 shrink-0 flex-col overflow-hidden border-l pt-[22px] pr-10 pl-6">
+        <div className="flex items-baseline">
+          <TextBone className="flex-1 text-body font-bold" w="w-36" />
+          <TextBone className="text-caption" w="w-14" />
+        </div>
+        <TextBone className="mt-1 text-caption" w="w-52" />
+        {[1, 2, 1].map((n, g) => (
+          <div key={g}>
+            <TextBone className="pt-3 pb-0.5 text-caption font-semibold" w="w-16" />
+            {range(n).map((i) => (
+              <div key={i} className="grid grid-cols-[18px_minmax(0,1fr)] gap-1.5 border-b border-row py-[7px]">
+                <Bone className="h-3 w-3 rounded-[4px]" />
+                <span className="flex flex-col gap-[3px]">
+                  <TextBone className="text-body" w="w-full" />
+                  <TextBone className="text-caption" w="w-32" />
+                  <TextBone className="text-caption" w="w-14" />
+                </span>
               </div>
             ))}
           </div>
-        </div>
-        <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)] 2xl:grid-cols-[minmax(0,1fr)_420px]">
-          {/* The team's update */}
-          <SkeletonPanel>
-            <SkeletonPanelHeader w="w-32" aside="w-24" />
-            <div className="min-h-40 flex-1 px-4 py-3">
-              {["w-full", "w-full", "w-5/6", "w-full", "w-3/4"].map((w, i) => (
-                <TextBone key={i} className="text-emph leading-[1.6]" w={w} />
-              ))}
-            </div>
-            <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-2 border-t bg-band-2 px-4 py-2">
-              <SkeletonPill className="w-44" />
-              <SkeletonPill className="w-24" />
-              <SkeletonPill className="w-32" />
-              <TextBone className="min-w-0 flex-1 basis-64 text-body" w="w-64" />
-            </div>
-          </SkeletonPanel>
-          {/* Evidence Hoot gathered */}
-          <div className="flex min-h-0 min-w-0 flex-col gap-3">
-            <SkeletonPanel className="min-h-0 flex-1">
-              <SkeletonPanelHeader w="w-44" aside="w-24" />
-              <div className="min-h-0 flex-1 overflow-hidden">
-                {range(9).map((i) => (
-                  <div key={i} className="flex gap-2.5 border-b border-row py-2 pr-2 pl-4">
-                    <Bone className="mt-px h-[18px] w-[22px] shrink-0 rounded-full" />
-                    <div className="min-w-0 flex-1">
-                      <TextBone className="pr-2 text-body leading-[1.45]" w="w-4/5" />
-                      <div className="flex min-h-6 items-center">
-                        <Bone className="h-2.5 w-32 rounded-[4px]" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-3 border-t bg-band-2 px-4 py-2">
-                <TextBone className="min-w-0 flex-1 basis-40 text-body" w="w-48" />
-                <SkeletonPill className="h-7 w-32" />
-              </div>
-            </SkeletonPanel>
-          </div>
-        </div>
-      </div>
+        ))}
+      </aside>
     </SkeletonPage>
   );
 }

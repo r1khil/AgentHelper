@@ -6,6 +6,6 @@ export const metadata: Metadata = { title: "Movement" };
 
 export default async function MovementPage({ params }: { params: Promise<{ team: string; id: string }> }) {
   const { team: slug, id } = await params;
-  const { items, selected } = await loadMovementsView(slug, id);
-  return <MovementsView items={items} selected={selected} />;
+  const { scope, items, selected } = await loadMovementsView(slug, id);
+  return <MovementsView scope={{ slug: scope.slug, label: scope.team?.name ?? "Whole fund" }} items={items} selected={selected} />;
 }
