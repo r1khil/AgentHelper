@@ -1,6 +1,7 @@
 "use client";
 
-import { useHootCommand } from "@/components/app/hoot/use-hoot-command";
+import { useApplyHootAction, useHootCommand } from "@/components/app/hoot/use-hoot-command";
+import { seenActions, takeNewActions } from "@/lib/hoot/app-actions";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
@@ -96,6 +97,16 @@ export function useResearchChat({
 
   const streaming = status === "submitted" || status === "streaming";
   const busy = streaming || catchingUp;
+
+  // Hoot's app actions (open a page, change the theme) run once, as they stream in. Saved ones, and any that arrive
+  // through the catch-up poll after the member came back, are only marked seen: reopening a chat never navigates.
+  const applyAction = useApplyHootAction();
+  const seen = useRef<Set<string> | null>(null);
+  seen.current ??= seenActions(initialMessages);
+  useEffect(() => {
+    const fresh = takeNewActions(messages, seen.current!);
+    if (streaming) for (const action of fresh) applyAction(action);
+  }, [messages, streaming, applyAction]);
 
   // How long each question this page asked took, for "Worked for 12s" until the saved answer carries its own time.
   // Keyed by the question's message id, which is also the turn's id.

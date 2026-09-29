@@ -7,9 +7,9 @@ import type { PageContext } from "../page-context";
  * the answer must or must not say. `npm run eval:hoot` runs them against the live model and data and scores each.
  *
  * Tags: `portfolio` (needs the Fund's own numbers), `research` (filings, news, documents), `boundary` (the learning
- * boundary: Hoot gathers evidence, the analyst writes), `control` (asks Hoot to operate the app: they expect the
- * navigate/set_scope/set_theme tools, so they fail until Hoot has them), `workspace` (the app's own pages: movements,
- * earnings, economic releases, the ledger, to-dos, the changelog).
+ * boundary: Hoot gathers evidence, the analyst writes), `control` (asks Hoot to operate the app with its navigate and
+ * set_theme tools), `workspace` (the app's own pages: movements, earnings, economic releases, the ledger, to-dos, the
+ * changelog).
  */
 export type EvalCase = {
   id: string;
@@ -303,7 +303,7 @@ export const EVAL_CASES: EvalCase[] = [
     as: "exec",
     page: fundRisk,
     tags: ["control"],
-    expect: { calls: ["set_scope|navigate"], maxToolCalls: 1, answerNot: [/Figma/i, CANT] },
+    expect: { calls: ["navigate"], maxToolCalls: 1, maxErrors: 0, answerNot: [/Figma/i, CANT] },
     note: "Production 2026-09-25: researched Figma (FIG) with 11 lookups.",
   },
   {
@@ -312,14 +312,55 @@ export const EVAL_CASES: EvalCase[] = [
     as: "exec",
     page: { kind: "page", path: "/admin", title: "Admin" },
     tags: ["control"],
-    expect: { calls: ["set_theme"], maxToolCalls: 1, answerNot: [CANT] },
+    expect: { calls: ["set_theme"], maxToolCalls: 1, maxErrors: 0, answerNot: [CANT] },
     note: "Production 2026-09-25: 'I can't change display settings.'",
   },
   {
     id: "control-open-exposure",
+    question: "open the exposure page for the tech team",
+    as: "exec",
+    tags: ["control"],
+    expect: { calls: ["navigate"], maxToolCalls: 1, maxErrors: 0, answerNot: [CANT] },
+  },
+  {
+    id: "control-performance-ytd",
+    question: "pull up fund performance year to date",
+    as: "exec",
+    page: { kind: "page", path: "/", title: "Home" },
+    tags: ["control"],
+    expect: { calls: ["navigate"], notCalls: ["get_attribution"], maxToolCalls: 1, maxErrors: 0 },
+    note: "A 'show me' request opens the page; it doesn't research.",
+  },
+  {
+    id: "control-research-not-navigate",
+    question: "show me AVGO's operating margin for the last 4 quarters",
+    as: "associate",
+    page: { kind: "page", path: "/t/tech", title: "Information Technology" },
+    tags: ["control", "research"],
+    expect: { calls: ["get_key_financials"], notCalls: ["navigate"], maxToolCalls: 3, answer: [/margin/i] },
+    note: "A 'show me' question about a figure is answered, not turned into navigation.",
+  },
+  {
+    id: "control-plus-question",
+    question: "open healthcare's risk page and tell me what's driving its tracking error",
+    as: "exec",
+    tags: ["control", "portfolio"],
+    expect: { calls: ["navigate", "get_portfolio_risk"], maxToolCalls: 3, answer: [/tracking error/i] },
+  },
+  {
+    id: "fundwide-team-holdings",
+    question: "which team has the most holdings, and which team holds AVGO?",
+    as: "exec",
+    tags: ["portfolio"],
+    expect: { maxToolCalls: 2, answer: [/Information Technology|tech/i] },
+    note: "A fund-wide chat (no team) sees every team's holdings in its instructions.",
+  },
+  {
+    id: "control-not-allowed",
     question: "open the exposure page for my team",
     as: "associate",
     tags: ["control"],
-    expect: { calls: ["navigate"], maxToolCalls: 1, answerNot: [CANT] },
+    expect: { calls: ["navigate"], maxToolCalls: 2, answer: [/lead analyst|execs?/i] },
+    note: "Associates can't see position sizes: Hoot tries, and says why not.",
   },
 ];

@@ -112,6 +112,8 @@ const KIND_LABELS: Record<string, string> = {
   get_earnings_calendar: "Checking the earnings calendar",
   get_team_context: "Reading team notes",
   get_peer_moves: "Checking peer moves",
+  navigate: "Opening a page",
+  set_theme: "Changing the theme",
   find_documents: "Searching indexed documents",
   search_documents: "Searching document text",
   read_document: "Reading an indexed document",
