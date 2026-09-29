@@ -8,7 +8,6 @@ import { getSetting } from "@/lib/settings";
  * compared on 2026-09-28); Rikhil chose them over the free tier after Ling's free variant was withdrawn.
  */
 // DeepSeek V4 Flash and Ling 3.0 Flash Fin were dropped on 2026-09-28: OpenRouter withdrew both free variants.
-// (The PT sheet guard still names Ling on purpose; see pt-sheet-guard.ts.)
 export const AGENT_MODELS = [
   { id: "openai/gpt-6-luna", label: "GPT-6 Luna" },
   { id: "meta/muse-spark-1.3-contributor", label: "Muse Spark 1.3 Contributor" },
