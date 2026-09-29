@@ -21,4 +21,13 @@ describe("canOpenChat", () => {
     expect(canOpenChat(exec, chat)).toBe(true);
     expect(canOpenChat({ role: "admin", teamId: null }, chat)).toBe(true);
   });
+
+  it("keeps fund-wide chats (no team) to execs and admins", () => {
+    const chat = { teamId: null, fundOnly: false };
+    expect(canOpenChat(exec, chat)).toBe(true);
+    expect(canOpenChat({ role: "admin", teamId: null }, chat)).toBe(true);
+    expect(canOpenChat(analyst, chat)).toBe(false);
+    expect(canOpenChat(lead, chat)).toBe(false);
+    expect(canOpenChat({ role: "associate_analyst", teamId: null }, chat)).toBe(false);
+  });
 });

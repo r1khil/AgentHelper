@@ -64,20 +64,23 @@ import { dateFromName, effectiveDate } from "./doc-recency";
 
 export type ExternalToolsInfo = { servers: { name: string; toolCount: number }[]; instructions: string[]; toolNames: string[] };
 
-export async function buildInstructions(teamId: string, opts: { holdingId?: string | null; userName: string; userRole: string; purpose?: "chat" | "prep"; externalTools?: ExternalToolsInfo; portfolioTools?: boolean; ptSheet?: boolean; page?: PageContext | null }) {
-  const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+/** `teamId` null: a fund-wide conversation (an exec or admin), which sees every team's holdings. */
+export async function buildInstructions(teamId: string | null, opts: { holdingId?: string | null; userName: string; userRole: string; purpose?: "chat" | "prep"; externalTools?: ExternalToolsInfo; portfolioTools?: boolean; ptSheet?: boolean; page?: PageContext | null }) {
+  const [team] = teamId ? await db.select().from(teams).where(eq(teams.id, teamId)).limit(1) : [];
+  const onTeam = teamId ? eq(holdings.teamId, teamId) : undefined;
   const rows = await db
-    .select({ h: holdings })
+    .select({ h: holdings, teamName: teams.name })
     .from(holdings)
-    .where(and(eq(holdings.teamId, teamId), eq(holdings.status, "active")))
+    .innerJoin(teams, eq(teams.id, holdings.teamId))
+    .where(and(onTeam, eq(holdings.status, "active")))
     .orderBy(holdings.ticker);
   const open = await db
     .select({ m: movements, ticker: holdings.ticker })
     .from(movements)
     .innerJoin(holdings, eq(holdings.id, movements.holdingId))
-    .where(and(eq(holdings.teamId, teamId), ne(movements.status, "completed")))
+    .where(and(onTeam, ne(movements.status, "completed")))
     .orderBy(desc(movements.sessionDate))
-    .limit(10);
+    .limit(teamId ? 10 : 20);
   const drive = await driveStatus().catch(() => null);
   const driveOn = Boolean(drive?.connected && drive.rootFolderId && !drive.needsReconnect);
   const fundNotes = fundMemoryBlock(await listFundMemories().catch(() => []));
@@ -103,9 +106,11 @@ export async function buildInstructions(teamId: string, opts: { holdingId?: stri
     }
   }
 
+  // The whole Fund lists every team's holdings, with shorter theses so the list stays readable.
+  const thesisChars = teamId ? 300 : 120;
   const holdingsList = rows.length
     ? rows
-        .map((r) => `- ${r.h.ticker} (${r.h.companyName})${r.h.thesis ? ` — thesis: ${r.h.thesis.slice(0, 300).replace(/\s+/g, " ")}` : ""}`)
+        .map((r) => `- ${r.h.ticker} (${r.h.companyName}${teamId ? "" : `; ${r.teamName}`})${r.h.thesis ? ` — thesis: ${r.h.thesis.slice(0, thesisChars).replace(/\s+/g, " ")}` : ""}`)
         .join("\n")
     : "- (no holdings yet)";
   const openList = open.length
@@ -124,7 +129,8 @@ export async function buildInstructions(teamId: string, opts: { holdingId?: stri
     ? `\n\nEXTERNAL TOOLS (registered by an admin; ${opts.externalTools.servers.map((s) => `${s.name}: ${s.toolCount} tool${s.toolCount === 1 ? "" : "s"}`).join("; ")}):\n- Tools named ${opts.externalTools.toolNames.slice(0, 12).join(", ")}${opts.externalTools.toolNames.length > 12 ? ", …" : ""} come from outside the workspace. Prefer the native SEC, Yahoo, Finnhub and Drive tools for anything they cover; use an external tool for what they cannot do. Cite its source id like any other and name the tool in the answer when it supplied a figure.${opts.externalTools.instructions.length ? `\n- Their own notes: ${opts.externalTools.instructions.join(" | ")}` : ""}`
     : "";
 
-  return `You are Hoot, the research agent for the ${team?.name ?? "sector"} team of the Owl Fund, Temple University's student-run investment fund. Today is ${todayNY()} (America/New_York). You are talking with ${opts.userName} (${opts.userRole.replace("_", " ")}).
+  const who = teamId ? `the research agent for the ${team?.name ?? "sector"} team of the Owl Fund` : "the research agent for the whole Owl Fund (every sector team; this conversation belongs to no single team)";
+  return `You are Hoot, ${who}, Temple University's student-run investment fund. Today is ${todayNY()} (America/New_York). You are talking with ${opts.userName} (${opts.userRole.replace("_", " ")}).
 
 YOUR JOB: prepare evidence. Pull prices, filings, financial data, news, earnings dates, and the team's own notes, and lay them out clearly with sources so the student can do the thinking. The team's own documents in the analyst Drive (the initiating coverage report, where the recorded thesis lives; past earnings updates; the Excel model) are evidence too: find them with find_documents, open them with read_document, and summarize or quote them with citations.
 
@@ -185,7 +191,7 @@ TEAM CONTEXT
 ${driveLine}
 ${webLine}
 
-Holdings:
+${teamId ? "Holdings" : "The Fund's holdings (ticker, company and team)"}:
 ${holdingsList}
 
 Open movement investigations:

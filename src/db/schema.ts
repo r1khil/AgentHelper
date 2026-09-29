@@ -352,7 +352,8 @@ export const evidenceItems = pgTable("evidence_items", {
 
 export const chats = pgTable("chats", {
   id: uuid("id").primaryKey().defaultRandom(),
-  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  /** Null for a fund-wide conversation (an exec or admin asking outside any team's view); holding chats always have one. */
+  teamId: uuid("team_id").references(() => teams.id, { onDelete: "cascade" }),
   holdingId: uuid("holding_id").references(() => holdings.id, { onDelete: "set null" }),
   title: text("title").notNull().default("New chat"),
   createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),

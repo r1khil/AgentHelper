@@ -39,21 +39,23 @@ export default async function HootChatPage({ params }: { params: Promise<{ chatI
   const user = await requireUser();
   const chat = await loadChat(chatId);
   if (!chat || !canOpenChat(user, chat)) notFound();
-  const team = await getTeam(chat.teamId);
-  if (!team) notFound();
-  const [holdings, remembered, accessible] = await Promise.all([listTeamHoldings(team.id, "all"), rememberedScope(user), listAccessibleTeams(user)]);
-  const pinned = holdings.find(({ h }) => h.id === chat.holdingId)?.h.ticker;
-  if (pinned) redirect(boardHref(remembered, team.slug, pinned, chat.id));
+  // A fund-wide conversation (no team) belongs to the whole Fund: every team's holdings are its tickers.
+  const team = chat.teamId ? await getTeam(chat.teamId) : null;
+  if (chat.teamId && !team) notFound();
+  const [remembered, accessible] = await Promise.all([rememberedScope(user), listAccessibleTeams(user)]);
+  const holdings = await listTeamHoldings(team ? team.id : accessible.map((t) => t.id), "all");
+  const pinned = team && holdings.find(({ h }) => h.id === chat.holdingId)?.h.ticker;
+  if (team && pinned) redirect(boardHref(remembered, team.slug, pinned, chat.id));
   const fundWide = isFundWide(user);
   // Research in the breadcrumb goes to the scope the member is in (this page keeps it): the fund's chats or one team's.
   // Without one remembered, every team for execs and admins, their own team otherwise.
-  const listScope = remembered ?? (fundWide ? FUND_SCOPE_SLUG : team.slug);
+  const listScope = remembered ?? (fundWide || !team ? FUND_SCOPE_SLUG : team.slug);
   const [messages, related, [author], pinnable] = await Promise.all([
     loadMessages(chat.id),
     chatNextQuestions(chat.id).catch(() => []),
     chat.createdBy ? db.select({ name: profiles.fullName }).from(profiles).where(eq(profiles.id, chat.createdBy)).limit(1) : Promise.resolve([]),
     // The holdings this conversation can be pinned to: any team's for execs and admins, the team's own otherwise.
-    listTeamHoldings(fundWide ? accessible.map((t) => t.id) : team.id),
+    listTeamHoldings(fundWide || !team ? accessible.map((t) => t.id) : team.id),
   ]);
   const tickers = holdings.filter(({ h }) => h.status === "active").map(({ h }) => h.ticker);
   const teamById = new Map(accessible.map((t) => [t.id, t]));
@@ -66,8 +68,8 @@ export default async function HootChatPage({ params }: { params: Promise<{ chatI
   return (
     <ChatWorkspace
       title={chat.title}
-      team={team.name}
-      teamSlug={team.slug}
+      team={team?.name ?? "Whole fund"}
+      teamSlug={team?.slug ?? null}
       author={author?.name ?? (chat.createdBy === user.id ? user.fullName : null)}
       updatedAt={chat.updatedAt.toISOString()}
       researchHref={`/t/${listScope}/agent`}

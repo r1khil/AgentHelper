@@ -41,7 +41,7 @@ const settledUsage = (p: PromiseLike<LanguageModelUsage> | undefined) => (p ? Pr
  * step and provider call as it happens. They are never persisted and the server branch is unchanged.
  */
 export async function runAgentTurn(opts: {
-  chat: { id: string; teamId: string; holdingId: string | null; fundOnly?: boolean };
+  chat: { id: string; teamId: string | null; holdingId: string | null; fundOnly?: boolean };
   user: { id: string; fullName: string; role: string };
   /** The signed-in member, for tools that apply page access rules (attribution, backtests). */
   viewer?: CurrentUser | null;
