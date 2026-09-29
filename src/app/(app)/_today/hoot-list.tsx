@@ -147,8 +147,9 @@ export function NeedsYou() {
                     <b className={cn("mr-1.5 text-caption font-semibold", tag.className)}>{tag.word}</b>
                     <span className="font-medium">{n.title}</span>
                   </span>
-                  <span suppressHydrationWarning className="text-caption text-muted-foreground">
-                    {[n.detail, nudgeWhen(n)].filter(Boolean).join(" · ")}
+                  <span suppressHydrationWarning className="truncate text-caption text-muted-foreground">
+                    {/* A title that already says when it's due doesn't say it again underneath. */}
+                    {[n.detail, / due /i.test(n.title) ? null : nudgeWhen(n)].filter(Boolean).join(" · ")}
                   </span>
                 </Link>
                 <button

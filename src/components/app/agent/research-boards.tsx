@@ -55,7 +55,7 @@ type Flags = ReturnType<typeof attention>;
 function statusOf(h: HoldingCardData, flags: Flags): { word: string; tone: PillTone; title?: string } | null {
   if (h.movement) {
     const due = h.movement.dueAt ? `Update due ${fmtDay(h.movement.dueAt)}` : "Update owed";
-    return { word: flags.overdue ? "Movement overdue" : "Movement open", tone: flags.overdue ? "hoot" : "caution", title: due };
+    return { word: flags.overdue ? "Movement overdue" : "Movement open", tone: flags.overdue ? "hoot" : "ink", title: due };
   }
   if (flags.expectationsDue && h.earnings) return { word: `Expectations due ${fmtDayMonth(h.earnings.reportDate)}`, tone: "caution" };
   if (h.earnings) return h.earnings.hasExpectations ? { word: "Expectations recorded", tone: "good" } : { word: "Expectations not written", tone: "neutral" };
@@ -354,7 +354,7 @@ function StatusCell({ h, flags }: { h: HoldingCardData; flags: Flags }) {
     const due = h.movement.dueAt ? `Update due ${fmtDay(h.movement.dueAt)}` : "Update owed";
     return (
       <div className="min-w-0">
-        <Pill tone={flags.overdue ? "hoot" : "caution"} title={due}>
+        <Pill tone={flags.overdue ? "hoot" : "ink"} title={due}>
           {flags.overdue ? "Movement overdue" : "Movement open"}
         </Pill>
         <div className="mt-1 text-caption text-muted-foreground">{due}</div>

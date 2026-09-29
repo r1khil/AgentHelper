@@ -127,7 +127,8 @@ function HeadFrame({
             {crumbs.map((c, i) => {
               const last = i === crumbs.length - 1;
               return (
-                <li key={i} className="flex min-w-0 items-center gap-2.5">
+                // Only the page's own name gives way to a long title; the crumbs above it keep their width.
+                <li key={i} className={cn("flex items-center gap-2.5", last ? "min-w-0" : "shrink-0")}>
                   {i > 0 && (
                     <span aria-hidden="true" className="text-muted-foreground/70">
                       /
@@ -159,7 +160,7 @@ function HeadFrame({
           </ol>
         </nav>
         <span className="flex-1" />
-        {asof && <span className="min-w-0 truncate text-caption text-muted-foreground">{asof}</span>}
+        {asof && <span className="min-w-0 shrink-[2] truncate text-caption text-muted-foreground">{asof}</span>}
         {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
       </div>
       {items.length > 0 && <Tabs data-tour="section-tabs" label="Section" rule={false} className="h-11 items-stretch gap-[22px] px-10" items={items} />}

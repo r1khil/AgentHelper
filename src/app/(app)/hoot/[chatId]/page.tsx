@@ -76,7 +76,7 @@ export default async function HootChatPage({ params }: { params: Promise<{ chatI
           {fundWide && <TraceToggle on={transparency} />}
           <form action={deleteChat} className="flex">
             <input type="hidden" name="id" value={chat.id} />
-            <Button type="submit" variant="destructive">
+            <Button type="submit" variant="ghost">
               Delete
             </Button>
           </form>

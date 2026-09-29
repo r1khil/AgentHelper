@@ -174,7 +174,7 @@ export function HoldingBoard(props: Props) {
               }}
             >
               <input type="hidden" name="id" value={chat.id} />
-              <Button type="submit" variant="destructive">
+              <Button type="submit" variant="ghost">
                 Clear chat
               </Button>
             </form>
@@ -234,7 +234,7 @@ function BoardQuote({ market }: { market: Promise<BoardMarket> }) {
 }
 
 /**
- * The open movement write-up, above the columns: "Movement overdue" (red) or "Movement open" (amber), what the move
+ * The open movement write-up, above the columns: "Movement overdue" (red) or "Movement open" (ink), what the move
  * was, and the way to the write-up. The write-up itself stays the team's; this only points at it.
  */
 function MovementBanner({ movement, team, href }: { movement: BoardMovement; team: string; href: string }) {
@@ -245,7 +245,7 @@ function MovementBanner({ movement, team, href }: { movement: BoardMovement; tea
       : `Moved on ${fmtDayMonth(movement.sessionDate)}`;
   return (
     <div className="flex items-center gap-2.5 border-b px-10 py-3 text-body">
-      <Pill tone={overdue ? "hoot" : "caution"}>{overdue ? "Movement overdue" : "Movement open"}</Pill>
+      <Pill tone={overdue ? "hoot" : "ink"}>{overdue ? "Movement overdue" : "Movement open"}</Pill>
       <span className="min-w-0 truncate text-ink-2">
         {move}
         {movement.dueAt && ` · the ${team} write-up ${overdue ? "was" : "is"} due ${fmtDateTime(movement.dueAt)}`}
