@@ -18,7 +18,11 @@ export function canManageTeam(user: Pick<Profile, "role" | "teamId">, teamId: st
   return user.role === "lead_analyst" && user.teamId === teamId;
 }
 
-/** A chat is open to its team, except once it has read the price target sheet: then only execs and admins. */
-export function canOpenChat(user: Pick<Profile, "role" | "teamId">, chat: { teamId: string; fundOnly: boolean }) {
+/**
+ * A chat is open to its team, except once it has read the price target sheet: then only execs and admins. A fund-wide
+ * chat (no team) is for execs and admins only.
+ */
+export function canOpenChat(user: Pick<Profile, "role" | "teamId">, chat: { teamId: string | null; fundOnly: boolean }) {
+  if (chat.teamId === null) return isFundWide(user);
   return canAccessTeam(user, chat.teamId) && (!chat.fundOnly || isFundWide(user));
 }

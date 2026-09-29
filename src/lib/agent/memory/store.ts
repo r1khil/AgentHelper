@@ -147,9 +147,9 @@ export type MemoryHit = MemoryEntry & { score: number | null };
  * Memories the agent may draw on for a question: the holding's, the team's and the fund's, unexpired.
  * Semantic when embeddings are configured, else newest first. Bumps use counts on what it returns.
  */
-export async function searchMemories(p: { query: string; teamId: string; holdingId?: string | null; limit?: number; kinds?: MemoryKind[] }): Promise<MemoryHit[]> {
+export async function searchMemories(p: { query: string; teamId: string | null; holdingId?: string | null; limit?: number; kinds?: MemoryKind[] }): Promise<MemoryHit[]> {
   const limit = p.limit ?? 8;
-  const visible = or(eq(agentMemories.scope, "fund"), and(eq(agentMemories.scope, "team"), eq(agentMemories.teamId, p.teamId)), p.holdingId ? and(eq(agentMemories.scope, "holding"), eq(agentMemories.holdingId, p.holdingId)) : sql`false`);
+  const visible = or(eq(agentMemories.scope, "fund"), p.teamId ? and(eq(agentMemories.scope, "team"), eq(agentMemories.teamId, p.teamId)) : sql`false`, p.holdingId ? and(eq(agentMemories.scope, "holding"), eq(agentMemories.holdingId, p.holdingId)) : sql`false`);
   const conds = [visible, or(isNull(agentMemories.expiresAt), gt(agentMemories.expiresAt, new Date()))];
   if (p.kinds?.length) conds.push(inArray(agentMemories.kind, p.kinds));
   const embedded = await embedOrNull(p.query);

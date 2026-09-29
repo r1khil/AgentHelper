@@ -30,7 +30,8 @@ export const KEEP_FULL_STEPS = 2;
 export type AgentPurpose = "chat" | "prep";
 
 export type AgentContext = {
-  teamId: string;
+  /** Null for a fund-wide conversation: every team's holdings, only execs and admins. */
+  teamId: string | null;
   holdingId: string | null;
   user: { id: string; fullName: string; role: string };
   /** Sources from earlier turns, so filing reads can keep their titles and dates. */

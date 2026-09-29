@@ -15,9 +15,10 @@ export async function callParts(id: string) {
 export async function listCalls(teamId: TeamIds) {
   return db.select().from(sellSideCalls).where(inTeams(sellSideCalls.teamId, teamId)).orderBy(desc(sellSideCalls.createdAt)).limit(100);
 }
-export async function readTranscript(teamId: string, callId: string, offset = 0, limit = 3) {
+/** `teamId` null: a fund-wide conversation (execs and admins only), which may read any team's calls. */
+export async function readTranscript(teamId: string | null, callId: string, offset = 0, limit = 3) {
   const call = await getCall(callId);
-  if (!call || call.teamId !== teamId) throw new Error("Call not found");
+  if (!call || (teamId !== null && call.teamId !== teamId)) throw new Error("Call not found");
   const rows = await db
     .select()
     .from(sellSideParts)
@@ -34,8 +35,9 @@ export async function readTranscript(teamId: string, callId: string, offset = 0,
     sources: rows.filter((p) => p.text).map((p) => transcriptSource(call, p.seq, p.text!)),
   };
 }
-export async function searchTranscripts(teamId: string, ticker?: string, query?: string) {
-  const conditions = [eq(sellSideCalls.teamId, teamId), sql`${sellSideParts.text} IS NOT NULL`];
+export async function searchTranscripts(teamId: string | null, ticker?: string, query?: string) {
+  const conditions = [sql`${sellSideParts.text} IS NOT NULL`];
+  if (teamId !== null) conditions.push(eq(sellSideCalls.teamId, teamId));
   if (ticker) conditions.push(eq(sellSideCalls.ticker, ticker.toUpperCase()));
   if (query) conditions.push(sql`to_tsvector('english', coalesce(${sellSideParts.text}, '')) @@ plainto_tsquery('english', ${query})`);
   const rows = await db

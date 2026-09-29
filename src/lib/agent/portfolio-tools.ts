@@ -52,7 +52,7 @@ function metricsOut(m: Metrics) {
  * (the same engine as the Backtesting page) and risk (the Risk pages). They need the signed-in member, so they only exist in chat turns, and
  * they apply the pages' access rules: fund attribution for execs and admins, a team's for its lead too.
  */
-export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string }) {
+export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string | null }) {
   const { viewer } = ctx;
 
   /** The Attribution pages' access rule: the whole Fund for execs and admins, a team's sleeve for its lead too. */
@@ -65,7 +65,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
     }
     const q = team?.trim().toLowerCase();
     const sleeve = q ? teamRows.find((t) => t.slug === q || t.name.toLowerCase() === q) : teamRows.find((t) => t.id === ctx.teamId);
-    if (!sleeve) throw new Error(`No team matches "${team}". Teams: ${teamRows.map((t) => t.slug).join(", ")}.`);
+    if (!sleeve) throw new Error(q ? `No team matches "${team}". Teams: ${teamRows.map((t) => t.slug).join(", ")}.` : `This conversation is fund-wide: name the team (one of ${teamRows.map((t) => t.slug).join(", ")}) or use scope 'fund'.`);
     if (!canManageTeam(viewer, sleeve.id)) throw new Error(`Team ${what} is visible to the team's lead analyst, execs and admins.`);
     return { sleeve, teamNames };
   }
@@ -265,7 +265,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
           } else {
             const q = team?.trim().toLowerCase();
             sleeve = q ? teamRows.find((t) => t.slug === q || t.name.toLowerCase() === q) : teamRows.find((t) => t.id === ctx.teamId);
-            if (!sleeve) throw new Error(`No team matches "${team}". Teams: ${teamRows.map((t) => t.slug).join(", ")}.`);
+            if (!sleeve) throw new Error(q ? `No team matches "${team}". Teams: ${teamRows.map((t) => t.slug).join(", ")}.` : `This conversation is fund-wide: name the team (one of ${teamRows.map((t) => t.slug).join(", ")}) or use scope 'fund'.`);
             if (!canManageTeam(viewer, sleeve.id)) throw new Error("Team risk is visible to the team's lead analyst, execs and admins.");
           }
           const loaded = await loadRisk(lookback, sleeve?.id ?? null);

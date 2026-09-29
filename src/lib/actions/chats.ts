@@ -32,23 +32,25 @@ export async function deleteChat(fd: FormData) {
   const id = String(fd.get("id") ?? "");
   const user = await requireUser();
   const [c] = await db.select().from(chats).where(eq(chats.id, id)).limit(1);
-  if (!c) return;
-  await requireTeamAccess(c.teamId);
+  if (!c || !canOpenChat(user, c)) return;
   if (c.createdBy !== user.id && user.role !== "admin" && user.role !== "lead_analyst" && user.role !== "exec") return;
   await db.delete(chats).where(eq(chats.id, id));
-  const [team] = await db.select({ slug: teams.slug }).from(teams).where(eq(teams.id, c.teamId)).limit(1);
+  // A fund-wide chat (no team) lists in the fund's Research only.
+  const [team] = c.teamId ? await db.select({ slug: teams.slug }).from(teams).where(eq(teams.id, c.teamId)).limit(1) : [];
   const [h] = c.holdingId ? await db.select({ ticker: holdings.ticker }).from(holdings).where(eq(holdings.id, c.holdingId)).limit(1) : [];
-  revalidatePath(`/t/${team.slug}/agent`);
+  if (team) revalidatePath(`/t/${team.slug}/agent`);
   if (isFundWide(user)) revalidatePath(`/t/${FUND_SCOPE_SLUG}/agent`);
   // A holding chat returns to its board, a general conversation to Hoot's page, both in the scope the member is in.
   const current = await rememberedScope(user);
-  redirect(h ? boardHref(current, team.slug, h.ticker) : `/t/${current ?? (isFundWide(user) ? FUND_SCOPE_SLUG : team.slug)}/agent`);
+  const scope = current ?? (isFundWide(user) || !team ? FUND_SCOPE_SLUG : team.slug);
+  redirect(h && team ? boardHref(current, team.slug, h.ticker) : `/t/${scope}/agent`);
 }
 
 /**
  * Hoot's quick ask: open a chat that fits the page the member is on. On a holding page the chat is pinned to that
  * holding (it opens on the research board); anywhere else it is a general conversation, filed under the team in view
- * (or the member's own) but opened at /hoot/<id>, so asking never switches the sector the sidebar is showing.
+ * (or the member's own) but opened at /hoot/<id>, so asking never switches the sector the sidebar is showing. An exec
+ * or admin asking outside any one team's view gets a fund-wide conversation (no team): Hoot then sees every team.
  * The question itself travels client-side and is sent by the chat surface once it mounts.
  */
 export async function startHootChat(input: { teamSlug: string | null; ticker: string | null }): Promise<{ href: string; chatId: string } | { error: string }> {
@@ -70,8 +72,8 @@ export async function startHootChat(input: { teamSlug: string | null; ticker: st
       return { href: boardHref(await rememberedScope(user), row.slug, input.ticker, c.id), chatId: c.id };
     }
   }
-  const team = inView ?? accessible.find((t) => t.id === user.teamId) ?? accessible[0];
-  const [c] = await db.insert(chats).values({ teamId: team.id, holdingId: null, createdBy: user.id }).returning({ id: chats.id });
+  const team = inView ?? (isFundWide(user) ? null : (accessible.find((t) => t.id === user.teamId) ?? accessible[0]));
+  const [c] = await db.insert(chats).values({ teamId: team?.id ?? null, holdingId: null, createdBy: user.id }).returning({ id: chats.id });
   return { href: `/hoot/${c.id}`, chatId: c.id };
 }
 

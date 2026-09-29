@@ -40,7 +40,7 @@ export function computationSource(code: string, datasets: Dataset[], stdout: str
  * files so numbers are never pasted by hand. Only built for a signed-in member (datasets follow their
  * access rules) and only where sandbox credentials exist; each member gets DAILY_RUN_LIMIT runs a day.
  */
-export function makeSandboxTools(ctx: { viewer: CurrentUser; teamId: string }, deps: SandboxToolDeps = {}): ToolSet {
+export function makeSandboxTools(ctx: { viewer: CurrentUser; teamId: string | null }, deps: SandboxToolDeps = {}): ToolSet {
   if (!deps.run && !sandboxAvailable()) return {};
   const run = deps.run ?? ((input) => runPython(input));
   const load = deps.load ?? ((req) => loadDataset(ctx, req));

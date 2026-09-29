@@ -135,8 +135,8 @@ export function ChatWorkspace({
 }: ChatProps & {
   title: string;
   team: string;
-  /** The team the conversation is filed under, for the pages a team-scope lookup opens. */
-  teamSlug: string;
+  /** The team the conversation is filed under, for the pages a team-scope lookup opens; null for a fund-wide one. */
+  teamSlug: string | null;
   author: string | null;
   updatedAt?: string;
   /** Where "Research" in the breadcrumb goes: the list of chats and boards in the scope the member is in. */
