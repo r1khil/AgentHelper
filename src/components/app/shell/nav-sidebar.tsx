@@ -165,7 +165,7 @@ function MarketStatus() {
     m.phase === "open" ? `Market open · ${fmtTime(now)}` : m.phase === "pre" ? `Market opens at ${fmtTime(m.opensAt)}` : `Market closed · ${fmtTime(now)}`;
   return (
     <div className="flex shrink-0 items-center gap-2 px-2 py-1.5 text-caption text-muted-foreground">
-      <span aria-hidden="true" className={cn("size-1.5 rounded-full", m.phase === "open" ? "bg-up-line" : "bg-muted-foreground/60")} />
+      <span aria-hidden="true" className={cn("size-1.5 rounded-full", m.phase === "open" ? "bg-foreground" : "bg-muted-foreground/60")} />
       {text}
     </div>
   );

@@ -574,7 +574,7 @@
       "name": "Tabs",
       "kind": "nav",
       "refersTo": "tabs",
-      "description": "Section tabs: 13px, active 600 ink with a 2px underline, grey count.",
+      "description": "Section tabs: 13px, active 600 ink with a 2px underline; a count is grey, ink when it needs action, red only when overdue.",
       "html": "<nav class=\"ds-tabs\"><a aria-current=\"page\">Overview</a><a>Holdings <b>12</b></a><a>Activity <b class=\"hot\">2</b></a></nav>",
       "css": ".ds-tabs{display:flex;gap:22px;height:44px;border-bottom:1px solid var(--border,#ededed)}.ds-tabs a{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--muted-foreground,#71717a);text-decoration:none;cursor:pointer}.ds-tabs a:hover{color:var(--foreground,#0a0a0a)}.ds-tabs a[aria-current=page]{font-weight:600;color:var(--foreground,#0a0a0a);box-shadow:inset 0 -2px 0 var(--foreground,#0a0a0a)}.ds-tabs b{font-size:12px;font-weight:600;color:var(--muted-foreground,#71717a)}.ds-tabs b.hot{color:var(--down,#d12d35)}"
     },
@@ -696,7 +696,7 @@
     ],
     "donts": [
       "Don't use green or red for anything but up, down and overdue: not success, not \"open\", not a live dot, not a destructive-looking status.",
-      "Don't colour a failure red. Failures are amber with a word.",
+      "Don't colour a failure red. Failures and error messages are amber with a word; the `destructive` token is amber in this world.",
       "Don't add a Hoot column or sidebar to a page.",
       "Don't box sections into filled or shadowed cards, or build a dashboard of equal panels.",
       "Don't bring back cream/charcoal, a dark terminal, an editorial/newspaper look, soft fintech cards, or Fidelity/Schwab boxiness.",

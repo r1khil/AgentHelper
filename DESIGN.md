@@ -96,6 +96,7 @@ rounded:
   lg: "6px"
   panel: "8px"
   xl: "8.4px"
+  composer: "12px"
   full: "9999px"
 spacing:
   page-top: "32px"
@@ -135,7 +136,7 @@ components:
     height: "30px"
   button-destructive:
     backgroundColor: "{colors.secondary-fill}"
-    textColor: "{colors.down-text}"
+    textColor: "{colors.ink}"
     rounded: "{rounded.lg}"
     height: "30px"
   segment-active:
@@ -158,7 +159,7 @@ components:
     height: "32px"
   composer:
     backgroundColor: "{colors.paper}"
-    rounded: "{rounded.xl}"
+    rounded: "{rounded.composer}"
     padding: "16px 16px 12px"
   panel-outlined:
     rounded: "{rounded.panel}"
@@ -181,7 +182,7 @@ components:
     width: "480px"
   command-palette:
     backgroundColor: "{colors.paper}"
-    rounded: "{rounded.xl}"
+    rounded: "{rounded.composer}"
     width: "640px"
 ---
 
@@ -296,7 +297,7 @@ The page is flat. Depth comes from hairlines and bands, not shadows: dividers ar
 
 ## Shapes
 
-Corners are small and consistent. Every control (button, segment, filter chip, input, scope switcher, menu item) uses a 6px radius, and 24px-tall controls use a slightly smaller one. An outlined panel uses 8px. The composer, the command palette and dialogs use the largest step (8.4px, the 6px base times 1.4), which marks the places you type to Hoot. The approved brief calls for a 12px composer, but the shipped scale lands at 8.4px. That is recorded as a divergence and not settled here. Hoot's face, avatars and the market dot are full circles. Tabs don't have shapes: the active tab is marked by a 2px ink underline drawn as an inset shadow.
+Corners are small and consistent. Every control (button, segment, filter chip, input, scope switcher, menu item) uses a 6px radius, and 24px-tall controls use a slightly smaller one. An outlined panel uses 8px. Dialogs use 8.4px (the 6px base times 1.4). The places you type to Hoot, the ask box, the thread composer and the ⌘J palette, use 12px (`rounded-composer`), the one large corner in the app. Hoot's face, avatars and the market dot are full circles. Tabs don't have shapes: the active tab is marked by a 2px ink underline drawn as an inset shadow.
 
 ### Named Rules
 **The No-Box Rule.** A section of a page is set apart by its 17px title and the space around it, not by a frame. Only an object you act on (a table, an editor) gets the 1px panel ring. There are no filled cards and no nested frames.
@@ -309,7 +310,7 @@ Flat and quiet: ink when it's the one thing to do, grey otherwise.
 - **Primary:** ink fill with white text. A page has at most one, in its header.
 - **Secondary / Outline:** grey fill (#F4F4F5) with ink text. The new look draws no outlined buttons, so the "outline" variant renders as secondary.
 - **Ghost:** bare Ink 3 text that gains the grey fill on hover.
-- **Destructive:** a grey button with red words.
+- **Destructive:** the grey button; its word says what it removes ("Remove", "Void"). Menu items that remove things look like any other item. Red is never used for a destructive action.
 - **Hover / Focus:** primary lightens 18% toward the page and grey darkens 6% toward ink. Focus shows a 2px ink outline offset by 2px. Disabled buttons get a control-outline fill with Ink 2 text.
 
 ### Segmented range buttons and filter chips
@@ -317,7 +318,7 @@ Flat and quiet: ink when it's the one thing to do, grey otherwise.
 - **State:** link segments carry `aria-current` and button segments carry `aria-pressed`. A guard test fails on hand-rolled tabs or segments outside the shared controls.
 
 ### Tabs
-- **Style:** 13px labels spaced 20px apart (22px in the header). The active tab is 600 ink with a 2px ink underline, inactive tabs are 500 grey. An optional count sits beside the label in 12px semibold, grey, or red when overdue.
+- **Style:** 13px labels spaced 20px apart (22px in the header). The active tab is 600 ink with a 2px ink underline, inactive tabs are 500 grey. An optional count sits beside the label in 12px semibold: grey when it is just a count, ink when it needs action, red only when something in it is overdue.
 
 ### Panels and stat strip
 - **Outlined panel:** 8px corners, a 1px section-divider ring, no fill. Its header is 44px tall over a hairline, with a 17px bold title, an optional count and a grey aside on the right.
@@ -334,13 +335,13 @@ Flat and quiet: ink when it's the one thing to do, grey otherwise.
 - **Error:** a red border for an invalid value.
 
 ### Navigation (sidebar)
-- **Style:** a 232px #FAFAFA band with a right hairline. From the top: the owl glyph and name, "Ask Hoot ⌘J", "Search ⌘K", grouped nav rows (13px, with the active row filled in the sidebar accent), a teams list with each team's day move in green or red, a "Manage" group, and a market line at the foot ("Market open · 2:41 PM ET").
+- **Style:** a 232px #FAFAFA band with a right hairline. From the top: the owl glyph and name, "Ask Hoot ⌘J", "Search ⌘K", grouped nav rows (13px, with the active row filled in the sidebar accent), a teams list with each team's day move in green or red, a "Manage" group, and a market line at the foot ("Market open · 2:41 PM ET") beside a small ink dot, grey when the market is closed.
 
 ### Hoot corner, ⌘J palette and answer panel (signature)
 - **Corner:** a 52px white circle with Hoot's real face (40px), fixed 28px from the right and 24px from the bottom, with the corner lift shadow. On hover or focus an ink tooltip reads "Ask Hoot ⌘J". A note from Hoot appears as a small white card with an amber dot on the face.
-- **Palette:** opens 120px from the top, 640px wide in ask mode and 800px in search mode, with the 8.4px corner. It has a 60px input row in 17px, grouped 38px result rows that take the grey fill when selected, a band-coloured preview column (280px), and a 40px band footer of key hints plus the line "Hoot finds and cites the evidence. The conclusions stay yours." In ask mode the search icon becomes Hoot's face and the page's context shows as a grey chip.
+- **Palette:** opens 120px from the top, 640px wide in ask mode and 800px in search mode, with the 12px composer corner. It has a 60px input row in 17px, grouped 38px result rows that take the grey fill when selected, a band-coloured preview column (280px), and a 40px band footer of key hints plus the line "Hoot finds and cites the evidence. The conclusions stay yours." In ask mode the search icon becomes Hoot's face and the page's context shows as a grey chip.
 - **Answer panel:** a 480px white panel sliding in from the right in 220ms ease-out (instant under reduced motion). It has a 56px header ("Hoot", a grey context chip, open-as-thread and close) over a hairline, Hoot's serif prose, and a compact composer at the foot.
-- **Composer:** the 8.4px corner, a control-outline border that turns ink on focus, 16px padding, and a round ink send button.
+- **Composer:** the 12px corner, a control-outline border that turns ink on focus, 16px padding, and a round ink send button.
 
 ### Hero
 - **Style:** a 13px grey label, the 44px hero figure, then one 15px line with the signed change in semibold green or red followed by a grey note.
@@ -358,7 +359,7 @@ Flat and quiet: ink when it's the one thing to do, grey otherwise.
 
 ### Don't:
 - **Don't** use green or red for anything but up, down and overdue: not success, not "open", not a live dot, not a destructive-looking status.
-- **Don't** colour a failure red. Failures are amber with a word.
+- **Don't** colour a failure red. Failures and error messages are amber with a word; the `destructive` token is amber in this world.
 - **Don't** add a Hoot column or sidebar to a page.
 - **Don't** box sections into filled or shadowed cards, or build a dashboard of equal panels.
 - **Don't** bring back cream/charcoal, a dark terminal, an editorial/newspaper look, soft fintech cards, or Fidelity/Schwab boxiness.

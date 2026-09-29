@@ -108,7 +108,7 @@ function HeadFrame({
   const shell = useShell();
   const items =
     tabs === "section"
-      ? (shell?.nav.tabs ?? []).map((t) => ({ key: t.key, label: t.label, href: t.href, active: t.active, count: shell?.counts[t.key]?.value, hot: shell?.counts[t.key]?.hot, tour: `nav-${t.key}` }))
+      ? (shell?.nav.tabs ?? []).map((t) => ({ key: t.key, label: t.label, href: t.href, active: t.active, count: shell?.counts[t.key]?.value, hot: shell?.counts[t.key]?.hot, overdue: shell?.counts[t.key]?.overdue, tour: `nav-${t.key}` }))
       : tabs || [];
   const markerProps = marker === "page" ? { "data-page-head": "" } : { "data-shell-head": "" };
   const ref = useRef<HTMLElement>(null);

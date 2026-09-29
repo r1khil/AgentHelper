@@ -344,7 +344,7 @@ export function Composer({
       }}
       className={cn(
         "@container flex items-center gap-2 border border-border-strong bg-background focus-within:border-foreground",
-        thread ? cn("w-full rounded-xl py-2 pr-2 pl-4", COMPOSER_SHADOW) : "rounded-[10px] py-1.5 pr-1.5 pl-3",
+        thread ? cn("w-full rounded-composer py-2 pr-2 pl-4", COMPOSER_SHADOW) : "rounded-[10px] py-1.5 pr-1.5 pl-3",
       )}
     >
       <textarea
@@ -393,7 +393,7 @@ export function Composer({
 /** The frame of a big question box (Home, Research): kept here so the thread's follow-up and the first question look alike. */
 export function ComposerBox({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn("flex flex-col rounded-xl border border-border-strong bg-background px-4 pt-4 pb-3 focus-within:border-foreground", COMPOSER_SHADOW, className)}>{children}</div>
+    <div className={cn("flex flex-col rounded-composer border border-border-strong bg-background px-4 pt-4 pb-3 focus-within:border-foreground", COMPOSER_SHADOW, className)}>{children}</div>
   );
 }
 

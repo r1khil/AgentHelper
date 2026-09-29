@@ -31,7 +31,7 @@ function NoteRow({ n }: { n: NoteItem }) {
           {n.canDelete && (
             <form action={deleteNote} className="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
               <input type="hidden" name="id" value={n.id} />
-              <button type="submit" className="text-body hover:text-destructive focus-visible:outline-2 focus-visible:outline-ring">
+              <button type="submit" className="text-body hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
                 Delete
               </button>
             </form>

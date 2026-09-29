@@ -24,8 +24,10 @@ export type TabItem = {
   /** A link tab; either every tab has one or none does. */
   href?: string;
   count?: React.ReactNode;
-  /** The count is something Hoot found or that needs action (pink). */
+  /** The count needs action: ink rather than grey. */
   hot?: boolean;
+  /** Something in the count is overdue: red. */
+  overdue?: boolean;
   title?: string;
   /** `data-tour` hook for the what's-new tour. */
   tour?: string;
@@ -70,7 +72,7 @@ function Label({ item }: { item: TabItem }) {
   return (
     <>
       <span>{item.label}</span>
-      {shown && <CountChip hot={item.hot}>{item.count}</CountChip>}
+      {shown && <CountChip hot={item.hot} overdue={item.overdue}>{item.count}</CountChip>}
     </>
   );
 }

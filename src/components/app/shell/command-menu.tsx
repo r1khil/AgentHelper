@@ -169,7 +169,7 @@ export function CommandMenu({
         <DialogPrimitive.Popup
           aria-label={askMode ? "Ask Hoot" : "Search"}
           className={cn(
-            "fixed top-[120px] left-1/2 z-50 flex max-h-[calc(100dvh-160px)] -translate-x-1/2 flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-[0_24px_60px_rgb(10_10_10/0.28),0_2px_6px_rgb(10_10_10/0.08)] outline-none data-ending-style:opacity-0 data-starting-style:opacity-0 motion-safe:transition-opacity motion-safe:duration-150 dark:shadow-[0_24px_60px_rgb(0_0_0/0.6),0_0_0_1px_var(--border)]",
+            "fixed top-[120px] left-1/2 z-50 flex max-h-[calc(100dvh-160px)] -translate-x-1/2 flex-col overflow-hidden rounded-composer bg-popover text-popover-foreground shadow-[0_24px_60px_rgb(10_10_10/0.28),0_2px_6px_rgb(10_10_10/0.08)] outline-none data-ending-style:opacity-0 data-starting-style:opacity-0 motion-safe:transition-opacity motion-safe:duration-150 dark:shadow-[0_24px_60px_rgb(0_0_0/0.6),0_0_0_1px_var(--border)]",
             askMode ? "w-[min(640px,calc(100vw-32px))]" : "w-[min(800px,calc(100vw-32px))]",
           )}
         >

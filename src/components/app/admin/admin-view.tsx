@@ -143,7 +143,7 @@ export function AdminView(p: AdminViewProps) {
                 </Button>
                 {drive.connected && (
                   <form action={disconnectDrive}>
-                    <Button type="submit" variant="ghost" className="text-destructive">
+                    <Button type="submit" variant="ghost">
                       Disconnect
                     </Button>
                   </form>

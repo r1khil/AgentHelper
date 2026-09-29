@@ -11,8 +11,8 @@ import { listGeneralChats, listRecentHoldingChats } from "@/lib/chats";
 import { boardHref } from "@/lib/scope";
 import { PACK_STATUS_LABELS } from "@/lib/weekly/status";
 
-/** A count on a header tab. `hot` means something needs action (pink); otherwise it's a plain count. */
-export type TabCount = { value: string; hot?: boolean };
+/** A tab's count: `hot` when it needs action (ink), `overdue` when something is late (red). */
+export type TabCount = { value: string; hot?: boolean; overdue?: boolean };
 
 export type CommandHolding = {
   ticker: string;
@@ -95,7 +95,7 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
 
   const counts: Record<string, TabCount> = {};
   counts.holdings = { value: String(rows.length) };
-  if (openMoves.length) counts.movements = { value: String(openMoves.length), hot: overdue };
+  if (openMoves.length) counts.movements = { value: String(openMoves.length), hot: true, overdue };
   if (proposals[0]?.n) counts.models = { value: String(proposals[0].n) };
   if (calls[0]?.n) counts["sell-side"] = { value: String(calls[0].n), hot: true };
   // The newest pack's status, in the words the Weekly page uses; nothing once it is Sent.

@@ -18,7 +18,7 @@ describe("attentionFlags", () => {
     expect(attentionFlags(none, ctx)).toEqual([]);
   });
 
-  it("puts an overdue write-up first, in pink", () => {
+  it("puts an overdue write-up first, in red", () => {
     const flags = attentionFlags({ ...none, modelUpdates: 1, openMovement: { id: "m1", dueAt: new Date("2026-09-25T16:00:00Z") } }, ctx);
     expect(flags[0]).toEqual({ tone: "hoot", label: "Write-up overdue", href: "/t/tech/movements/m1" });
     expect(flags[1]).toMatchObject({ tone: "neutral", label: "1 model update" });
