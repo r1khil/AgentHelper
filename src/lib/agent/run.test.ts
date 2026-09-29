@@ -4,6 +4,7 @@ import { convertArrayToReadableStream, MockLanguageModelV4 } from "ai/test";
 import type { LanguageModelV4StreamPart } from "@ai-sdk/provider";
 import { z } from "zod";
 import type { AgentDefinition } from "./definition";
+import { repairToolCall } from "./tool-repair";
 import type { AgentMetadata, TraceEvent } from "@/lib/trace/events";
 
 vi.mock("server-only", () => ({}));
@@ -33,6 +34,14 @@ const lookup = (section: string) => ({
   stream: convertArrayToReadableStream<LanguageModelV4StreamPart>([
     { type: "stream-start", warnings: [] },
     { type: "tool-call", toolCallId: `c${section}`, toolName: "read_filing", input: JSON.stringify({ section }) },
+    finish("tool-calls"),
+  ]),
+});
+/** A tool call whose arguments arrive as raw text, e.g. broken JSON. */
+const rawLookup = (input: string) => ({
+  stream: convertArrayToReadableStream<LanguageModelV4StreamPart>([
+    { type: "stream-start", warnings: [] },
+    { type: "tool-call", toolCallId: "craw", toolName: "read_filing", input },
     finish("tool-calls"),
   ]),
 });
@@ -75,6 +84,7 @@ function setup(responses: (ReturnType<typeof says> | Error)[]) {
     prepareStep: ({ stepNumber }) => (stepNumber >= 2 ? { toolChoice: "none" } : undefined),
     maxRetries: 0,
     maxOutputTokens: 1000,
+    repairToolCall,
   };
   return model;
 }
@@ -184,5 +194,33 @@ describe("runAgentTurn when the last step leaks a tool call", () => {
     expect(end).toBeGreaterThan(writeUpStart);
     expect(events[end]).toMatchObject({ steps: 4, usage: { output: 20 } });
     expect(answerOf(await messageOf(chunks))).toEqual([ANSWER]);
+  });
+});
+
+describe("runAgentTurn with malformed tool arguments", () => {
+  beforeEach(() => {
+    saveMessages.mockClear();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it("repairs broken JSON and runs the tool instead of failing the step", async () => {
+    setup([rawLookup('```json\n{"section": "1",}\n```'), says(ANSWER)]);
+    const { clientStream, persisted } = await turn();
+    await readAll(clientStream);
+    await persisted;
+    const call = saved().parts.find((p) => p.type === "tool-read_filing") as { state: string; input: unknown } | undefined;
+    expect(call).toMatchObject({ state: "output-available", input: { section: "1" } });
+  });
+
+  it("keeps the reason, not 'An error occurred.', when arguments cannot be repaired", async () => {
+    setup([rawLookup('{"chapter": 1}'), says(ANSWER)]);
+    const { clientStream, persisted } = await turn();
+    const client = await messageOf(await readAll(clientStream));
+    await persisted;
+    for (const m of [client, saved()]) {
+      const call = m.parts.find((p) => p.type === "tool-read_filing") as { state: string; errorText?: string } | undefined;
+      expect(call?.state).toBe("output-error");
+      expect(call?.errorText).toMatch(/^Invalid arguments for read_filing: section: /);
+    }
   });
 });

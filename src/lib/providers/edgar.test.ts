@@ -51,6 +51,25 @@ describe("extractItem", () => {
     expect(extractItem(doc, "1A")).toBeNull();
   });
 
+  it("returns a short real section (a 10-K's Item 2 Properties) but never a contents line alone", () => {
+    const tenK = [
+      "Item 1.\tBusiness\t4",
+      "Item 2.\tProperties\t25",
+      "Item 3.\tLegal Proceedings\t26",
+      "Item 1.\tBusiness",
+      filler(30),
+      "Item 2.\tProperties",
+      "Our corporate headquarters are located in New York, New York, where we lease approximately 1.1 million square feet. We believe our facilities are adequate.",
+      "Item 3.\tLegal Proceedings",
+      filler(10),
+    ].join("\n");
+    const section = extractItem(tenK, "2");
+    expect(section).toContain("1.1 million square feet");
+    expect(section).not.toContain("Legal Proceedings\n");
+    const tocOnly = ["Item 1.\tBusiness\t4", "Item 4.\tMine Safety Disclosures\t30", "Item 5.\tMarket\t31", "Item 1.\tBusiness", filler(30)].join("\n");
+    expect(extractItem(tocOnly, "4")).toBeNull();
+  });
+
   it("returns null and lets the caller list the headings when the item is absent", () => {
     expect(extractItem(doc, "7")).toBeNull();
     expect(listItemHeadings(doc)).toEqual(["1", "2", "3"]);

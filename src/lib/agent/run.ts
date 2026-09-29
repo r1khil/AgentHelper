@@ -9,6 +9,7 @@ import { sumTraceUsage, traceUsage } from "@/lib/agent/trace";
 import { WRITE_UP_MAX_TOKENS, writeUpRequest } from "@/lib/agent/write-up";
 import { CHAT_WRITE_UP_ORDER, chatWriteUpPrompt, finishTurnStream, planFinish, UNANSWERED_TEXT, type TurnFinish } from "@/lib/agent/turn-finish";
 import { createTraceSink } from "@/lib/trace/context";
+import { toolErrorText } from "@/lib/agent/tool-repair";
 import type { AgentMetadata, AgentUIMessage } from "@/lib/trace/events";
 import { pageContextFromMessages } from "@/lib/agent/page-context";
 import { usesPtSheet } from "@/lib/agent/pt-sheet-guard";
@@ -46,6 +47,8 @@ export async function runAgentTurn(opts: {
   viewer?: CurrentUser | null;
   messages: UIMessage[];
   trace?: boolean;
+  /** Evaluation runs: nothing is saved to the research log. */
+  memoryOff?: boolean;
   /** Runs after the turn is saved and the chat is idle again (memory distillation and the like). */
   onComplete?: (r: TurnResult) => Promise<void> | void;
 }) {
@@ -62,6 +65,7 @@ export async function runAgentTurn(opts: {
     purpose: "chat",
     chatId: chat.id,
     sheetInHistory: Boolean(chat.fundOnly) || usesPtSheet(messages),
+    memoryOff: opts.memoryOff,
   });
   const t0 = Date.now();
   sink?.emit({ t: "run.start", chatId: chat.id, modelId: def.modelId, maxSteps: MAX_STEPS });
@@ -75,6 +79,7 @@ export async function runAgentTurn(opts: {
     prepareStep: def.prepareStep,
     maxRetries: def.maxRetries,
     maxOutputTokens: def.maxOutputTokens,
+    repairToolCall: def.repairToolCall,
     onError: ({ error }) => console.error("[agent]", error),
     ...(sink
       ? {
@@ -142,7 +147,7 @@ export async function runAgentTurn(opts: {
 
   // The assistant message id must match on both branches.
   const assistantId = createIdGenerator({ prefix: "msg", size: 16 })();
-  const streamOptions = { tools: def.tools, originalMessages: messages, generateMessageId: () => assistantId };
+  const streamOptions = { tools: def.tools, originalMessages: messages, generateMessageId: () => assistantId, onError: toolErrorText };
   const turnStream = () => finishTurnStream(toUIMessageStream({ ...streamOptions, stream: result.fullStream }) as ReadableStream<UIMessageChunk>, finishTurn);
 
   const persisted = (async () => {
