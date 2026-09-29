@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { chats, holdings, teams } from "@/db/schema";
-import { isFundWide, listAccessibleTeams, requireTeamAccess, requireUser } from "@/lib/auth";
+import { canOpenChat, isFundWide, listAccessibleTeams, requireTeamAccess, requireUser } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { boardHref } from "@/lib/scope";
 import { rememberedScope } from "@/lib/teams";
@@ -73,4 +73,29 @@ export async function startHootChat(input: { teamSlug: string | null; ticker: st
   const team = inView ?? accessible.find((t) => t.id === user.teamId) ?? accessible[0];
   const [c] = await db.insert(chats).values({ teamId: team.id, holdingId: null, createdBy: user.id }).returning({ id: chats.id });
   return { href: `/hoot/${c.id}`, chatId: c.id };
+}
+
+/**
+ * "Pin to research board": file a general conversation under one holding, so it lists on that holding's board and
+ * opens there from now on. The member must be able to open the chat and the holding; the chat moves to the holding's
+ * team so that team's members see it. Returns where the board is, in the scope the member is in.
+ */
+export async function pinChatToHolding(input: { chatId: string; ticker: string; teamSlug: string }): Promise<{ href: string } | { error: string }> {
+  const user = await requireUser();
+  const [chat] = await db.select().from(chats).where(eq(chats.id, input.chatId)).limit(1);
+  if (!chat || !canOpenChat(user, chat)) return { error: "That conversation isn't available to you." };
+  if (chat.holdingId) return { error: "This conversation is already on a research board." };
+  const accessible = await listAccessibleTeams(user);
+  const team = accessible.find((t) => t.slug === input.teamSlug);
+  if (!team) return { error: "That holding isn't in a team you can open." };
+  const [h] = await db
+    .select({ id: holdings.id })
+    .from(holdings)
+    .where(and(eq(holdings.teamId, team.id), eq(holdings.ticker, input.ticker), eq(holdings.status, "active")))
+    .limit(1);
+  if (!h) return { error: `${input.ticker} isn't an active holding of ${team.name}.` };
+  await db.update(chats).set({ holdingId: h.id, teamId: team.id }).where(eq(chats.id, chat.id));
+  revalidatePath(`/t/${team.slug}/agent`);
+  if (isFundWide(user)) revalidatePath(`/t/${FUND_SCOPE_SLUG}/agent`);
+  return { href: boardHref(await rememberedScope(user), team.slug, input.ticker, chat.id) };
 }

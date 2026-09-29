@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { UIMessage } from "ai";
 import { collectSources } from "./citations";
-import { citedIds, marketFigure, pairTurns, traceLine, turnSources } from "./board";
+import { citedIds, marketFigure, pairTurns, savedTurnMs, traceLine, turnSources, workedFor } from "./board";
 import { hiddenPromptMessage } from "./hidden-prompt";
 
 // Dates this year print without the year ("Tue, Sep 22"); pin the clock so these stay 2026's.
@@ -125,5 +125,19 @@ describe("traceLine", () => {
   it("names the running lookup while live", () => {
     const live = pairTurns([messages[0], { id: "a", role: "assistant", parts: [{ ...tool("get_news", "c9", []), state: "input-available" }] } as UIMessage])[0];
     expect(traceLine(live, true)).toEqual({ text: "Scanning news… · 0 sources", working: true });
+  });
+});
+
+describe("how long a turn worked", () => {
+  it("reads seconds, then minutes", () => {
+    expect(workedFor(400)).toBe("1s");
+    expect(workedFor(12_400)).toBe("12s");
+    expect(workedFor(65_000)).toBe("1m 05s");
+  });
+
+  it("takes the saved duration from the answer's metadata", () => {
+    expect(savedTurnMs({ assistant: { id: "a", role: "assistant", parts: [], metadata: { ms: 9100 } } })).toBe(9100);
+    expect(savedTurnMs({ assistant: { id: "a", role: "assistant", parts: [] } })).toBeNull();
+    expect(savedTurnMs({})).toBeNull();
   });
 });

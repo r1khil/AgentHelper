@@ -2,7 +2,7 @@
 
 import { useHootCommand } from "@/components/app/hoot/use-hoot-command";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import type { AgentUIMessage, TraceEvent } from "@/lib/trace/events";
@@ -97,6 +97,21 @@ export function useResearchChat({
   const streaming = status === "submitted" || status === "streaming";
   const busy = streaming || catchingUp;
 
+  // How long each question this page asked took, for "Worked for 12s" until the saved answer carries its own time.
+  // Keyed by the question's message id, which is also the turn's id.
+  const asked = useRef<{ at: number; id: string } | null>(null);
+  const [durations, setDurations] = useState<Record<string, number>>({});
+  useEffect(() => {
+    const a = asked.current;
+    if (!a) return;
+    if ((status === "submitted" || status === "streaming") && !a.id) a.id = [...messages].reverse().find((m) => m.role === "user")?.id ?? "";
+    if (status === "ready" && a.id) {
+      const ms = Date.now() - a.at;
+      asked.current = null;
+      setDurations((d) => ({ ...d, [a.id]: ms }));
+    }
+  }, [status, messages]);
+
   const send = useCallback(
     (text: string, page?: PageContext | null) => {
       const t = text.trim();
@@ -104,6 +119,7 @@ export function useResearchChat({
       if (runCommand(t)) return true;
       setRunError(null);
       setTrace([]);
+      asked.current = { at: Date.now(), id: "" };
       void sendMessage(page ? { text: t, metadata: { page } } : { text: t });
       return true;
     },
@@ -118,5 +134,5 @@ export function useResearchChat({
 
   const requestError = error && !isStillWorking(error) ? error.message : null;
 
-  return { messages, status, streaming, busy, catchingUp, runError, requestError, traceView, now, send, stopWatching };
+  return { messages, status, streaming, busy, catchingUp, runError, requestError, traceView, now, durations, send, stopWatching };
 }

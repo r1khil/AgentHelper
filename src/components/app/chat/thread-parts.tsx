@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import { ArrowUp, ChevronRight, Eye, Loader2, Wrench } from "lucide-react";
+import { ArrowUp, ChevronRight, Eye, Loader2 } from "lucide-react";
 import { fmtDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Source } from "@/lib/providers/types";
 import { resolveSource } from "@/lib/agent/source-resolution";
 import { pageContextLabel, type PageContext } from "@/lib/agent/page-context";
+import { workedFor } from "@/lib/agent/board";
 import { isToolPart, summarizeActivity, toolDone, toolFailed, toolName, type Part, type ToolPart } from "@/lib/agent/turn";
-import { HootSprite } from "@/components/app/hoot/hoot-sprite";
-import { HootOnPage } from "@/components/app/hoot/presence";
+import { OwlMark } from "@/components/app/owl-mark";
 import { FetchRows, latestLabel, StepDivider, TraceHeader, type TraceView } from "./trace-panel";
+import { COMPOSER_SHADOW } from "./styles";
 
-// The pieces every research conversation is built from (general chats, holding boards, a sell-side call's chat).
+// The pieces every research conversation is built from (a Hoot thread, a holding's board, the answer panel, a
+// sell-side call's chat): Hoot's face and what he did, the member's question, the question box, the source rows.
 
 const TOOL_LABELS: Record<string, string> = {
   get_quote: "Quote",
@@ -89,34 +91,66 @@ const TOOL_PROGRESS: Record<string, string> = {
   recall: "Checking the research log",
 };
 
-/** Hoot, thinking, with what he's doing. While it shows, the corner companion steps aside. */
-export function ThinkingRow({ children }: { children: ReactNode }) {
+/** Hoot's face in the conversation's flow: 26px unless a class says otherwise. */
+export function HootFace({ className }: { className?: string }) {
+  return <OwlMark className={cn("size-[26px] rounded-full", className)} />;
+}
+
+/** Hoot, working on the question: his face, breathing, with what he's doing. */
+export function ThinkingRow({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className="flex items-center gap-2.5 text-body text-ink-2">
-      <HootOnPage />
-      <HootSprite mood="thinking" size={44} bob />
+    <div className={cn("flex items-center gap-2 text-body text-ink-2", className)}>
+      <HootFace className="motion-safe:animate-pulse" />
       <span className="min-w-0">{children}</span>
     </div>
   );
 }
 
+/** What Hoot did for one answer, in a sentence: "worked for 12s, read 4 sources". */
+export function workedLine({ lookups, sources, failed }: { lookups: number; sources: number; failed: number }, elapsedMs?: number | null) {
+  const took = elapsedMs ? `worked for ${workedFor(elapsedMs)}` : `${lookups} lookup${lookups === 1 ? "" : "s"}`;
+  return `${took}, read ${sources} source${sources === 1 ? "" : "s"}${failed ? `, ${failed} failed` : ""}`;
+}
+
 /**
- * One line per turn summarising the research, a round chip that expands to the individual lookups and any interim
- * notes. While the turn is still researching it reads as the tool in flight; with `thinking` that live state shows
- * as the thinking Hoot instead of a spinner. With a transparency trace, the expansion also shows each model step
- * and every provider call under each lookup.
+ * The line above an answer that says what Hoot did, and opens to the individual lookups and any interim notes. While
+ * the turn is still researching it reads as the lookup in flight; with a transparency trace the opened list also shows
+ * each model step and every provider call under each lookup. `variant` picks the drawing: the thread puts Hoot's face
+ * and name in front of it, the board and the panel keep it a grey 12px line.
  */
-export function ActivityRow({ parts, live, trace, now, thinking = false }: { parts: Part[]; live: boolean; trace: TraceView | null; now: number; thinking?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const { lookups, sources, failed, current } = summarizeActivity(parts);
+export function ActivityRow({
+  parts,
+  live,
+  trace,
+  now,
+  variant = "board",
+  elapsedMs,
+  open: openProp,
+  onOpenChange,
+}: {
+  parts: Part[];
+  live: boolean;
+  trace: TraceView | null;
+  now: number;
+  variant?: "thread" | "board" | "panel";
+  /** How long the turn took, when known. */
+  elapsedMs?: number | null;
+  /** Controlled open state, for a "Show trace" button elsewhere in the turn. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [own, setOwn] = useState(false);
+  const open = openProp ?? own;
+  const setOpen = (v: boolean) => (onOpenChange ? onOpenChange(v) : setOwn(v));
+  const summary = summarizeActivity(parts);
+  const { current } = summary;
   // Live with no answer yet covers the gaps between lookups and the wait for the answer (or its write-up).
-  const running = live;
-  const liveDetail = running && trace ? latestLabel(trace) : null;
-  const label = running
+  const liveDetail = live && trace ? latestLabel(trace) : null;
+  const label = live
     ? current
       ? `${TOOL_PROGRESS[current] ?? current}…${liveDetail ? ` ${liveDetail}` : ""}`
       : `Working…${liveDetail ? ` ${liveDetail}` : ""}`
-    : `Researched · ${lookups} lookup${lookups === 1 ? "" : "s"} · ${sources} source${sources === 1 ? "" : "s"}${failed ? ` · ${failed} failed` : ""}`;
+    : workedLine(summary, elapsedMs);
 
   // Insert a step divider before the first lookup of each model step; narration stays with the step it was written in.
   const rows: ReactNode[] = [];
@@ -131,14 +165,14 @@ export function ActivityRow({ parts, live, trace, now, thinking = false }: { par
         rows.push(<StepDivider key={`step-${step}`} n={step} view={trace!} />);
       }
       rows.push(
-        <div key={p.toolCallId ?? i} className="space-y-0.5">
-          <ToolCard part={p} />
+        <div key={p.toolCallId ?? i}>
+          <ToolRow part={p} />
           {trace && <FetchRows events={trace.fetchesByCall.get(p.toolCallId) ?? []} end={trace.toolEnd.get(p.toolCallId)} />}
         </div>,
       );
     } else if (p.type === "text" && p.text.trim()) {
       rows.push(
-        <p key={i} className="whitespace-pre-wrap px-0.5 italic text-muted-foreground">
+        <p key={i} className="py-1.5 whitespace-pre-wrap text-muted-foreground italic">
           {p.text}
         </p>,
       );
@@ -149,54 +183,62 @@ export function ActivityRow({ parts, live, trace, now, thinking = false }: { par
     for (const n of [...trace.steps.keys()].sort((a, b) => a - b)) if (!seenSteps.has(n)) rows.push(<StepDivider key={`step-${n}`} n={n} view={trace} />);
     if (trace.looseFetches.length > 0) {
       rows.push(
-        <div key="loose" className="space-y-0.5">
-          <div className="px-0.5 text-caption text-muted-foreground">Outside any lookup</div>
+        <div key="loose">
+          <div className="pt-1.5 text-caption text-muted-foreground">Outside any lookup</div>
           <FetchRows events={trace.looseFetches} />
         </div>,
       );
     }
   }
   const expandable = rows.length > 0 || trace !== null;
+  const thread = variant === "thread";
+  const toggle = (
+    <button
+      type="button"
+      onClick={() => setOpen(!open)}
+      aria-expanded={open}
+      disabled={!expandable}
+      className={cn(
+        "inline-flex min-w-0 items-center gap-1 rounded-sm text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring enabled:hover:text-foreground",
+        thread ? "text-body text-ink-2" : "text-caption text-muted-foreground",
+      )}
+    >
+      {thread && "· "}
+      {live && <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden />}
+      <span className="min-w-0 truncate">{thread ? label : capitalize(label)}</span>
+      {expandable && <ChevronRight className={cn("size-3 shrink-0 transition-transform", open && "rotate-90")} aria-hidden />}
+    </button>
+  );
 
   return (
-    <div className="flex w-full flex-col items-start gap-2">
-      {running && thinking ? (
-        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} disabled={!expandable} className="group text-left">
-          <ThinkingRow>
-            <span className="inline-flex items-center gap-1 group-hover:text-foreground">
-              {label}
-              {expandable && <ChevronRight className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")} />}
-            </span>
-          </ThinkingRow>
-        </button>
+    <div className="flex w-full flex-col items-start">
+      {thread ? (
+        <div className="flex items-center gap-2 text-body text-ink-2">
+          <HootFace className={cn(live && "motion-safe:animate-pulse")} />
+          <b className="font-semibold text-foreground">Hoot</b>
+          {toggle}
+        </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          className="inline-flex max-w-full items-center gap-2 rounded-full bg-band px-3 py-1.5 text-left text-body text-ink-2 transition-colors hover:text-foreground"
-        >
-          {running ? <Loader2 className="size-[13px] shrink-0 animate-spin" /> : <Wrench className="size-[13px] shrink-0" />}
-          <span className="min-w-0 truncate">{label}</span>
-          <ChevronRight className={cn("size-[13px] shrink-0 transition-transform", open && "rotate-90")} />
-        </button>
+        toggle
       )}
       {trace && !open && (
-        <div className="px-1">
+        <div className="pt-1">
           <TraceHeader view={trace} now={now} />
         </div>
       )}
       {open && (
-        <div className="w-full space-y-1.5 rounded-[10px] bg-background p-2.5 text-body shadow-[0_0_0_1px_var(--border)]">
+        <div className="mt-2 w-full space-y-0.5 border-y py-1.5 text-body">
           {trace && <TraceHeader view={trace} now={now} />}
-          {rows.length > 0 ? rows : <p className="px-0.5 text-muted-foreground">No lookups yet.</p>}
+          {rows.length > 0 ? rows : <p className="py-1 text-muted-foreground">No lookups yet.</p>}
         </div>
       )}
     </div>
   );
 }
 
-function ToolCard({ part }: { part: ToolPart }) {
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+function ToolRow({ part }: { part: ToolPart }) {
   const name = toolName(part);
   const label = TOOL_LABELS[name] ?? name;
   const input =
@@ -210,21 +252,32 @@ function ToolCard({ part }: { part: ToolPart }) {
   const errored = toolFailed(part);
   const n = part.output?.sources?.length ?? 0;
   return (
-    <div className={cn("flex items-center gap-2 rounded-lg bg-card px-2.5 py-1.5 text-body shadow-[0_0_0_1px_var(--border)]", errored ? "text-destructive" : "text-muted-foreground")}>
-      {done ? <Wrench className="size-3.5 shrink-0" /> : <Loader2 className="size-3.5 shrink-0 animate-spin" />}
+    <div className={cn("flex items-center gap-2 border-b border-row py-1.5 text-body last:border-b-0", errored ? "text-caution-foreground" : "text-muted-foreground")}>
+      {!done && <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />}
       <span className="font-medium text-foreground">{label}</span>
       {input && <span className="truncate">{input}</span>}
-      {errored && <span className="truncate">· {part.output?.error ?? part.errorText ?? "error"}</span>}
-      {done && !errored && n > 0 && <span className="ml-auto shrink-0 font-mono text-caption">{n} source{n === 1 ? "" : "s"}</span>}
+      {errored && <span className="truncate">· failed: {part.output?.error ?? part.errorText ?? "error"}</span>}
+      {done && !errored && n > 0 && (
+        <span className="ml-auto shrink-0 text-caption">
+          {n} source{n === 1 ? "" : "s"}
+        </span>
+      )}
     </div>
   );
 }
 
-/** The member's question: ink bubble on the right, with where it was asked from when Hoot was handed a page. */
-export function UserBubble({ children, page }: { children: ReactNode; page?: PageContext | null }) {
+/** The member's question: a grey bubble on the right, with where it was asked from when Hoot was handed a page. */
+export function UserBubble({ children, page, size = "lg" }: { children: ReactNode; page?: PageContext | null; size?: "lg" | "sm" }) {
   return (
     <div className="flex flex-col items-end gap-1">
-      <div className="max-w-[min(500px,85%)] space-y-2 rounded-[16px_16px_4px_16px] bg-primary px-3.5 py-2.5 text-body leading-normal text-primary-foreground [&_p]:whitespace-pre-wrap">{children}</div>
+      <div
+        className={cn(
+          "space-y-2 rounded-xl bg-secondary text-foreground [&_p]:whitespace-pre-wrap",
+          size === "lg" ? "max-w-[520px] px-3.5 py-2.5 text-emph" : "max-w-[420px] px-3 py-2 text-body",
+        )}
+      >
+        {children}
+      </div>
       {page && page.kind !== "page" && (
         <Link href={page.path} className="inline-flex items-center gap-1 text-caption text-muted-foreground hover:text-foreground">
           <Eye className="size-3" aria-hidden /> Asked from {pageContextLabel(page)}
@@ -239,37 +292,18 @@ export function PromptLabel({ children }: { children: ReactNode }) {
   return <div className="text-body font-medium text-muted-foreground">{children}</div>;
 }
 
-/** The conversation's header row: ticker, title and meta on the left, actions (Trace, etc.) on the right. */
-export function ThreadHeader({ ticker, title, meta, children }: { ticker?: string; title: string; meta?: ReactNode; children?: ReactNode }) {
-  return (
-    <div className="flex h-12 shrink-0 items-center gap-2.5 border-b px-7">
-      {ticker && <span className="font-mono text-body font-semibold">{ticker}</span>}
-      <h2 className="min-w-0 shrink truncate text-body font-semibold">{title}</h2>
-      {meta && <span className="min-w-0 shrink-[4] truncate text-body text-muted-foreground">{meta}</span>}
-      <span className="flex-1" />
-      {children && <div className="flex shrink-0 items-center gap-3.5 text-body text-muted-foreground">{children}</div>}
-    </div>
-  );
-}
-
-
-/** A caution or error note inside the thread. */
+/** A failure or a wait inside the thread: plain words, amber when something went wrong (red is only down or overdue). */
 export function ThreadNote({ tone, children }: { tone: "caution" | "error" | "muted"; children: ReactNode }) {
-  return (
-    <div
-      className={cn(
-        "rounded-[10px] px-3 py-2 text-body",
-        tone === "caution" && "bg-caution text-caution-foreground",
-        tone === "error" && "bg-destructive/10 text-destructive",
-        tone === "muted" && "flex items-center gap-2 bg-band text-ink-2",
-      )}
-    >
-      {children}
-    </div>
-  );
+  return <div className={cn("text-body", tone === "muted" ? "flex items-center gap-2 text-ink-2" : "font-medium text-caution-foreground")}>{children}</div>;
 }
 
-/** The question box: radius 16, what Hoot can see, a round send (or stop) button, and the learning boundary under it. */
+export type ComposerVariant = "thread" | "compact";
+
+/**
+ * The question box under a conversation. `thread` is the follow-up box under a full thread (12px radius, the soft
+ * two-layer shadow, a 34px send); `compact` is the board's and the panel's (10px radius, a 30px send). What Hoot can
+ * see sits in the box, in grey; a stop button takes the send button's place while an answer streams.
+ */
 export function Composer({
   value,
   onChange,
@@ -281,6 +315,9 @@ export function Composer({
   placeholder,
   sees,
   hint,
+  variant = "thread",
+  inputRef,
+  label = "Ask a follow-up",
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -292,84 +329,104 @@ export function Composer({
   placeholder: string;
   /** "Hoot can see: …" */
   sees?: string | null;
-  /** A muted note in the chip row when there's no page to show. */
+  /** A muted note beside the send button when there's no page to show. */
   hint?: ReactNode;
+  variant?: ComposerVariant;
+  inputRef?: React.Ref<HTMLTextAreaElement>;
+  label?: string;
 }) {
+  const thread = variant === "thread";
   return (
     <form
-      className="shrink-0 border-t px-6 pt-3.5 pb-[18px] xl:px-14"
       onSubmit={(e) => {
         e.preventDefault();
         onSend();
       }}
+      className={cn(
+        "flex items-center gap-2 border border-border-strong bg-background focus-within:border-foreground",
+        thread ? cn("w-full rounded-xl py-2 pr-2 pl-4", COMPOSER_SHADOW) : "rounded-[10px] py-1.5 pr-1.5 pl-3",
+      )}
     >
-      <ComposerBox>
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              onSend();
-            }
-          }}
-          placeholder={placeholder}
-          disabled={disabled}
-          rows={1}
-          aria-label="Question"
-          className="field-sizing-content max-h-40 min-h-[22px] w-full resize-none bg-transparent text-body leading-[22px] outline-none placeholder:text-muted-foreground disabled:opacity-60"
-        />
-        <div className="flex items-center gap-2">
-          {sees ? <SeesChip>{sees}</SeesChip> : hint ? <span className="min-w-0 truncate text-caption text-muted-foreground">{hint}</span> : null}
-          <span className="flex-1" />
-          {streaming && onStop ? (
-            <button type="button" onClick={onStop} aria-label="Stop" className="grid size-8 shrink-0 place-items-center rounded-full bg-card shadow-[0_0_0_1px_var(--border)] hover:shadow-[0_0_0_1px_var(--border-strong)]">
-              <span className="size-2.5 rounded-sm bg-foreground" />
-            </button>
-          ) : (
-            <SendButton disabled={disabled || sendDisabled || !value.trim()} />
-          )}
-        </div>
-      </ComposerBox>
+      <textarea
+        ref={inputRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            onSend();
+          }
+        }}
+        placeholder={placeholder}
+        disabled={disabled}
+        rows={1}
+        aria-label={label}
+        className={cn(
+          "field-sizing-content max-h-40 min-w-0 flex-1 resize-none bg-transparent leading-6 outline-none placeholder:text-muted-foreground disabled:opacity-60",
+          thread ? "min-h-6 py-[5px] text-emph" : "min-h-5 py-0.5 text-body",
+        )}
+      />
+      {sees ? (
+        <span className="inline-flex min-w-0 max-w-[40%] items-center gap-1 text-caption text-muted-foreground">
+          <Eye className="size-3 shrink-0" aria-hidden />
+          <span className="truncate">Hoot can see: {sees}</span>
+        </span>
+      ) : hint ? (
+        <span className="min-w-0 truncate text-caption text-muted-foreground">{hint}</span>
+      ) : null}
+      {streaming && onStop ? (
+        <button
+          type="button"
+          onClick={onStop}
+          aria-label="Stop"
+          className={cn("grid shrink-0 place-items-center bg-secondary hover:bg-border", thread ? "size-[34px] rounded-lg" : "size-[30px] rounded-[7px]")}
+        >
+          <span className="size-2.5 rounded-sm bg-foreground" />
+        </button>
+      ) : (
+        <SendButton disabled={disabled || sendDisabled || !value.trim()} size={thread ? "lg" : "sm"} />
+      )}
     </form>
   );
 }
 
-export function ComposerBox({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col gap-2.5 rounded-2xl bg-background px-3.5 py-3 shadow-[0_0_0_1px_var(--border)] focus-within:shadow-[0_0_0_1px_var(--ring)]">{children}</div>;
-}
-
-export function SeesChip({ children }: { children: ReactNode }) {
+/** The frame of a big question box (Home, Research): kept here so the thread's follow-up and the first question look alike. */
+export function ComposerBox({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-[5px] rounded-full bg-muted px-2.5 py-[3px] text-caption text-ink-2">
-      <Eye className="size-3 shrink-0" aria-hidden />
-      <span className="truncate">Hoot can see: {children}</span>
-    </span>
+    <div className={cn("flex flex-col rounded-xl border border-border-strong bg-background px-4 pt-4 pb-3 focus-within:border-foreground", COMPOSER_SHADOW, className)}>{children}</div>
   );
 }
 
-export function SendButton({ disabled, label = "Send" }: { disabled: boolean; label?: string }) {
+export function SendButton({ disabled, label = "Send", size = "lg" }: { disabled: boolean; label?: string; size?: "lg" | "sm" }) {
   return (
-    <button type="submit" disabled={disabled} aria-label={label} className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:bg-primary/90 disabled:opacity-40">
-      <ArrowUp className="size-[15px]" />
+    <button
+      type="submit"
+      disabled={disabled}
+      aria-label={label}
+      className={cn(
+        "grid shrink-0 place-items-center bg-primary text-primary-foreground transition-opacity hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-40",
+        size === "lg" ? "size-[34px] rounded-lg" : "size-[30px] rounded-[7px]",
+      )}
+    >
+      <ArrowUp className={size === "lg" ? "size-[15px]" : "size-3.5"} strokeWidth={2} aria-hidden />
     </button>
   );
 }
 
-/** "Thu 24 Sep" ("24 Sep 2025" in another year); an unreadable date is shown as given. */
+/** "Thu, Sep 24" ("Sep 24, 2025" in another year); an unreadable date is shown as given. */
 export function shortDate(iso: string | undefined | null) {
   if (!iso) return null;
   return fmtDay(iso) || iso.slice(0, 10);
 }
 
-/** Hoot's pink footnote number. */
+/** A source's number: a plain 12px figure, like the citation that points to it. */
 export function SourceNumber({ n, className }: { n: number | string; className?: string }) {
-  return <span className={cn("grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-hoot px-1 font-mono text-caption font-medium text-hoot-foreground", className)}>{n}</span>;
+  return <b className={cn("shrink-0 text-caption font-semibold", className)}>{n}</b>;
 }
 
 /**
- * One source in the right-hand list: pink number, title, "publisher · date". A web source opens in a new tab;
- * a document opens in the source viewer.
+ * One source in a list beside the thread: its number, its title and "publisher · date", on a hairline row. A web source
+ * opens in a new tab; a document opens in the source viewer.
  */
 export function SourceListCard({ n, source, onView }: { n: number; source: Source; onView: (s: Source) => void }) {
   const target = resolveSource(source);
@@ -377,17 +434,17 @@ export function SourceListCard({ n, source, onView }: { n: number; source: Sourc
   const meta = [source.publisher || "Publisher unavailable", shortDate(source.publishedAt)].filter(Boolean).join(" · ");
   const body = (
     <>
-      <SourceNumber n={n} className={target.kind === "unavailable" ? "bg-destructive/10 text-destructive" : undefined} />
+      <SourceNumber n={n} className={target.kind === "unavailable" ? "text-caution-foreground" : undefined} />
       <span className="min-w-0">
-        <span className="block text-body leading-[1.35]">{title}</span>
-        <span className="mt-0.5 block text-caption text-muted-foreground">
+        <span className="block">{title}</span>
+        <span className="block text-muted-foreground">
           {meta}
-          {target.kind === "unavailable" && " · unavailable"}
+          {target.kind === "unavailable" && <span className="text-caution-foreground"> · unavailable</span>}
         </span>
       </span>
     </>
   );
-  const cls = "flex w-full gap-2.5 rounded-[10px] bg-card px-3 py-[9px] text-left shadow-[0_0_0_1px_var(--border)] transition-shadow hover:shadow-[0_0_0_1px_var(--border-strong)]";
+  const cls = "grid w-full grid-cols-[16px_minmax(0,1fr)] gap-1.5 border-b border-row py-[7px] text-left text-caption hover:bg-band focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring";
   return target.kind === "external" ? (
     <a href={target.href} target="_blank" rel="noopener noreferrer" className={cls} aria-label={`[${n}] ${title} (opens in a new tab)`}>
       {body}
@@ -399,14 +456,21 @@ export function SourceListCard({ n, source, onView }: { n: number; source: Sourc
   );
 }
 
-/** The right column's heading: "Sources" and a mono count. */
+/** A side column's heading, in the 13px bold the artboards give the board's columns. */
+export function SideHeading({ children, count, className }: { children: ReactNode; count?: ReactNode; className?: string }) {
+  return (
+    <div className={cn("flex items-baseline", className)}>
+      <h2 className="flex-1 text-body font-bold">{children}</h2>
+      {count !== undefined && <span className="text-caption text-muted-foreground">{count}</span>}
+    </div>
+  );
+}
+
+/** The right column's heading for a chat's sources: "Sources" and a count. */
 export function SourcesHeading({ count, sub }: { count: number; sub?: string }) {
   return (
     <div className="shrink-0">
-      <div className="flex items-baseline">
-        <h2 className="flex-1 text-body font-semibold">Sources</h2>
-        <span className="font-mono text-body text-muted-foreground">{count}</span>
-      </div>
+      <SideHeading count={count}>Sources</SideHeading>
       {sub && <div className="mt-0.5 text-caption text-muted-foreground">{sub}</div>}
     </div>
   );

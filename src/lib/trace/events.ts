@@ -59,6 +59,8 @@ export type AgentMetadata = {
   writeUpUsage?: TraceUsage;
   /** The saved answer is the notice that none could be written. */
   unanswered?: boolean;
+  /** How long the turn took, question to saved answer, for "Worked for 12s". */
+  ms?: number;
 };
 export type AgentDataParts = { trace: TraceEvent };
 export type AgentUIMessage = UIMessage<AgentMetadata, AgentDataParts>;

@@ -116,6 +116,20 @@ export async function listHoldingMemories(holdingId: string, limit = 60): Promis
   return rows.map(toEntry);
 }
 
+/**
+ * The next questions Hoot noted after answering in one chat (its latest research-log entry), up to three: a thread's
+ * "Related". Empty until the note is written, a few seconds after the answer.
+ */
+export async function chatNextQuestions(chatId: string): Promise<string[]> {
+  const [row] = await db
+    .select({ meta: agentMemories.meta })
+    .from(agentMemories)
+    .where(and(eq(agentMemories.sourceChatId, chatId), eq(agentMemories.kind, "log")))
+    .orderBy(desc(agentMemories.createdAt))
+    .limit(1);
+  return (row?.meta?.nextQuestions ?? []).filter((q) => q.trim().length > 10).slice(0, 3);
+}
+
 /** Unexpired fund-wide facts and lessons, most used first. */
 export async function listFundMemories(limit = 5): Promise<MemoryEntry[]> {
   const rows = await db

@@ -195,6 +195,7 @@ export async function runAgentTurn(opts: {
       if (finished?.plan?.writeUp) metadata.writeUp = finished.plan.reason;
       if (writeUpUsage) metadata.writeUpUsage = traceUsage(writeUpUsage);
       if (unanswered) metadata.unanswered = true;
+      metadata.ms = Date.now() - t0;
       response = { ...response, metadata };
       const all = [...messages, response];
       await saveMessages(chat.id, all);

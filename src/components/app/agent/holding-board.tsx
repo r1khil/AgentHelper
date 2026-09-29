@@ -1,34 +1,37 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { UIMessage } from "ai";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtBp, fmtDate, fmtDateTime, fmtMoney, fmtPct, ppToBp } from "@/lib/format";
+import { fmtBp, fmtChangePct, fmtDate, fmtDateTime, fmtDayMonth, fmtMoney, fmtPct, ppToBp } from "@/lib/format";
 import type { RunStatus } from "@/lib/chats";
 import type { Source } from "@/lib/providers/types";
 import { collectSources } from "@/lib/agent/citations";
-import { marketFigure, pairTurns, stepLabel, turnSources, type Turn, type TurnSource } from "@/lib/agent/board";
+import { chatWhen, marketFigure, pairTurns, stepLabel, turnSources, type Turn, type TurnSource } from "@/lib/agent/board";
 import { resolveSource, sourceType } from "@/lib/agent/source-resolution";
 import { clearHootQuestion, peekHootQuestion } from "@/components/app/hoot/handoff";
 import { createHoldingChat, deleteChat } from "@/lib/actions/chats";
-import { boardHref } from "@/lib/scope";
-import { ResearchAnswer, ResearchSources, type CitationLinks } from "@/components/app/chat/research-answer";
+import { boardHref, holdingHref, movementHref } from "@/lib/scope";
+import type { CitationLinks } from "@/components/app/chat/research-answer";
 import { SourceViewer } from "@/components/app/chat/source-viewer";
-import { ActivityRow, Composer, PromptLabel, shortDate, SourceNumber, ThinkingRow, ThreadHeader, ThreadNote, UserBubble } from "@/components/app/chat/thread-parts";
+import { FLAG_PROMPT } from "@/components/app/chat/conversation";
+import { Composer, SideHeading, shortDate, SourceNumber, ThinkingRow, ThreadNote } from "@/components/app/chat/thread-parts";
+import { TurnView } from "@/components/app/chat/turn-view";
 import { TraceToggle } from "@/components/app/chat/trace-toggle";
-import { headerAction } from "@/components/app/chat/styles";
 import { useResearchChat } from "@/components/app/chat/use-research-chat";
+import { PageHead } from "@/components/app/page-head";
 import { Pill } from "@/components/app/panel";
-import { Tabs, tabPanelProps } from "@/components/app/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import type { MemoryEntry } from "@/lib/agent/memory/prompt";
-import { ResearchLogCard, suggestionsFor } from "@/components/app/agent/research-log-card";
-import { ConversationSidebar, type ResearchSidebarData, type SidebarChat } from "@/components/app/agent/conversation-list";
-import { CenterColumn, ListColumn, ResearchGrid, SideColumn } from "@/components/app/agent/research-columns";
+import { ResearchMemory, suggestionsFor } from "@/components/app/agent/research-log-card";
 
-export type BoardChat = { id: string; title: string; authorName: string | null; questions: number; updatedAt: string; canDelete: boolean };
+export type BoardChat = { id: string; title: string; authorName: string | null; questions: number; updatedAt: string; canDelete: boolean; running?: boolean };
 export type BoardMarket = { price?: number; changePct?: number; relativePp?: number; asOf?: string };
+/** The open movement write-up on this holding: what the move was, and when the team's update is due. */
+export type BoardMovement = { id: string; dueAt: string | null; overdue: boolean; sessionDate: string; returnPct: number | null; relativePp: number | null };
+export type BoardEarnings = { reportDate: string; dateStatus: string; fiscalPeriod: string | null };
 
 type Props = {
   team: { id: string; slug: string; name: string };
@@ -36,8 +39,8 @@ type Props = {
   scopeSlug: string;
   holding: { id: string; ticker: string; name: string };
   market: Promise<BoardMarket>;
-  /** An open movement: the analyst owes an update (`overdue` once the due time has passed). */
-  movement: { id: string; dueAt: string | null; overdue?: boolean } | null;
+  /** An open movement: the team owes an update (`overdue` once the due time has passed). */
+  movement: BoardMovement | null;
   chats: BoardChat[];
   initialChatId: string | null;
   initialMessages: UIMessage[];
@@ -51,12 +54,10 @@ type Props = {
   memories: MemoryEntry[];
   /** Whether this user may remove research-log entries. */
   canManage: boolean;
+  /** The next report on the calendar, for "Earnings prep". */
+  earnings: BoardEarnings | null;
   /** The pre-earnings evidence pack card for the next report, when one has been built. */
   prepCard?: ReactNode;
-  /** The Research list: other boards' chats and general conversations. */
-  sidebar: ResearchSidebarData;
-  /** Where the list's New files a general chat. */
-  newTeamSlug: string | null;
 };
 
 const SUGGESTIONS = (t: string) => [
@@ -66,12 +67,12 @@ const SUGGESTIONS = (t: string) => [
 ];
 
 type ChatState = { messages: UIMessage[]; runStatus: RunStatus };
-type SideTab = "sources" | "board";
 
 /**
- * One holding's research, in Research › Chats: the list on the left (this holding's chats switch on the client; the
- * URL's `chat` param follows the selection), the thread in the middle, and on the right the sources behind the
- * selected answer, with the holding's research log and prep pack a tab away.
+ * One holding's research, in Research: this holding's chats on the left (they switch on the client; the URL's `chat`
+ * param follows the selection), the conversation in the middle with its box pinned at the bottom, and on the right the
+ * sources behind the selected answer, what Hoot remembers about the holding, and its earnings prep. An open movement
+ * write-up shows as a banner over all three.
  */
 export function HoldingBoard(props: Props) {
   const { team, holding, configured, transparency, canTrace, userName, memories, canManage } = props;
@@ -84,7 +85,6 @@ export function HoldingBoard(props: Props) {
   // The first question of a chat created from the empty state; sent as soon as the thread mounts.
   const [autoSend, setAutoSend] = useState<{ chatId: string; text: string } | null>(null);
   const [starting, setStarting] = useState(false);
-  const [tab, setTab] = useState<SideTab>(props.initialChatId ? "sources" : "board");
 
   const chat = chats.find((c) => c.id === chatId) ?? null;
   const boardPath = boardHref(props.scopeSlug, team.slug, holding.ticker);
@@ -113,7 +113,6 @@ export function HoldingBoard(props: Props) {
         setLoading(null);
       }
       setChatId(id);
-      setTab("sources");
       syncUrl(id, true);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -122,7 +121,6 @@ export function HoldingBoard(props: Props) {
 
   const newChat = () => {
     setChatId(null);
-    setTab("board");
     syncUrl(null, true);
   };
 
@@ -138,7 +136,6 @@ export function HoldingBoard(props: Props) {
       setCache((c) => ({ ...c, [id]: { messages: [], runStatus: "idle" } }));
       setAutoSend({ chatId: id, text: t });
       setChatId(id);
-      setTab("sources");
       syncUrl(id, true);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Could not start a chat.");
@@ -155,196 +152,191 @@ export function HoldingBoard(props: Props) {
     );
   };
 
-  // The list shows every chat on this board (as the board knows them, including ones just started) beside the
-  // other boards' recent chats.
-  const sidebar = useMemo<ResearchSidebarData>(() => {
-    const running = new Map(props.sidebar.boards.map((c) => [c.id, c.running]));
-    const mine: SidebarChat[] = chats.map((c) => ({
-      id: c.id,
-      href: `${boardPath}?chat=${c.id}`,
-      title: c.title,
-      authorName: c.authorName,
-      questions: c.questions,
-      updatedAt: c.updatedAt,
-      running: running.get(c.id) ?? false,
-      ticker: holding.ticker,
-      holdingId: holding.id,
-    }));
-    const others = props.sidebar.boards.filter((c) => c.holdingId !== holding.id);
-    return { boards: [...mine, ...others].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), general: props.sidebar.general };
-  }, [chats, props.sidebar, boardPath, holding.ticker, holding.id]);
-
-  const overdue = props.movement?.overdue ?? false;
-  const header = (
-    <ThreadHeader
-      ticker={holding.ticker}
-      title={loading ? "Loading…" : chat ? chat.title : "New chat"}
-      meta={chat ? [team.name, chat.authorName, `${chat.questions} question${chat.questions === 1 ? "" : "s"}`].filter(Boolean).join(" · ") : `${holding.name} · ${team.name}`}
-    >
-      {props.movement && (
-        <Pill tone={overdue ? "hoot" : "caution"} title={props.movement.dueAt ? `Update ${overdue ? "was " : ""}due ${fmtDateTime(props.movement.dueAt)}` : undefined}>
-          {overdue ? "Movement overdue" : "Movement open"}
-        </Pill>
-      )}
-      {canTrace && <TraceToggle on={transparency} />}
-      {(chat || loading) && (
-        <button type="button" onClick={newChat} className={headerAction}>
-          <Plus />
-          New chat
-        </button>
-      )}
-      {chat && chat.canDelete && (
-        <form
-          action={deleteChat}
-          className="flex"
-          onSubmit={(e) => {
-            if (!confirm("Clear this chat? Its questions, answers, and sources are removed for the whole team.")) e.preventDefault();
-          }}
-        >
-          <input type="hidden" name="id" value={chat.id} />
-          <button type="submit" className={cn(headerAction, "hover:text-destructive")}>
-            <Trash2 />
-            Clear chat
-          </button>
-        </form>
-      )}
-    </ThreadHeader>
-  );
-
-  const boardTab = (
-    <div className="flex flex-col gap-3">
-      <div className="rounded-[10px] bg-card px-3 py-2.5 shadow-[0_0_0_1px_var(--border)]">
-        <div className="flex items-baseline gap-2">
-          <span className="font-mono text-body font-semibold">{holding.ticker}</span>
-          <span className="min-w-0 flex-1 truncate text-body text-ink-2">{holding.name}</span>
-        </div>
-        <Suspense fallback={<Skeleton className="mt-1.5 h-4 w-32" />}>
+  const holdingPath = holdingHref(props.scopeSlug, team.slug, holding.ticker);
+  const head = (
+    <PageHead
+      crumbs={[{ label: "Research", href: `/t/${props.scopeSlug}/agent` }, { label: `${holding.ticker} · ${holding.name}` }]}
+      tabs={false}
+      asof={
+        <Suspense fallback={null}>
           <BoardQuote market={props.market} />
         </Suspense>
-        {props.movement && (
-          <div className="mt-1 flex items-center gap-1.5 text-caption font-medium text-down">
-            <span className="size-1.5 shrink-0 rounded-full bg-down" />
-            Movement open{props.movement.dueAt ? ` · update due ${fmtDateTime(props.movement.dueAt)}` : ""}
-          </div>
-        )}
-      </div>
-      {props.prepCard}
-      <ResearchLogCard entries={memories} canManage={canManage} defaultOpen />
-      {!props.prepCard && memories.length === 0 && (
-        <p className="text-body leading-relaxed text-muted-foreground">No research log yet. After each answer, Hoot notes what it learned about {holding.ticker} here, and builds an evidence pack before the next report.</p>
-      )}
-    </div>
+      }
+      actions={
+        <>
+          {canTrace && <TraceToggle on={transparency} />}
+          {chat && chat.canDelete && (
+            <form
+              action={deleteChat}
+              className="flex"
+              onSubmit={(e) => {
+                if (!confirm("Clear this chat? Its questions, answers, and sources are removed for the whole team.")) e.preventDefault();
+              }}
+            >
+              <input type="hidden" name="id" value={chat.id} />
+              <Button type="submit" variant="destructive">
+                Clear chat
+              </Button>
+            </form>
+          )}
+          <Button nativeButton={false} variant="secondary" render={<Link href={holdingPath} />}>
+            Open holding
+          </Button>
+          <Button type="button" onClick={newChat} disabled={!chat && !loading}>
+            New chat
+          </Button>
+        </>
+      }
+    />
   );
-  const boardCount = memories.filter((m) => m.kind === "log").length + (props.prepCard ? 1 : 0);
 
   const state = chatId ? cache[chatId] : undefined;
+  const side = { ticker: holding.ticker, memories, canManage, earnings: props.earnings, prepCard: props.prepCard };
   return (
-    <ResearchGrid>
-      <ListColumn>
-        <ConversationSidebar
-          data={sidebar}
-          selectedId={chatId}
-          teamSlug={props.newTeamSlug}
-          configured={configured}
-          onSelect={(c) => {
-            if (c.holdingId !== holding.id) return false;
-            void selectChat(c.id);
-            return true;
-          }}
-        />
-      </ListColumn>
-      {chatId && state ? (
-        <BoardThread
-          key={chatId}
-          chatId={chatId}
-          header={header}
-          loadError={loadError}
-          holding={holding}
-          initial={state}
-          configured={configured}
-          transparency={transparency}
-          autoSend={autoSend?.chatId === chatId ? autoSend.text : null}
-          onSent={(text) => onSent(chatId, text)}
-          suggestions={suggestions}
-          tab={tab}
-          setTab={setTab}
-          boardTab={boardTab}
-          boardCount={boardCount}
-        />
-      ) : (
-        <EmptyBoard
-          header={header}
-          loadError={loadError}
-          holding={holding}
-          configured={configured}
-          busy={starting || loading !== null}
-          hasChats={chats.length > 0}
-          onAsk={start}
-          suggestions={suggestions}
-          tab={tab}
-          setTab={setTab}
-          boardTab={boardTab}
-          boardCount={boardCount}
-        />
-      )}
-    </ResearchGrid>
-  );
-}
-
-function BoardQuote({ market }: { market: Promise<BoardMarket> }) {
-  const m = use(market);
-  if (m.changePct === undefined) return <div className="mt-1 text-caption text-muted-foreground">Quote unavailable</div>;
-  const tone = (v: number) => (v > 0.005 ? "text-up" : v < -0.005 ? "text-down" : "text-muted-foreground");
-  return (
-    <div className="mt-1 flex flex-wrap items-baseline gap-x-2 font-mono text-caption tabular-nums" title={m.asOf ? `As of ${fmtDateTime(m.asOf)}` : undefined}>
-      {m.price !== undefined && <span>{fmtMoney(m.price)}</span>}
-      <span className={cn("font-medium", tone(m.changePct))}>{fmtPct(m.changePct)}</span>
-      {m.relativePp !== undefined && <span className="text-muted-foreground">{fmtBp(ppToBp(m.relativePp))} vs S&amp;P</span>}
+    <div data-full-bleed className="flex h-dvh min-h-0 flex-col">
+      {head}
+      {props.movement && <MovementBanner movement={props.movement} team={team.name} href={movementHref(props.scopeSlug, team.slug, props.movement.id)} />}
+      <div className="flex min-h-0 flex-1">
+        <ChatsColumn ticker={holding.ticker} chats={chats} selectedId={chatId} onSelect={(id) => void selectChat(id)} boardPath={boardPath} />
+        {chatId && state ? (
+          <BoardThread
+            key={chatId}
+            chatId={chatId}
+            loadError={loadError}
+            holding={holding}
+            initial={state}
+            configured={configured}
+            transparency={transparency}
+            autoSend={autoSend?.chatId === chatId ? autoSend.text : null}
+            onSent={(text) => onSent(chatId, text)}
+            suggestions={suggestions}
+            side={side}
+          />
+        ) : (
+          <EmptyBoard loadError={loadError} holding={holding} configured={configured} busy={starting || loading !== null} hasChats={chats.length > 0} onAsk={start} suggestions={suggestions} side={side} />
+        )}
+      </div>
     </div>
   );
 }
 
-/** The side column: Sources (for the selected answer) and Research log (the log, prep pack, the holding at a glance). */
-function SideTabs({ tab, setTab, sourceCount, boardCount, sources, board }: { tab: SideTab; setTab: (t: SideTab) => void; sourceCount: number; boardCount: number; sources: ReactNode; board: ReactNode }) {
+/** "198.60 · (0.54%) today", in the header's grey note. */
+function BoardQuote({ market }: { market: Promise<BoardMarket> }) {
+  const m = use(market);
+  if (m.changePct === undefined) return <>Quote unavailable</>;
+  const tone = m.changePct > 0.005 ? "text-up" : m.changePct < -0.005 ? "text-down" : undefined;
   return (
-    <>
-      <Tabs
-        label="Sources and research log"
-        idBase="board-side"
-        onSelect={(k) => setTab(k as SideTab)}
-        items={[
-          { key: "sources", label: "Sources", count: sourceCount, active: tab === "sources" },
-          { key: "board", label: "Research log", count: boardCount, active: tab === "board" },
-        ]}
-      />
-      <div {...tabPanelProps("board-side", tab)} className="-mx-1 mt-2.5 min-h-0 flex-1 overflow-y-auto px-1 pt-px pb-1">
-        {tab === "sources" ? sources : board}
+    <span title={m.asOf ? `As of ${fmtDateTime(m.asOf)}${m.relativePp !== undefined ? ` · ${fmtBp(ppToBp(m.relativePp))} vs S&P 500` : ""}` : undefined}>
+      {m.price !== undefined && <>{fmtMoney(m.price)} · </>}
+      <span className={tone}>{fmtChangePct(m.changePct)}</span> today
+    </span>
+  );
+}
+
+/**
+ * The open movement write-up, above the columns: "Movement overdue" (red) or "Movement open" (amber), what the move
+ * was, and the way to the write-up. The write-up itself stays the team's; this only points at it.
+ */
+function MovementBanner({ movement, team, href }: { movement: BoardMovement; team: string; href: string }) {
+  const { overdue } = movement;
+  const move =
+    movement.returnPct !== null
+      ? `${movement.returnPct < 0 ? "Fell" : "Rose"} ${fmtPct(movement.returnPct)} on ${fmtDayMonth(movement.sessionDate)}${movement.relativePp !== null ? `, ${fmtBp(ppToBp(movement.relativePp))} against the S&P 500` : ""}`
+      : `Moved on ${fmtDayMonth(movement.sessionDate)}`;
+  return (
+    <div className="flex items-center gap-2.5 border-b px-10 py-3 text-body">
+      <Pill tone={overdue ? "hoot" : "caution"}>{overdue ? "Movement overdue" : "Movement open"}</Pill>
+      <span className="min-w-0 truncate text-ink-2">
+        {move}
+        {movement.dueAt && ` · the ${team} write-up ${overdue ? "was" : "is"} due ${fmtDateTime(movement.dueAt)}`}
+      </span>
+      <span className="flex-1" />
+      <Link href={href} className="shrink-0 font-semibold text-foreground hover:underline">
+        Open the write-up
+      </Link>
+    </div>
+  );
+}
+
+/** Chats on this holding, newest first; the open one is bold. */
+function ChatsColumn({ ticker, chats, selectedId, onSelect, boardPath }: { ticker: string; chats: BoardChat[]; selectedId: string | null; onSelect: (id: string) => void; boardPath: string }) {
+  return (
+    <aside aria-label={`Chats on ${ticker}`} className="w-60 shrink-0 overflow-y-auto border-r pt-[18px] pr-4 pl-10">
+      <div className="pb-1 text-caption font-semibold text-muted-foreground">
+        Chats on {ticker} · {chats.length}
       </div>
-    </>
+      {chats.length === 0 ? (
+        <p className="pt-1 text-caption text-muted-foreground">No chats on {ticker} yet. Ask a question to start one.</p>
+      ) : (
+        chats.map((c) => {
+          const current = c.id === selectedId;
+          return (
+            <a
+              key={c.id}
+              href={`${boardPath}?chat=${c.id}`}
+              aria-current={current ? "page" : undefined}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                e.preventDefault();
+                onSelect(c.id);
+              }}
+              className={cn("flex flex-col border-b border-row py-2 text-foreground no-underline hover:bg-band focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring", current ? "font-semibold" : "font-normal")}
+            >
+              <span className="line-clamp-2 text-body">{c.title === "New chat" ? "New conversation" : c.title}</span>
+              <span className={cn("text-caption font-normal", c.running ? "text-caution-foreground" : "text-muted-foreground")}>
+                {c.running ? "Answering…" : `${c.authorName ?? "Someone"} · ${chatWhen(c.updatedAt)}`}
+              </span>
+            </a>
+          );
+        })
+      )}
+    </aside>
+  );
+}
+
+type SideProps = { ticker: string; memories: MemoryEntry[]; canManage: boolean; earnings: BoardEarnings | null; prepCard?: ReactNode };
+
+/** The right column: sources behind the answer, what Hoot remembers, earnings prep. */
+function SideColumn({ sources, side }: { sources: ReactNode; side: SideProps }) {
+  const { earnings, prepCard, ticker } = side;
+  return (
+    <aside aria-label="Sources, memories and prep" className="flex w-[300px] shrink-0 flex-col gap-[22px] overflow-y-auto border-l pt-[18px] pr-10 pb-8 pl-6">
+      <section aria-label="Sources and research log">{sources}</section>
+      <ResearchMemory ticker={ticker} entries={side.memories} canManage={side.canManage} />
+      <section aria-label="Earnings prep">
+        <SideHeading>Earnings prep</SideHeading>
+        {prepCard ? (
+          <div className="mt-1">{prepCard}</div>
+        ) : earnings ? (
+          <p className="mt-1 text-caption text-ink-2">
+            {earnings.fiscalPeriod ? `${earnings.fiscalPeriod} report` : "Next report"} {fmtDate(earnings.reportDate)}
+            {earnings.dateStatus === "estimated" ? " (est.)" : ""}. The prep pack builds two weeks before.
+          </p>
+        ) : (
+          <p className="mt-1 text-caption text-ink-2">No report is on the calendar yet. The prep pack builds two weeks before one.</p>
+        )}
+      </section>
+    </aside>
   );
 }
 
 function EmptySources() {
-  return (
-    <p className="text-body leading-relaxed text-muted-foreground">
-      Sources appear here as Hoot reads them, numbered the way the answer cites them. Click a card, or a number in the answer, to read the cited passage.
-    </p>
-  );
+  return <p className="mt-1 text-caption text-muted-foreground">Sources appear here as Hoot reads them, numbered the way the answer cites them. Click a number in the answer to read the cited passage.</p>;
 }
 
 function BoardIntro({ ticker, again, suggestions, disabled, onPick }: { ticker: string; again: boolean; suggestions: string[]; disabled: boolean; onPick: (s: string) => void }) {
   return (
-    <div className="mx-auto flex w-full max-w-[600px] flex-col gap-3 pt-4">
-      <div className="text-emph font-semibold">{again ? `New chat about ${ticker}` : `Start a chat about ${ticker}`}</div>
-      <div className="text-body leading-relaxed text-muted-foreground">Ask anything about this holding. Sources for each answer appear on the right; the answer cites them by number.</div>
-      <div className="flex flex-col gap-2">
+    <div className="flex max-w-[620px] flex-col gap-3 pt-2">
+      <h2 className="font-serif text-display font-normal tracking-[-0.02em]">{again ? `New chat about ${ticker}` : `Start a chat about ${ticker}`}</h2>
+      <p className="text-body text-ink-2">Ask anything about this holding. The sources for each answer appear on the right; the answer cites them by number.</p>
+      <div className="flex flex-wrap gap-2">
         {suggestions.map((s) => (
           <button
             key={s}
             type="button"
             disabled={disabled}
             onClick={() => onPick(s)}
-            className="rounded-[10px] bg-card px-3.5 py-2.5 text-left text-body leading-snug shadow-[0_0_0_1px_var(--border)] transition-colors hover:bg-band disabled:opacity-60"
+            className="rounded-md bg-secondary px-3 py-1.5 text-left text-body text-ink-3 transition-colors hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60"
           >
             {s}
           </button>
@@ -355,55 +347,60 @@ function BoardIntro({ ticker, again, suggestions, disabled, onPick }: { ticker: 
 }
 
 type PaneProps = {
-  header: ReactNode;
   loadError: string | null;
   holding: Props["holding"];
   configured: boolean;
   suggestions: string[];
-  tab: SideTab;
-  setTab: (t: SideTab) => void;
-  boardTab: ReactNode;
-  boardCount: number;
+  side: SideProps;
 };
 
-function EmptyBoard({ header, loadError, holding, configured, busy, hasChats, onAsk, suggestions, tab, setTab, boardTab, boardCount }: PaneProps & { busy: boolean; hasChats: boolean; onAsk: (text: string) => void }) {
+/** The centre column's frame: the thread scrolls, the question box is pinned over the bottom. */
+function Centre({ scroller, composer, children }: { scroller?: React.Ref<HTMLDivElement>; composer: ReactNode; children: ReactNode }) {
+  return (
+    <section className="relative flex min-w-0 flex-1 flex-col">
+      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto px-8 pt-[22px] pb-28">
+        <div className="flex max-w-[720px] flex-col gap-8">{children}</div>
+      </div>
+      <div className="absolute inset-x-8 bottom-5">{composer}</div>
+    </section>
+  );
+}
+
+function EmptyBoard({ loadError, holding, configured, busy, hasChats, onAsk, suggestions, side }: PaneProps & { busy: boolean; hasChats: boolean; onAsk: (text: string) => void }) {
   const [draft, setDraft] = useState("");
   return (
     <>
-      <CenterColumn>
-        {header}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="flex flex-col gap-4 px-6 py-6 xl:px-14">
-            {loadError && <ThreadNote tone="error">{loadError}</ThreadNote>}
-            <BoardIntro ticker={holding.ticker} again={hasChats} suggestions={suggestions} disabled={busy || !configured} onPick={onAsk} />
-            {busy && (
-              <ThreadNote tone="muted">
-                <Loader2 className="size-3.5 animate-spin" /> Opening a chat…
-              </ThreadNote>
-            )}
-          </div>
-        </div>
-        <Composer
-          value={draft}
-          onChange={setDraft}
-          onSend={() => {
-            if (draft.trim()) onAsk(draft);
-          }}
-          disabled={busy || !configured}
-          placeholder={configured ? "Ask about a holding, a filing, a move…" : "Hoot isn't set up yet: an admin needs to turn it on"}
-          sees={`${holding.ticker} research`}
-        />
-      </CenterColumn>
-      <SideColumn>
-        <SideTabs tab={tab} setTab={setTab} sourceCount={0} boardCount={boardCount} sources={<EmptySources />} board={boardTab} />
-      </SideColumn>
+      <Centre
+        composer={
+          <Composer
+            variant="compact"
+            value={draft}
+            onChange={setDraft}
+            onSend={() => {
+              if (draft.trim()) onAsk(draft);
+            }}
+            disabled={busy || !configured}
+            placeholder={configured ? "Ask about a holding, a filing, a move…" : "Hoot isn't set up yet: an admin needs to turn it on"}
+            sees={`${holding.ticker} research`}
+            label={`Ask about ${holding.ticker}`}
+          />
+        }
+      >
+        {loadError && <ThreadNote tone="error">{loadError}</ThreadNote>}
+        <BoardIntro ticker={holding.ticker} again={hasChats} suggestions={suggestions} disabled={busy || !configured} onPick={onAsk} />
+        {busy && (
+          <ThreadNote tone="muted">
+            <Loader2 className="size-3.5 animate-spin" aria-hidden /> Opening a chat…
+          </ThreadNote>
+        )}
+      </Centre>
+      <SideColumn sources={<><SideHeading count={0}>Sources and research log</SideHeading><EmptySources /></>} side={side} />
     </>
   );
 }
 
 function BoardThread({
   chatId,
-  header,
   loadError,
   holding,
   initial,
@@ -412,10 +409,7 @@ function BoardThread({
   autoSend,
   onSent,
   suggestions,
-  tab,
-  setTab,
-  boardTab,
-  boardCount,
+  side,
 }: PaneProps & {
   chatId: string;
   initial: ChatState;
@@ -423,7 +417,7 @@ function BoardThread({
   autoSend: string | null;
   onSent: (text: string) => void;
 }) {
-  const { messages, status, streaming, busy, catchingUp, runError, requestError, traceView, now, send, stopWatching } = useResearchChat({
+  const { messages, status, streaming, busy, catchingUp, runError, requestError, traceView, now, durations, send, stopWatching } = useResearchChat({
     chatId,
     initialMessages: initial.messages,
     initialRunStatus: initial.runStatus,
@@ -436,6 +430,7 @@ function BoardThread({
   const [copied, setCopied] = useState<string | null>(null);
   const [viewer, setViewer] = useState<Source | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
 
   // Deferred a tick: the SDK's sendMessage awaits before it queues the message, and a stop() in that window
   // (React's development double-invoke of effects calls the hook's cleanup) makes it return silently.
@@ -475,9 +470,8 @@ function BoardThread({
       else next.add(id);
       return next;
     });
-  /** A chip click opens its card and brings it into view; a long answer can have cards below the fold. */
+  /** A citation click opens its row and brings it into view; a long answer can have rows below the fold. */
   const reveal = (id: string) => {
-    setTab("sources");
     requestAnimationFrame(() => document.getElementById(`board-src-${id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
   };
   const activate = (t: Turn) => {
@@ -507,146 +501,135 @@ function BoardThread({
     }
   };
 
-  const sub = !active
-    ? "Empty until you ask"
-    : live && !active.answerText
-      ? `${sources.length} so far · gathering`
-      : `For ${turns.length > 1 ? (active === last ? "the latest answer" : "the selected answer") : "this answer"}`;
+  const sub = !active ? "Empty until you ask" : live && !active.answerText ? `${sources.length} so far · gathering` : `For ${turns.length > 1 ? (active === last ? "the latest answer" : "the selected answer") : "this answer"}`;
 
   return (
     <>
-      <CenterColumn>
-        {header}
-        <div ref={threadRef} className="min-h-0 flex-1 overflow-y-auto">
-          <div className="flex flex-col gap-4 px-6 py-6 xl:px-14">
-            {loadError && <ThreadNote tone="error">{loadError}</ThreadNote>}
-            {turns.length === 0 && (
-              <BoardIntro
-                ticker={holding.ticker}
-                again
-                suggestions={suggestions}
-                disabled={busy || !configured}
-                onPick={(s) => {
-                  if (send(s)) onSent(s);
+      <Centre
+        scroller={threadRef}
+        composer={
+          <Composer
+            variant="compact"
+            inputRef={composerRef}
+            value={draft}
+            onChange={setDraft}
+            onSend={submit}
+            onStop={stopWatching}
+            streaming={streaming}
+            disabled={!configured || catchingUp}
+            placeholder={!configured ? "Hoot isn't set up yet: an admin needs to turn it on" : catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…"}
+            sees={`${holding.ticker} research`}
+            label={`Ask about ${holding.ticker}`}
+          />
+        }
+      >
+        {loadError && <ThreadNote tone="error">{loadError}</ThreadNote>}
+        {turns.length === 0 && (
+          <BoardIntro
+            ticker={holding.ticker}
+            again
+            suggestions={suggestions}
+            disabled={busy || !configured}
+            onPick={(s) => {
+              if (send(s)) onSent(s);
+            }}
+          />
+        )}
+        {turns.map((t) => {
+          const isActive = t === active;
+          const rows = perTurn.get(t.id) ?? [];
+          const links: CitationLinks = isActive
+            ? {
+                onCite: (id) => {
+                  if (!open.has(id)) reveal(id);
+                  toggle(id);
+                },
+                onHover: setHover,
+                openIds: open,
+                highlight: hover,
+              }
+            : {
+                onCite: (id) => {
+                  setActiveId(t.id);
+                  setOpen(new Set([id]));
+                  setHover(null);
+                  reveal(id);
+                },
+                dim: true,
+              };
+          const turnLive = streaming && t === last;
+          return (
+            <div key={t.id} onClick={() => activate(t)} className={cn(!isActive && turns.length > 1 && "cursor-pointer")} aria-current={isActive && turns.length > 1 ? "true" : undefined}>
+              <TurnView
+                turn={t}
+                variant="board"
+                chatId={chatId}
+                allSources={allSources}
+                sources={rows}
+                live={turnLive}
+                catchingUp={catchingUp}
+                trace={t === last ? traceView : null}
+                now={now}
+                elapsedMs={durations[t.id] ?? null}
+                teamSlug={null}
+                links={links}
+                onFlag={() => {
+                  setDraft((v) => v || FLAG_PROMPT);
+                  composerRef.current?.focus();
                 }}
               />
+            </div>
+          );
+        })}
+        {status === "submitted" && !last?.assistant && <ThinkingRow>Reading the question…</ThinkingRow>}
+        {catchingUp && <ThinkingRow>Still working on the last question. The answer appears here when it is ready; you can leave and come back.</ThinkingRow>}
+        {runError && <ThreadNote tone="caution">{runError}</ThreadNote>}
+        {requestError && <ThreadNote tone="error">{requestError}</ThreadNote>}
+      </Centre>
+      <SideColumn
+        side={side}
+        sources={
+          <>
+            <SideHeading count={active ? sources.length : undefined}>Sources and research log</SideHeading>
+            <div className="mt-0.5 text-caption text-muted-foreground">{sub}</div>
+            {!active || (sources.length === 0 && !live) ? (
+              <EmptySources />
+            ) : (
+              <div className="mt-1">
+                {sources.map((row) => (
+                  <BoardSourceRow
+                    key={row.source.id}
+                    row={row}
+                    isOpen={open.has(row.source.id)}
+                    hot={hover === row.source.id}
+                    copied={copied === row.source.id}
+                    onToggle={() => toggle(row.source.id)}
+                    onHover={setHover}
+                    onCopy={() => void copyCitation(row.source)}
+                    onView={() => setViewer(row.source)}
+                  />
+                ))}
+                {live && (
+                  <div className="flex items-center gap-2 border-b border-row py-[7px] text-caption text-muted-foreground">
+                    <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden />
+                    {active ? stepLabel(active) : "Working…"}
+                  </div>
+                )}
+              </div>
             )}
-            {turns.map((t) => {
-              const isActive = t === active;
-              const rows = perTurn.get(t.id) ?? [];
-              const numbers = new Map(rows.map((r) => [r.source.id, r.n]));
-              const links: CitationLinks = isActive
-                ? {
-                    onCite: (id) => {
-                      if (!open.has(id)) reveal(id);
-                      toggle(id);
-                    },
-                    onHover: setHover,
-                    openIds: open,
-                    highlight: hover,
-                  }
-                : {
-                    onCite: (id) => {
-                      setActiveId(t.id);
-                      setOpen(new Set([id]));
-                      setHover(null);
-                      reveal(id);
-                    },
-                    dim: true,
-                  };
-              const turnLive = streaming && t === last;
-              const trace = t === last ? traceView : null;
-              return (
-                <div key={t.id} onClick={() => activate(t)} className={cn("flex flex-col gap-3", !isActive && "cursor-pointer")} aria-current={isActive && turns.length > 1 ? "true" : undefined}>
-                  {t.label ? (
-                    <PromptLabel>{t.label}</PromptLabel>
-                  ) : (
-                    <UserBubble>
-                      <p>{t.question}</p>
-                    </UserBubble>
-                  )}
-                  {t.assistant && (t.activity.length > 0 || turnLive || trace) && (
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <ActivityRow parts={t.activity} live={turnLive && !t.answerText} trace={trace} now={now} thinking />
-                    </div>
-                  )}
-                  {t.answerText ? (
-                    <ResearchSources sources={allSources} numbers={numbers} links={links} chatId={chatId}>
-                      <ResearchAnswer text={t.answerText} className="max-w-[700px] text-emph leading-[1.65] [&_p]:my-2.5 [&_p:first-child]:mt-0" />
-                    </ResearchSources>
-                  ) : t.assistant && !turnLive && !catchingUp ? (
-                    <div className="text-body text-caution-foreground">Hoot stopped before writing an answer. Its lookups are on the right; ask again to get a written answer.</div>
-                  ) : null}
-                </div>
-              );
-            })}
-            {status === "submitted" && !last?.assistant && <ThinkingRow>Reading the question…</ThinkingRow>}
-            {catchingUp && <ThinkingRow>Still working on the last question. The answer appears here when it is ready; you can leave and come back.</ThinkingRow>}
-            {runError && <ThreadNote tone="caution">{runError}</ThreadNote>}
-            {requestError && <ThreadNote tone="error">{requestError}</ThreadNote>}
-          </div>
-        </div>
-        <Composer
-          value={draft}
-          onChange={setDraft}
-          onSend={submit}
-          onStop={stopWatching}
-          streaming={streaming}
-          disabled={!configured || catchingUp}
-          placeholder={!configured ? "Hoot isn't set up yet: an admin needs to turn it on" : catchingUp ? "Waiting for the current answer…" : "Ask about a holding, a filing, a move…"}
-          sees={`${holding.ticker} research`}
-        />
-      </CenterColumn>
-      <SideColumn>
-        <SideTabs
-          tab={tab}
-          setTab={setTab}
-          sourceCount={sources.length}
-          boardCount={boardCount}
-          board={boardTab}
-          sources={
-            <>
-              <div className="mb-2 text-caption text-muted-foreground">{sub}</div>
-              {!active || (sources.length === 0 && !live) ? (
-                <EmptySources />
-              ) : (
-                <ul className="flex flex-col gap-2">
-                  {sources.map((row) => (
-                    <li key={row.source.id}>
-                      <BoardSourceCard
-                        row={row}
-                        isOpen={open.has(row.source.id)}
-                        hot={hover === row.source.id}
-                        copied={copied === row.source.id}
-                        onToggle={() => toggle(row.source.id)}
-                        onHover={setHover}
-                        onCopy={() => void copyCitation(row.source)}
-                        onView={() => setViewer(row.source)}
-                      />
-                    </li>
-                  ))}
-                  {live && (
-                    <li className="flex items-center gap-2 rounded-[10px] border border-dashed px-3 py-2.5 text-body text-muted-foreground">
-                      <Loader2 className="size-3 shrink-0 animate-spin" />
-                      {active ? stepLabel(active) : "Working…"}
-                    </li>
-                  )}
-                </ul>
-              )}
-            </>
-          }
-        />
-        <SourceViewer source={viewer} chatId={chatId} onClose={() => setViewer(null)} />
-      </SideColumn>
+            <SourceViewer source={viewer} chatId={chatId} onClose={() => setViewer(null)} />
+          </>
+        }
+      />
     </>
   );
 }
 
 /**
- * One source behind the selected answer: pink number, title (or the figure, for a quote or relative move),
- * "publisher · date". Click to read the cited passage, open the document, or copy the citation.
+ * One source behind the selected answer, on a hairline row: its number, its title (or the figure, for a quote or a
+ * relative move) and its kind. Click to read the cited passage, open the document, or copy the citation.
  */
-function BoardSourceCard({
+function BoardSourceRow({
   row,
   isOpen,
   hot,
@@ -668,8 +651,10 @@ function BoardSourceCard({
   const s = row.source;
   const figure = marketFigure(row);
   const target = resolveSource(s);
+  const unavailable = target.kind === "unavailable";
   const snippet = s.excerpt?.trim();
   const toneClass = figure?.tone === "up" ? "text-up" : figure?.tone === "down" ? "text-down" : "text-foreground";
+  const kind = unavailable ? "unavailable" : figure ? "market data" : sourceType(s).toLowerCase();
   const meta = [s.publisher || "Publisher unavailable", shortDate(s.publishedAt)].filter(Boolean).join(" · ");
   return (
     <div
@@ -687,49 +672,42 @@ function BoardSourceCard({
       onMouseEnter={() => onHover(s.id)}
       onMouseLeave={() => onHover(null)}
       className={cn(
-        "flex cursor-pointer gap-2.5 rounded-[10px] bg-card px-3 py-[9px] transition-shadow animate-in fade-in duration-200",
-        isOpen || hot ? "shadow-[0_0_0_1.5px_var(--hoot-foreground)]" : "shadow-[0_0_0_1px_var(--border)]",
+        "grid cursor-pointer grid-cols-[16px_minmax(0,1fr)] gap-1.5 border-b border-row py-[7px] text-caption transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
+        (isOpen || hot) && "bg-band",
       )}
     >
-      <SourceNumber n={row.n} className={cn(isOpen && "bg-hoot-foreground text-hoot", target.kind === "unavailable" && "bg-destructive/10 text-destructive")} />
-      <div className="min-w-0 flex-1">
+      <SourceNumber n={row.n} className={unavailable ? "text-caution-foreground" : undefined} />
+      <div className="min-w-0">
         {figure ? (
-          <div className="flex flex-wrap items-baseline gap-x-2">
-            <span className={cn("font-mono text-emph font-medium tracking-[-0.02em] tabular-nums", toneClass)}>{figure.big}</span>
-            <span className="text-caption text-muted-foreground">{figure.sub}</span>
-          </div>
+          <span>
+            <span className={cn("font-semibold", toneClass)}>{figure.big}</span> <span className="text-muted-foreground">{figure.sub}</span>
+          </span>
         ) : (
-          <div className="text-body leading-[1.35]">{s.title?.trim() || "Untitled source"}</div>
+          <span>{s.title?.trim() || "Untitled source"}</span>
         )}
-        <div className="mt-0.5 text-caption text-muted-foreground">{meta}</div>
+        <span className={cn(unavailable ? "text-caution-foreground" : "text-muted-foreground")}> · {kind}</span>
         {isOpen && (
           <div onClick={(e) => e.stopPropagation()} className="cursor-auto">
-            <div className="mt-2 text-caption text-muted-foreground">
-              {figure ? "Market data" : sourceType(s)} · {row.cited ? `cited ${row.cited}×` : "not cited"}
+            <div className="mt-1 text-muted-foreground">
+              {meta} · {row.cited ? `cited ${row.cited}×` : "not cited"}
             </div>
-            <div className="mt-1.5 rounded-lg bg-background px-2.5 py-2 text-body leading-relaxed text-foreground/85 shadow-[0_0_0_1px_var(--border)]">
-              {snippet ? (
-                <mark className="rounded-sm bg-caution px-0.5 text-foreground">{snippet}</mark>
-              ) : (
-                <span className="text-muted-foreground">No supporting passage was saved for this source. Open it to review the document.</span>
-              )}
-              {(s.location?.section || s.location?.page) && (
-                <div className="mt-1.5 text-caption text-muted-foreground">{[s.location.section, s.location.page ? `Page ${s.location.page}` : null].filter(Boolean).join(" · ")}</div>
-              )}
+            <div className="mt-1.5 border-l border-border-strong pl-2 text-ink-3">
+              {snippet ? <mark className="bg-caution px-0.5 text-foreground">{snippet}</mark> : <span className="text-muted-foreground">No supporting passage was saved for this source. Open it to review the document.</span>}
+              {(s.location?.section || s.location?.page) && <div className="mt-1 text-muted-foreground">{[s.location.section, s.location.page ? `Page ${s.location.page}` : null].filter(Boolean).join(" · ")}</div>}
             </div>
-            <div className="mt-2 flex gap-3.5 text-caption text-muted-foreground">
+            <div className="mt-1.5 flex gap-3.5">
               {target.kind === "external" ? (
-                <a href={target.href} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground hover:underline">
-                  Open source ↗
+                <a href={target.href} target="_blank" rel="noopener noreferrer" className="font-semibold text-foreground hover:underline">
+                  Open source
                 </a>
               ) : target.kind === "document" ? (
-                <button type="button" onClick={onView} className="font-medium text-foreground hover:underline">
+                <button type="button" onClick={onView} className="font-semibold text-foreground hover:underline">
                   Open document
                 </button>
               ) : (
-                <span className="text-destructive">Source unavailable</span>
+                <span className="font-semibold text-caution-foreground">Source unavailable</span>
               )}
-              <button type="button" onClick={onCopy} className="hover:text-foreground">
+              <button type="button" onClick={onCopy} className="text-ink-2 hover:text-foreground">
                 {copied ? "Copied" : "Copy citation"}
               </button>
             </div>
