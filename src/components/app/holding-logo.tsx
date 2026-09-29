@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 /** Public ticker logos (PNG, square-ish, on transparent or white). Tickers the service doesn't know fall back to a letter tile. */
@@ -13,6 +13,12 @@ const logoUrl = (ticker: string) => `https://financialmodelingprep.com/image-sto
  */
 export function HoldingLogo({ ticker, size = 20, className }: { ticker: string; size?: number; className?: string }) {
   const [state, setState] = useState<"loading" | "loaded" | "failed">("loading");
+  const img = useRef<HTMLImageElement>(null);
+  // A logo in the server's HTML can finish (or fail) before React attaches onLoad, so read where it got to.
+  useEffect(() => {
+    const el = img.current;
+    if (el?.complete) setState(el.naturalWidth > 0 ? "loaded" : "failed");
+  }, []);
   const radius = size >= 32 ? 10 : size >= 24 ? 6 : 5;
   const loaded = state === "loaded";
   return (
@@ -30,6 +36,7 @@ export function HoldingLogo({ ticker, size = 20, className }: { ticker: string; 
       {state !== "failed" && (
         // eslint-disable-next-line @next/next/no-img-element -- a remote logo, sized by its tile; next/image would need the host allowlisted for no gain
         <img
+          ref={img}
           src={logoUrl(ticker)}
           alt=""
           width={size}
