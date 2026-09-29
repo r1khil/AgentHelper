@@ -76,6 +76,9 @@
     --color-hoot-panel: var(--hoot-panel);
     --color-hoot-panel-ring: var(--hoot-panel-ring);
     --color-caution: var(--caution);
+    --color-caution-line: var(--caution-line);
+    --color-surface: var(--surface);
+    --color-economy: var(--economy);
     --color-caution-foreground: var(--caution-foreground);
     --color-good: var(--good);
     --color-good-foreground: var(--good-foreground);
@@ -162,6 +165,8 @@
     --border-strong: #d4d4d8;
     --input: #d4d4d8;
     --ring: #0a0a0a;
+    /* A raised surface: the ask box, and a section in a page's right-hand rail. */
+    --surface: #fafafa;
     --chart-1: #0a0a0a;
     --chart-2: #52525b;
     --chart-3: #8a8a93;
@@ -192,6 +197,8 @@
     /* The amber of "check this". A fill only behind a whole notice; statuses are words. */
     --caution: #fdf6ec;
     --caution-foreground: #b45309;
+    /* The frame around a notice that needs you (a holding's overdue write-ups). */
+    --caution-line: #f3dfc1;
     --good: #f4f4f5;
     --good-foreground: #52525b;
     --good-tint: #fafafa;
@@ -211,6 +218,8 @@
     --down-on-rail: #ff6369;
     --warning: #b45309;
     --warning-foreground: #b45309;
+    /* An economic release on Markets, told apart from an earnings report. */
+    --economy: #1d5fae;
     --hoot-halo: none;
     --tour-scrim: rgb(10 10 10 / 0.6);
     --tour-lift: transparent;
@@ -230,85 +239,89 @@
     --sidebar-ring: #0a0a0a;
 }
 
-/* The same world at night: zinc blacks, the same hairline structure, up and down lifted to stay readable. */
+/* The default: Perplexity's warm greys at night. A #191A1A page, #202222 raised surfaces (the composer, a rail
+   section), a #1F2121 sidebar and #2D2F2F hairlines, with ink at #E8E8E6. Up and down are lifted to stay readable. */
 .dark {
-    --background: #09090b;
-    --foreground: #fafafa;
-    --card: #09090b;
-    --card-foreground: #fafafa;
-    --popover: #131316;
-    --popover-foreground: #fafafa;
-    --primary: #fafafa;
-    --primary-foreground: #09090b;
-    --secondary: #1f1f23;
-    --secondary-foreground: #fafafa;
-    --muted: #1f1f23;
-    --muted-foreground: #a1a1aa;
-    --accent: #1f1f23;
-    --accent-foreground: #fafafa;
+    --background: #191a1a;
+    --foreground: #e8e8e6;
+    --card: #191a1a;
+    --card-foreground: #e8e8e6;
+    --popover: #202222;
+    --popover-foreground: #e8e8e6;
+    --primary: #e8e8e6;
+    --primary-foreground: #191a1a;
+    --secondary: #2a2c2c;
+    --secondary-foreground: #e8e8e6;
+    --muted: #202222;
+    --muted-foreground: #8d9191;
+    --accent: #2a2c2c;
+    --accent-foreground: #e8e8e6;
     --destructive: var(--caution-foreground);
-    --border: #26262b;
-    --border-strong: #3f3f46;
-    --input: #3f3f46;
-    --ring: #fafafa;
-    --chart-1: #fafafa;
-    --chart-2: #d4d4d8;
-    --chart-3: #8a8a93;
-    --chart-4: #2fbf71;
-    --chart-5: #71717a;
-    --ink-2: #d4d4d8;
-    --ink-3: #e4e4e7;
-    --row: #1a1a1e;
-    --hairline: #1a1a1e;
-    --band: #111114;
-    --band-2: #111114;
+    --border: #2d2f2f;
+    --border-strong: #3a3d3d;
+    --input: #3a3d3d;
+    --ring: #e8e8e6;
+    --surface: #202222;
+    --chart-1: #e8e8e6;
+    --chart-2: #b5b8b8;
+    --chart-3: #8d9191;
+    --chart-4: #3dd68c;
+    --chart-5: #6b6f6f;
+    --ink-2: #b5b8b8;
+    --ink-3: #c9cccc;
+    --row: #242626;
+    --hairline: #242626;
+    --band: #1f2121;
+    --band-2: #1d1f1f;
     --rail: #000000;
-    --rail-2: #1f1f23;
-    --rail-line: #3f3f46;
-    --rail-foreground: #a1a1aa;
-    --rail-label: #d4d4d8;
-    --cream: #fafafa;
-    --cream-foreground: #09090b;
-    --avatar: #fafafa;
-    --hoot: #1f1f23;
-    --hoot-foreground: #fafafa;
-    --hoot-panel: #131316;
-    --hoot-panel-ring: #3f3f46;
-    --caution: #2a1e10;
+    --rail-2: #202222;
+    --rail-line: #3a3d3d;
+    --rail-foreground: #8d9191;
+    --rail-label: #c9cccc;
+    --cream: #e8e8e6;
+    --cream-foreground: #191a1a;
+    --avatar: #2d2f2f;
+    --hoot: #2a2c2c;
+    --hoot-foreground: #e8e8e6;
+    --hoot-panel: #202222;
+    --hoot-panel-ring: #3a3d3d;
+    --caution: #231e17;
+    --caution-line: #3b2e1c;
     --caution-foreground: #f0a64a;
-    --good: #1f1f23;
-    --good-foreground: #d4d4d8;
-    --good-tint: #111114;
-    --series-1: #fafafa;
-    --series-2: #d4d4d8;
-    --series-3: #8a8a93;
-    --series-neutral: #8a8a93;
-    --bench-bar: #52525b;
+    --good: #2a2c2c;
+    --good-foreground: #c9cccc;
+    --good-tint: #1f2121;
+    --series-1: #e8e8e6;
+    --series-2: #b5b8b8;
+    --series-3: #8d9191;
+    --series-neutral: #6b6f6f;
+    --bench-bar: #4a4d4d;
     --up: #3dd68c;
     --down: #ff6369;
-    --up-line: #2fbf71;
-    --down-line: #f2555a;
-    --down-fill: #2d1416;
+    --up-line: #3dd68c;
+    --down-line: #ff6369;
+    --down-fill: #2d1818;
     --up-on-rail: #3dd68c;
     --down-on-rail: #ff6369;
     --warning: #f0a64a;
     --warning-foreground: #f0a64a;
+    --economy: #9cc3ff;
     --hoot-halo: none;
     --tour-scrim: rgb(0 0 0 / 0.74);
     --tour-lift: rgb(255 255 255 / 0.045);
     --tour-halo: rgb(255 255 255 / 0.1);
     --tour-ring: rgb(255 255 255 / 0.6);
     --tour-glow: rgb(255 255 255 / 0.3);
-    --above: #fafafa;
-    --below: #d4d4d8;
-    --sidebar: #111114;
-    --sidebar-foreground: #fafafa;
-    --sidebar-primary: #fafafa;
-    --sidebar-primary-foreground: #09090b;
-    --sidebar-accent: #1f1f23;
-    --sidebar-accent-foreground: #fafafa;
-    --sidebar-border: #1f1f23;
-    --sidebar-ring: #fafafa;
+    --above: #e8e8e6;
+    --below: #b5b8b8;
+    --sidebar: #1f2121;
+    --sidebar-foreground: #e8e8e6;
+    --sidebar-primary: #e8e8e6;
+    --sidebar-primary-foreground: #191a1a;
+    --sidebar-accent: #2a2c2c;
+    --sidebar-accent-foreground: #e8e8e6;
+    --sidebar-border: #2d2f2f;
+    --sidebar-ring: #e8e8e6;
 }
 
 /* The classic Backtesting layout (profile preference) keeps the previous look: neutral grays and Inter. */
@@ -427,24 +440,24 @@
     @apply font-sans;
     }
   ::selection { background: #e4e4e7; color: var(--foreground); }
-  .dark ::selection { background: #3f3f46; }
+  .dark ::selection { background: #3a3d3d; }
   :focus-visible { outline-color: var(--ring); }
   ::placeholder { color: var(--muted-foreground); }
   input, textarea { caret-color: var(--foreground); }
   a { text-underline-offset: 3px; }
   /* Scrollbars in the palette: thin zinc thumbs, no track. */
   * { scrollbar-width: thin; scrollbar-color: #d4d4d8 transparent; }
-  .dark * { scrollbar-color: #3f3f46 transparent; }
+  .dark * { scrollbar-color: #3a3d3d transparent; }
 }
 @layer utilities {
   .tnum { font-variant-numeric: tabular-nums; }
-  /* The page body: 32px under the header, 40px at the sides, room at the bottom for Hoot's corner button. */
-  .app-container { padding: 32px 40px 96px; }
+  /* The page body: 28px under the header, 40px at the sides, room at the bottom for Hoot's corner button. */
+  .app-container { padding: 28px 40px 96px; }
   /* A page that renders a full-height workspace (the research board, a thread) opts out of the page padding. */
   .app-container:has(> [data-full-bleed]) { padding: 0; }
   /* A page that renders its own header (PageHead) hides the shell's default one; rendered first in the page, it
      bleeds to the edges of the content area. */
-  .app-container > [data-page-head]:first-child { margin: -32px -40px 32px; }
+  .app-container > [data-page-head]:first-child { margin: -28px -40px 28px; }
   .app-container > [data-page-head][hidden]:first-child { margin: 0; }
   [data-shell-main]:has([data-page-head]) > [data-shell-head] { display: none; }
   /* A panel: an object on the page (a table, an editor). Hairlines, not boxes: a 1px frame, no fill, no shadow. */

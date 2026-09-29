@@ -1,33 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { PanelLeft, Search } from "lucide-react";
+import { useSyncExternalStore } from "react";
+import { PanelLeft, Plus, Search } from "lucide-react";
 import type { Team } from "@/db/schema";
-import { FUND_SCOPE_SLUG } from "@/lib/constants";
-import { fmtChangePct, fmtTime } from "@/lib/format";
+import { FUND_SCOPE_SLUG, ROLE_LABELS } from "@/lib/constants";
 import { isMac } from "@/lib/hoot/shortcuts";
 import type { NavItem, NavModel } from "@/lib/nav";
-import type { NavBadge } from "@/lib/nav-data";
-import { marketPhase } from "@/lib/providers/calendar";
+import type { RecentChat } from "@/lib/nav-data";
 import { cn } from "@/lib/utils";
 import { AccountMenu, type SidebarUser } from "../sidebar";
+import { Bell } from "./bell";
 
 const noSubscribe = () => () => {};
 
 /**
- * The sidebar: Ask Hoot (⌘J) and Search (⌘K) first, then the six places, the teams with today's move, and Manage for
- * execs and admins. Badges are words ("1 overdue"), red only when something is overdue. The market's state is the
- * last line. Hidden links let Hoot open any page or scope by name ("take me to risk").
+ * The sidebar, Perplexity-style: the owl and name with Search (⌘K) and hide, New (⌘J, ask Hoot), the two places
+ * (Portfolio and Markets), then Threads, the conversations with Hoot, newest first. The footer is who you are (the
+ * account menu: what's new, Admin, preferences) and the bell with what needs you. Hidden links let Hoot open any page
+ * or scope by name ("take me to risk").
  */
 export function NavSidebar({
   nav,
   user,
-  teams,
-  current,
+  ownTeam,
   fundWide,
-  badges,
-  moves,
+  threads,
+  pathname,
   signOut,
   onAsk,
   onSearch,
@@ -37,13 +36,12 @@ export function NavSidebar({
 }: {
   nav: NavModel;
   user: SidebarUser;
-  /** The teams this member can open. */
-  teams: Team[];
-  current: Team | "fund" | null;
+  /** The member's own team, for the line under their name. */
+  ownTeam: Team | null;
   fundWide: boolean;
-  badges: Partial<Record<"movements" | "models", NavBadge>>;
-  /** Today's return per team id, in percent; missing while it loads or when the member can't see it. */
-  moves: Record<string, number>;
+  /** The conversations with Hoot, newest first; null while they load. */
+  threads: RecentChat[] | null;
+  pathname: string;
   signOut: () => Promise<void>;
   onAsk: () => void;
   onSearch: () => void;
@@ -52,78 +50,82 @@ export function NavSidebar({
   onCollapse: () => void;
 }) {
   const mac = useSyncExternalStore(noSubscribe, isMac, () => true);
-  const teamActive = (t: Team) => nav.section === "team" && current !== "fund" && current?.id === t.id;
+  const icon = "flex size-[30px] items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring";
+  const subtitle = fundWide ? `${ROLE_LABELS[user.role]}, whole fund` : ownTeam ? `${ROLE_LABELS[user.role]}, ${ownTeam.name}` : ROLE_LABELS[user.role];
   return (
     <nav
       aria-label="Main"
       data-tour="sidebar"
-      className="sticky top-0 z-30 flex h-dvh w-[232px] shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar px-2.5 pt-3.5 pb-3 text-body text-sidebar-foreground"
+      className="sticky top-0 z-30 flex h-dvh w-[248px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar pt-3.5 text-emph text-sidebar-foreground"
     >
-      <div className="flex items-center gap-2.5 px-2 pt-0.5 pb-3.5">
-        <OwlGlyph />
-        <Link href="/" className="flex-1 font-semibold focus-visible:underline focus-visible:outline-none">
+      <div className="flex h-9 shrink-0 items-center gap-2 px-[18px]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/hoot/mark.webp" alt="" width={24} height={24} className="size-6 rounded-full" />
+        <Link href="/" className="flex-1 truncate font-semibold focus-visible:underline focus-visible:outline-none">
           Owl Fund
         </Link>
+        <button type="button" onClick={onSearch} data-tour="command" aria-label="Search" title={`Search (${mac ? "⌘K" : "Ctrl K"})`} aria-keyshortcuts={mac ? "Meta+K" : "Control+K"} className={icon}>
+          <Search className="size-[17px]" strokeWidth={1.8} aria-hidden />
+        </button>
         <button
           type="button"
           onClick={onCollapse}
           aria-label="Hide sidebar"
           title={`Hide sidebar (${mac ? "⌘\\" : "Ctrl \\"})`}
           aria-keyshortcuts={mac ? "Meta+\\" : "Control+\\"}
-          className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+          className={icon}
         >
-          <PanelLeft className="size-[15px]" strokeWidth={1.8} aria-hidden />
+          <PanelLeft className="size-[17px]" strokeWidth={1.8} aria-hidden />
         </button>
-        <AccountMenu user={user} fundWide={fundWide} signOut={signOut} variant="avatar" />
       </div>
 
-      <button type="button" onClick={onAsk} data-tour="ask-hoot" aria-keyshortcuts={mac ? "Meta+J" : "Control+J"} className={row(false)}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M4 5h16v11H9l-5 4z" />
-        </svg>
-        <span className="flex-1 text-left">Ask Hoot</span>
-        <kbd className="font-mono text-caption text-muted-foreground">{mac ? "⌘J" : "Ctrl J"}</kbd>
-      </button>
-      <button type="button" onClick={onSearch} data-tour="command" aria-keyshortcuts={mac ? "Meta+K" : "Control+K"} className={row(false)}>
-        <Search className="size-[15px]" strokeWidth={1.8} aria-hidden />
-        <span className="flex-1 text-left">Search</span>
-        <kbd className="font-mono text-caption text-muted-foreground">{mac ? "⌘K" : "Ctrl K"}</kbd>
-      </button>
+      <div className="mt-3.5 flex shrink-0 flex-col gap-0.5 px-3">
+        <button type="button" onClick={onAsk} data-tour="ask-hoot" aria-keyshortcuts={mac ? "Meta+J" : "Control+J"} className={row(false)}>
+          <span className="grid size-6 place-items-center rounded-full bg-secondary">
+            <Plus className="size-3.5" strokeWidth={2.2} aria-hidden />
+          </span>
+          <span className="flex-1 text-left">New</span>
+          <kbd className="font-mono text-caption text-muted-foreground">{mac ? "⌘J" : "Ctrl J"}</kbd>
+        </button>
+        {nav.main.map((item) => (
+          <SideLink key={item.key} item={item} />
+        ))}
+      </div>
 
-      <div className="h-3 shrink-0" />
-      {nav.main.map((item) => (
-        <SideLink key={item.key} item={item} badge={item.key === "movements" || item.key === "models" ? badges[item.key] : undefined} />
-      ))}
-
-      {teams.length > 0 && (
-        <>
-          <div className="px-2 pt-[18px] pb-1.5 text-caption text-muted-foreground">{teams.length > 1 ? "Teams" : "Your team"}</div>
-          {teams.map((t) => {
-            const move = moves[t.id];
-            const active = teamActive(t);
+      <div className="mt-[22px] shrink-0 px-5 text-body text-muted-foreground">Threads</div>
+      <div data-tour="threads" className="mt-1.5 flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-3 pb-3">
+        {threads === null ? (
+          Array.from({ length: 5 }, (_, i) => <span key={i} aria-hidden="true" className="mx-2 my-[9px] h-3.5 shrink-0 animate-pulse rounded bg-sidebar-accent" style={{ width: `${80 - i * 9}%` }} />)
+        ) : threads.length === 0 ? (
+          <p className="px-2 py-1.5 text-body text-muted-foreground">Your questions to Hoot show up here.</p>
+        ) : (
+          threads.map((t) => {
+            const active = pathname === t.href;
             return (
-              <Link key={t.id} href={`/t/${t.slug}`} aria-current={active ? "page" : undefined} data-hoot-destination={t.name} className={row(active)}>
-                <span className="min-w-0 flex-1 truncate">{t.name}</span>
-                {move !== undefined && <span className={cn("text-caption tabular-nums", move < 0 ? "text-down" : move > 0 ? "text-up" : "text-muted-foreground")}>{fmtChangePct(move)}</span>}
+              <Link
+                key={t.href}
+                href={t.href}
+                title={t.ticker ? `${t.ticker}: ${t.title}` : t.title}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "block h-8 shrink-0 truncate rounded-lg px-2 text-body leading-8 no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
+                  active ? "bg-sidebar-accent text-foreground" : "text-ink-3 hover:bg-sidebar-accent hover:text-foreground",
+                )}
+              >
+                {t.ticker && <span className="mr-1.5 font-semibold text-foreground">{t.ticker}</span>}
+                {t.title}
               </Link>
             );
-          })}
-        </>
-      )}
+          })
+        )}
+      </div>
 
-      {nav.manage.length > 0 && (
-        <>
-          <div className="px-2 pt-[18px] pb-1.5 text-caption text-muted-foreground">Manage</div>
-          {nav.manage.map((item) => (
-            <SideLink key={item.key} item={item} />
-          ))}
-        </>
-      )}
+      <div className="flex h-12 shrink-0 items-center gap-1 border-t border-sidebar-border pr-2.5 pl-3">
+        <AccountMenu user={user} fundWide={fundWide} signOut={signOut} variant="footer" subtitle={subtitle} />
+        <Bell />
+      </div>
 
-      <div className="min-h-4 flex-1" />
-      <MarketStatus />
-
-      {/* Every page and scope Hoot can open by name, including pages that are tabs of another section. */}
+      {/* Every page and scope Hoot can open by name, including the Portfolio's views. */}
       <div hidden aria-hidden="true">
         {destinations.map((d) => (
           <a key={d.label} href={d.href} data-hoot-destination={d.label} tabIndex={-1} />
@@ -138,48 +140,31 @@ export function NavSidebar({
 
 const row = (active: boolean) =>
   cn(
-    "flex h-[30px] shrink-0 items-center gap-2 rounded-lg px-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
-    active ? "bg-sidebar-accent font-semibold text-foreground" : "text-ink-3 hover:bg-sidebar-accent hover:text-foreground",
+    "flex h-9 shrink-0 items-center gap-2.5 rounded-lg px-2 no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
+    active ? "bg-sidebar-accent text-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent",
   );
 
-function SideLink({ item, badge }: { item: NavItem; badge?: NavBadge }) {
-  return (
-    <Link href={item.href} data-tour={`nav-${item.key}`} aria-current={item.active ? "page" : undefined} className={row(item.active)}>
-      <span className="flex-1">{item.label}</span>
-      {badge && <span className={cn("text-caption font-semibold", badge.hot ? "text-down" : "text-ink-2")}>{badge.label}</span>}
-    </Link>
-  );
-}
-
-/** The app's mark in the sidebar: an owl's face in the same 1.8px stroke as the icons. */
-function OwlGlyph() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M5 9c0-3 3-5 7-5s7 2 7 5v6c0 3-3 5-7 5s-7-2-7-5z" />
-      <circle cx="9" cy="10.5" r="2" />
-      <circle cx="15" cy="10.5" r="2" />
+const ICONS: Partial<Record<NavItem["key"], React.ReactNode>> = {
+  portfolio: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mx-[3px]">
+      <path d="M3 17l6-6 4 4 8-8" />
+      <path d="M15 7h6v6" />
     </svg>
-  );
-}
+  ),
+  markets: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className="mx-[3px]">
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+    </svg>
+  ),
+};
 
-/** "Market open · 2:41 PM ET", refreshed every half minute; a green dot only while the session is on. */
-function MarketStatus() {
-  const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => {
-    const tick = () => setNow(new Date());
-    tick();
-    const id = window.setInterval(tick, 30_000);
-    return () => window.clearInterval(id);
-  }, []);
-  if (!now) return <div className="h-[29px] shrink-0" />;
-  const m = marketPhase(now);
-  const text =
-    m.phase === "open" ? `Market open · ${fmtTime(now)}` : m.phase === "pre" ? `Market opens at ${fmtTime(m.opensAt)}` : `Market closed · ${fmtTime(now)}`;
+function SideLink({ item }: { item: NavItem }) {
   return (
-    <div className="flex shrink-0 items-center gap-2 px-2 py-1.5 text-caption text-muted-foreground">
-      <span aria-hidden="true" className={cn("size-1.5 rounded-full", m.phase === "open" ? "bg-foreground" : "bg-muted-foreground/60")} />
-      {text}
-    </div>
+    <Link href={item.href} data-tour={`nav-${item.key}`} data-hoot-destination={item.label} aria-current={item.active ? "page" : undefined} className={row(item.active)}>
+      {ICONS[item.key]}
+      <span className="flex-1">{item.label}</span>
+    </Link>
   );
 }
 

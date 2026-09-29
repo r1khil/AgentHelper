@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#09090b" },
+    { media: "(prefers-color-scheme: dark)", color: "#191a1a" },
   ],
 };
 
@@ -31,8 +31,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable} ${sourceSerif.variable} ${inter.variable}`} suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
-        {/* Light, dark or the OS setting, remembered per browser. Sets the `dark` class on <html> before first paint. */}
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        {/* Dark unless the member picks light or the OS setting, remembered per browser. Sets the `dark` class on <html>
+            before first paint. */}
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           {/* Hoot's welcome on the first full load of the day, or a slow full load; client navigation never shows it. */}
           <BootSplash />
           <UpdateBanner buildId={getBuildId()} />

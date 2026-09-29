@@ -166,7 +166,10 @@ describe("moods and routes", () => {
     expect(companionHiddenOn("/t/tech/earnings")).toBe(false);
     expect(companionHiddenOn("/t/fund/economic-calendar")).toBe(false);
     expect(companionHiddenOn("/t/tech/earnings/e1")).toBe(false);
-    expect(companionHiddenOn("/t/tech")).toBe(false);
+    // The Portfolio's Positions and a holding have their own ask box; the Portfolio's other views keep the corner.
+    expect(companionHiddenOn("/t/tech")).toBe(true);
+    expect(companionHiddenOn("/t/tech/h/NVDA")).toBe(true);
+    expect(companionHiddenOn("/t/tech/risk")).toBe(false);
   });
 
   it("gives each page's tip once and fits suggestions to the page", () => {

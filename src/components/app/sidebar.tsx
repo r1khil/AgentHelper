@@ -340,11 +340,40 @@ export function initials(name: string) {
 }
 
 /** Who is signed in, with the per-person preferences and sign out tucked behind it. */
-export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user: SidebarUser; fundWide: boolean; signOut: () => Promise<void>; variant?: "row" | "rail" | "avatar" }) {
+export function AccountMenu({
+  user,
+  fundWide,
+  signOut,
+  variant = "row",
+  subtitle,
+}: {
+  user: SidebarUser;
+  fundWide: boolean;
+  signOut: () => Promise<void>;
+  variant?: "row" | "rail" | "avatar" | "footer";
+  /** The footer's line under the name ("Exec, whole fund"); the role by default. */
+  subtitle?: string;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      {variant === "avatar" ? (
+      {variant === "footer" ? (
+        <PopoverTrigger
+          render={
+            <button
+              data-tour="account"
+              aria-label={`${user.fullName}: what's new, preferences and sign out`}
+              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1.5 py-1 text-left transition-colors hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-popup-open:bg-sidebar-accent"
+            />
+          }
+        >
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-avatar text-caption font-semibold text-foreground dark:text-foreground">{initials(user.fullName) || "?"}</span>
+          <span className="min-w-0 flex-1 leading-4">
+            <span className="block truncate text-body">{user.fullName}</span>
+            <span className="block truncate text-caption text-muted-foreground">{subtitle ?? ROLE_LABELS[user.role]}</span>
+          </span>
+        </PopoverTrigger>
+      ) : variant === "avatar" ? (
         <PopoverTrigger
           render={
             <button
@@ -393,6 +422,14 @@ export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user
           </span>
         </div>
         <div className="-mx-1.5 my-1.5 h-px bg-border" />
+        {/* What used to be the sidebar's Manage group: the changelog and Admin, for execs and admins. */}
+        {fundWide && (
+          <>
+            <MenuLink href="/changelog" icon={ScrollText} label="What's new" onPick={() => setOpen(false)} />
+            <MenuLink href="/admin" icon={Settings} label="Admin" onPick={() => setOpen(false)} />
+            <div className="-mx-1.5 my-1.5 h-px bg-border" />
+          </>
+        )}
         <div className="px-1.5 pt-0.5 pb-1 text-caption text-muted-foreground">Preferences</div>
         <HootToggle on={user.hootEnabled} />
         {fundWide && <TransparencyToggle on={user.transparencyMode} />}
@@ -408,6 +445,19 @@ export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user
         </button>
       </PopoverContent>
     </Popover>
+  );
+}
+
+function MenuLink({ href, icon: Icon, label, onPick }: { href: string; icon: Icon; label: string; onPick: () => void }) {
+  return (
+    <Link
+      href={href}
+      onClick={onPick}
+      className="flex w-full items-center gap-2.5 rounded-md px-1.5 py-1.5 text-body no-underline hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+    >
+      <Icon className="size-4 text-muted-foreground" />
+      {label}
+    </Link>
   );
 }
 

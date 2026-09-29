@@ -6,7 +6,6 @@ import type { Team } from "@/db/schema";
 import { PanelLeft } from "lucide-react";
 import { FUND_SCOPE_SLUG, SIDEBAR_COOKIE } from "@/lib/constants";
 import { askShortcut, isMac } from "@/lib/hoot/shortcuts";
-import { marketPhase } from "@/lib/providers/calendar";
 import { destinations, navModel } from "@/lib/nav";
 import type { CommandHolding, NavData, RecentChat, TabCount } from "@/lib/nav-data";
 import { resolveScope } from "@/lib/scope";
@@ -37,10 +36,7 @@ type Props = {
 
 /** Counts barely move; refetch on a new page at most this often. */
 const COUNTS_MIN_MS = 30_000;
-/** Teams' moves in the sidebar follow the market, a minute at a time while it trades; outside the session they hold. */
-const MOVES_MS = 60_000;
-
-type LoadedNav = { scope: string; counts: Record<string, TabCount>; badges: NavData["badges"]; holdings: CommandHolding[]; recent: RecentChat[] };
+type LoadedNav = { scope: string; counts: Record<string, TabCount>; badges: NavData["badges"]; holdings: CommandHolding[]; recent: RecentChat[]; threads: RecentChat[] };
 
 /**
  * The app chrome: the sidebar on the left, the page (with its header) on the right, Hoot's corner button, and the
@@ -87,16 +83,18 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
     }
   }, []);
 
-  // After the page settles, and again on a new page: the sidebar's badges, ⌘K's holdings and recent answers.
+  const loaded = data && data.scope === homeSlug ? data : null;
+  // A thread the sidebar doesn't list yet (one just asked) refreshes the list at once.
+  const unlisted = /^\/hoot\/[^/]+$/.test(pathname) && !!loaded && !loaded.threads.some((t) => t.href === pathname);
+
+  // After the page settles, and again on a new page: the sidebar's threads, ⌘K's holdings and recent answers.
   useEffect(() => {
     if (!homeSlug) return;
     const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 600));
     const cancel = window.cancelIdleCallback ?? window.clearTimeout;
-    const id = idle(() => void load(homeSlug));
+    const id = idle(() => void load(homeSlug, unlisted));
     return () => cancel(id);
-  }, [homeSlug, pathname, load]);
-
-  const moves = useTeamMoves(fundWide ? "fund" : lead(ownTeam) ? ownTeam!.slug : null, ownTeam?.id ?? null);
+  }, [homeSlug, pathname, load, unlisted]);
 
   const openPalette = useCallback(
     (mode: "ask" | "search") => {
@@ -128,7 +126,6 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
     [scopes, current, team?.name],
   );
 
-  const loaded = data && data.scope === homeSlug ? data : null;
   const shell = { nav, counts: loaded?.counts ?? {}, badges: loaded?.badges ?? {}, teams, current, fundWide };
   const command = (
     <>
@@ -178,11 +175,10 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
             <NavSidebar
               nav={nav}
               user={user}
-              teams={teams}
-              current={current}
+              ownTeam={ownTeam}
               fundWide={fundWide}
-              badges={shell.badges}
-              moves={moves}
+              threads={homeSlug ? (loaded?.threads ?? null) : []}
+              pathname={pathname}
               signOut={signOut}
               onAsk={() => openPalette("ask")}
               onSearch={() => openPalette("search")}
@@ -246,52 +242,4 @@ function ExpandSidebar({ onExpand }: { onExpand: () => void }) {
       <PanelLeft className="size-[15px]" strokeWidth={1.8} aria-hidden />
     </button>
   );
-}
-
-/**
- * Today's return for each team the sidebar lists, from the live Daily numbers: the fund's snapshot split by team for
- * execs and admins, the team's own for its lead. Nothing for members who don't see the book.
- */
-function useTeamMoves(scope: "fund" | string | null, ownTeamId: string | null): Record<string, number> {
-  const [moves, setMoves] = useState<Record<string, number>>({});
-  useEffect(() => {
-    if (!scope) return;
-    let stop = false;
-    const fetchMoves = async () => {
-      if (document.visibilityState !== "visible") return;
-      try {
-        const res = await fetch(`/api/daily-performance${scope === "fund" ? "" : `?team=${encodeURIComponent(scope)}`}`, { cache: "no-store" });
-        if (!res.ok || stop) return;
-        const snap = (await res.json()) as { ret: number; holdings: { teamId: string | null; weightOpen: number; contribution: number }[] };
-        if (scope !== "fund") {
-          if (ownTeamId) setMoves({ [ownTeamId]: snap.ret * 100 });
-          return;
-        }
-        const byTeam = new Map<string, { w: number; c: number }>();
-        for (const h of snap.holdings) {
-          if (!h.teamId) continue;
-          const t = byTeam.get(h.teamId) ?? { w: 0, c: 0 };
-          t.w += h.weightOpen;
-          t.c += h.contribution;
-          byTeam.set(h.teamId, t);
-        }
-        setMoves(Object.fromEntries([...byTeam].filter(([, t]) => t.w > 0).map(([id, t]) => [id, (t.c / t.w) * 100])));
-      } catch {
-        // The sidebar shows no moves rather than a wrong one.
-      }
-    };
-    const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1500));
-    const cancel = window.cancelIdleCallback ?? window.clearTimeout;
-    const first = idle(() => void fetchMoves());
-    // The live numbers only move in the session; the first fetch covers the rest of the day.
-    const tick = window.setInterval(() => {
-      if (marketPhase().phase === "open") void fetchMoves();
-    }, MOVES_MS);
-    return () => {
-      stop = true;
-      cancel(first);
-      window.clearInterval(tick);
-    };
-  }, [scope, ownTeamId]);
-  return moves;
 }

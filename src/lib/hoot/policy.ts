@@ -60,11 +60,11 @@ export function teamSlugFromPath(pathname: string) {
 }
 
 /**
- * Hoot's corner button is on every page except the conversation ones, where Hoot is the page: Home, Research and its
- * boards, a thread, and a movement write-up (which asks him for feedback in place).
+ * Hoot's corner button is on every page except those with their own ask box (one Hoot per screen): Home, a thread,
+ * the Portfolio's Positions and a holding, and a movement write-up (which asks him for feedback in place).
  */
 export function companionHiddenOn(pathname: string) {
-  return pathname === "/" || /^\/t\/[^/]+\/(agent|movements)(\/|$)/.test(pathname) || /^\/hoot(\/|$)/.test(pathname);
+  return pathname === "/" || /^\/hoot(\/|$)/.test(pathname) || /^\/t\/[^/]+\/?$/.test(pathname) || /^\/t\/[^/]+\/(agent|h|movements)(\/|$)/.test(pathname);
 }
 
 type Tip = { id: string; match: RegExp; title: string; detail: string };
