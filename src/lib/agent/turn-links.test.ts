@@ -21,6 +21,22 @@ describe("turnPageLinks", () => {
     expect(turnPageLinks([tool("run_backtest", { scope: "team" })], "tech")).toEqual([{ label: "Backtesting", href: "/backtesting" }]);
   });
 
+  it("opens a workspace page in the team named, the chat's team, or the whole fund", () => {
+    expect(turnPageLinks([tool("get_movements", { team: "tech" })], "healthcare")).toEqual([{ label: "Movements", href: "/t/tech/movements" }]);
+    expect(turnPageLinks([tool("get_upcoming_earnings", { days: 14 })], "healthcare")).toEqual([{ label: "Earnings", href: "/t/healthcare/earnings" }]);
+    expect(turnPageLinks([tool("get_economic_calendar", { from: "2026-09-28" })], null)).toEqual([{ label: "Economic releases", href: "/t/fund/economic-calendar?day=2026-09-28" }]);
+    expect(turnPageLinks([tool("get_movements", { team: "Healthcare" })], "tech")).toEqual([]);
+  });
+
+  it("links the fund's own workspace pages at their one address", () => {
+    const links = turnPageLinks([tool("get_ledger", { ticker: "AVGO" }), tool("get_whats_new", {}), tool("get_my_todos", {})], "tech");
+    expect(links).toEqual([
+      { label: "Activity", href: "/attribution/ledger" },
+      { label: "Changelog", href: "/changelog" },
+      { label: "Home", href: "/" },
+    ]);
+  });
+
   it("skips failed lookups, lookups with no page and a team page it cannot name", () => {
     expect(turnPageLinks([tool("get_attribution", { scope: "fund" }, { error: "no data" }), tool("get_news", { ticker: "THC" })], null)).toEqual([]);
     expect(turnPageLinks([tool("get_daily_performance", { scope: "team", team: "Healthcare" })], null)).toEqual([]);
