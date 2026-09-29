@@ -24,6 +24,8 @@ import { isProposalTool, proposalToolsFor } from "@/lib/hoot/proposals";
 import { makePtSheetTools, ptSheetToolAllowed, type PtSheetState } from "./pt-sheet-tools";
 import { PT_SHEET_MODEL_ID, sheetSafeModel } from "./pt-sheet-guard";
 import type { PageContext } from "./page-context";
+import { activeToolsFor, RETIRED } from "./tool-routing";
+import { isFundWide } from "@/lib/roles";
 import type { CurrentUser } from "@/lib/auth";
 
 /** Steps the model may spend on tools; the last step is forced to be a written answer. */
@@ -55,7 +57,15 @@ export type AgentContext = {
   memoryOff?: boolean;
   /** The member's own messages in this chat, newest first: which changes Hoot may propose, and pasted ticket text. */
   memberTexts?: string[];
+  /**
+   * A chat turn's latest question and the tools the previous answer used: each step then offers only the tools that
+   * fit (./tool-routing). Without it (jobs) every tool is offered.
+   */
+  routing?: { question: string; priorTools: string[] };
 };
+
+/** One step's tool routing: the names offered, or undefined for every tool. */
+export type StepRouter = (o: { stepNumber: number; usedTools: string[] }) => string[] | undefined;
 
 export type AgentDefinition = {
   /** The admin's primary model id, for metadata; fallbacks may have answered. */
@@ -66,7 +76,11 @@ export type AgentDefinition = {
   instructions: string;
   tools: ToolSet;
   stopWhen: ReturnType<typeof isStepCount>;
-  prepareStep: (o: { stepNumber: number; messages: ModelMessage[] }) => { toolChoice?: ToolChoice<ToolSet>; instructions?: string; messages?: ModelMessage[] } | undefined;
+  prepareStep: (o: { stepNumber: number; messages: ModelMessage[]; steps?: readonly { toolCalls: readonly { toolName: string }[] }[] }) =>
+    | { toolChoice?: ToolChoice<ToolSet>; instructions?: string; messages?: ModelMessage[]; activeTools?: string[] }
+    | undefined;
+  /** How many tools each step offered the model, in step order (the whole set where routing didn't apply). */
+  activeToolCounts: number[];
   maxRetries: number;
   maxOutputTokens: number;
   /** Fixes tool arguments written as broken JSON before they fail a step. */
@@ -80,13 +94,19 @@ export function fallbackOrder(primary: string): string[] {
 
 export const FINAL_STEP_NUDGE = `Your research budget for this question is used up. Write the final answer now from the evidence you already have, with citations, and list under "Not retrieved" anything you could not get.`;
 
-/** Per-step settings shared by chat turns and jobs: shrink stale tool output, force prose on the last step. */
-export function prepareAgentStep(instructions: string, finalNudge = FINAL_STEP_NUDGE): AgentDefinition["prepareStep"] {
-  return ({ stepNumber, messages }) => {
+/**
+ * Per-step settings shared by chat turns and jobs: shrink stale tool output, force prose on the last step, and (chat
+ * turns, with `route`) offer only the tools that fit. The final step is left as it was: every tool, toolChoice none.
+ */
+export function prepareAgentStep(instructions: string, finalNudge = FINAL_STEP_NUDGE, route?: StepRouter): AgentDefinition["prepareStep"] {
+  return ({ stepNumber, messages, steps }) => {
     const compacted = stepNumber > KEEP_FULL_STEPS ? compactForStep(messages, KEEP_FULL_STEPS) : messages;
     const changed = compacted !== messages ? compacted : undefined;
     if (stepNumber >= FINAL_STEP) return { toolChoice: "none", instructions: `${instructions}\n\n${finalNudge}`, messages: changed };
-    return changed ? { messages: changed } : undefined;
+    // Calls the model already made this turn, including ones to a registered tool it was not offered (those become active).
+    const activeTools = route?.({ stepNumber, usedTools: [...new Set((steps ?? []).flatMap((s) => s.toolCalls.map((c) => c.toolName)))] });
+    if (!changed && !activeTools) return undefined;
+    return { ...(changed ? { messages: changed } : {}), ...(activeTools ? { activeTools } : {}) };
   };
 }
 
@@ -133,6 +153,8 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
         })
       : {}),
   };
+  // A job has no chat history to replay, so it never gets the retired tools (see RETIRED in ./tool-routing).
+  if ((ctx.purpose ?? "chat") !== "chat") for (const name of RETIRED) delete (native as Record<string, unknown>)[name];
   // Admin-registered MCP servers add tools under their prefix; a native name always wins.
   const mcp = await loadMcpTools();
   const merged: ToolSet = { ...mcp.tools, ...native };
@@ -149,6 +171,25 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
     changeTools: Object.keys(native).filter(isProposalTool),
     externalTools: mcp.servers.length ? { servers: mcp.servers, instructions: mcp.instructions, toolNames: Object.keys(mcp.tools) } : undefined,
   });
+  // Chat turns offer each step only the tools that fit the question (./tool-routing); jobs keep every tool.
+  const available = Object.keys(merged);
+  const activeToolCounts: number[] = [];
+  const routing = (ctx.purpose ?? "chat") === "chat" ? ctx.routing : undefined;
+  const route: StepRouter | undefined = routing
+    ? ({ stepNumber, usedTools }) =>
+        activeToolsFor({
+          question: routing.question,
+          priorTools: routing.priorTools,
+          page: ctx.page ?? null,
+          seesBook: Boolean(ctx.viewer && isFundWide(ctx.viewer)) || ctx.viewer?.role === "lead_analyst",
+          pinnedHolding: Boolean(ctx.holdingId),
+          availableTools: available,
+          stepNumber,
+          usedTools,
+          mcpServers: mcp.servers,
+        })
+    : undefined;
+  const prepare = prepareAgentStep(instructions, FINAL_STEP_NUDGE, route);
   return {
     modelId: primary,
     answeredBy: () => (sheet.read ? PT_SHEET_MODEL_ID : primary),
@@ -156,7 +197,12 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
     instructions,
     tools,
     stopWhen: isStepCount(MAX_STEPS),
-    prepareStep: prepareAgentStep(instructions),
+    prepareStep: (o) => {
+      const r = prepare(o);
+      activeToolCounts[o.stepNumber] = r?.activeTools?.length ?? available.length;
+      return r;
+    },
+    activeToolCounts,
     maxRetries: 2,
     // Reasoning models spend part of this before writing; 4000 cut long answers off mid-table.
     maxOutputTokens: 10_000,

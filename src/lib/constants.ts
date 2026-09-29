@@ -5,6 +5,8 @@ export const TEST_ACCOUNT_DOMAIN = "accounts.owlfund.local";
 export const MOVEMENT_THRESHOLD_PP = 4.0;
 /** Reserved team slug: `/t/fund/...` shows every team at once. Exec/admin only, and their default scope. */
 export const FUND_SCOPE_SLUG = "fund";
+/** Set to "collapsed" while the member has the sidebar hidden, so the server renders the shell without it. */
+export const SIDEBAR_COOKIE = "owl_sidebar";
 
 export const ROLE_LABELS: Record<Role, string> = {
   associate_analyst: "Associate analyst",

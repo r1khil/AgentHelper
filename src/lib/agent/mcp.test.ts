@@ -96,7 +96,7 @@ describe("loadMcpTools", () => {
     const b = await loadMcpTools();
     expect(Object.keys(b.tools)).toEqual(["edgar_search"]);
     expect(b.instructions).toEqual(["EDGAR MCP: Use search first."]);
-    expect(b.servers).toEqual([{ name: "EDGAR MCP", toolCount: 1 }]);
+    expect(b.servers).toEqual([{ name: "EDGAR MCP", prefix: "edgar", toolCount: 1 }]);
     expect(createMCPClient.mock.calls[0][0]).toMatchObject({ transport: { type: "http", url: server.url } });
   });
   it("skips a server that fails to connect and records the error", async () => {

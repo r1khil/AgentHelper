@@ -67,8 +67,13 @@ const DECLINES = /\b(you|analyst|student)\b[^.]{0,80}\b(own|write|writes|author)
 
 /** Says the card needs the member's confirmation. */
 const CONFIRM = /\bconfirm/i;
-/** Claims a proposed change already happened. */
-const CLAIMS_DONE = /\b(?:I(?:'|’)ve|I have|has been|have been|was|were|is now|are now)\s+(?:added|saved|pinned|recorded|dismissed)\b/i;
+/**
+ * Claims a proposed change already happened ("I've added the note", "the trade was recorded"). Not when the same
+ * sentence negates it: "No new trade was recorded" and "nothing was saved" say the opposite, and are right when a
+ * ticket is already in the ledger.
+ */
+export const CLAIMS_DONE =
+  /(?<!\b(?:no|not|nothing|none|never|neither|nor)\b[^.!?\n]{0,60})\b(?:I(?:'|’)ve|I have|has been|have been|was|were|is now|are now|successfully)\s+(?:added|saved|pinned|recorded|dismissed)\b/i;
 
 /** The real Fall 2026 SYK ticket's text, as a member would paste it. */
 const SYK_TICKET = "Action (Buy, Sell): Buy\nEquity (Name, Ticker): Stryker Corp (SYK)\nDate: 9/18/2026\nPrice: $280.13\nTime: 9:30 AM\nNumber of Shares: 83\nMarket Value: $23,250.79\nSemester: Fall 2026\nSector: Healthcare";

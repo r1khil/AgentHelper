@@ -12,6 +12,7 @@ import { createTraceSink } from "@/lib/trace/context";
 import { toolErrorText } from "@/lib/agent/tool-repair";
 import type { AgentMetadata, AgentUIMessage } from "@/lib/trace/events";
 import { pageContextFromMessages } from "@/lib/agent/page-context";
+import { routingFromMessages } from "@/lib/agent/tool-routing";
 import { usesPtSheet } from "@/lib/agent/pt-sheet-guard";
 import { isMemberQuestion } from "@/lib/agent/hidden-prompt";
 import { withExpiredProposals } from "@/lib/hoot/proposals";
@@ -77,6 +78,7 @@ export async function runAgentTurn(opts: {
     sheetInHistory: Boolean(chat.fundOnly) || usesPtSheet(messages),
     memoryOff: opts.memoryOff,
     memberTexts: memberTexts(messages),
+    routing: routingFromMessages(messages),
   });
   const t0 = Date.now();
   sink?.emit({ t: "run.start", chatId: chat.id, modelId: def.modelId, maxSteps: MAX_STEPS });
@@ -104,6 +106,8 @@ export async function runAgentTurn(opts: {
               provider: e.provider,
               toolChoice: tc === undefined ? "auto" : typeof tc === "string" ? tc : `tool:${tc.toolName}`,
               final: e.stepNumber >= FINAL_STEP,
+              activeTools: e.activeTools?.length ?? Object.keys(def.tools).length,
+              totalTools: Object.keys(def.tools).length,
             });
           },
           onStepEnd: (s) => {
@@ -211,6 +215,7 @@ export async function runAgentTurn(opts: {
       if (repairUsage) metadata.repairUsage = repairUsage;
       if (finished?.plan?.writeUp) metadata.writeUp = finished.plan.reason;
       if (writeUpUsage) metadata.writeUpUsage = traceUsage(writeUpUsage);
+      if (def.activeToolCounts.length) metadata.activeTools = [...def.activeToolCounts];
       if (unanswered) metadata.unanswered = true;
       metadata.ms = Date.now() - t0;
       response = { ...response, metadata };

@@ -36,7 +36,8 @@ vi.mock("@/lib/agent/financials", () => ({
 }));
 vi.mock("@/lib/agent/memory/store", () => ({ MARKET_FACT_TTL_DAYS: 90, rememberMemory: vi.fn(async () => ({ id: "m1", merged: false })), searchMemories: vi.fn(async () => []) }));
 import { rememberMemory } from "@/lib/agent/memory/store";
-import { getFilingText, listFilings, listFilingDocuments } from "@/lib/providers/edgar";
+import { getCompanyFacts, getFilingText, listFilings, listFilingDocuments } from "@/lib/providers/edgar";
+import { searchConcepts } from "@/lib/agent/financials";
 import { searchIndex } from "@/lib/drive/index";
 import { getDocument } from "@/lib/documents/index";
 import { getDocumentText } from "@/lib/documents/adapters";
@@ -89,6 +90,28 @@ describe("retrieval citation metadata", () => {
     await run(tools, "list_filing_documents", { ticker: "EX", accession: "0000123-26-000001" });
     const result = await run(tools, "read_filing", { url, offset: 0, maxChars: 500 });
     expect(result.sources[0]).toMatchObject({ title: "Example Company — Quarterly earnings release", sourceType: "Earnings release", url });
+  });
+  it("lists exhibits from get_filings with withExhibits, as list_filing_documents did", async () => {
+    const tools = makeTools({ teamId: "team", userId: "user" });
+    vi.mocked(listFilingDocuments).mockResolvedValue([{ name: "release.htm", description: "Quarterly earnings release", type: "EX-99.1", url }]);
+    const listed = await run(tools, "get_filings", { ticker: "EX", forms: ["8-K"], limit: 5, withExhibits: true });
+    const filings = (listed.data as { filings: { documents?: { type?: string; sourceId: string }[] }[] }).filings;
+    expect(filings[0].documents?.[0]).toMatchObject({ type: "EX-99.1" });
+    expect(listed.sources.map((s) => s.id)).toContain(filings[0].documents![0].sourceId);
+    const result = await run(tools, "read_filing", { url, offset: 0, maxChars: 500 });
+    expect(result.sources[0]).toMatchObject({ title: "Example Company — Quarterly earnings release", sourceType: "Earnings release" });
+    // Without it, no index is fetched.
+    vi.mocked(listFilingDocuments).mockClear();
+    await run(tools, "get_filings", { ticker: "EX", limit: 5 });
+    expect(listFilingDocuments).not.toHaveBeenCalled();
+  });
+  it("answers an unknown get_financials concept with the closest reported names instead of failing", async () => {
+    vi.mocked(getCompanyFacts).mockResolvedValue({ facts: { "us-gaap": {} } } as never);
+    vi.mocked(searchConcepts).mockReturnValue([{ concept: "PaymentsForRepurchaseOfCommonStock", label: "Payments for Repurchase of Common Stock", units: ["USD"], dataPoints: 40, latestEnd: "2026-06-30" }]);
+    const result = await run(makeTools({ teamId: "team", userId: "user" }), "get_financials", { ticker: "EX", concept: "share repurchases", unit: "USD", limit: 4, periodKind: "any" });
+    expect(result.error).toBeUndefined();
+    expect(result.data).toMatchObject({ conceptFound: false, closestConcepts: [{ concept: "PaymentsForRepurchaseOfCommonStock" }] });
+    expect(searchConcepts).toHaveBeenCalledWith(expect.anything(), "share repurchases", 12);
   });
   it("resolves XBRL citations to primary filing documents", async () => {
     const result = await run(makeTools({ teamId: "team", userId: "user" }), "get_key_financials", { ticker: "EX", periodKind: "quarter", periods: 1 });
