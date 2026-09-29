@@ -90,7 +90,8 @@ export async function listHoldingSignals(holdingIds: string[], today: string): P
       .select({ id: movements.id, holdingId: movements.holdingId, sessionDate: movements.sessionDate, dueAt: movements.dueAt, relativeMovePp: movements.relativeMovePp })
       .from(movements)
       .where(and(inArray(movements.holdingId, holdingIds), ne(movements.status, "completed")))
-      .orderBy(desc(movements.sessionDate)),
+      // The oldest unfinished write-up first: it's the one due soonest, or already overdue.
+      .orderBy(asc(movements.sessionDate)),
     db
       .select({ id: earnings.id, holdingId: earnings.holdingId, reportDate: earnings.reportDate, reportHour: earnings.reportHour, dateStatus: earnings.dateStatus, preLockedAt: earnings.preLockedAt })
       .from(earnings)

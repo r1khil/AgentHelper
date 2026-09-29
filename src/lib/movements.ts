@@ -37,7 +37,8 @@ export async function getOpenMovement(holdingId: string) {
     .select()
     .from(movements)
     .where(and(eq(movements.holdingId, holdingId), inArray(movements.status, ["open", "in_progress"])))
-    .orderBy(desc(movements.sessionDate))
+    // The oldest first: when a holding has two, the one due soonest (or already overdue) is what the team owes.
+    .orderBy(asc(movements.sessionDate))
     .limit(1);
   return row ?? null;
 }
