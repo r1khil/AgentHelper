@@ -5,47 +5,52 @@ import { collectSources } from "@/lib/agent/citations";
 import { savedAnalysis, type AnalysisPoint, type CallAnalysis } from "@/lib/sell-side/analysis";
 import { Citation, ResearchAnswer, ResearchSources } from "@/components/app/chat/research-answer";
 import { leaveHootQuestion } from "@/components/app/hoot/handoff";
-import { Pill, type PillTone } from "@/components/app/panel";
 import { cn } from "@/lib/utils";
 import { useCallPane } from "./pane-context";
-import { stamp } from "./timeline";
 
 const citations = (ids: string[]) => ids.map((id) => <Citation key={id} id={id} />);
 
-const VERDICT: Record<CallAnalysis["crossChecks"][number]["assessment"], { label: string; tone: PillTone }> = {
-  Supports: { label: "Agrees", tone: "good" },
-  Contradicts: { label: "Differs", tone: "caution" },
-  "Not covered": { label: "Not in files", tone: "neutral" },
-  "Not retrieved": { label: "Not retrieved", tone: "neutral" },
+/** How a claim on the call checks against the team's files, in the words the brief uses. */
+const VERDICT: Record<CallAnalysis["crossChecks"][number]["assessment"], { label: string; tone: string }> = {
+  Supports: { label: "Matches", tone: "text-foreground" },
+  Contradicts: { label: "Differs", tone: "text-caution-foreground" },
+  "Not covered": { label: "Not in files", tone: "text-muted-foreground" },
+  "Not retrieved": { label: "Not retrieved", tone: "text-caution-foreground" },
 };
+
+const CHECK_GRID = "grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.2fr)_110px] items-start gap-x-3";
+const H3 = "mt-[22px] mb-1.5 text-body font-bold";
 
 function Points({ title, points }: { title: string; points: AnalysisPoint[] }) {
   return (
-    <section className="mt-5">
-      <h4 className="text-body font-semibold">{title}</h4>
+    <section>
+      <h3 className={H3}>{title}</h3>
       {points.length ? (
-        <ul className="mt-1">
+        <ul>
           {points.map((p, i) => (
-            <li key={i} className="border-b border-row py-2 text-body leading-relaxed">
+            <li key={i} className="border-b border-row py-[7px] text-body leading-5">
               {p.text} {citations(p.sourceIds)}
             </li>
           ))}
         </ul>
       ) : (
-        <p className="mt-1 text-body text-muted-foreground">Not discussed in this call.</p>
+        <p className="text-body text-muted-foreground">Not discussed in this call.</p>
       )}
     </section>
   );
 }
 
-/** The Brief tab: what was said (with when), how it checks against the team's files, and Hoot's next questions. */
+/**
+ * The Call brief tab: what was said, the numbers checked against the team's files, and Hoot's next questions, then
+ * the commentary by kind. The times each point was said sit in the timeline beside the call, not in the rows.
+ */
 export function AnalysisBrief({ messages, chatId }: { messages: UIMessage[]; chatId: string }) {
   const analysis = useMemo(() => savedAnalysis(messages), [messages]);
   const sources = useMemo(() => collectSources(messages), [messages]);
   const legacy = messages.findLast((m) => m.role === "assistant" && m.parts.some((p) => p.type === "text"));
-  const { timeOf, setMarkers, openTranscriptAt, canAsk, openChat } = useCallPane();
+  const { timeOf, setMarkers, canAsk, openChat } = useCallPane();
   const times = useMemo(() => analysis?.keyPoints.map((p) => timeOf(p)) ?? [], [analysis, timeOf]);
-  // Mark each key point on the call timeline above the tabs.
+  // List each key point on the call's timeline, at the moment it was said.
   useEffect(() => {
     setMarkers(
       analysis
@@ -57,132 +62,111 @@ export function AnalysisBrief({ messages, chatId }: { messages: UIMessage[]; cha
     );
   }, [analysis, times, setMarkers]);
   useEffect(() => () => setMarkers([]), [setMarkers]);
-  const stampWidth = times.some((t) => t != null && t >= 3600) ? "w-[54px]" : "w-10";
   const ask = (text: string) => {
     leaveHootQuestion(chatId, text);
     openChat(true);
   };
   return (
     <ResearchSources sources={sources} chatId={chatId}>
-      <section aria-label="Call analysis" className="flex min-h-0 flex-1 flex-col">
+      <section aria-label="Call analysis" className="min-w-0">
         {!analysis ? (
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3.5">
-            <h3 className="text-emph font-semibold">Call brief</h3>
-            <p className="mt-0.5 text-caption text-muted-foreground">Evidence for analyst review</p>
+          <div className="pt-1">
+            <h3 className={H3}>Call brief</h3>
+            <p className="text-caption text-muted-foreground">Evidence for analyst review</p>
             <div className="mt-2">{legacy?.parts.map((p, i) => (p.type === "text" ? <ResearchAnswer key={i} text={p.text} /> : null))}</div>
           </div>
         ) : (
           <>
-            <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-2">
-              <div className="min-w-0 px-5 py-3.5 lg:border-r">
-                <h3 className="text-emph font-semibold">What was said</h3>
-                <p className="mt-1.5 text-body leading-relaxed text-ink-2">
-                  {analysis.overview.text} {citations(analysis.overview.sourceIds)}
-                </p>
-                <ul className="mt-1.5">
-                  {analysis.keyPoints.map((p, i) => {
-                    const t = times[i];
-                    return (
-                      <li key={i} className="flex gap-3 border-b border-row py-2.5">
-                        {t != null ? (
-                          <button
-                            type="button"
-                            onClick={() => openTranscriptAt(t)}
-                            aria-label={`Open the transcript at ${stamp(t)}`}
-                            className={cn(stampWidth, "h-fit shrink-0 pt-0.5 text-left font-mono text-body font-medium text-series-1 outline-none hover:underline focus-visible:underline")}
-                          >
-                            {stamp(t)}
-                          </button>
-                        ) : (
-                          <span className={cn(stampWidth, "shrink-0 pt-0.5 font-mono text-body text-muted-foreground")}>—</span>
-                        )}
-                        <span className="min-w-0 text-body leading-normal">
-                          {p.text} {citations(p.sourceIds)}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <section className="mt-5">
-                  <h4 className="text-body font-semibold">Important numbers</h4>
-                  {analysis.numbers.length ? (
-                    <ul className="mt-1">
-                      {analysis.numbers.map((n, i) => (
-                        <li key={i} className="border-b border-row py-2">
-                          <div className="flex items-baseline gap-3">
-                            <span className="min-w-0 flex-1 text-body font-medium">{n.metric}</span>
-                            <span className="shrink-0 text-right font-mono text-body font-medium">{n.value}</span>
-                          </div>
-                          <p className="mt-0.5 text-body leading-[1.45] text-muted-foreground">
-                            <span className="text-ink-2">{n.period}</span> · {n.context} {citations(n.sourceIds)}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-1 text-body text-muted-foreground">No reliable numbers identified.</p>
-                  )}
-                </section>
-                <Points title="Positive commentary" points={analysis.positives} />
-                <Points title="Risks & watch points" points={analysis.risks} />
-                <Points title="Themes" points={analysis.themes} />
-                <Points title="Catalysts" points={analysis.catalysts} />
+            <h3 className={cn(H3, "mt-4")}>What was said</h3>
+            <p className="border-b border-row pb-[7px] text-body leading-5 text-ink-2">
+              {analysis.overview.text} {citations(analysis.overview.sourceIds)}
+            </p>
+            <ul>
+              {analysis.keyPoints.map((p, i) => (
+                <li key={i} className="border-b border-row py-[7px] text-body leading-5">
+                  {p.text} {citations(p.sourceIds)}
+                </li>
+              ))}
+            </ul>
+
+            <h3 className={H3}>Important numbers, checked against the team&apos;s files</h3>
+            <div role="table" aria-label="Numbers" className="text-body">
+              <div role="row" className={cn(CHECK_GRID, "h-[30px] items-center border-b text-caption text-muted-foreground")}>
+                <span role="columnheader">Said on the call</span>
+                <span role="columnheader">Team&apos;s files</span>
+                <span role="columnheader">Check</span>
               </div>
-              <div className="min-w-0 border-t px-5 py-3.5 lg:border-t-0">
-                <div className="flex items-baseline gap-2">
-                  <h3 className="flex-1 text-emph font-semibold">Checked against the team’s files</h3>
-                  <span className="text-body whitespace-nowrap text-muted-foreground">by Hoot</span>
-                </div>
-                <ul className="mt-1.5">
-                  {analysis.crossChecks.map((row, i) => {
-                    const verdict = VERDICT[row.assessment];
-                    return (
-                      <li key={i} className="border-b border-row py-2.5">
-                        <div className="flex items-start gap-2">
-                          <p className="min-w-0 flex-1 text-body leading-snug font-medium">
-                            {row.claim} {citations(row.callSourceIds)}
-                          </p>
-                          <Pill tone={verdict.tone} title={`Assessment: ${row.assessment}`}>
-                            {verdict.label}
-                          </Pill>
-                        </div>
-                        <p className="mt-1 text-body leading-[1.45] text-muted-foreground">
-                          {row.evidence} {citations(row.internalSourceIds)}
-                        </p>
-                        <p className="mt-0.5 text-body leading-[1.45] text-muted-foreground">
-                          <span className="font-medium text-ink-2">Follow-up:</span> {row.followUp}
-                        </p>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <p className="mt-3 text-caption leading-relaxed text-muted-foreground">
-                  <span className="font-medium text-ink-2">Coverage.</span> {analysis.coverage}
-                </p>
-              </div>
+              {analysis.crossChecks.map((row, i) => {
+                const verdict = VERDICT[row.assessment];
+                return (
+                  <div key={i} role="row" className={cn(CHECK_GRID, "min-h-10 border-b border-row py-2")}>
+                    <span role="cell" className="leading-5">
+                      {row.claim} {citations(row.callSourceIds)}
+                    </span>
+                    <span role="cell" className="leading-5 text-ink-2">
+                      {row.evidence} {citations(row.internalSourceIds)}
+                      <span className="mt-0.5 block text-caption text-muted-foreground">
+                        <span className="font-semibold text-ink-2">Follow-up:</span> {row.followUp}
+                      </span>
+                    </span>
+                    <span role="cell" title={`Assessment: ${row.assessment}`} className={cn("font-semibold", verdict.tone)}>
+                      {verdict.label}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-            {analysis.questions.length > 0 && (
-              <div className="flex max-h-[34%] shrink-0 flex-wrap items-center gap-x-3 gap-y-2 overflow-y-auto border-t bg-band-2 px-5 pt-3 pb-3.5">
-                <h3 className="text-body font-semibold whitespace-nowrap">Questions Hoot would ask next</h3>
-                {analysis.questions.map((q, i) => (
-                  <span key={i} className="inline-flex max-w-full items-center">
-                    {canAsk ? (
-                      <button
-                        type="button"
-                        onClick={() => ask(q.text)}
-                        title="Ask Hoot in this call’s saved chat"
-                        className="min-h-7 rounded-full bg-hoot px-3 py-1 text-left text-body leading-snug font-medium text-hoot-foreground transition-opacity outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        {q.text}
-                      </button>
-                    ) : (
-                      <span className="min-h-7 rounded-full bg-hoot px-3 py-1 text-body leading-snug font-medium text-hoot-foreground">{q.text}</span>
-                    )}
-                    {citations(q.sourceIds)}
-                  </span>
+            <h4 className="mt-4 mb-0.5 text-caption font-semibold text-muted-foreground">Numbers mentioned on the call</h4>
+            {analysis.numbers.length ? (
+              <ul>
+                {analysis.numbers.map((n, i) => (
+                  <li key={i} className="border-b border-row py-[7px]">
+                    <div className="flex items-baseline gap-3 text-body">
+                      <span className="min-w-0 flex-1 font-semibold">{n.metric}</span>
+                      <span className="shrink-0 text-right font-semibold">{n.value}</span>
+                    </div>
+                    <p className="text-caption text-muted-foreground">
+                      <span className="text-ink-2">{n.period}</span> · {n.context} {citations(n.sourceIds)}
+                    </p>
+                  </li>
                 ))}
-              </div>
+              </ul>
+            ) : (
+              <p className="text-body text-muted-foreground">No reliable numbers identified.</p>
             )}
+
+            {analysis.questions.length > 0 && (
+              <section>
+                <h3 className={H3}>Questions Hoot would ask next</h3>
+                <ul>
+                  {analysis.questions.map((q, i) => (
+                    <li key={i} className="flex items-baseline gap-3 border-b border-row py-[7px] text-body leading-5">
+                      <span className="min-w-0 flex-1">
+                        {q.text} {citations(q.sourceIds)}
+                      </span>
+                      {canAsk && (
+                        <button
+                          type="button"
+                          onClick={() => ask(q.text)}
+                          title="Ask Hoot in this call’s discussion"
+                          className="shrink-0 rounded-sm text-caption font-semibold underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          Ask Hoot
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <Points title="Positive commentary" points={analysis.positives} />
+            <Points title="Risks & watch points" points={analysis.risks} />
+            <Points title="Themes" points={analysis.themes} />
+            <Points title="Catalysts" points={analysis.catalysts} />
+            <p className="mt-4 text-caption leading-relaxed text-muted-foreground">
+              <span className="font-semibold text-ink-2">Coverage.</span> {analysis.coverage}
+            </p>
           </>
         )}
       </section>

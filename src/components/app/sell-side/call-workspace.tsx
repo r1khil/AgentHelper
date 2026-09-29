@@ -1,9 +1,9 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { MessageSquareText, Mic, Pause, Play, Square } from "lucide-react";
+import { Mic, Pause, Play, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Panel } from "@/components/app/panel";
+import { Input } from "@/components/ui/input";
 import { Tabs } from "@/components/app/tabs";
 import { cn } from "@/lib/utils";
 import { createSupabaseBrowser } from "@/lib/supabase/browser";
@@ -22,8 +22,10 @@ type Tab = "brief" | "transcript" | "chat";
 const NO_PARTS: State["parts"] = [];
 
 /**
- * The selected call: title, the call timeline, recording and processing controls while the call is in progress,
- * then Brief / Transcript / Saved chat tabs. `children` is the brief (or why it is hidden); `chat` is the discussion.
+ * The selected call, as the middle column and the timeline beside it (a fragment: the page lays both out): the
+ * title, recording and processing controls while the call is in progress, then Call brief / Transcript / Discuss
+ * this call tabs. `children` is the brief (or why it is hidden); `chat` is the discussion. The timeline lists the
+ * brief's key points with when each was said.
  */
 export function CallWorkspace({
   callId,
@@ -36,9 +38,9 @@ export function CallWorkspace({
   callId: string;
   configured: boolean;
   children?: ReactNode;
-  /** Title row: ticker, title, and the meta around the call length ("Maya Chen · Thursday, September 24" … "Technology"). */
-  header?: { ticker: string; title: string; byline: string; sector?: string };
-  /** The call's saved discussion; mounted the first time the Saved chat tab opens. */
+  /** The title and the meta line above it: ticker, sector, day, (call length), who recorded it. */
+  header?: { ticker: string; title: string; sector?: string; when: string; by?: string };
+  /** The call's saved discussion; mounted the first time the Discuss this call tab opens. */
   chat?: ReactNode;
   /**
    * What the page knows the call will show once its saved state loads: the timeline (it has transcribed speech) and
@@ -395,12 +397,12 @@ export function CallWorkspace({
   const showProgress = (status === "transcribing" || status === "summarizing") && expected > 0;
   const autoTab: Tab = children ? "brief" : segments.length ? "transcript" : "brief";
   const tab: Tab = chosenTab === "chat" && !chat ? autoTab : (chosenTab ?? autoTab);
-  const meta = header ? [header.byline, total > 0 ? minutesLabel(total) : null, header.sector].filter(Boolean).join(" · ") : "";
+  const meta = header ? [header.ticker, header.sector, header.when, total > 0 ? minutesLabel(total) : null, header.by].filter(Boolean).join(" · ") : "";
   const filtered = segments.map((s, i) => ({ s, i })).filter(({ s }) => `${s.speaker ?? ""} ${s.text}`.toLowerCase().includes(filter.toLowerCase()));
   const tabs: { key: Tab; label: string }[] = [
-    { key: "brief", label: "Brief" },
+    { key: "brief", label: "Call brief" },
     { key: "transcript", label: "Transcript" },
-    ...(chat ? [{ key: "chat" as const, label: "Saved chat" }] : []),
+    ...(chat ? [{ key: "chat" as const, label: "Discuss this call" }] : []),
   ];
   const briefNote =
     status === "recording"
@@ -408,205 +410,156 @@ export function CallWorkspace({
       : status === "error"
         ? "The brief appears here once the retry above finishes."
         : "The brief appears here when the transcript and the file check finish. You can leave this page and come back.";
+  // The timeline column is there once the call has transcribed speech (or will be, per the page).
+  const showTimeline = bars.length > 0 || (!data && !!expect?.timeline);
 
   return (
     <CallPaneContext.Provider value={pane}>
-      <Panel className="min-h-0 flex-1">
-        <div className="shrink-0 px-5 pt-4">
-          {header && (
-            <div className="flex flex-wrap items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <h2 className="text-title leading-tight font-semibold tracking-[-0.015em]">
-                  <span className="font-mono">{header.ticker}</span> · {header.title}
-                </h2>
-                <p className="mt-1 text-body text-muted-foreground">{meta}</p>
-              </div>
-              {chat && (
-                <Button variant="outline" onClick={() => openChat()}>
-                  <MessageSquareText />
-                  Ask Hoot about this call
-                </Button>
-              )}
-            </div>
-          )}
-          {!configured && (
-            <p className="mt-3 rounded-[10px] bg-caution px-3 py-2 text-body text-caution-foreground">
-              Analysis is temporarily unavailable. Your audio can still be recorded and saved. Contact your workspace administrator.
+      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 pt-6 pb-10">
+        {header && (
+          <>
+            <span className="text-body text-muted-foreground">{meta}</span>
+            <h2 className="mt-0.5 text-display font-bold tracking-[-0.02em]">{header.title}</h2>
+          </>
+        )}
+        {!configured && (
+          <p className="mt-3 text-body text-caution-foreground">Analysis is temporarily unavailable. Your audio can still be recorded and saved. Contact your workspace administrator.</p>
+        )}
+        {!data ? (
+          error ? (
+            <p role="status" className="mt-3.5 text-body text-muted-foreground">
+              {error}
             </p>
-          )}
-          {bars.length > 0 && <Timeline bars={bars} markers={markers} total={total} onJump={openTranscriptAt} />}
-          {!data ? (
-            error ? (
-              <p role="status" className="mt-3.5 text-body text-muted-foreground">
-                {error}
-              </p>
-            ) : (
-              <LoadingCall timeline={!!expect?.timeline} recorder={!!expect?.recorder} />
-            )
           ) : (
-            showRecorder && (
-              <section aria-label="Recording and processing" className="mt-3.5 space-y-3 rounded-[10px] bg-band px-4 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-emph font-semibold">
-                      {recording
-                        ? paused
-                          ? "Recording paused"
-                          : "Recording live"
-                        : data.call.status === "ready"
-                          ? "Call saved"
-                          : (callStatusLabel[data.call.status] ?? "Call recording")}
-                    </h3>
-                    <p className="text-body text-muted-foreground">
-                      <span className="font-mono">{recording ? clock(elapsed) : clock(callLength(parts))}</span> ·{" "}
-                      {pending ? `${pending} audio sections waiting to save` : parts.length ? "Audio saved securely" : "Ready when you are"}
-                    </p>
+            <LoadingCall recorder={!!expect?.recorder} />
+          )
+        ) : (
+          showRecorder && (
+            <section aria-label="Recording and processing" className="mt-4 space-y-3 border-y py-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-emph font-semibold">
+                    {recording ? (paused ? "Recording paused" : "Recording live") : data.call.status === "ready" ? "Call saved" : (callStatusLabel[data.call.status] ?? "Call recording")}
+                  </h3>
+                  <p className="text-body text-muted-foreground">
+                    <span className="font-mono">{recording ? clock(elapsed) : clock(callLength(parts))}</span> ·{" "}
+                    {pending ? `${pending} audio sections waiting to save` : parts.length ? "Audio saved securely" : "Ready when you are"}
+                  </p>
+                </div>
+                {recording && (
+                  <div className="flex items-center gap-2">
+                    <span className={cn("size-2 rounded-full bg-foreground", !paused && "animate-pulse")} />
+                    <meter min={0} max={100} value={level} aria-label="Audio input level" />
                   </div>
-                  {recording && (
-                    <div className="flex items-center gap-2">
-                      <span className={cn("size-2 rounded-full bg-down", !paused && "animate-pulse")} />
-                      <meter min={0} max={100} value={level} aria-label="Audio input level" />
+                )}
+                {showProgress && (
+                  <div className="flex w-48 items-center gap-2" title={`${progressDone} of ${expected} saved audio sections`}>
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-caution-foreground" style={{ width: `${Math.round((progressDone / expected) * 100)}%` }} />
                     </div>
-                  )}
-                  {showProgress && (
-                    <div className="flex w-48 items-center gap-2" title={`${progressDone} of ${expected} saved audio sections`}>
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-caution-foreground" style={{ width: `${Math.round((progressDone / expected) * 100)}%` }} />
-                      </div>
-                      <span className="font-mono text-body text-caution-foreground">{Math.round((progressDone / expected) * 100)}%</span>
-                    </div>
-                  )}
-                </div>
-                {data.call.status === "recording" && !recording && (
-                  <label className="flex items-center gap-2 text-body">
-                    <input type="checkbox" checked={tabAudio} onChange={(e) => setTabAudio(e.target.checked)} disabled={busy} />
-                    Include browser tab audio with microphone
-                  </label>
+                    <span className="text-body font-semibold text-caution-foreground">{Math.round((progressDone / expected) * 100)}%</span>
+                  </div>
                 )}
-                {data.call.status === "recording" && (
-                  <p className="text-body leading-relaxed text-muted-foreground">
-                    {tabAudio
-                      ? "Choose the call’s browser tab and enable Share tab audio."
-                      : "Microphone mode captures what your microphone hears. Use speakerphone for the other participants."}{" "}
-                    Audio is saved every two minutes; the current part is not yet saved. Keep this page open while recording. Up to four hours per call. Short
-                    gaps may occur at part boundaries.
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  {data.call.status === "recording" && !recording && (
-                    <Button onClick={start} disabled={busy}>
-                      <Mic />
-                      {data.parts.length ? "Resume recording" : "Start recording"}
-                    </Button>
-                  )}
-                  {recording && (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        if (paused) recorder.current?.resume();
-                        else recorder.current?.pause();
-                        setPaused(!paused);
-                      }}
-                    >
-                      {paused ? <Play /> : <Pause />}
-                      {paused ? "Resume" : "Pause"}
-                    </Button>
-                  )}
-                  {data.call.status !== "ready" && (
-                    <Button variant="outline" disabled={busy || (analyzing && !stale) || (!recording && !data.parts.length && !pending)} onClick={process}>
-                      <Square />
-                      {recording
-                        ? "Stop & analyze"
-                        : busy
-                          ? "Working…"
-                          : analyzing && !stale
-                            ? "Analyzing…"
-                            : transcriptReady || analysisFailed
-                              ? "Retry analysis"
-                              : data.call.status === "error"
-                                ? "Retry transcription"
-                                : "Analyze saved call"}
-                    </Button>
-                  )}
-                  {pending > 0 && (
-                    <Button variant="ghost" onClick={() => void downloadLocal().catch(report)}>
-                      Download pending audio
-                    </Button>
-                  )}
-                </div>
-                <p role="status" className="text-body empty:hidden">
-                  {data.call.status === "ready"
-                    ? "Transcript and analysis saved. The brief, transcript and saved chat are in the tabs below."
-                    : analyzing
-                      ? "Summary and internal-file cross-check are running. You can reopen this call later."
-                      : busy
-                        ? progress
-                        : data.call.status === "error"
-                          ? ""
-                          : transcriptReady
-                            ? "Transcript saved. Your call is ready for analysis."
-                            : ""}
-                </p>
-                {(error || data.call.error) && (
-                  <p role="alert" className="text-body text-down">
-                    {error || (transcriptReady || analysisFailed ? ANALYSIS_ERROR : TRANSCRIPT_ERROR)}
-                  </p>
-                )}
-              </section>
-            )
-          )}
-          <Tabs
-            label="Call views"
-            idBase={callId}
-            className="mt-3.5"
-            onSelect={(k) => (k === "chat" ? openChat() : setChosenTab(k as Tab))}
-            items={tabs.map((t) => ({ ...t, active: tab === t.key }))}
-          />
-        </div>
-        <div
-          role="tabpanel"
-          id={`${callId}-panel-brief`}
-          aria-labelledby={`${callId}-tab-brief`}
-          className={cn(tab === "brief" ? "flex" : "hidden", "min-h-0 flex-1 flex-col")}
-        >
-          {children || <p className="px-5 py-4 text-body text-muted-foreground">{briefNote}</p>}
-        </div>
-        <div
-          role="tabpanel"
-          id={`${callId}-panel-transcript`}
-          aria-labelledby={`${callId}-tab-transcript`}
-          className={cn(tab === "transcript" ? "block" : "hidden", "min-h-0 flex-1 overflow-y-auto")}
-        >
-          {segments.length > 0 ? (
-            <section className="px-5 py-3.5" aria-label="Call transcript">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-emph font-semibold">
-                  Transcript · <span className="font-mono">{segments.length}</span> passages
-                </h3>
-                <input
-                  className="h-8 w-64 max-w-full rounded-lg border bg-card px-3 text-body outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
-                  aria-label="Search transcript"
-                  placeholder="Search transcript…"
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                />
               </div>
-              <p className="mt-1 text-caption text-muted-foreground">
-                Searchable, timestamped evidence for this call and future team research. Speaker attribution is shown only when available.
+              {data.call.status === "recording" && !recording && (
+                <label className="flex items-center gap-2 text-body">
+                  <input type="checkbox" checked={tabAudio} onChange={(e) => setTabAudio(e.target.checked)} disabled={busy} />
+                  Include browser tab audio with microphone
+                </label>
+              )}
+              {data.call.status === "recording" && (
+                <p className="text-body leading-relaxed text-muted-foreground">
+                  {tabAudio ? "Choose the call’s browser tab and enable Share tab audio." : "Microphone mode captures what your microphone hears. Use speakerphone for the other participants."} Audio is saved every two
+                  minutes; the current part is not yet saved. Keep this page open while recording. Up to four hours per call. Short gaps may occur at part boundaries.
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {data.call.status === "recording" && !recording && (
+                  <Button onClick={start} disabled={busy}>
+                    <Mic />
+                    {data.parts.length ? "Resume recording" : "Start recording"}
+                  </Button>
+                )}
+                {recording && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (paused) recorder.current?.resume();
+                      else recorder.current?.pause();
+                      setPaused(!paused);
+                    }}
+                  >
+                    {paused ? <Play /> : <Pause />}
+                    {paused ? "Resume" : "Pause"}
+                  </Button>
+                )}
+                {data.call.status !== "ready" && (
+                  <Button variant="outline" disabled={busy || (analyzing && !stale) || (!recording && !data.parts.length && !pending)} onClick={process}>
+                    <Square />
+                    {recording
+                      ? "Stop & analyze"
+                      : busy
+                        ? "Working…"
+                        : analyzing && !stale
+                          ? "Analyzing…"
+                          : transcriptReady || analysisFailed
+                            ? "Retry analysis"
+                            : data.call.status === "error"
+                              ? "Retry transcription"
+                              : "Analyze saved call"}
+                  </Button>
+                )}
+                {pending > 0 && (
+                  <Button variant="ghost" onClick={() => void downloadLocal().catch(report)}>
+                    Download pending audio
+                  </Button>
+                )}
+              </div>
+              <p role="status" className="text-body empty:hidden">
+                {data.call.status === "ready"
+                  ? "Transcript and analysis saved. The brief, transcript and discussion are in the tabs below."
+                  : analyzing
+                    ? "Summary and internal-file cross-check are running. You can reopen this call later."
+                    : busy
+                      ? progress
+                      : data.call.status === "error"
+                        ? ""
+                        : transcriptReady
+                          ? "Transcript saved. Your call is ready for analysis."
+                          : ""}
               </p>
+              {(error || data.call.error) && (
+                <p role="alert" className="text-body text-caution-foreground">
+                  {error || (transcriptReady || analysisFailed ? ANALYSIS_ERROR : TRANSCRIPT_ERROR)}
+                </p>
+              )}
+            </section>
+          )
+        )}
+        <Tabs label="Call views" idBase={callId} className="mt-4" onSelect={(k) => (k === "chat" ? openChat() : setChosenTab(k as Tab))} items={tabs.map((t) => ({ ...t, active: tab === t.key }))} />
+        <div role="tabpanel" id={`${callId}-panel-brief`} aria-labelledby={`${callId}-tab-brief`} className={cn(tab === "brief" ? "block" : "hidden", "min-w-0")}>
+          {children || <p className="py-4 text-body text-muted-foreground">{briefNote}</p>}
+        </div>
+        <div role="tabpanel" id={`${callId}-panel-transcript`} aria-labelledby={`${callId}-tab-transcript`} className={cn(tab === "transcript" ? "block" : "hidden", "min-w-0")}>
+          {segments.length > 0 ? (
+            <section className="pt-4" aria-label="Call transcript">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-body font-bold">
+                  Transcript · {segments.length} passages
+                </h3>
+                <Input aria-label="Search transcript" placeholder="Search transcript…" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-64 max-w-full" />
+              </div>
+              <p className="mt-1 text-caption text-muted-foreground">Searchable, timestamped evidence for this call and future team research. Speaker attribution is shown only when available.</p>
               <div ref={transcriptRef} className="mt-2">
                 {filtered.map(({ s, i }) => (
                   <div
                     key={i}
                     data-seg={i}
-                    className={cn(
-                      "grid grid-cols-[64px_minmax(0,1fr)] gap-3 rounded-[6px] border-b border-row py-2.5 transition-colors duration-500",
-                      highlight?.index === i && "bg-band",
-                    )}
+                    className={cn("grid grid-cols-[64px_minmax(0,1fr)] gap-3 rounded-[6px] border-b border-row py-2.5 transition-colors duration-500", highlight?.index === i && "bg-secondary")}
                   >
-                    <span className="pt-0.5 font-mono text-body font-medium text-series-1">{stamp(s.start)}</span>
+                    <span className="pt-0.5 font-mono text-caption font-medium text-muted-foreground">{stamp(s.start)}</span>
                     <div className="min-w-0">
-                      {s.speaker && <p className="text-body font-medium text-muted-foreground">{s.speaker}</p>}
+                      {s.speaker && <p className="text-body font-semibold text-muted-foreground">{s.speaker}</p>}
                       <p className="text-body leading-relaxed whitespace-pre-wrap">{s.text}</p>
                     </div>
                   </div>
@@ -615,73 +568,88 @@ export function CallWorkspace({
               </div>
             </section>
           ) : (
-            <p className="px-5 py-4 text-body text-muted-foreground">The transcript appears here once the audio is transcribed.</p>
+            <p className="py-4 text-body text-muted-foreground">The transcript appears here once the audio is transcribed.</p>
           )}
         </div>
         {chat && chatOpened && (
-          <div
-            role="tabpanel"
-            id={`${callId}-panel-chat`}
-            aria-labelledby={`${callId}-tab-chat`}
-            className={cn(tab === "chat" ? "block" : "hidden", "min-h-0 flex-1 overflow-y-auto px-5 py-4")}
-          >
+          <div role="tabpanel" id={`${callId}-panel-chat`} aria-labelledby={`${callId}-tab-chat`} className={cn(tab === "chat" ? "block" : "hidden", "min-w-0 pt-4")}>
             {chat}
           </div>
         )}
-      </Panel>
+      </div>
+      {showTimeline && (
+        <aside aria-label="Timeline" className="w-[280px] shrink-0 overflow-y-auto border-l pt-6 pr-10 pb-10 pl-6">
+          <h2 className="mb-1.5 text-body font-bold">Timeline</h2>
+          {bars.length > 0 ? <TimelineColumn bars={bars} markers={markers} total={total} onJump={openTranscriptAt} /> : <p className="text-caption text-muted-foreground">Loading saved call…</p>}
+        </aside>
+      )}
     </CallPaneContext.Provider>
   );
 }
 
 /**
- * "Loading saved call…" in the space the loaded call will fill: the timeline's band (same size, so the timeline
- * replaces it without a shift), the top of the recording card, or, when neither will show, nothing visible at all.
+ * "Loading saved call…" in the space the loaded call will fill: the top of the recording section, or, when it won't
+ * show, nothing visible at all.
  */
-function LoadingCall({ timeline, recorder }: { timeline: boolean; recorder: boolean }) {
+function LoadingCall({ recorder }: { recorder: boolean }) {
   const status = (
-    <p role="status" className={cn("text-body text-muted-foreground", !timeline && !recorder && "sr-only")}>
+    <p role="status" className={cn("text-body text-muted-foreground", !recorder && "sr-only")}>
       Loading saved call…
     </p>
   );
-  return (
-    <>
-      {timeline && <div className="mt-3.5 flex h-9 items-center rounded-[10px] bg-band px-3">{!recorder && status}</div>}
-      {recorder ? <div className="mt-3.5 rounded-[10px] bg-band px-4 py-3">{status}</div> : !timeline && status}
-    </>
-  );
+  return recorder ? <div className="mt-4 border-y py-3.5">{status}</div> : status;
 }
 
-/** The call timeline: speech-density bars from the transcript timing, with a blue marker at each key point. */
-function Timeline({ bars, markers, total, onJump }: { bars: number[]; markers: Marker[]; total: number; onJump: (seconds: number) => void }) {
-  const at = (t: number) => `calc(10px + (100% - 20px) * ${Math.min(1, Math.max(0, t / total))})`;
+/**
+ * The call timeline: a thin strip of speech-density bars from the transcript timing (click anywhere to open the
+ * transcript there), then the key points with the time each was said, each opening the transcript at that moment.
+ */
+function TimelineColumn({ bars, markers, total, onJump }: { bars: number[]; markers: Marker[]; total: number; onJump: (seconds: number) => void }) {
+  const ordered = [...markers].sort((a, b) => a.t - b.t);
+  const at = (t: number) => `${Math.min(100, Math.max(0, (t / total) * 100))}%`;
+  const wide = ordered.some((m) => m.t >= 3600);
   return (
-    <div role="group" aria-label="Call timeline" className="relative mt-3.5 h-9 overflow-hidden rounded-[10px] bg-band">
-      <button
-        type="button"
-        aria-label="Open the transcript at this point in the call"
-        className="absolute inset-x-2.5 inset-y-2 flex cursor-pointer items-center gap-[2px] outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        onClick={(e) => {
-          const r = e.currentTarget.getBoundingClientRect();
-          onJump(((e.clientX - r.left) / Math.max(1, r.width)) * total);
-        }}
-      >
-        {bars.map((h, i) => (
-          <span key={i} className="min-w-px flex-1 rounded-[1px] bg-series-neutral/60" style={{ height: `${Math.round(h * 100)}%` }} />
-        ))}
-      </button>
-      {markers.map((m, i) => (
+    <>
+      <div role="group" aria-label="Call timeline" className="relative h-8 border-b border-row pb-2">
         <button
-          key={i}
           type="button"
-          title={`${stamp(m.t)} · ${m.label}`}
-          aria-label={`Key point at ${stamp(m.t)}: ${m.label}`}
-          onClick={() => onJump(m.t)}
-          className="group absolute inset-y-0 w-3 -translate-x-1/2 outline-none"
-          style={{ left: at(m.t) }}
+          aria-label="Open the transcript at this point in the call"
+          className="flex h-full w-full cursor-pointer items-end gap-[2px] rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            onJump(((e.clientX - r.left) / Math.max(1, r.width)) * total);
+          }}
         >
-          <span className="absolute inset-y-1 left-1/2 w-0.5 -translate-x-1/2 rounded-[1px] bg-series-1 group-hover:w-[3px] group-focus-visible:w-[3px]" />
+          {bars.map((h, i) => (
+            <span key={i} className="min-w-px flex-1 rounded-[1px] bg-series-neutral/60" style={{ height: `${Math.round(h * 100)}%` }} />
+          ))}
         </button>
-      ))}
-    </div>
+        {ordered.map((m, i) => (
+          <span key={i} aria-hidden className="pointer-events-none absolute top-0 bottom-2 w-0.5 -translate-x-1/2 rounded-[1px] bg-foreground" style={{ left: at(m.t) }} />
+        ))}
+      </div>
+      {ordered.length > 0 ? (
+        <ul>
+          {ordered.map((m, i) => (
+            <li key={i}>
+              <button
+                type="button"
+                onClick={() => onJump(m.t)}
+                aria-label={`Key point at ${stamp(m.t)}: ${m.label}`}
+                className={cn(
+                  "grid w-full gap-2 border-b border-row py-2 text-left text-caption outline-none hover:bg-band focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                  wide ? "grid-cols-[56px_minmax(0,1fr)]" : "grid-cols-[44px_minmax(0,1fr)]",
+                )}
+              >
+                <span className="font-mono text-muted-foreground">{stamp(m.t)}</span>
+                <span className="line-clamp-2">{m.label}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="pt-2 text-caption text-muted-foreground">Key points are listed here, with when each was said, once the brief is ready.</p>
+      )}
+    </>
   );
 }

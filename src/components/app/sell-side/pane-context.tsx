@@ -12,11 +12,11 @@ export type CallPane = {
   timeOf: (point: { text: string; sourceIds: string[] }) => number | null;
   /** Open the Transcript tab at this moment. */
   openTranscriptAt: (seconds: number) => void;
-  /** The brief registers its key-point times so the timeline can mark them. */
+  /** The brief registers its key-point times so the timeline can list them. */
   setMarkers: (markers: Marker[]) => void;
-  /** True when this pane has a Saved chat tab to send questions to. */
+  /** True when this pane has a Discuss this call tab to send questions to. */
   canAsk: boolean;
-  /** Open the Saved chat tab; `asked` means a question was just handed to the chat to send. */
+  /** Open the Discuss this call tab; `asked` means a question was just handed to the chat to send. */
   openChat: (asked?: boolean) => void;
   /** Bumps each time a question is handed off, so a mounted chat reloads and sends it. */
   askSeq: number;

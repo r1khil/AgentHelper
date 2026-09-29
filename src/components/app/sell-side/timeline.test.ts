@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sourceId } from "@/lib/providers/types";
+import { ANALYSIS_ERROR } from "@/lib/sell-side/status";
 import { listStatus, minutesLabel, pointTime, stamp, waveform } from "./timeline";
 
 describe("sell-side timeline", () => {
@@ -41,9 +42,11 @@ describe("sell-side timeline", () => {
     expect(waveform([], 100)).toEqual([]);
   });
 
-  it("labels saved-call statuses", () => {
-    expect(listStatus({ status: "transcribing", expectedParts: 25 }, { parts: 25, transcribed: 16, summarized: 0 }).label).toBe("Transcribing 64%");
-    expect(listStatus({ status: "error", expectedParts: null }, { parts: 1, transcribed: 1, summarized: 0 })).toEqual({ label: "Needs retry", tone: "down" });
-    expect(listStatus({ status: "recording", expectedParts: null }, { parts: 0, transcribed: 0, summarized: 0 }).label).toBe("Ready to record");
+  it("labels saved-call statuses in words", () => {
+    expect(listStatus({ status: "transcribing", expectedParts: 25 }, { parts: 25, transcribed: 16, summarized: 0 })).toEqual({ label: "transcribing 64%", tone: "caution" });
+    expect(listStatus({ status: "ready", expectedParts: 25 }, { parts: 25, transcribed: 25, summarized: 25 })).toEqual({ label: "brief ready", tone: "muted" });
+    expect(listStatus({ status: "error", expectedParts: null }, { parts: 1, transcribed: 0, summarized: 0 })).toEqual({ label: "transcription failed · retry", tone: "caution" });
+    expect(listStatus({ status: "error", expectedParts: 1, error: ANALYSIS_ERROR }, { parts: 1, transcribed: 1, summarized: 1 }).label).toBe("analysis failed · retry");
+    expect(listStatus({ status: "recording", expectedParts: null }, { parts: 0, transcribed: 0, summarized: 0 }).label).toBe("ready to record");
   });
 });

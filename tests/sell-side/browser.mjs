@@ -57,7 +57,7 @@ try {
   expect(afterRetry.transcriptions).toBe(beforeRetry.transcriptions);
   expect(afterRetry.notes).toBe(beforeRetry.notes);
   expect(afterRetry.uploads).toBe(beforeRetry.uploads);
-  for (const name of ["What was said", "Important numbers", "Positive commentary", "Risks & watch points", "Themes", "Checked against the team’s files"])
+  for (const name of ["What was said", "Important numbers, checked against the team's files", "Positive commentary", "Risks & watch points", "Themes"])
     await expect(page.getByRole("heading", { name, exact: true }).first()).toBeVisible();
   await expect(page.getByRole("region", { name: "Call analysis" })).toContainText("$3.2 billion");
   await expect(page.getByRole("region", { name: "Call analysis" })).toContainText("periods differ");

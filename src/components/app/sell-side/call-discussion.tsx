@@ -10,16 +10,16 @@ type Props = ComponentProps<typeof ChatPanel>;
 
 /**
  * The call's saved discussion. Standalone it keeps the brief in view and mounts the chat when the analyst opens it;
- * `embedded` renders it straight into the call's Saved chat tab (which only mounts it once opened).
+ * `embedded` renders it straight into the call's Discuss this call tab (which only mounts it once opened).
  */
 export function CallDiscussion({ embedded = false, ...props }: Props & { embedded?: boolean }) {
   const [open, setOpen] = useState(false);
   if (embedded) return <EmbeddedDiscussion {...props} />;
   return (
     <section aria-label="Discuss this call" className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-y py-3">
         <div>
-          <h2 className="font-semibold">Discuss this call</h2>
+          <h2 className="text-title font-bold tracking-[-0.01em]">Discuss this call</h2>
           <p className="mt-1 text-body text-muted-foreground">Ask follow-up questions using the transcript and saved evidence.</p>
         </div>
         <Button variant="outline" aria-expanded={open} onClick={() => setOpen(!open)}>
