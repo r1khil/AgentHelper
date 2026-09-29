@@ -44,11 +44,10 @@ export function BookSensitivity({
               <button
                 type="button"
                 onClick={() => onPick(e)}
-                title={l.text.replaceAll(" · ", ", ")}
+                title={l.text}
                 className={cn("block w-full py-1.5 text-left text-body text-pretty outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring", out ? "text-muted-foreground" : "text-foreground")}
               >
-                {/* The line's parts read as a phrase ("CPI Wed, Oct 14, 8:30 AM ET, rates- and dollar-sensitive"), no dots. */}
-                <span className="font-medium">{l.head.replaceAll(" · ", ", ")}</span>
+                <span className="font-medium">{l.head}</span>
                 {out && <span>, released</span>}
               </button>
             </li>
@@ -77,7 +76,7 @@ export function FactorClause({ context, event }: { context: Promise<CalendarFact
   if (!line) return null;
   return (
     <p className="mt-2.5 text-body text-ink-2">
-      {line.text.replaceAll(" · ", ", ")}
+      {line.text}
       {ctx.exposure && ctx.basis && (
         <span className="block text-muted-foreground">
           {`With ${ctx.exposure.subject}'s factor betas over ${ctx.basis}. Betas with |t| below 2 read "no clear exposure". Past co-movement, not a forecast or a recommendation.`}

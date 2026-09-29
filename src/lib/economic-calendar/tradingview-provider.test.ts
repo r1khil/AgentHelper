@@ -146,6 +146,15 @@ describe("TradingView calendar", () => {
     expect(error).toBeInstanceOf(CalendarNotice);
     expect((error as Error).message).toBe("not published this far ahead");
   });
+  it("reads a range past the published edge as not published, not as an empty week", async () => {
+    // Asked for Oct 30 to Nov 2 when the feed runs to Oct 29: the padded request returns only the 29th.
+    const edge = { from: "2026-10-30", to: "2026-11-02" };
+    const body = { status: "ok", result: [{ id: "edge", title: "GDP Growth Rate QoQ Adv", country: "US", date: "2026-10-29T12:30:00.000Z", importance: 1 }] };
+    const error = await tradingViewProvider(vi.fn(async () => Response.json(body)))
+      .getEvents(edge)
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(CalendarNotice);
+  });
   it("fails on HTTP errors so the next provider can answer", async () => {
     await expect(
       tradingViewProvider(

@@ -95,8 +95,6 @@ const minutesOf = (iso: string) => {
   return t.hour * 60 + t.minute;
 };
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-/** The design writes plain phrases: a shared helper's "A · B" reads "A, B" here. */
-const plain = (s: string) => s.replaceAll(" · ", ", ");
 
 /** "Today", "Tomorrow", "16 days"; "Yesterday", "5 days ago" looking back. */
 function relDay(today: string, date: string) {
@@ -166,12 +164,12 @@ function econStatus(e: EconomicEvent, now: number | null, today: string, isNext:
       tone: "ink",
     };
   const res = releaseResult(e, now, today, false);
-  return res.text === "Awaiting" ? null : { text: plain(res.text), tone: res.tone };
+  return res.text === "Awaiting" ? null : { text: res.text, tone: res.tone };
 }
 
 /**
  * Markets: the fund's earnings reports and the economic releases on one schedule, a section per day for the next five
- * weeks (or the five weeks before, under Past). An earnings row opens the holding's Earnings tab; a release opens its
+ * weeks (or the five weeks before, under Past). An earnings row opens its report's page; a release opens its
  * details in place, with Kalshi's price, the book's factor line and Ask Hoot. The rail has the index levels, the prep
  * packs coming up and the releases that move the book's factors.
  */
@@ -187,7 +185,8 @@ export function MarketsView(props: MarketsViewProps) {
   const past = query.view === "past";
   const yesterday = addDays(today, -1);
   const pastTo = query.to && query.to < today ? query.to : yesterday;
-  const range = past ? { from: addDays(pastTo, -(LIST_DAYS - 1)), to: pastTo } : { from: today, to: addDays(today, LIST_DAYS - 1) };
+  const upcomingFrom = query.from && query.from > today ? query.from : today;
+  const range = past ? { from: addDays(pastTo, -(LIST_DAYS - 1)), to: pastTo } : { from: upcomingFrom, to: addDays(upcomingFrom, LIST_DAYS - 1) };
   const { feed, error, loading, retry } = useEconomicFeedSpan(range, feedSource);
 
   const href = (q: Partial<MarketsQuery>) => marketsHref({ ...query, ...q }, base);
@@ -279,7 +278,9 @@ export function MarketsView(props: MarketsViewProps) {
       <div className="flex gap-9">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h2 className="text-display font-semibold tracking-[-0.01em]">{past ? `Five weeks to ${fmtDayMonth(range.to)}` : "Next five weeks"}</h2>
+            <h2 className="text-display font-semibold tracking-[-0.01em]">
+              {past ? `Five weeks to ${fmtDayMonth(range.to)}` : upcomingFrom > today ? `Five weeks from ${fmtDayMonth(range.from)}` : "Next five weeks"}
+            </h2>
             <span className="text-body text-muted-foreground">{note}</span>
           </div>
           {props.banner}
@@ -310,13 +311,13 @@ export function MarketsView(props: MarketsViewProps) {
                 {
                   key: "upcoming",
                   label: "Coming up",
-                  href: href({ view: "upcoming", to: null }),
+                  href: href({ view: "upcoming", to: null, from: null }),
                   active: !past,
                 },
                 {
                   key: "past",
                   label: "Past",
-                  href: href({ view: "past", to: null }),
+                  href: href({ view: "past", to: null, from: null }),
                   active: past,
                 },
               ]}
@@ -370,6 +371,22 @@ export function MarketsView(props: MarketsViewProps) {
             </p>
           )}
 
+          {!past && (
+            <nav aria-label="Earlier and later" className="mt-3 flex gap-4 text-body">
+              {upcomingFrom > today && (
+                <Link
+                  href={href({ from: addDays(range.from, -LIST_DAYS) > today ? addDays(range.from, -LIST_DAYS) : null })}
+                  scroll={false}
+                  className="font-semibold underline decoration-border underline-offset-2 hover:decoration-foreground"
+                >
+                  Five weeks before
+                </Link>
+              )}
+              <Link href={href({ from: addDays(range.to, 1) })} scroll={false} className="font-semibold underline decoration-border underline-offset-2 hover:decoration-foreground">
+                Five weeks after
+              </Link>
+            </nav>
+          )}
           {past && (
             <nav aria-label="Earlier and later" className="mt-3 flex gap-4 text-body">
               <Link href={href({ view: "past", to: addDays(range.from, -1) })} scroll={false} className="font-semibold underline decoration-border underline-offset-2 hover:decoration-foreground">
@@ -501,7 +518,7 @@ function DaySection({ date, today, note, children }: { date: string; today: stri
         <span className="text-caption text-muted-foreground">{relDay(today, date)}</span>
       </div>
       <div className="flex min-w-0 flex-col gap-0.5">
-        {note && <p className="flex h-9 items-center text-body text-muted-foreground">{plain(note)}</p>}
+        {note && <p className="flex h-9 items-center text-body text-muted-foreground">{note}</p>}
         <ul className="flex flex-col gap-0.5 empty:hidden">{children}</ul>
       </div>
     </section>
@@ -577,7 +594,12 @@ function ItemRow({ item, c }: { item: Item; c: RowCtx }) {
         <HoldingLogo ticker={ev.ticker} size={20} />
         <span className="min-w-0 truncate">
           {linkable ? (
-            <RowLink cover="stretch" href={holdingHref(c.scopeSlug, ev.teamSlug!, ev.ticker, "?tab=earnings")} aria-label={`${ev.ticker}, ${ev.name}: open its earnings`}>
+            <RowLink
+              cover="stretch"
+              // The report's own page, where expectations are written and the prep pack lives; the holding's Earnings tab only without one.
+              href={ev.earningsId ? earningsHref(c.scopeSlug, ev.teamSlug!, ev.earningsId) : holdingHref(c.scopeSlug, ev.teamSlug!, ev.ticker, "?tab=earnings")}
+              aria-label={`${ev.ticker}, ${ev.name}: open the report`}
+            >
               {name}
             </RowLink>
           ) : (
@@ -588,7 +610,7 @@ function ItemRow({ item, c }: { item: Item; c: RowCtx }) {
       <span className="truncate text-muted-foreground">{timeWord(ev.reportHour, ev.dateStatus)}</span>
       <Right
         figures={eps(ev.epsEstimate, ev.epsCurrency)}
-        status={{ text: plain(exp.text), tone: exp.tone }}
+        status={{ text: exp.text, tone: exp.tone }}
         title={"title" in exp ? exp.title : `Expectations${ev.fiscalPeriod ? ` for ${ev.fiscalPeriod}` : ""}`}
       />
     </div>
@@ -616,7 +638,7 @@ function ReportRowView({ r, c, when }: { r: ReportRow; c: RowCtx; when: string }
         </span>
       </span>
       <span className="truncate text-muted-foreground">{when}</span>
-      <Right figures={eps(r.epsEstimate, r.epsCurrency)} status={word} title={`Expectations: ${plain(exp.text).toLowerCase()}`} />
+      <Right figures={eps(r.epsEstimate, r.epsCurrency)} status={word} title={`Expectations: ${exp.text.toLowerCase()}`} />
     </div>
   );
 }

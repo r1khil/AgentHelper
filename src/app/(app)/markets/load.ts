@@ -17,7 +17,9 @@ import type { MarketsData, MarketsNotice, MarketsQuery, ReportRow } from "./type
 export async function loadMarkets(user: CurrentUser, q: MarketsQuery): Promise<MarketsData> {
   const fundWide = isFundWide(user);
   const today = todayNY();
-  const through = DateTime.fromISO(today, { zone: NY })
+  // From today through the five weeks on screen: paged on (`?from=`), the reports in between still feed Prep packs.
+  const start = q.view === "upcoming" && q.from && q.from > today ? q.from : today;
+  const through = DateTime.fromISO(start, { zone: NY })
     .plus({ days: LIST_DAYS - 1 })
     .toISODate()!;
   const teams: Team[] = await listAccessibleTeams(user);
@@ -71,7 +73,7 @@ export async function loadMarkets(user: CurrentUser, q: MarketsQuery): Promise<M
   if (q.bellwethers && own && sectors.length === 0) {
     notices.push({
       text: `No GICS sectors are assigned to ${fundWide ? own.name : "your team"}, so only its own holdings are shown.`,
-      link: fundWide ? { href: "/attribution/ledger?tab=securities", label: "Assign sectors on the ledger." } : undefined,
+      link: fundWide ? { href: "/t/fund/activity?tab=securities", label: "Assign sectors on the ledger." } : undefined,
     });
   }
 

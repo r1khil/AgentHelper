@@ -123,18 +123,18 @@ export type FactorLine = {
   date: string;
   label: string;
   factors: FactorKey[];
-  /** "CPI Thu 8:30 · rates- and dollar-sensitive" */
+  /** "CPI Thu 8:30, rates- and dollar-sensitive" */
   head: string;
   /** "the book is net short duration (β (0.12))", or null without an exposure. */
   clause: string | null;
   text: string;
 };
 
-/** "CPI Thu 8:30 · rates- and dollar-sensitive · the book is net short duration (β −0.12)". Without an exposure, the first two parts only. */
+/** "CPI Thu 8:30, rates- and dollar-sensitive, the book is net short duration (β −0.12)". Without an exposure, the first two parts only. */
 export function factorLine(e: EconomicEvent, rule: ReleaseRule, exposure: BookExposure | null): FactorLine {
-  const head = `${rule.label} ${releaseWhen(e)} · ${sensitivityLabel(rule.factors)}`;
+  const head = `${rule.label} ${releaseWhen(e)}, ${sensitivityLabel(rule.factors)}`;
   const clause = exposure ? exposureClause(rule.factors, exposure) : null;
-  return { ruleKey: rule.key, eventId: e.id, date: e.date, label: rule.label, factors: rule.factors, head, clause, text: clause ? `${head} · ${clause}` : head };
+  return { ruleKey: rule.key, eventId: e.id, date: e.date, label: rule.label, factors: rule.factors, head, clause, text: clause ? `${head}, ${clause}` : head };
 }
 
 const eligible = (e: EconomicEvent, rule: ReleaseRule) => e.importance === null || e.importance >= rule.minImportance;

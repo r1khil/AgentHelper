@@ -29,9 +29,9 @@ const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 /**
  * What the URL asks for: `?team=` narrows an exec's or admin's whole-fund view to one team (members always see their
  * own); `?show=bellwethers` adds the sector bellwethers to the fund's reports; `?view=past` shows the five weeks up to
- * `?to=` (yesterday by default) instead of the coming five.
+ * `?to=` (yesterday by default) instead of the coming five; `?from=` pages the coming weeks on past today's five.
  */
-export type MarketsQuery = { team: string | null; bellwethers: boolean; view: "upcoming" | "past"; to: string | null };
+export type MarketsQuery = { team: string | null; bellwethers: boolean; view: "upcoming" | "past"; to: string | null; from: string | null };
 
 export function isDay(v: string | null | undefined): v is string {
   return !!v && DAY_RE.test(v) && DateTime.fromISO(v, { zone: NY }).isValid;
@@ -39,8 +39,9 @@ export function isDay(v: string | null | undefined): v is string {
 
 export function parseMarketsQuery(sp: SearchParams): MarketsQuery {
   const to = one(sp.to);
+  const from = one(sp.from);
   const team = one(sp.team)?.trim().slice(0, 80);
-  return { team: team || null, bellwethers: one(sp.show) === "bellwethers", view: one(sp.view) === "past" ? "past" : "upcoming", to: isDay(to) ? to : null };
+  return { team: team || null, bellwethers: one(sp.show) === "bellwethers", view: one(sp.view) === "past" ? "past" : "upcoming", to: isDay(to) ? to : null, from: isDay(from) ? from : null };
 }
 
 /** `/markets` (or a preview's route) with its query; only what differs from the default is written. */
@@ -50,6 +51,7 @@ export function marketsHref(q: Partial<MarketsQuery>, base = "/markets"): string
   if (q.bellwethers) p.set("show", "bellwethers");
   if (q.view === "past") p.set("view", "past");
   if (q.view === "past" && q.to) p.set("to", q.to);
+  if (q.view !== "past" && q.from) p.set("from", q.from);
   const s = p.toString();
   return s ? `${base}?${s}` : base;
 }

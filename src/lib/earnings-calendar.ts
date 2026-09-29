@@ -198,7 +198,7 @@ export type Word = { text: string; tone: "ink" | "grey" | "caution" };
 export function expectationsWord(state: ExpectationsState, r: { reportDate: string; reportHour: string | null }, today: string): Word & { title?: string } {
   if (state === "locked") return { text: "Locked", tone: "grey", title: "Locked when the report landed, or by hand" };
   const soon = reportsWithin(r.reportDate, today);
-  if (soon) return { text: `${state === "draft" ? "Draft · due" : "Due"} ${fmtDayMonth(expectationsDue(r.reportDate, r.reportHour))}`, tone: "caution", title: state === "draft" ? "A draft, not locked yet" : "Not started" };
+  if (soon) return { text: `${state === "draft" ? "Draft, due" : "Due"} ${fmtDayMonth(expectationsDue(r.reportDate, r.reportHour))}`, tone: "caution", title: state === "draft" ? "A draft, not locked yet" : "Not started" };
   return state === "draft" ? { text: "Draft", tone: "ink" } : { text: "Not started", tone: "grey" };
 }
 
@@ -263,15 +263,15 @@ const observed = (year: number, month: number, day: number) => {
 };
 
 /**
- * A line for a weekday the markets treat differently: an NYSE holiday ("Thanksgiving · markets closed"), or a
- * day only the bond market closes ("Columbus Day · bond market closed"). Null on an ordinary day or a weekend.
+ * A line for a weekday the markets treat differently: an NYSE holiday ("Thanksgiving, markets closed"), or a
+ * day only the bond market closes ("Columbus Day, bond market closed"). Null on an ordinary day or a weekend.
  */
 export function marketDayNote(date: string): string | null {
   const d = DateTime.fromISO(date, { zone: NY });
   if (!d.isValid || d.weekday >= 6) return null;
   const y = d.year;
   const bondOnly: Record<string, string> = { [nthWeekday(y, 10, 1, 2)]: "Columbus Day", [observed(y, 11, 11)]: "Veterans Day" };
-  if (bondOnly[date] && isTradingDay(date)) return `${bondOnly[date]} · bond market closed`;
+  if (bondOnly[date] && isTradingDay(date)) return `${bondOnly[date]}, bond market closed`;
   if (isTradingDay(date)) return null;
   const named: Record<string, string> = {
     [observed(y, 1, 1)]: "New Year's Day",
@@ -287,7 +287,7 @@ export function marketDayNote(date: string): string | null {
   };
   // Good Friday and one-off closures aren't worth a rule: the exchange calendar says the day is closed.
   const name = named[date] ?? (d.weekday === 5 && (d.month === 3 || d.month === 4) ? "Good Friday" : null);
-  return name ? `${name} · markets closed` : "Markets closed";
+  return name ? `${name}, markets closed` : "Markets closed";
 }
 
 export type GridDay = { date: string; inMonth: boolean; trading: boolean };
