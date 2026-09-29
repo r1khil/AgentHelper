@@ -35,7 +35,7 @@ export type MorningJobResult = {
 };
 
 /** Morning sweep: finish pending evidence, remind, flag overdue, refresh earnings, retry email. */
-export async function runMorningJob(): Promise<MorningJobResult> {
+export async function runMorningJob(opts: { notify?: boolean } = {}): Promise<MorningJobResult> {
   const [jobRow] = await db.insert(jobRuns).values({ job: "morning" }).returning({ id: jobRuns.id });
   const progress = createJobReporter(jobRow.id);
   const date = todayNY();
@@ -70,7 +70,7 @@ export async function runMorningJob(): Promise<MorningJobResult> {
     const due = DateTime.fromJSDate(m.dueAt).setZone(NY);
     const link = `${process.env.APP_URL ?? ""}/t/${teamSlug}/movements/${m.id}`;
     if (!byTeam.has(h.teamId)) byTeam.set(h.teamId, await teamRecipients(h.teamId));
-    const recipients = byTeam.get(h.teamId)!;
+    const recipients = opts.notify === false ? [] : byTeam.get(h.teamId)!;
     const isDueToday = due.hasSame(now, "day");
     if (isDueToday && now < due) {
       for (const r of recipients) {
@@ -133,7 +133,7 @@ export async function runMorningJob(): Promise<MorningJobResult> {
 
   progress.step("send pending email");
   try {
-    result.email = await sendPendingNotifications();
+    if (opts.notify !== false) result.email = await sendPendingNotifications();
   } catch (e) {
     result.email = { error: 1 };
     progress.warn("email failed", { error: e instanceof Error ? e.message : String(e) });
@@ -142,7 +142,7 @@ export async function runMorningJob(): Promise<MorningJobResult> {
   // Evidence packs for reports in the next few trading days; a few per run so chat keeps its request budget.
   progress.step("build earnings prep packs");
   try {
-    const r = await prepEarnings();
+    const r = await prepEarnings({ notify: opts.notify });
     result.prep = { candidates: r.candidates, built: r.built, failed: r.failed, window: r.window };
     if (Object.keys(r.failed).length) progress.warn("some prep packs failed", { failed: r.failed });
   } catch (e) {

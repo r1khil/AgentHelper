@@ -27,7 +27,7 @@ export type WeeklyJobResult = {
  * email goes out even when a build step failed: its Checks list says which part to fill in by hand. Once the week's email
  * has gone out the run does nothing (unless `resendEmail`), so the afternoon backstop can't change numbers Aadi already has.
  */
-export async function runWeeklyJob(opts: { today?: string; resendEmail?: boolean } = {}): Promise<WeeklyJobResult> {
+export async function runWeeklyJob(opts: { today?: string; resendEmail?: boolean; send?: boolean } = {}): Promise<WeeklyJobResult> {
   const today = opts.today || todayNY();
   const weekEnding = lastFriday(today);
   const [jobRow] = await db.insert(jobRuns).values({ job: "weekly" }).returning({ id: jobRuns.id });
@@ -64,6 +64,10 @@ export async function runWeeklyJob(opts: { today?: string; resendEmail?: boolean
       progress.warn("build failed", { error: result.build.error });
     }
 
+    if (opts.send === false) {
+      progress.step("email skipped", { reason: "run without sending" });
+      return finish();
+    }
     progress.step("email the pack");
     try {
       result.email = await sendWeeklyEmail(weekEnding, { force: opts.resendEmail });

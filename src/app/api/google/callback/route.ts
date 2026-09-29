@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (!user || user.role !== "admin") return new Response("Forbidden", { status: 403 });
   const { origin, searchParams } = new URL(req.url);
   const fail = (message: string) => {
-    const res = NextResponse.redirect(`${origin}/admin?error=${encodeURIComponent(message)}`);
+    const res = NextResponse.redirect(`${origin}/admin?tab=jobs&error=${encodeURIComponent(message)}`);
     res.cookies.delete({ name: "drive_oauth_state", path: "/api/google" });
     return res;
   };
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     // A reconnect keeps the root folder; re-register the notification channel under the fresh token.
     await ensureDriveWatch({ force: true }).catch(() => undefined);
     revalidatePath("/admin");
-    const res = NextResponse.redirect(`${origin}/admin?ok=${encodeURIComponent(`Connected Google Drive as ${account.emailAddress}. Now set the root folder.`)}`);
+    const res = NextResponse.redirect(`${origin}/admin?tab=jobs&ok=${encodeURIComponent(`Connected Google Drive as ${account.emailAddress}. Now set the root folder.`)}`);
     res.cookies.delete({ name: "drive_oauth_state", path: "/api/google" });
     return res;
   } catch (e) {

@@ -6,9 +6,13 @@ import { addMcpServer, removeMcpServer, setMcpDailyCap, testMcpServerNow, toggle
 import type { DriveStatus } from "@/lib/drive/index";
 import type { McpServer } from "@/db/schema";
 import type { JobRunView } from "@/app/api/admin/job-runs/route";
-import { fmtDate, fmtDateTime } from "@/lib/format";
+import { fmtDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Panel, PanelFooter, PanelHeader, Pill } from "@/components/app/panel";
+import { PageHero } from "@/components/app/page-head";
+import { AdminHead } from "./admin-head";
+import { MemberActions } from "./member-actions";
+import { jobResult, type ConnectionRow, type JobKey } from "./status";
 import { NativeSelect } from "@/components/app/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +26,13 @@ import { MembersPanel, type MembersPanelProps } from "./members-panel";
 type Option = { id: string; label: string };
 
 export type AdminViewProps = {
+  /** Which tab of /admin: Members (the default) or Jobs and connections (`?tab=jobs`). The PT sheet has its own route. */
+  tab: "members" | "jobs";
+  /** Scheduled jobs and services that need a look: the count on the Jobs and connections tab. */
+  attention: number;
+  connections: ConnectionRow[];
+  /** The admin pressing the buttons, for "Send to me only" on the brief. */
+  meEmail: string;
   canMutate: boolean;
   transparency: boolean;
   notice: { ok?: string; error?: string };
@@ -48,141 +59,80 @@ export type AdminViewProps = {
   mcp: { servers: McpServer[]; budget: Record<string, { cap: number | null; used: number }> };
 };
 
-type Dot = "good" | "caution" | "down";
-const DOT: Record<Dot, string> = { good: "bg-up", caution: "bg-caution-foreground", down: "bg-down" };
-
-/** S16: members on the left; connections and scheduled jobs on the right; Drive below, then the plumbing in a collapsed Diagnostics. */
+/** Members, or Jobs and connections: Manage / Admin with its tabs, then the tab's own page. */
 export function AdminView(p: AdminViewProps) {
   const { drive, canMutate } = p;
-  const ingestPending = drive.ingest?.pending ?? 0;
-  const embeddedAll = p.retrieval.stats ? p.retrieval.stats.embeddedWithModel >= p.retrieval.stats.documents : true;
+  const notices = (p.notice.ok || p.notice.error) && (
+    <p role="status" className={cn("mb-4 text-body font-medium", p.notice.error ? "text-caution-foreground" : "text-foreground")}>
+      {p.notice.error ?? p.notice.ok}
+    </p>
+  );
 
-  const connections: { name: string; line: string; dot: Dot; actions: React.ReactNode; title?: string }[] = [
-    {
-      name: "Google Drive",
-      dot: !drive.configured ? "down" : !drive.connected || drive.needsReconnect ? "caution" : drive.lastError ? "down" : drive.watch && !drive.watch.active ? "caution" : "good",
-      line: !drive.configured
-        ? "Not configured on this deployment"
-        : !drive.connected
-          ? "Not connected"
-          : drive.needsReconnect
-            ? "Reconnect needed"
-            : [
-                drive.rootFolderName ?? (drive.rootFolderId ? "Fund folder" : "Root folder not set"),
-                `${drive.fileCount} files indexed`,
-                drive.watch?.active ? `live updates until ${fmtDateTime(drive.watch.expiration)}` : "live updates off",
-              ].join(" · "),
-      title: drive.lastError ?? undefined,
-      actions: canMutate ? (
-        drive.connected && drive.rootFolderId && !drive.needsReconnect ? (
-          <ActionForm action={syncDriveNow}>Sync now</ActionForm>
-        ) : drive.configured ? (
-          <a href="/api/google/connect" className={LINK}>
-            {drive.connected ? "Reconnect" : "Connect"}
-          </a>
-        ) : null
-      ) : (
-        <a href="#drive" className={LINK}>
-          Details
-        </a>
-      ),
-    },
-    {
-      name: "SEC filings index",
-      dot: p.filings.lastRun?.ok === false ? "down" : !p.filings.lastSync ? "caution" : "good",
-      line: `10-K, 10-Q, 8-K and EX-99.1 for every holding · ${p.filings.lastSync ? `last sync ${fmtDate(p.filings.lastSync) || p.filings.lastSync}` : "never synced"}${p.filings.lastRun ? ` · last run ${p.filings.lastRun.ok === false ? "failed" : "ok"} ${fmtDateTime(p.filings.lastRun.at)}` : ""}`,
-      title: "Also runs inside the morning sweep.",
-      actions: canMutate ? (
-        <>
-          <ActionForm action={syncFilingsNow}>Sync</ActionForm>
-          <ActionForm action={backfillFilingsNow}>Backfill</ActionForm>
-        </>
-      ) : null,
-    },
-    {
-      name: "Hoot",
-      dot: p.services.agent ? "good" : "down",
-      line: p.services.agent ? `Ready · web search ${p.services.webSearch ? "on" : "off"}` : "Off: not set up on this deployment",
-      actions: (
-        <a href="#agent" className={LINK}>
-          {canMutate ? "Change" : "Details"}
-        </a>
-      ),
-    },
-    {
-      name: "Document search",
-      dot: !p.retrieval.configured ? "down" : ingestPending > 0 || !embeddedAll ? "caution" : "good",
-      line: !p.retrieval.configured
-        ? "Off: not set up on this deployment"
-        : ingestPending
-          ? `${ingestPending} ${ingestPending === 1 ? "file" : "files"} waiting to be read`
-          : p.retrieval.stats
-            ? `${p.retrieval.stats.embeddedWithModel} of ${p.retrieval.stats.documents} documents searchable`
-            : "Status unavailable",
-      actions:
-        canMutate && drive.connected && drive.rootFolderId ? (
-          <ActionForm action={ingestDriveNow} tone={ingestPending > 0 ? "caution" : undefined}>
-            Read now
-          </ActionForm>
-        ) : (
-          <a href="#retrieval" className={LINK}>
-            Details
-          </a>
-        ),
-    },
-    {
-      name: "Unmatched Drive folders",
-      dot: p.driveUnmatched.length ? "caution" : "good",
-      line: p.driveUnmatched.length
-        ? `“${p.driveUnmatched[0]}”${p.driveUnmatched.length > 1 ? ` and ${p.driveUnmatched.length - 1} more` : ""} ${p.driveUnmatched.length > 1 ? "have" : "has"} no (TICKER) and no holding match`
-        : "Every company folder matched a holding",
-      actions: p.driveUnmatched.length ? (
-        <a href="#drive" className={cn(LINK, "text-caution-foreground")}>
-          Review
-        </a>
-      ) : null,
-    },
-  ];
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-6">
-      {(p.notice.ok || p.notice.error || !canMutate) && (
-        <div className="flex flex-col gap-2">
-          {p.notice.ok && <Banner tone="good">{p.notice.ok}</Banner>}
-          {p.notice.error && <Banner tone="caution">{p.notice.error}</Banner>}
-          {!canMutate && <Banner>View only. Changes here are made by an admin.</Banner>}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_440px]">
+  if (p.tab === "members") {
+    return (
+      <>
+        <AdminHead active="members" attention={p.attention} actions={canMutate ? <MemberActions teams={p.members.teams} /> : undefined} />
+        {notices}
         <MembersPanel {...p.members} />
-        <div className="flex flex-col gap-5">
-          <Panel variant="plain" className="shrink-0">
-            <PanelHeader title="Connections" />
-            {connections.map((c) => (
-              <div key={c.name} className="flex h-[52px] items-center gap-3 px-4">
-                <span className={cn("size-2 shrink-0 rounded-full", DOT[c.dot])} aria-label={c.dot === "good" ? "Healthy" : c.dot === "caution" ? "Needs attention" : "Down"} />
-                <div className="min-w-0 flex-1" title={c.title}>
-                  <div className="text-body font-semibold">{c.name}</div>
-                  <div className="truncate text-caption text-muted-foreground" title={c.line}>
-                    {c.line}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-3">{c.actions}</div>
-              </div>
-            ))}
-            <PanelFooter>
-              News (Finnhub) {p.services.news ? "on" : "off: set FINNHUB_API_KEY"} · Email {p.services.email ? "on" : "log only"} · Web search {p.services.webSearch ? "on" : "off"}
-            </PanelFooter>
-          </Panel>
-          <JobsPanel {...p.jobs} />
-        </div>
+      </>
+    );
+  }
+
+  const needs = p.connections.filter((c) => c.attention);
+  const failedJobs = ["close", "prices", "daily_brief", "morning", "weekly"].flatMap((job) => {
+    const res = jobResult(job === "daily_brief" ? "brief" : (job as JobKey), p.jobs.last[job]);
+    return res.attention ? [JOB_NAMES[job]] : [];
+  });
+  const names = [...failedJobs, ...needs.map((c) => `${c.name}: ${c.line.split(" · ")[0]}`)];
+  return (
+    <>
+      <AdminHead active="jobs" attention={p.attention} />
+      {notices}
+      <PageHero
+        label={`Scheduled jobs and outside services${canMutate ? "" : " · view only, an admin runs and changes them"}`}
+        value={p.attention === 0 ? "All clear" : p.attention === 1 ? "1 needs attention" : `${p.attention} need attention`}
+        note={names.length ? `${names.slice(0, 3).join(" · ")}${names.length > 3 ? ` · ${names.length - 3} more` : ""}` : "No job has failed and every service is connected"}
+      />
+
+      <div className="mt-6 grid grid-cols-1 items-start gap-14 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <JobsPanel {...p.jobs} meEmail={p.meEmail} />
+        <section aria-labelledby="conn">
+          <h2 id="conn" className="mb-1 text-title font-bold tracking-[-0.01em]">
+            Connections
+          </h2>
+          {p.connections.map((c) => (
+            <div key={c.key} className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-row text-body">
+              <span className="flex min-w-0 flex-col py-1" title={c.title}>
+                <b className="font-semibold">{c.name}</b>
+                <span className={cn("truncate text-caption", c.attention ? "text-caution-foreground" : "text-muted-foreground")} title={c.line}>
+                  {c.line}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-3">{connectionActions(c, p)}</span>
+            </div>
+          ))}
+          {drive.connected && (
+            <div className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-row text-body">
+              <span className="flex min-w-0 flex-col py-1">
+                <b className="font-semibold">PT sheet</b>
+                <span className="truncate text-caption text-muted-foreground">Read from the Drive folder: allowed tabs only, never edited</span>
+              </span>
+              <Link href="/admin/pt-sheet" prefetch={false} className={LINK}>
+                Test the read
+              </Link>
+            </div>
+          )}
+          <p className="mt-2 text-caption text-muted-foreground">
+            News {p.services.news ? "on" : "off: set FINNHUB_API_KEY"} · Email {p.services.email ? "on" : "log only"} · Web search {p.services.webSearch ? "on" : "off"}
+          </p>
+        </section>
       </div>
 
+      <div className="mt-10 flex flex-col gap-6">
       <Panel id="drive" variant="plain" className="scroll-mt-20">
         <PanelHeader title="Google Drive" aside={drive.connected ? `connected as ${drive.accountEmail}` : drive.configured ? "not connected" : "set GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, DRIVE_TOKEN_KEY"} />
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
-          <div className="grid content-start gap-3 p-4">
+          <div className="grid content-start gap-3 py-3">
             <p className="text-body text-ink-2">
               Hoot reads the Fund&rsquo;s document folder (initiating reports, earnings updates, models) and files analyst uploads into it. Permissions are read everything plus add new files only: the app never edits or deletes what you put there.
             </p>
@@ -205,7 +155,7 @@ export function AdminView(p: AdminViewProps) {
                 <Label htmlFor="drive-root">Root folder (URL or id)</Label>
                 <div className="flex items-center gap-2">
                   <Input id="drive-root" name="root" placeholder="https://drive.google.com/drive/folders/…" defaultValue={drive.rootFolderId ?? ""} required />
-                  <Button type="submit" variant="outline">
+                  <Button type="submit" variant="secondary">
                     Save
                   </Button>
                 </div>
@@ -213,7 +163,7 @@ export function AdminView(p: AdminViewProps) {
               </form>
             )}
           </div>
-          <div className="grid content-start gap-3 p-4">
+          <div className="grid content-start gap-3 py-3">
             {!drive.connected ? (
               <p className="text-body text-muted-foreground">{drive.configured ? "Connect the Fund's Google account to start." : "Add the three Drive variables to the environment, redeploy, then connect."}</p>
             ) : (
@@ -268,23 +218,23 @@ export function AdminView(p: AdminViewProps) {
           </div>
         </div>
         {canMutate && drive.connected && drive.rootFolderId && (
-          <div className="flex items-center justify-between gap-3 border-t border-row px-4 py-2.5">
+          <div className="flex items-center justify-between gap-3 border-t border-row py-2.5">
             <span className="text-body text-muted-foreground">
               With live updates on, Drive tells the app about changes as they happen; the morning sweep still does a full crawl and renews the channel. Reading files (summaries, search index) continues in the background a few at a time.
             </span>
             <div className="flex shrink-0 gap-2">
               <form action={renewDriveWatchNow}>
-                <Button type="submit" variant="outline">
+                <Button type="submit" variant="secondary">
                   Renew live updates
                 </Button>
               </form>
               <form action={ingestDriveNow}>
-                <Button type="submit" variant="outline">
+                <Button type="submit" variant="secondary">
                   Read files now
                 </Button>
               </form>
               <form action={syncDriveNow}>
-                <Button type="submit" variant="outline">
+                <Button type="submit" variant="secondary">
                   Sync now
                 </Button>
               </form>
@@ -293,8 +243,8 @@ export function AdminView(p: AdminViewProps) {
         )}
       </Panel>
 
-      <Diagnostics summary="Hoot's models, document search, recent job runs, external tools and the PT sheet read">
-        <Panel>
+      <Diagnostics summary="Hoot's models, document search, recent job runs and external tools">
+        <Panel variant="plain">
           <PanelHeader title="Recent runs" aside={p.transparency ? "click a run for its step log" : "updates live while a job runs"} />
           <div className="overflow-x-auto">
             <JobRunsLive initial={p.runs} transparency={p.transparency} />
@@ -304,7 +254,7 @@ export function AdminView(p: AdminViewProps) {
         <div className="grid gap-6 lg:grid-cols-2">
           <Panel id="agent" variant="plain" className="scroll-mt-20">
             <PanelHeader title="Research agent" aside={p.services.agent ? `using ${p.agent.label ?? p.agent.id}` : "set OPENROUTER_API_KEY"} />
-            <form action={setAgentModel} className="grid gap-2 p-4">
+            <form action={setAgentModel} className="grid gap-2 py-3">
               <Label htmlFor="agent-model">Model</Label>
               <div className="flex flex-wrap items-center gap-2">
                 <NativeSelect id="agent-model" name="model" defaultValue={p.agent.id} className="w-72" disabled={!canMutate}>
@@ -316,7 +266,7 @@ export function AdminView(p: AdminViewProps) {
                   {!p.agent.label && <option value={p.agent.id}>{p.agent.id} (from environment)</option>}
                 </NativeSelect>
                 {canMutate && (
-                  <Button type="submit" variant="outline">
+                  <Button type="submit" variant="secondary">
                     Save
                   </Button>
                 )}
@@ -335,7 +285,7 @@ export function AdminView(p: AdminViewProps) {
 
           <Panel id="retrieval" variant="plain" className="scroll-mt-20">
             <PanelHeader title="Retrieval" aside={p.retrieval.configured ? `${p.retrieval.embedLabel ?? p.retrieval.embedId}${p.retrieval.embedDims ? `, ${p.retrieval.embedDims} dims` : ""}` : "embeddings off"} />
-            <div className="grid gap-3 p-4">
+            <div className="grid gap-3 py-3">
               <form action={setEmbeddingModel} className="grid gap-1.5">
                 <Label htmlFor="embed-model">Embedding model</Label>
                 <div className="flex flex-wrap items-center gap-2">
@@ -348,7 +298,7 @@ export function AdminView(p: AdminViewProps) {
                     {!p.retrieval.embedLabel && <option value={p.retrieval.embedId}>{p.retrieval.embedId} (from environment; not in the registry)</option>}
                   </NativeSelect>
                   {canMutate && (
-                    <Button type="submit" variant="outline">
+                    <Button type="submit" variant="secondary">
                       Save
                     </Button>
                   )}
@@ -366,7 +316,7 @@ export function AdminView(p: AdminViewProps) {
                     {!p.retrieval.rerankOptions.some((m) => m.id === p.retrieval.rerankId) && <option value={p.retrieval.rerankId}>{p.retrieval.rerankId} (from environment)</option>}
                   </NativeSelect>
                   {canMutate && (
-                    <Button type="submit" variant="outline">
+                    <Button type="submit" variant="secondary">
                       Save
                     </Button>
                   )}
@@ -384,11 +334,11 @@ export function AdminView(p: AdminViewProps) {
               />
             </div>
             {canMutate && (
-              <form action={reembedNow} className="flex items-center justify-between gap-3 border-t border-row px-4 py-2.5">
+              <form action={reembedNow} className="flex items-center justify-between gap-3 border-t border-row py-2.5">
                 <span className="text-body text-muted-foreground">
                   Search fuses vector and full-text hits, then reranks. Free OpenRouter models share one budget (20 requests/min, 50 or 1,000/day) with the chat model: a switch re-embeds a few documents per run and stops on a 429 until the next run.
                 </span>
-                <Button type="submit" variant="outline" className="shrink-0">
+                <Button type="submit" variant="secondary" className="shrink-0">
                   Re-embed now
                 </Button>
               </form>
@@ -398,19 +348,9 @@ export function AdminView(p: AdminViewProps) {
 
         <McpPanel mcp={p.mcp} canMutate={canMutate} />
 
-        {drive.connected && (
-          <Panel variant="plain">
-            <PanelHeader title="PT sheet read" />
-            <div className="flex items-center justify-between gap-3 px-4 py-3">
-              <span className="text-body text-ink-2">The price target sheet is read separately from the Drive folder: allowed tabs only, never edited. See each tab exactly as Hoot reads it.</span>
-              <Button nativeButton={false} render={<Link href="/admin/pt-sheet" prefetch={false} />} variant="outline" className="shrink-0">
-                Test PT sheet read
-              </Button>
-            </div>
-          </Panel>
-        )}
       </Diagnostics>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -427,12 +367,47 @@ function ActionForm({ action, tone, children }: { action: () => Promise<void>; t
   );
 }
 
-function Banner({ tone, children }: { tone?: "good" | "caution"; children: React.ReactNode }) {
-  return (
-    <div role="status" className={cn("rounded-[10px] px-3.5 py-2 text-body", tone === "good" ? "bg-good text-good-foreground" : tone === "caution" ? "bg-caution text-caution-foreground" : "bg-band text-ink-2")}>
-      {children}
-    </div>
+
+const JOB_NAMES: Record<string, string> = { close: "Close check", prices: "Price history", daily_brief: "Hoot's evening brief", morning: "Morning sweep", weekly: "Weekly update pack" };
+
+/** What each connection row lets you do: an admin runs it, an exec sees where the details are. */
+function connectionActions(c: ConnectionRow, p: AdminViewProps): React.ReactNode {
+  const { drive, canMutate } = p;
+  const ingestPending = drive.ingest?.pending ?? 0;
+  const link = (href: string, label: string, caution?: boolean) => (
+    <a href={href} className={cn(LINK, caution && "text-caution-foreground")}>
+      {label}
+    </a>
   );
+  switch (c.key) {
+    case "drive":
+      if (!canMutate) return link("#drive", "Details");
+      if (drive.connected && drive.rootFolderId && !drive.needsReconnect) return <ActionForm action={syncDriveNow}>Sync now</ActionForm>;
+      return drive.configured ? link("/api/google/connect", drive.connected ? "Reconnect" : "Connect", c.attention) : null;
+    case "drive-unmatched":
+      return c.attention ? link("#drive", "Review", true) : null;
+    case "filings":
+      return canMutate ? (
+        <>
+          <ActionForm action={syncFilingsNow}>Sync</ActionForm>
+          <ActionForm action={backfillFilingsNow}>Backfill</ActionForm>
+        </>
+      ) : null;
+    case "hoot":
+      return link("#agent", canMutate ? "Change" : "Details");
+    case "search":
+      return canMutate && drive.connected && drive.rootFolderId ? (
+        <ActionForm action={ingestDriveNow} tone={ingestPending > 0 ? "caution" : undefined}>
+          Read now
+        </ActionForm>
+      ) : (
+        link("#retrieval", "Details")
+      );
+    case "mcp":
+      return link("#mcp", canMutate ? "Manage" : "Details");
+    default:
+      return null;
+  }
 }
 
 function KV({ rows }: { rows: [string, React.ReactNode][] }) {
@@ -451,29 +426,29 @@ function KV({ rows }: { rows: [string, React.ReactNode][] }) {
 function McpPanel({ mcp, canMutate }: { mcp: AdminViewProps["mcp"]; canMutate: boolean }) {
   const { servers, budget } = mcp;
   return (
-    <Panel id="mcp" className="scroll-mt-20">
+    <Panel id="mcp" variant="plain" className="scroll-mt-20">
       <PanelHeader title="External tools (MCP servers)" count={servers.length || undefined} aside={servers.length ? `${servers.filter((m) => m.enabled).length} of ${servers.length} enabled` : "none registered"} />
       <div className={cn("grid", canMutate && "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]")}>
         <div className="min-w-0 overflow-x-auto">
           {servers.length === 0 ? (
-            <p className="p-4 text-body text-muted-foreground">
+            <p className="py-3 text-body text-muted-foreground">
               No MCP servers yet. Register a remote server (Streamable HTTP) and its tools join the research agent under the prefix you choose. Auth tokens stay in environment variables; only the variable name is stored here.
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="pl-4">Server</TableHead>
+                  <TableHead>Server</TableHead>
                   <TableHead>Prefix</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Tools</TableHead>
-                  {canMutate && <TableHead className="pr-4 text-right">Actions</TableHead>}
+                  {canMutate && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {servers.map((m) => (
                   <TableRow key={m.id}>
-                    <TableCell className="pl-4 align-top">
+                    <TableCell className="align-top">
                       <div className="font-medium">{m.name}</div>
                       <div className="max-w-[280px] truncate text-caption text-muted-foreground" title={m.url}>
                         {m.url}
@@ -500,18 +475,18 @@ function McpPanel({ mcp, canMutate }: { mcp: AdminViewProps["mcp"]; canMutate: b
                       {m.allowedTools?.length ? <div className="mt-1">allowed: {m.allowedTools.join(", ")}</div> : null}
                     </TableCell>
                     {canMutate && (
-                      <TableCell className="pr-4 text-right align-top">
+                      <TableCell className="text-right align-top">
                         <div className="flex justify-end gap-1.5">
                           <form action={testMcpServerNow}>
                             <input type="hidden" name="id" value={m.id} />
-                            <Button type="submit" size="sm" variant="outline">
+                            <Button type="submit" size="sm" variant="secondary">
                               Test
                             </Button>
                           </form>
                           <form action={toggleMcpServer}>
                             <input type="hidden" name="id" value={m.id} />
                             <input type="hidden" name="enabled" value={m.enabled ? "false" : "true"} />
-                            <Button type="submit" size="sm" variant="outline">
+                            <Button type="submit" size="sm" variant="secondary">
                               {m.enabled ? "Disable" : "Enable"}
                             </Button>
                           </form>
@@ -527,8 +502,8 @@ function McpPanel({ mcp, canMutate }: { mcp: AdminViewProps["mcp"]; canMutate: b
                           <Label htmlFor={`mcp-cap-${m.id}`} className="text-body font-normal text-muted-foreground">
                             Daily cap
                           </Label>
-                          <Input id={`mcp-cap-${m.id}`} name="cap" inputMode="numeric" placeholder="none" defaultValue={budget[m.name]?.cap ?? ""} className="h-7 w-16 font-mono text-body" />
-                          <Button type="submit" size="sm" variant="outline">
+                          <Input id={`mcp-cap-${m.id}`} name="cap" inputMode="numeric" placeholder="none" defaultValue={budget[m.name]?.cap ?? ""} className="h-7 w-16 text-body" />
+                          <Button type="submit" size="sm" variant="secondary">
                             Save
                           </Button>
                         </form>
@@ -541,7 +516,7 @@ function McpPanel({ mcp, canMutate }: { mcp: AdminViewProps["mcp"]; canMutate: b
           )}
         </div>
         {canMutate && (
-          <form action={addMcpServer} className="grid content-start gap-2 border-t p-4 lg:border-t-0 lg:border-l">
+          <form action={addMcpServer} className="grid content-start gap-2 border-t py-3 lg:border-t-0 lg:border-l lg:py-0 lg:pl-4">
             <div className="text-body font-semibold">Add a server</div>
             <div className="grid gap-1">
               <Label htmlFor="mcp-name">Name</Label>
@@ -565,7 +540,7 @@ function McpPanel({ mcp, canMutate }: { mcp: AdminViewProps["mcp"]; canMutate: b
               <Label htmlFor="mcp-allowed">Allowed tools (optional, comma-separated)</Label>
               <Input id="mcp-allowed" name="allowedTools" placeholder="search, get_filing" />
             </div>
-            <Button type="submit" variant="outline" className="justify-self-start">
+            <Button type="submit" variant="secondary" className="justify-self-start">
               Add and test
             </Button>
             <p className="text-body text-muted-foreground">Tools appear to the agent as prefix_toolname. The env var is read on this deployment and sent as a Bearer token; set it on Vercel before adding the server.</p>

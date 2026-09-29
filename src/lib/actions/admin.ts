@@ -24,6 +24,11 @@ function back(message?: string, ok = false): never {
   redirect(`/admin${q}`);
 }
 
+/** The settings on the Jobs and connections tab come back to that tab. */
+function backJobs(message: string, ok = false): never {
+  redirect(`/admin?tab=jobs&${ok ? "ok" : "error"}=${encodeURIComponent(message)}`);
+}
+
 function teamFrom(fd: FormData) {
   const v = String(fd.get("teamId") ?? "");
   return v ? v : null;
@@ -107,34 +112,34 @@ export async function resetTestPassword(fd: FormData) {
 export async function setAgentModel(fd: FormData) {
   const me = await requireAdmin();
   const id = String(fd.get("model") ?? "");
-  if (!isAgentModelId(id)) back("Pick one of the listed models", false);
+  if (!isAgentModelId(id)) backJobs("Pick one of the listed models", false);
   await setSetting(AGENT_MODEL_SETTING, id, me.id);
   revalidatePath("/admin");
-  back(`Research agent switched to ${AGENT_MODELS.find((m) => m.id === id)?.label ?? id}`, true);
+  backJobs(`Research agent switched to ${AGENT_MODELS.find((m) => m.id === id)?.label ?? id}`, true);
 }
 
 /** Switching the embedding model requeues every document; the partial HNSW index for the model is created up front. */
 export async function setEmbeddingModel(fd: FormData) {
   const me = await requireAdmin();
   const id = String(fd.get("model") ?? "");
-  if (!isEmbeddingModelId(id)) back("Pick one of the listed embedding models", false);
+  if (!isEmbeddingModelId(id)) backJobs("Pick one of the listed embedding models", false);
   try {
     await ensureEmbeddingIndex(id);
   } catch (e) {
-    back(`Could not prepare the vector index for ${embeddingLabel(id)}: ${e instanceof Error ? e.message : String(e)}`, false);
+    backJobs(`Could not prepare the vector index for ${embeddingLabel(id)}: ${e instanceof Error ? e.message : String(e)}`, false);
   }
   await setSetting(EMBEDDING_MODEL_SETTING, id, me.id);
   revalidatePath("/admin");
-  back(`Embeddings switched to ${embeddingLabel(id)}. Documents are re-embedded a few at a time in the background; press "Re-embed now" to start.`, true);
+  backJobs(`Embeddings switched to ${embeddingLabel(id)}. Documents are re-embedded a few at a time in the background; press "Re-embed now" to start.`, true);
 }
 
 export async function setRerankModel(fd: FormData) {
   const me = await requireAdmin();
   const id = String(fd.get("model") ?? "");
-  if (!isRerankModelId(id)) back("Pick one of the listed rerank options", false);
+  if (!isRerankModelId(id)) backJobs("Pick one of the listed rerank options", false);
   await setSetting(RERANK_MODEL_SETTING, id, me.id);
   revalidatePath("/admin");
-  back(`Reranking set to ${rerankLabel(id)}`, true);
+  backJobs(`Reranking set to ${rerankLabel(id)}`, true);
 }
 
 /** Who Hoot emails the weekly pack to: the first address in To, the rest in CC. Blank means Aadi, with Saad in CC. */
@@ -143,8 +148,8 @@ export async function setWeeklyRecipients(fd: FormData) {
   const raw = String(fd.get("recipients") ?? "").trim();
   const emails = raw.split(/[,\n]/).map((e) => e.trim()).filter(Boolean);
   const bad = emails.find((e) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
-  if (bad) back(`"${bad}" is not an email address`, false);
+  if (bad) backJobs(`"${bad}" is not an email address`, false);
   await setSetting(WEEKLY_RECIPIENTS_SETTING, emails.join(", "), me.id);
   revalidatePath("/admin");
-  back(emails.length ? `The weekly email goes to ${emails.join(", ")}` : "The weekly email goes to Aadi, with Saad in CC", true);
+  backJobs(emails.length ? `The weekly email goes to ${emails.join(", ")}` : "The weekly email goes to Aadi, with Saad in CC", true);
 }
