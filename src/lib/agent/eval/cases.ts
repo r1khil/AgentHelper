@@ -8,7 +8,8 @@ import type { PageContext } from "../page-context";
  *
  * Tags: `portfolio` (needs the Fund's own numbers), `research` (filings, news, documents), `boundary` (the learning
  * boundary: Hoot gathers evidence, the analyst writes), `control` (asks Hoot to operate the app with its navigate and
- * set_theme tools).
+ * set_theme tools), `workspace` (the app's own pages: movements, earnings, economic releases, the ledger, to-dos, the
+ * changelog).
  */
 export type EvalCase = {
   id: string;
@@ -19,7 +20,7 @@ export type EvalCase = {
   ticker?: string;
   /** Where the member asked from. */
   page?: PageContext;
-  tags: ("portfolio" | "research" | "boundary" | "control" | "macro")[];
+  tags: ("portfolio" | "research" | "boundary" | "control" | "macro" | "workspace")[];
   /** Providers the case can't be judged without; the runner skips it (and says so) where they aren't configured. */
   needs?: ("fred" | "sandbox" | "web" | "drive")[];
   expect: {
@@ -201,6 +202,81 @@ export const EVAL_CASES: EvalCase[] = [
     tags: ["portfolio"],
     needs: ["sandbox"],
     expect: { calls: ["run_python"], maxToolCalls: 5 },
+  },
+
+  // The workspace's own pages (Movements, Earnings, Economic releases, Activity, Home, Changelog): one lookup for the
+  // list, never one per ticker, the web, or a price lookup standing in for the ledger.
+  {
+    id: "earnings-next-two-weeks",
+    question: "which of our holdings report earnings in the next two weeks?",
+    as: "associate",
+    tags: ["workspace"],
+    expect: { calls: ["get_upcoming_earnings"], notCalls: ["get_earnings_calendar", "search_web"], maxToolCalls: 2, maxErrors: 0 },
+  },
+  {
+    id: "earnings-fund-prep",
+    question: "Across the whole fund, who reports in the next month, and are the prep packs ready?",
+    as: "exec",
+    tags: ["workspace"],
+    expect: { calls: ["get_upcoming_earnings"], notCalls: ["get_earnings_calendar", "search_web"], maxToolCalls: 2, maxErrors: 0, answer: [/prep pack/i] },
+  },
+  {
+    id: "econ-calendar-week",
+    question: "what's on the economic calendar this week?",
+    as: "associate",
+    tags: ["workspace", "macro"],
+    expect: { calls: ["get_economic_calendar"], notCalls: ["search_web", "get_news"], maxToolCalls: 2, maxErrors: 0, answer: [/consensus|prior|forecast/i] },
+  },
+  {
+    id: "econ-releases-out",
+    question: "what economic releases are out this week?",
+    as: "exec",
+    tags: ["workspace", "macro"],
+    expect: { calls: ["get_economic_calendar"], notCalls: ["search_web"], maxToolCalls: 2, maxErrors: 0 },
+  },
+  {
+    id: "ledger-avgo-buy",
+    question: "when did we buy AVGO and at what price?",
+    as: "exec",
+    tags: ["workspace", "portfolio"],
+    expect: { calls: ["get_ledger"], notCalls: ["get_price_history", "get_quote", "search_web"], maxToolCalls: 2, maxErrors: 0, answer: [/\$\d/, /opening|ledger (?:started|opened)|already held/i] },
+    note: "Most holdings entered the ledger as an opening snapshot at that day's close; that is not a purchase price.",
+  },
+  {
+    id: "ledger-associate",
+    question: "when did we buy AVGO and at what price?",
+    as: "associate",
+    tags: ["workspace"],
+    expect: { notCalls: ["search_web", "get_price_history"], maxToolCalls: 3, answer: [/\bexecs?\b|\badmins?\b/i] },
+    note: "The ledger is execs and admins only, as the Activity page is; Hoot says so rather than piecing trades together.",
+  },
+  {
+    id: "todos-today",
+    question: "what do I need to do today?",
+    as: "exec",
+    tags: ["workspace"],
+    expect: { calls: ["get_my_todos"], notCalls: ["search_web"], maxToolCalls: 3, maxErrors: 0, answer: [/due|overdue/i] },
+  },
+  {
+    id: "whats-new-week",
+    question: "what changed in the app this week?",
+    as: "exec",
+    tags: ["workspace"],
+    expect: { calls: ["get_whats_new"], notCalls: ["search_web", "read_url"], maxToolCalls: 2, maxErrors: 0 },
+  },
+  {
+    id: "movements-open-team",
+    question: "which movements are still open for my team?",
+    as: "associate",
+    tags: ["workspace"],
+    expect: { calls: ["get_movements"], notCalls: ["get_relative_moves", "search_web"], maxToolCalls: 2, maxErrors: 0 },
+  },
+  {
+    id: "movements-overdue-fund",
+    question: "Which movement write-ups are overdue across the fund?",
+    as: "exec",
+    tags: ["workspace"],
+    expect: { calls: ["get_movements"], notCalls: ["get_relative_moves", "search_web"], maxToolCalls: 2, maxErrors: 0, answer: [/overdue/i] },
   },
 
   // The learning boundary.
