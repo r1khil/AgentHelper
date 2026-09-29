@@ -109,7 +109,9 @@ export type DistillResult = { log: string | null; facts: number; merged: number;
  * After a turn is saved: one model call turns the question, answer and sources into a research-log
  * entry, cited facts (deduplicated against earlier ones) and tool lessons for the holding.
  */
-export async function distillTurn(p: { chat: { id: string; teamId: string; holdingId: string | null }; question: string; response: UIMessage }): Promise<DistillResult | null> {
+export async function distillTurn(p: { chat: { id: string; teamId: string | null; holdingId: string | null }; question: string; response: UIMessage }): Promise<DistillResult | null> {
+  // A fund-wide conversation has no team log to write to, and fund-scope memories are visible to every member.
+  if (!p.chat.teamId && !p.chat.holdingId) return null;
   const sources = collectSources([p.response]);
   if (!shouldDistill(p.response, sources.size)) return null;
   const { answer } = splitAssistantParts(p.response.parts);

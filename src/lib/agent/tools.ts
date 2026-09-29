@@ -5,7 +5,7 @@ import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
-import { holdingNotes, holdings, movements } from "@/db/schema";
+import { holdingNotes, holdings, movements, teams } from "@/db/schema";
 import { getDailyBars, getEarningsDate, getEstimates, getHolders, getQuote, getQuotes, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { getInsiderTransactions, TRANSACTION_CODES } from "@/lib/providers/edgar-form4";
 import { fetchWebPage, safeWebUrl } from "@/lib/agent/web";
@@ -117,7 +117,7 @@ async function keyFinancialsFor(ticker: string, periodKind: "quarter" | "annual"
 }
 
 /** `memoryBlocked` turns true once the PT sheet is in the conversation: nothing from such a chat is saved. */
-export function makeTools(ctx: { teamId: string; holdingId?: string | null; userId: string; sources?: Source[]; memoryBlocked?: () => boolean; memoryOff?: boolean }) {
+export function makeTools(ctx: { teamId: string | null; holdingId?: string | null; userId: string; sources?: Source[]; memoryBlocked?: () => boolean; memoryOff?: boolean }) {
   const filingSources = new Map<string, Source>((ctx.sources ?? []).filter((s) => s.id.startsWith("sec-") && s.url?.startsWith("https://www.sec.gov/Archives/")).map((s) => [s.url!, s]));
   /** Every source any tool returned in this conversation, so `remember` can attach real Source objects to a fact. */
   const seen = new Map<string, Source>((ctx.sources ?? []).map((s) => [s.id, s]));
@@ -169,6 +169,7 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
           if (cited.some(isPtSheetSource)) throw new Error("Figures from the price target sheet are never saved to memory.");
           if (kind === "fact" && cited.length === 0) throw new Error("A fact needs at least one source id returned by a tool in this conversation. Save it as a lesson if it is about how to use the tools.");
           const effScope = scope === "holding" && !ctx.holdingId ? "team" : scope;
+          if (effScope === "team" && !ctx.teamId) throw new Error("This is a fund-wide conversation with no team: save a holding fact from a holding's chat, or a fund-wide fact with scope 'fund' only if every member may see it.");
           const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 86_400_000) : kind === "fact" ? new Date(Date.now() + MARKET_FACT_TTL_DAYS * 86_400_000) : null;
           const r = await rememberMemory({ scope: effScope, teamId: ctx.teamId, holdingId: effScope === "holding" ? (ctx.holdingId ?? null) : null, kind, body, sources: cited, evidenceAt: kind === "fact" ? (newestEvidenceDate(cited) ?? new Date()) : null, expiresAt, createdBy: `agent:${ctx.userId}` });
           return { data: { saved: true, id: r.id, merged: r.merged, scope: effScope, note: r.merged ? "An equivalent note already existed; it was marked as verified today." : undefined }, sources: [] };
@@ -500,14 +501,21 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
     }),
 
     get_team_context: tool({
-      description: "The team's current holdings, theses, recent notes, and open movement investigations from the workspace database.",
+      description: "The team's current holdings, theses, recent notes, and open movement investigations from the workspace database. In a fund-wide conversation: every team's holdings, with the detail for the one ticker you pass.",
       inputSchema: z.object({ ticker: tickerArg.optional().describe("Limit to one holding") }),
       execute: async ({ ticker }): Promise<ToolResult<unknown>> => {
         const rows = await db
-          .select({ h: holdings })
+          .select({ h: holdings, team: teams.name })
           .from(holdings)
-          .where(and(eq(holdings.teamId, ctx.teamId), eq(holdings.status, "active")));
+          .innerJoin(teams, eq(teams.id, holdings.teamId))
+          .where(and(ctx.teamId ? eq(holdings.teamId, ctx.teamId) : undefined, eq(holdings.status, "active")));
         const subset = ticker ? rows.filter((r) => r.h.ticker === ticker.toUpperCase()) : rows;
+        // The whole Fund is too many holdings to detail one by one: list them, and detail the one asked for.
+        if (!ctx.teamId && !ticker)
+          return {
+            data: { holdings: rows.map((r) => ({ ticker: r.h.ticker, company: r.h.companyName, team: r.team, thesis: r.h.thesis?.slice(0, 300) ?? null })), note: "Fund-wide: pass a ticker for its notes, movements and documents." },
+            sources: [],
+          };
         const driveOn = driveConfigured();
         const sources: Source[] = [];
         const out = [];
@@ -520,6 +528,7 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
           out.push({
             ticker: r.h.ticker,
             company: r.h.companyName,
+            ...(ctx.teamId ? {} : { team: r.team }),
             thesis: r.h.thesis,
             thesisUpdatedAt: r.h.thesisUpdatedAt,
             pendingThesisProposal: pendingThesis ? { fileName: pendingThesis.sourceFileName, note: "Extracted by the app from the initiating report; awaiting analyst review. Not the recorded thesis." } : null,
@@ -777,11 +786,11 @@ export function makeTools(ctx: { teamId: string; holdingId?: string | null; user
     }),
 
     get_peer_moves: tool({
-      description: "Today's price moves for the team's other holdings (peers), each relative to the S&P 500.",
+      description: "Today's price moves for the team's other holdings (peers), each relative to the S&P 500; in a fund-wide conversation, every holding in the Fund.",
       inputSchema: z.object({}),
       execute: async (): Promise<ToolResult<unknown>> => {
         try {
-          const rows = await db.select({ ticker: holdings.ticker }).from(holdings).where(and(eq(holdings.teamId, ctx.teamId), eq(holdings.status, "active")));
+          const rows = await db.select({ ticker: holdings.ticker }).from(holdings).where(and(ctx.teamId ? eq(holdings.teamId, ctx.teamId) : undefined, eq(holdings.status, "active")));
           const tickers = rows.map((r) => r.ticker);
           const quotes = await getQuotes([...tickers, SPX_SYMBOL]);
           const spx = quotes[SPX_SYMBOL]?.changePct ?? 0;

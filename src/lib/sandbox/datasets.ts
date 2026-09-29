@@ -38,7 +38,7 @@ export type Dataset = {
   source: Source;
 };
 
-export type DatasetContext = { viewer: CurrentUser; teamId: string };
+export type DatasetContext = { viewer: CurrentUser; teamId: string | null };
 
 const appUrl = (path: string) => `${(process.env.APP_URL ?? "").replace(/\/$/, "")}${path}`;
 const TICKER = /^[A-Z0-9.^=-]{1,12}$/;

@@ -25,7 +25,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ documentId: str
     }
     if (/^call-[0-9a-f-]{36}$/i.test(documentId)) {
       const call = await getCall(documentId.slice(5));
-      if (!call || call.teamId !== chat.teamId) return Response.json({ error: "Source unavailable." }, { status: 404, headers });
+      // A fund-wide chat (execs and admins only, as canOpenChat checked) may cite any team's call.
+      if (!call || (chat.teamId !== null && call.teamId !== chat.teamId)) return Response.json({ error: "Source unavailable." }, { status: 404, headers });
       const parts = await callParts(call.id);
       return Response.json({ title: call.title, text: parts.map((p) => p.text ?? "[Part not yet transcribed]").join("\n\n"), url: null }, { headers });
     }

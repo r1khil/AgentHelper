@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, or, sql, type SQL } from "drizzle-orm";
 import type { UIMessage } from "ai";
 import { db } from "@/db/client";
 import { chatMessages, chats, holdings, profiles, teams } from "@/db/schema";
@@ -148,14 +148,17 @@ export type GeneralChat = { c: typeof chats.$inferSelect; authorName: string | n
 /**
  * Hoot conversations that aren't about one holding (asked from attribution, backtesting, Today…), newest first.
  * Empty chats are left out: Hoot creates the chat before the first message is sent. A call brief counts, question or not.
+ * The fund-wide scope (several teams) also lists an exec's or admin's fund-wide chats (no team) to execs and admins.
  */
 export async function listGeneralChats(teamId: TeamIds, viewer: ChatViewer, limit = 50): Promise<GeneralChat[]> {
-  if (Array.isArray(teamId) && teamId.length === 0) return [];
+  if (Array.isArray(teamId) && teamId.length === 0 && !viewer.fundWide) return [];
+  const onTeams = Array.isArray(teamId) && teamId.length === 0 ? undefined : inTeams(chats.teamId, teamId);
+  const inScope = Array.isArray(teamId) && viewer.fundWide ? or(onTeams, isNull(chats.teamId)) : onTeams;
   const rows = await db
     .select({ c: chats, authorName: profiles.fullName, questions: questionCount })
     .from(chats)
     .leftJoin(profiles, eq(profiles.id, chats.createdBy))
-    .where(and(inTeams(chats.teamId, teamId), isNull(chats.holdingId), hasMessages, visibleTo(viewer)))
+    .where(and(inScope, isNull(chats.holdingId), hasMessages, visibleTo(viewer)))
     .orderBy(desc(chats.updatedAt))
     .limit(limit);
   return rows.map((r) => ({ ...r, questions: Number(r.questions) }));
