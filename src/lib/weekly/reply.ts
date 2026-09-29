@@ -13,8 +13,8 @@ import { getPack, normalizeAgenda, packFigures } from "./store";
 
 /**
  * A reply in the thread of the Sunday weekly email is an edit request for that week's pack, not a question for Hoot's
- * research agent: the thread quotes PT sheet numbers, which only the sheet-safe model (Ling) may see, while the research
- * agent can fall back to other models. So these replies stay here, on Ling, and never reach the general answer flow.
+ * research agent: the thread quotes PT sheet numbers, which only the sheet-safe model (PT_SHEET_MODEL_ID) may see, while the research
+ * agent can fall back to other models. So these replies stay here, on that model, and never reach the general answer flow.
  */
 
 const JOB = "weekly_reply";
@@ -109,7 +109,7 @@ export async function handleWeeklyReply(opts: {
       model: chatModel(PT_SHEET_MODEL_ID),
       instructions: editInstructions(),
       prompt: `THE PACK NOW:\n\n${packForPrompt(agenda, figures)}\n\nTHE EMAIL:\n\n${text.slice(0, 6000)}`,
-      // Ling's reasoning counts against this; a small budget has cut its answers off before.
+      // Reasoning counts against this; a small budget has cut answers off before.
       maxOutputTokens: 4000,
       maxRetries: 2,
       abortSignal: AbortSignal.timeout(90_000),

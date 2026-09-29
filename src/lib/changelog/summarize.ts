@@ -5,8 +5,8 @@ import { cleanBody, parseSummaryReply } from "./clean";
 import type { MergedPull, PullFile } from "./github";
 
 export const FALLBACK_MODEL = "none";
-/** Free OpenRouter model used for release notes; CHANGELOG_MODEL overrides it, "agent" uses the Admin page choice. */
-export const DEFAULT_CHANGELOG_MODEL = "cohere/north-mini-code:free";
+/** Model used for release notes (GPT-6 Luna since 2026-09-28, like every chat model); CHANGELOG_MODEL overrides it, "agent" uses the Admin page choice. */
+export const DEFAULT_CHANGELOG_MODEL = "openai/gpt-6-luna";
 
 export async function changelogModelId(): Promise<string> {
   const chosen = process.env.CHANGELOG_MODEL;

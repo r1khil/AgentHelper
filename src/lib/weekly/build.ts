@@ -87,7 +87,7 @@ async function explainMovers(performers: WeeklyPerformers): Promise<{ notes: Non
     model: chatModel(PT_SHEET_MODEL_ID),
     instructions: whyInstructions(),
     prompt: whyPrompt(movers, news),
-    // Ling's reasoning counts against this; a small budget has cut its answers off before.
+    // Reasoning counts against this; a small budget has cut answers off before.
     maxOutputTokens: 4000,
     maxRetries: 2,
     abortSignal: AbortSignal.timeout(90_000),
