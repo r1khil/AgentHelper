@@ -12,11 +12,17 @@ export type JobLastRun = { startedAt: string; finishedAt: string | null; ok: boo
 
 export type JobKey = "close" | "prices" | "brief" | "morning" | "bellwethers" | "prep" | "weekly";
 
+/** A run with no finish after this long died with its function (jobs stop at 300s); it will never record an end. */
+export const ABANDONED_AFTER_MS = 15 * 60_000;
+
+/** Whether a run is still going: unfinished and young enough to be. An older unfinished run was killed. */
+export const stillRunning = (r: Pick<JobLastRun, "startedAt" | "finishedAt">, now = Date.now()) => !r.finishedAt && now - Date.parse(r.startedAt) < ABANDONED_AFTER_MS;
+
 /** The result of a job's last run in words, and whether it needs a look. */
-export function jobResult(key: JobKey, r: JobLastRun | null | undefined): { text: string; attention: boolean } {
+export function jobResult(key: JobKey, r: JobLastRun | null | undefined, now = Date.now()): { text: string; attention: boolean } {
   if (!r) return { text: key === "bellwethers" || key === "prep" ? "Runs with the morning sweep" : "No runs yet", attention: false };
   const when = fmtDateTime(r.startedAt);
-  if (!r.finishedAt) return { text: `Running since ${when}`, attention: false };
+  if (!r.finishedAt) return stillRunning(r, now) ? { text: `Running since ${when}`, attention: false } : { text: `${when} · didn't finish (timed out)`, attention: true };
   if (r.ok === false) return { text: `${when} · failed`, attention: true };
   const s = r.summary as { status?: string; created?: unknown[]; reminders?: number; updated?: unknown[]; email?: { status?: string } };
   if (s.status === "skipped") return { text: `${when} · skipped`, attention: false };
@@ -35,15 +41,25 @@ export type ConnectionRow = { key: ConnectionName; name: string; line: string; a
 export type ConnectionInput = {
   drive: DriveStatus;
   driveUnmatched: string[];
-  filings: { lastSync: string | null; lastRun: { ok: boolean | null; at: string } | null };
+  filings: { lastSync: string | null; lastRun: { ok: boolean | null; at: string; finishedAt: string | null } | null };
   services: { agent: boolean; news: boolean; email: boolean; webSearch: boolean };
   retrieval: { configured: boolean; stats: { documents: number; embeddedWithModel: number } | null };
   mcp: { total: number; enabled: number; failing: number; names: string[] };
 };
 
 /** Every outside service, with what is true of it and whether that needs a look. */
-export function connectionRows(p: ConnectionInput): ConnectionRow[] {
+export function connectionRows(p: ConnectionInput, now = Date.now()): ConnectionRow[] {
   const { drive } = p;
+  const filingsRun = p.filings.lastRun;
+  const filingsRunState = !filingsRun
+    ? null
+    : filingsRun.ok === false
+      ? "failed"
+      : filingsRun.finishedAt
+        ? "ok"
+        : stillRunning({ startedAt: filingsRun.at, finishedAt: null }, now)
+          ? "running"
+          : "didn't finish";
   const ingestPending = drive.ingest?.pending ?? 0;
   const embeddedAll = p.retrieval.stats ? p.retrieval.stats.embeddedWithModel >= p.retrieval.stats.documents : true;
   const driveLine = !drive.configured
@@ -71,8 +87,9 @@ export function connectionRows(p: ConnectionInput): ConnectionRow[] {
     {
       key: "filings",
       name: "SEC filings index",
-      line: `10-K, 10-Q, 8-K and EX-99.1 for every holding · ${p.filings.lastSync ? `last sync ${fmtDate(p.filings.lastSync) || p.filings.lastSync}` : "never synced"}${p.filings.lastRun ? ` · last run ${p.filings.lastRun.ok === false ? "failed" : "ok"} ${fmtDateTime(p.filings.lastRun.at)}` : ""}`,
-      attention: p.filings.lastRun?.ok === false || !p.filings.lastSync,
+      // "Complete through" is the date every holding was last listed; a run that skipped some leaves it behind.
+      line: `10-K, 10-Q, 8-K and EX-99.1 for every holding · ${p.filings.lastSync ? `complete through ${fmtDate(p.filings.lastSync) || p.filings.lastSync}` : "no complete sync yet"}${filingsRun ? ` · last run ${fmtDateTime(filingsRun.at)}, ${filingsRunState}` : ""}`,
+      attention: filingsRunState === "failed" || filingsRunState === "didn't finish" || !p.filings.lastSync,
       title: "Also runs inside the morning sweep.",
     },
     { key: "hoot", name: "Hoot", line: p.services.agent ? `Ready · web search ${p.services.webSearch ? "on" : "off"}` : "Off: not set up on this deployment", attention: !p.services.agent },

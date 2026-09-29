@@ -20,6 +20,8 @@ export type FilingsSyncResult = {
   /** Non-text filing rows (exhibit images) removed before listing. */
   pruned: number;
   failed: { ticker: string; error: string }[];
+  /** Holdings with no SEC registrant (ETFs and funds): nothing to list, and no reason to hold back the sync date. */
+  noRegistrant: string[];
   ingest?: IngestResult;
   elapsedMs: number;
 };
@@ -35,7 +37,7 @@ export async function syncFilings(opts: { backfill?: boolean; budgetMs?: number;
   const started = Date.now();
   const budgetMs = opts.budgetMs ?? 240_000;
   const now = new Date();
-  const result: FilingsSyncResult = { status: "ok", holdings: 0, listed: 0, added: 0, pruned: 0, failed: [], elapsedMs: 0 };
+  const result: FilingsSyncResult = { status: "ok", holdings: 0, listed: 0, added: 0, pruned: 0, failed: [], noRegistrant: [], elapsedMs: 0 };
   const done = (r: FilingsSyncResult) => ({ ...r, elapsedMs: Date.now() - started });
   const [jobRow] = await db.insert(jobRuns).values({ job: "filings_sync", summary: { reason: opts.reason ?? "manual", backfill: Boolean(opts.backfill) } }).returning({ id: jobRuns.id });
   const progress = createJobReporter(jobRow.id);
@@ -47,16 +49,22 @@ export async function syncFilings(opts: { backfill?: boolean; budgetMs?: number;
     const rows = await db.select({ id: holdings.id, ticker: holdings.ticker, companyName: holdings.companyName, cik: holdings.cik }).from(holdings).where(eq(holdings.status, "active"));
     result.holdings = rows.length;
     progress.step("list filings", { holdings: rows.length, since: listingSince(window) });
+    let listedAll = true;
     for (const [i, h] of rows.entries()) {
       if (Date.now() - started > budgetMs * 0.6) {
         progress.warn("budget spent before every holding was listed", { at: i });
+        listedAll = false;
         break;
       }
       try {
         let cik = h.cik;
         if (!cik) {
           const r = await tickerToCik(h.ticker);
-          if (!r) throw new Error("no SEC registrant for this ticker");
+          if (!r) {
+            result.noRegistrant.push(h.ticker);
+            progress.item("holding", i + 1, rows.length, { ticker: h.ticker, skipped: "no SEC registrant" });
+            continue;
+          }
           cik = r.cik;
           await db.update(holdings).set({ cik }).where(and(eq(holdings.id, h.id), eq(holdings.status, "active")));
         }
@@ -76,7 +84,8 @@ export async function syncFilings(opts: { backfill?: boolean; budgetMs?: number;
         progress.item("holding", i + 1, rows.length, { ticker: h.ticker, error: msg(e).slice(0, 200) });
       }
     }
-    if (!result.failed.length) await setSetting(FILINGS_LAST_SYNC_SETTING, now.toISOString().slice(0, 10), null);
+    // The next run lists from this date, so it moves only when every holding was listed.
+    if (listedAll && !result.failed.length) await setSetting(FILINGS_LAST_SYNC_SETTING, now.toISOString().slice(0, 10), null);
     progress.step("ingest filings", { listed: result.listed, added: result.added });
     const remaining = budgetMs - (Date.now() - started);
     if (remaining > 15_000) result.ingest = await runIngest({ reason: opts.reason ?? "filings", kinds: ["filing"], budgetMs: remaining - 5_000, maxDocs: 40 });

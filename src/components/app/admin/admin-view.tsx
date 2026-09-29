@@ -42,7 +42,7 @@ export type AdminViewProps = {
   services: { agent: boolean; news: boolean; email: boolean; webSearch: boolean };
   drive: DriveStatus;
   driveUnmatched: string[];
-  filings: { lastSync: string | null; lastRun: { ok: boolean | null; at: string } | null };
+  filings: { lastSync: string | null; lastRun: { ok: boolean | null; at: string; finishedAt: string | null } | null };
   agent: { id: string; label: string | null; options: Option[] };
   /** The model that writes the Changelog's summaries. */
   changelogModel: string;
@@ -457,13 +457,14 @@ function McpPanel({ mcp, canMutate }: { mcp: AdminViewProps["mcp"]; canMutate: b
                     </TableCell>
                     <TableCell className="align-top font-mono text-body">{m.toolPrefix}_</TableCell>
                     <TableCell className="align-top text-body">
-                      <Pill tone={m.enabled ? "good" : "neutral"}>{m.enabled ? "Enabled" : "Disabled"}</Pill>
-                      <div className="mt-1 text-muted-foreground">{m.lastOkAt ? `ok ${fmtDateTime(m.lastOkAt)}` : "never connected"}</div>
+                      {/* One state: the latest error wins over an older success, which then only says when it last worked. */}
+                      <Pill tone={!m.enabled ? "neutral" : m.lastError ? "caution" : "good"}>{!m.enabled ? "Disabled" : m.lastError ? "Failing" : "Enabled"}</Pill>
                       {m.lastError && (
                         <div className="mt-1 max-w-[220px] truncate text-destructive" title={m.lastError}>
                           {m.lastError}
                         </div>
                       )}
+                      <div className="mt-1 text-muted-foreground">{m.lastOkAt ? `${m.lastError ? "last worked" : "ok"} ${fmtDateTime(m.lastOkAt)}` : "never connected"}</div>
                       {budget[m.name]?.cap != null && (
                         <div className="mt-1 text-muted-foreground">
                           today {budget[m.name].used} of {budget[m.name].cap} calls (UTC)

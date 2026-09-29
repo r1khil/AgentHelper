@@ -40,7 +40,7 @@ export async function loadAdminStatus() {
   const lastFilingsRun = lastRuns.filings_sync;
   const driveUnmatched = ((lastDriveRun?.summary as { unmatched?: string[] } | undefined)?.unmatched ?? []).slice(0, 12);
   const services = { agent: agentConfigured(), news: finnhubConfigured(), email: emailConfigured(), webSearch: tavilyConfigured() };
-  const filings = { lastSync: filingsLastSync, lastRun: lastFilingsRun ? { ok: lastFilingsRun.ok, at: lastFilingsRun.startedAt.toISOString() } : null };
+  const filings = { lastSync: filingsLastSync, lastRun: lastFilingsRun ? { ok: lastFilingsRun.ok, at: lastFilingsRun.startedAt.toISOString(), finishedAt: lastFilingsRun.finishedAt?.toISOString() ?? null } : null };
   const connections = connectionRows({
     drive,
     driveUnmatched,

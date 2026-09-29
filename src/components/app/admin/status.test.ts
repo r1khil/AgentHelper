@@ -7,7 +7,7 @@ const drive = (over: Partial<DriveStatus> = {}): DriveStatus => ({ configured: t
 const input = (over: object = {}) => ({
   drive: drive(),
   driveUnmatched: [] as string[],
-  filings: { lastSync: "2026-09-28", lastRun: { ok: true, at: "2026-09-28T14:00:00Z" } },
+  filings: { lastSync: "2026-09-28", lastRun: { ok: true, at: "2026-09-28T14:00:00Z", finishedAt: "2026-09-28T14:00:07Z" } },
   services: { agent: true, news: true, email: true, webSearch: true },
   retrieval: { configured: true, stats: { documents: 5, embeddedWithModel: 5 } },
   mcp: { total: 2, enabled: 2, failing: 0, names: ["FRED", "Wikipedia"] },
@@ -24,7 +24,10 @@ describe("jobResult", () => {
   it("is not a failure to have not run, or to run with the sweep", () => {
     expect(jobResult("close", null)).toEqual({ text: "No runs yet", attention: false });
     expect(jobResult("prep", null)).toEqual({ text: "Runs with the morning sweep", attention: false });
-    expect(jobResult("close", run({ finishedAt: null })).attention).toBe(false);
+    expect(jobResult("close", run({ finishedAt: null }), Date.parse("2026-09-25T20:25:00Z"))).toEqual({ text: "Running since Fri, Sep 25, 4:20 PM ET", attention: false });
+  });
+  it("reads a run that never finished as timed out, not running all day", () => {
+    expect(jobResult("morning", run({ finishedAt: null, ok: null }), Date.parse("2026-09-25T22:30:00Z"))).toEqual({ text: "Fri, Sep 25, 4:20 PM ET · didn't finish (timed out)", attention: true });
   });
 });
 
@@ -38,6 +41,19 @@ describe("connectionRows and attentionCount", () => {
     const rows = connectionRows(input({ drive: drive({ needsReconnect: true }) }));
     expect(rows[0]).toMatchObject({ key: "drive", line: "Reconnect needed", attention: true });
     expect(attentionCount({ close: run({ ok: false }), prices: run() }, rows)).toBe(2);
+  });
+  it("says how far the filings index is complete and how the last run ended", () => {
+    const now = Date.parse("2026-09-29T22:30:00Z");
+    const ok = connectionRows(input(), now).find((r) => r.key === "filings")!;
+    expect(ok.line).toContain("complete through");
+    expect(ok.line).toContain(", ok");
+    expect(ok.attention).toBe(false);
+    const dead = connectionRows(input({ filings: { lastSync: "2026-09-28", lastRun: { ok: null, at: "2026-09-29T14:30:07Z", finishedAt: null } } }), now).find((r) => r.key === "filings")!;
+    expect(dead.line).toMatch(/didn't finish$/);
+    expect(dead.attention).toBe(true);
+    const never = connectionRows(input({ filings: { lastSync: null, lastRun: null } }), now).find((r) => r.key === "filings")!;
+    expect(never.line).toContain("no complete sync yet");
+    expect(never.line).not.toContain("last run");
   });
   it("counts folders with no holding, a failing tool server and email that is not set up", () => {
     const rows = connectionRows(input({ driveUnmatched: ["Acme"], mcp: { total: 1, enabled: 1, failing: 1, names: ["FRED"] }, services: { agent: true, news: true, email: false, webSearch: true } }));
