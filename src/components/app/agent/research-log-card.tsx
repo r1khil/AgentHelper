@@ -1,15 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, ChevronDown, Trash2 } from "lucide-react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MemoryEntry } from "@/lib/agent/memory/prompt";
 import { dateOf, daysBetween, isStaleFact } from "@/lib/agent/memory/prompt";
 import { resolveSource } from "@/lib/agent/source-resolution";
 import { deleteMemory } from "@/lib/actions/memory";
+import { fmtDayMonth } from "@/lib/format";
+import { SideHeading } from "@/components/app/chat/thread-parts";
 
-/** Evidence older than this gets a warning tint on its age chip. */
+/** Evidence older than this gets an amber note. */
 const OLD_EVIDENCE_DAYS = 90;
+/** Notes shown before "Show all". */
+const SHOWN = 4;
 
 /** Latest research-log suggestions for the empty state, else the static defaults. */
 export function suggestionsFor(ticker: string, memories: MemoryEntry[], fallback: (t: string) => string[]) {
@@ -18,120 +22,123 @@ export function suggestionsFor(ticker: string, memories: MemoryEntry[], fallback
   return qs.length ? qs : fallback(ticker);
 }
 
-function AgeChip({ m, now }: { m: MemoryEntry; now: Date }) {
-  if (!m.evidenceAt) return <span className="rounded-full bg-muted px-1.5 font-mono text-caption text-muted-foreground">noted {dateOf(m.createdAt)}</span>;
+/** How old the evidence behind a note is, in words: grey when recent, amber when old or stale. */
+function Age({ m, now }: { m: MemoryEntry; now: Date }) {
+  if (!m.evidenceAt) return <span className="text-muted-foreground">noted {fmtDayMonth(m.createdAt)}</span>;
   const days = daysBetween(m.evidenceAt, now);
   const stale = isStaleFact(m, now);
   return (
-    <span
-      className={cn("rounded-full px-1.5 font-mono text-caption", stale ? "bg-destructive/10 text-destructive" : days > OLD_EVIDENCE_DAYS ? "bg-caution text-caution-foreground" : "bg-muted text-muted-foreground")}
-      title={`Evidence dated ${dateOf(m.evidenceAt)}${m.verifiedAt ? `, confirmed again ${dateOf(m.verifiedAt)}` : ""}`}
-    >
-      evidence {days} day{days === 1 ? "" : "s"} old{m.verifiedAt ? " · verified" : ""}
+    <span className={cn(stale || days > OLD_EVIDENCE_DAYS ? "text-caution-foreground" : "text-muted-foreground")} title={`Evidence dated ${dateOf(m.evidenceAt)}${m.verifiedAt ? `, confirmed again ${dateOf(m.verifiedAt)}` : ""}`}>
+      {stale ? "stale, " : ""}evidence {days} day{days === 1 ? "" : "s"} old{m.verifiedAt ? ", verified" : ""}
     </span>
   );
 }
 
-function SourceChips({ sources }: { sources: MemoryEntry["sources"] }) {
+function SourceLinks({ sources }: { sources: MemoryEntry["sources"] }) {
   if (!sources.length) return null;
   return (
-    <span className="ml-1 inline-flex flex-wrap gap-1 align-middle">
-      {sources.slice(0, 4).map((s) => {
+    <>
+      {sources.slice(0, 3).map((s) => {
         const t = resolveSource(s);
         const label = (s.publisher || s.title || s.id).slice(0, 28);
         return t.kind === "external" ? (
-          <a key={s.id} href={t.href} target="_blank" rel="noopener noreferrer" title={s.title} className="rounded-full bg-hoot px-1.5 text-caption text-hoot-foreground hover:underline">
+          <a key={s.id} href={t.href} target="_blank" rel="noopener noreferrer" title={s.title} className="text-muted-foreground underline underline-offset-2 hover:text-foreground">
             {label}
           </a>
         ) : (
-          <span key={s.id} title={s.title} className="rounded-full bg-hoot px-1.5 text-caption text-hoot-foreground">
+          <span key={s.id} title={s.title} className="text-muted-foreground">
             {label}
           </span>
         );
       })}
-      {sources.length > 4 && <span className="text-caption text-muted-foreground">+{sources.length - 4}</span>}
-    </span>
+      {sources.length > 3 && <span className="text-muted-foreground">+{sources.length - 3}</span>}
+    </>
   );
 }
 
-function Remove({ id }: { id: string }) {
+function Remove({ id, what }: { id: string; what: string }) {
   return (
     <form
       action={deleteMemory}
-      className="ml-auto shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+      className="shrink-0"
       onSubmit={(e) => {
         if (!confirm("Remove this entry from the research log?")) e.preventDefault();
       }}
     >
       <input type="hidden" name="id" value={id} />
-      <button type="submit" aria-label="Remove entry" className="rounded p-0.5 text-muted-foreground hover:text-destructive">
-        <Trash2 className="size-3" />
+      <button type="submit" aria-label={`Remove: ${what}`} className="grid size-5 place-items-center rounded text-muted-foreground hover:text-down focus-visible:outline-2 focus-visible:outline-ring">
+        <X className="size-3" aria-hidden />
       </button>
     </form>
   );
 }
 
 /**
- * What the agent learned about this holding in earlier chats: one line per answered question, then the
- * facts and tool lessons it kept, each labeled with the age of its evidence. Collapsible; on the research board
- * it sits in the side column's Board tab.
+ * "What Hoot remembers about THC": the facts and tool lessons the agent kept from earlier chats, each with the age of its
+ * evidence, and under them the research log (one line per answered question). "Edit memories" lets leads, execs and
+ * admins remove entries (an analyst can remove those from their own chats).
  */
-export function ResearchLogCard({ entries, canManage, defaultOpen }: { entries: MemoryEntry[]; canManage: boolean; defaultOpen: boolean }) {
-  const [open, setOpen] = useState(defaultOpen);
+export function ResearchMemory({ ticker, entries, canManage }: { ticker: string; entries: MemoryEntry[]; canManage: boolean }) {
+  const [editing, setEditing] = useState(false);
+  const [all, setAll] = useState(false);
+  const [log, setLog] = useState(false);
   const now = new Date();
   const live = entries.filter((m) => !(m.expiresAt && new Date(m.expiresAt) < now));
-  const logs = live.filter((m) => m.kind === "log").slice(0, 6);
-  const facts = live.filter((m) => m.kind !== "log").slice(0, 8);
-  if (live.length === 0) return null;
+  const facts = live.filter((m) => m.kind !== "log");
+  const logs = live.filter((m) => m.kind === "log");
+  const shownFacts = all ? facts : facts.slice(0, SHOWN);
+
   return (
-    <div className="rounded-[10px] bg-card shadow-[0_0_0_1px_var(--border)]">
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-center gap-2 px-3 py-2.5 text-left">
-        <BookOpen className="size-3.5 text-muted-foreground" />
-        <span className="label-mono text-muted-foreground">Research log</span>
-        <span className="font-mono text-caption text-muted-foreground">
-          {logs.length} question{logs.length === 1 ? "" : "s"} · {facts.length} note{facts.length === 1 ? "" : "s"}
-        </span>
-        <ChevronDown className={cn("ml-auto size-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
-      </button>
-      {open && (
-        <div className="border-t px-3 pt-3 pb-3.5 text-body leading-[18px]">
+    <section aria-label={`What Hoot remembers about ${ticker}`}>
+      <SideHeading>What Hoot remembers about {ticker}</SideHeading>
+      {live.length === 0 ? (
+        <p className="mt-1 text-caption text-muted-foreground">Nothing yet. After each answer, Hoot notes what he learned about {ticker} here.</p>
+      ) : (
+        <>
+          {shownFacts.map((m) => (
+            <div key={m.id} className="flex items-start gap-2 border-b border-row py-[7px] text-caption text-ink-3">
+              <div className="min-w-0 flex-1">
+                {m.kind === "lesson" && <span className="mr-1 font-semibold text-foreground">Lesson</span>}
+                {m.body}
+                <span className="mt-0.5 flex flex-wrap gap-x-1.5">
+                  <Age m={m} now={now} />
+                  <SourceLinks sources={m.sources} />
+                </span>
+              </div>
+              {editing && canManage && <Remove id={m.id} what={m.body.slice(0, 60)} />}
+            </div>
+          ))}
+          {facts.length > SHOWN && (
+            <button type="button" onClick={() => setAll((v) => !v)} className="mt-1 text-caption text-ink-2 hover:text-foreground">
+              {all ? "Show fewer" : `Show all ${facts.length}`}
+            </button>
+          )}
           {logs.length > 0 && (
-            <ul className="space-y-2">
-              {logs.map((m) => (
-                <li key={m.id} className="group flex gap-2">
-                  <span className="shrink-0 font-mono text-caption leading-[18px] text-muted-foreground">{dateOf(m.createdAt)}</span>
-                  <div className="min-w-0 flex-1">
-                    {m.meta?.question && <div className="truncate text-caption text-muted-foreground" title={m.meta.question}>{m.meta.question}</div>}
-                    <div>{m.body}</div>
-                  </div>
-                  {canManage && <Remove id={m.id} />}
-                </li>
-              ))}
-            </ul>
-          )}
-          {facts.length > 0 && (
-            <>
-              <div className={cn("label-mono text-muted-foreground", logs.length > 0 && "mt-3.5")}>Known facts and lessons</div>
-              <ul className="mt-1.5 space-y-1.5">
-                {facts.map((m) => (
-                  <li key={m.id} className="group flex items-start gap-2">
+            <div className="mt-2">
+              <button type="button" onClick={() => setLog((v) => !v)} aria-expanded={log} className="text-caption text-ink-2 hover:text-foreground">
+                {log ? "Hide" : "Show"} research log · {logs.length} question{logs.length === 1 ? "" : "s"}
+              </button>
+              {log &&
+                logs.slice(0, 6).map((m) => (
+                  <div key={m.id} className="flex items-start gap-2 border-b border-row py-[7px] text-caption text-ink-3">
                     <div className="min-w-0 flex-1">
-                      {m.kind === "lesson" && <span className="mr-1 rounded-full bg-muted px-1.5 font-mono text-caption text-foreground">lesson</span>}
-                      <span>{m.body}</span>
-                      <SourceChips sources={m.sources} />
-                      <span className="ml-1 inline-block align-middle">
-                        <AgeChip m={m} now={now} />
-                      </span>
+                      {m.meta?.question && <div className="truncate text-muted-foreground" title={m.meta.question}>{m.meta.question}</div>}
+                      {m.body}
+                      <div className="text-muted-foreground">{fmtDayMonth(m.createdAt)}</div>
                     </div>
-                    {canManage && <Remove id={m.id} />}
-                  </li>
+                    {editing && canManage && <Remove id={m.id} what={m.body.slice(0, 60)} />}
+                  </div>
                 ))}
-              </ul>
-            </>
+            </div>
           )}
-          <div className="mt-3 text-caption text-muted-foreground">Written by Hoot after each answer. Evidence dates say how old the sources behind a fact are; Hoot re-checks old ones before quoting a number.</div>
-        </div>
+          {canManage && (
+            <button type="button" onClick={() => setEditing((v) => !v)} aria-pressed={editing} className="mt-1.5 block text-caption font-semibold text-foreground hover:underline">
+              {editing ? "Done editing" : "Edit memories"}
+            </button>
+          )}
+          <p className="mt-2 text-caption text-muted-foreground">Written by Hoot after each answer. He re-checks old evidence before quoting a number.</p>
+        </>
       )}
-    </div>
+    </section>
   );
 }

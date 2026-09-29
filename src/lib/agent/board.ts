@@ -1,10 +1,13 @@
 import type { UIMessage } from "ai";
 import type { Source } from "@/lib/providers/types";
 import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
-import { fmtBp, fmtDay, fmtMoney, fmtPct } from "@/lib/format";
+import { DateTime } from "luxon";
+import { fmtBp, fmtDay, fmtDayMonth, fmtMoney, fmtPct, fmtTime } from "@/lib/format";
+import { NY } from "@/lib/providers/calendar";
 import { CITATION_RE, resolveCitedId } from "./citations";
 import { enrichLegacySource } from "./source-resolution";
 import { hiddenPromptLabel } from "./hidden-prompt";
+import { parsePageContext, type PageContext } from "./page-context";
 import { isToolPart, splitAssistantParts, summarizeActivity, type Part } from "./turn";
 
 /** One question and, once it exists, the assistant message that answers it. */
@@ -12,6 +15,8 @@ export type Turn = {
   /** The user message id; stable before and after the answer arrives. */
   id: string;
   question: string;
+  /** Where the member asked from, when Hoot was handed a page. */
+  page?: PageContext | null;
   /** Set when a job asked (a call brief): shown in place of the question, which is its hidden prompt. */
   label?: string;
   assistant?: UIMessage;
@@ -30,7 +35,7 @@ export function pairTurns(messages: UIMessage[]): Turn[] {
             .map((p) => (p.type === "text" ? p.text : ""))
             .join("")
             .trim();
-      turns.push({ id: m.id, question, label, answerText: "", activity: [] });
+      turns.push({ id: m.id, question, page: parsePageContext((m.metadata as { page?: unknown } | undefined)?.page), label, answerText: "", activity: [] });
     } else if (m.role === "assistant" && turns.length > 0) {
       const t = turns[turns.length - 1];
       const { activity, answer } = splitAssistantParts(m.parts);
@@ -176,4 +181,43 @@ export function marketFigure(row: TurnSource): MarketFigure | null {
     return { big: fmtBp(rel * 100), tone: tone(rel), sub };
   }
   return null;
+}
+
+/** "12s", "1m 05s": how long a turn took, for "Worked for 12s". */
+export function workedFor(ms: number): string {
+  const s = Math.max(1, Math.round(ms / 1000));
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
+}
+
+/** The turn's saved duration, when the run recorded one. */
+export function savedTurnMs(turn: Pick<Turn, "assistant">): number | null {
+  const ms = (turn.assistant?.metadata as { ms?: unknown } | undefined)?.ms;
+  return typeof ms === "number" && ms > 0 ? ms : null;
+}
+
+/** The day a time falls on, the way the lists give it: "today", "Fri" within the week, "Jul 31" after. Null for a time that can't be read. */
+export function dayWhen(iso: string, now: Date = new Date()): string | null {
+  const t = DateTime.fromISO(iso).setZone(NY);
+  if (!t.isValid) return null;
+  const today = DateTime.fromJSDate(now).setZone(NY).startOf("day");
+  const days = Math.round(today.diff(t.startOf("day"), "days").days);
+  if (days <= 0) return "today";
+  return days < 7 ? t.toFormat("ccc") : fmtDayMonth(iso);
+}
+
+/** When a chat last moved: "2:41 PM ET" today, then "Fri" within the week, "Jul 31" after. */
+export function chatWhen(iso: string, now: Date = new Date()): string {
+  const day = dayWhen(iso, now);
+  return day === "today" ? fmtTime(iso) : (day ?? "");
+}
+
+/** The answer's words with its [src:…] markers turned into the numbers its cards carry ("[1][2]"), for pasting elsewhere. */
+export function answerForCopy(text: string, numbers: Map<string, number>): string {
+  return text.replace(new RegExp(CITATION_RE), (_, ids: string) =>
+    ids
+      .split(",")
+      .map((raw) => raw.replace(/^\s*src:\s*/, "").trim())
+      .map((id) => `[${numbers.get(id) ?? "?"}]`)
+      .join(""),
+  );
 }

@@ -1,11 +1,11 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { Children, createContext, isValidElement, useContext, useMemo, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Tooltip } from "@base-ui/react/tooltip";
 import type { Source } from "@/lib/providers/types";
-import { remarkCitations } from "@/lib/agent/citation-markdown";
+import { isFigureCell, remarkCitations, remarkNumericColumns } from "@/lib/agent/citation-markdown";
 import { resolveCitedId } from "@/lib/agent/citations";
 import { externalUrl, resolveSource, sourceType } from "@/lib/agent/source-resolution";
 import { fmtDate } from "@/lib/format";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { SourceViewer } from "./source-viewer";
 
 /**
- * Board mode: citation chips talk to a sources panel rendered elsewhere instead of navigating.
+ * Board mode: citations talk to a sources panel rendered elsewhere instead of navigating.
  * `openIds` are the source cards currently expanded; `highlight` is the card under the pointer.
  */
 export type CitationLinks = {
@@ -21,8 +21,10 @@ export type CitationLinks = {
   onHover?: (id: string | null) => void;
   openIds?: ReadonlySet<string>;
   highlight?: string | null;
-  /** Chips in an inactive answer read as quiet footnotes until that answer is selected. */
+  /** Citations in an inactive answer read as quiet footnotes until that answer is selected. */
   dim?: boolean;
+  /** The element id of a source's card, so a citation is a real link to it. */
+  anchor?: (id: string) => string;
 };
 
 const SourceContext = createContext<{ sources: Map<string, Source>; numbers: Map<string, number>; open: (source: Source) => void; links?: CitationLinks }>({
@@ -66,6 +68,9 @@ export function useSourceViewer() {
   return useContext(SourceContext).open;
 }
 
+/** Hoot's citation: a superscript number, underlined, on the page's `cite` style. Amber when the source is unavailable. */
+const CITE = "cite focus-visible:outline-2 focus-visible:outline-offset-2";
+
 export function Citation({ id: cited, full = false }: { id: string; full?: boolean }) {
   const { sources, numbers, open, links } = useContext(SourceContext);
   // Answers saved (or still streaming) with a mistyped id still point at the one source they meant.
@@ -75,10 +80,8 @@ export function Citation({ id: cited, full = false }: { id: string; full?: boole
   const title = source?.title?.trim() || "Untitled source";
   const label = numbers.has(id) ? `[${numbers.get(id)}]` : "[?]";
   const unavailable = target.kind === "unavailable";
-  if (links && !full) return <ChipCitation id={id} n={numbers.get(id)} title={title} source={source} unavailable={unavailable} links={links} />;
-  const className = full
-    ? "block w-full rounded-md px-2 py-1.5 text-left text-caption hover:bg-muted"
-    : `${CHIP} ${unavailable ? "bg-destructive/10 text-destructive" : "bg-hoot text-hoot-foreground hover:ring-1 hover:ring-hoot-foreground/50"}`;
+  if (links && !full) return <LinkedCitation id={id} n={numbers.get(id)} title={title} source={source} unavailable={unavailable} links={links} />;
+  const className = full ? "block w-full rounded-md px-2 py-1.5 text-left text-caption hover:bg-muted" : cn(CITE, unavailable ? "text-caution-foreground" : "text-foreground hover:text-ink-2");
   const content = full ? (
     <>
       <span className="line-clamp-2 font-medium">
@@ -101,7 +104,7 @@ export function Citation({ id: cited, full = false }: { id: string; full?: boole
     ) : (
       <button
         type="button"
-        className={className}
+        className={cn(className, !full && "cursor-pointer bg-transparent")}
         aria-label={`${label} ${unavailable ? "Source unavailable" : title}`}
         onClick={() => open(source ?? { id, title: "Source unavailable", publisher: "", retrievedAt: "" })}
       >
@@ -121,7 +124,7 @@ export function Citation({ id: cited, full = false }: { id: string; full?: boole
             {source?.location?.section && <div className="mt-1">{source.location.section}</div>}
             {source?.location?.page && <div>Page {source.location.page}</div>}
             <p className="mt-2 whitespace-pre-wrap">{source?.excerpt?.slice(0, 360) || "Supporting excerpt unavailable. Open the document to review the source."}</p>
-            {unavailable && <p className="mt-2 text-destructive">Source unavailable: {target.reason}</p>}
+            {unavailable && <p className="mt-2 text-caution-foreground">Source unavailable: {target.reason}</p>}
           </Tooltip.Popup>
         </Tooltip.Positioner>
       </Tooltip.Portal>
@@ -129,40 +132,34 @@ export function Citation({ id: cited, full = false }: { id: string; full?: boole
   );
 }
 
-/** A footnote-style chip that selects a source card on the board. Hover previews the source. */
-function ChipCitation({ id, n, title, source, unavailable, links }: { id: string; n?: number; title: string; source?: Source; unavailable: boolean; links: CitationLinks }) {
+/** A superscript citation that selects a source card (a link to it when the answer knows where the card is). Hover previews the source. */
+function LinkedCitation({ id, n, title, source, unavailable, links }: { id: string; n?: number; title: string; source?: Source; unavailable: boolean; links: CitationLinks }) {
   const isOpen = links.openIds?.has(id) ?? false;
   const hot = links.highlight === id;
-  const className = [
-    CHIP,
-    "transition-[color,background-color,box-shadow,opacity]",
-    unavailable
-      ? "bg-destructive/10 text-destructive"
-      : isOpen
-        ? "bg-hoot-foreground text-hoot"
-        : hot
-          ? "bg-hoot text-hoot-foreground ring-1 ring-hoot-foreground/60"
-          : "bg-hoot text-hoot-foreground",
-    links.dim && !isOpen && !hot ? "opacity-60" : "",
-  ].join(" ");
+  const className = cn(CITE, unavailable ? "text-caution-foreground" : "text-foreground", (isOpen || hot) && "[text-decoration-thickness:2px]", links.dim && !isOpen && !hot && "opacity-60");
+  const label = `[${n ?? "?"}] ${unavailable ? "Source unavailable" : title}`;
+  const handlers = {
+    onClick: (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (links.anchor) e.preventDefault();
+      links.onCite(id);
+    },
+    onMouseEnter: () => links.onHover?.(id),
+    onMouseLeave: () => links.onHover?.(null),
+  };
   return (
     <Tooltip.Root>
       <Tooltip.Trigger
         render={
-          <button
-            type="button"
-            className={className}
-            aria-label={`[${n ?? "?"}] ${unavailable ? "Source unavailable" : title}`}
-            aria-pressed={isOpen}
-            onClick={(e) => {
-              e.stopPropagation();
-              links.onCite(id);
-            }}
-            onMouseEnter={() => links.onHover?.(id)}
-            onMouseLeave={() => links.onHover?.(null)}
-          >
-            {n ?? "?"}
-          </button>
+          links.anchor ? (
+            <a href={`#${links.anchor(id)}`} className={className} aria-label={label} {...handlers}>
+              {n ?? "?"}
+            </a>
+          ) : (
+            <button type="button" className={cn(className, "cursor-pointer bg-transparent")} aria-label={label} aria-pressed={isOpen} {...handlers}>
+              {n ?? "?"}
+            </button>
+          )
         }
       />
       <Tooltip.Portal>
@@ -173,7 +170,7 @@ function ChipCitation({ id, n, title, source, unavailable, links }: { id: string
               {source ? sourceType(source) : "Unknown source type"} · {fmtDate(source?.publishedAt) || "Date unavailable"}
             </div>
             <p className="mt-2 line-clamp-4 whitespace-pre-wrap">{source?.excerpt?.slice(0, 360) || "Supporting excerpt unavailable. Open the source card to review it."}</p>
-            {unavailable && <p className="mt-2 text-destructive">Source unavailable</p>}
+            {unavailable && <p className="mt-2 text-caution-foreground">Source unavailable</p>}
           </Tooltip.Popup>
         </Tooltip.Positioner>
       </Tooltip.Portal>
@@ -181,15 +178,34 @@ function ChipCitation({ id, n, title, source, unavailable, links }: { id: string
   );
 }
 
-/** Hoot's pink numbered citation chip: tiny, round, mono. */
-const CHIP = "mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1.5 align-[1px] font-mono text-caption leading-none font-medium not-italic no-underline focus-visible:outline-2";
+/** The words in a table cell. */
+function plain(children: ReactNode): string {
+  return Children.toArray(children)
+    .map((c) => (typeof c === "string" || typeof c === "number" ? String(c) : isValidElement<{ children?: ReactNode }>(c) ? plain(c.props.children) : ""))
+    .join("");
+}
 
-/** Reusable for research prose anywhere in the app. Markdown's URL protections stay enabled. */
+/** Accounting format carries the colour: (6.4) is down, +8.8 up. Anything that is not a figure stays ink. */
+function cellTone(text: string) {
+  const t = text.trim();
+  if (!isFigureCell(t)) return undefined;
+  return t.startsWith("(") ? "text-down" : t.startsWith("+") ? "text-up" : undefined;
+}
+
+/**
+ * Hoot's prose, anywhere in the app: serif, with his citations as superscripts and his tables as hairline tables (12px
+ * grey column labels, 34px rows, figures right-aligned and coloured up and down). Markdown's URL protections stay enabled.
+ */
 export function ResearchAnswer({ text, className }: { text: string; className?: string }) {
   return (
-    <div className={cn("prose-sm max-w-none text-body leading-relaxed [&_h1]:mt-3 [&_h1]:text-emph [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:text-body [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:text-body [&_h3]:font-semibold [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_table]:my-2 [&_table]:text-body [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:bg-muted [&_th]:px-2 [&_th]:py-1 [&_ul]:list-disc [&_ul]:pl-5", className)}>
+    <div
+      className={cn(
+        "hoot-prose max-w-none [&_b]:font-semibold [&_h1]:mt-4 [&_h1]:mb-1 [&_h1]:text-title [&_h1]:font-semibold [&_h2]:mt-4 [&_h2]:mb-1 [&_h2]:text-emph [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:font-semibold [&_li]:my-1 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-0 [&_p+p]:mt-3.5 [&_strong]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6",
+        className,
+      )}
+    >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkCitations]}
+        remarkPlugins={[remarkGfm, remarkCitations, remarkNumericColumns]}
         components={{
           cite: ({ node }) => <Citation id={String(node?.properties["data-source-id"] ?? "")} />,
           a: ({ href, children }) => {
@@ -202,6 +218,21 @@ export function ResearchAnswer({ text, className }: { text: string; className?: 
               <span title="Link unavailable">{children}</span>
             );
           },
+          table: ({ children }) => (
+            <div className="my-3 overflow-x-auto">
+              <table className="w-full border-collapse font-sans text-body">{children}</table>
+            </div>
+          ),
+          th: ({ children, style }) => (
+            <th style={style} className="h-8 border-b px-2 text-left align-bottom text-caption font-normal whitespace-nowrap text-muted-foreground first:pl-0 last:pr-0">
+              {children}
+            </th>
+          ),
+          td: ({ children, style }) => (
+            <td style={style} className={cn("h-[34px] border-b border-row px-2 py-1 align-middle first:pl-0 last:pr-0", cellTone(plain(children)))}>
+              {children}
+            </td>
+          ),
         }}
       >
         {text}

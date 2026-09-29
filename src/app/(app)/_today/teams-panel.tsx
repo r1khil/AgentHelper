@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { Acct } from "@/components/app/accounting";
-import { Panel, PanelHeader } from "@/components/app/panel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fmtAccounting, fmtCurrency } from "@/lib/format";
+import { fmtChangeBp, fmtChangePct, fmtCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { TeamRowData } from "./types";
 import { ReadAs, tickerName } from "@/components/app/read-as";
@@ -60,15 +58,13 @@ export function TeamsPanel({
     });
 
   return (
-    <Panel data-tour="today-teams" aria-label={title}>
-      <PanelHeader
-        title={title}
-        aside={
-          <Link href={holdingsHref} className="text-body font-semibold text-foreground hover:underline">
-            Holdings →
-          </Link>
-        }
-      />
+    <section data-tour="today-teams" aria-label={title}>
+      <div className="flex items-baseline justify-between border-b pb-1.5">
+        <h2 className="text-body font-bold">{title}</h2>
+        <Link href={holdingsHref} className="text-caption text-ink-2 hover:text-foreground">
+          Holdings
+        </Link>
+      </div>
       <div role="table" aria-label={title} className="flex flex-col">
         <div role="rowgroup">
           <div role="row" className={cn("grid h-8 shrink-0 items-center gap-3 px-4 text-body text-muted-foreground", cols)}>
@@ -119,20 +115,20 @@ export function TeamsPanel({
                     {/* Below xl the biggest mover shows here; its column, which screen readers read, is out of sight. */}
                     {withBook && t.mover && (
                       <span aria-hidden className="text-caption text-muted-foreground xl:hidden">
-                        Biggest mover <span className="font-mono text-ink-2">{t.mover.ticker} {fmtAccounting(t.mover.pct, 2, "%")}</span>
+                        Biggest mover <span className="text-ink-2">{t.mover.ticker} {fmtChangePct(t.mover.pct)}</span>
                       </span>
                     )}
                   </button>
                 </span>
                 {withBook && (
                   <>
-                    <span role="cell" className={cn("text-right font-mono text-body font-medium tabular-nums", tone(t.stats?.ret))}>{t.stats ? <Acct value={t.stats.ret * 100} unit="%" /> : "—"}</span>
-                    <span role="cell" className={cn("text-right font-mono text-body tabular-nums", tone(c))}>{c === null ? "—" : <Acct value={c} digits={0} unit=" bp" />}</span>
+                    <span role="cell" className={cn("text-right text-body font-medium tabular-nums", tone(t.stats?.ret))}>{t.stats ? fmtChangePct(t.stats.ret * 100) : "—"}</span>
+                    <span role="cell" className={cn("text-right text-body tabular-nums", tone(c))}>{c === null ? "—" : fmtChangeBp(c)}</span>
                     <ContributionBar bp={c} scale={scale} />
                   </>
                 )}
-                <span role="cell" className={cn("truncate font-mono text-body text-ink-2", withBook && "sr-only xl:not-sr-only")}>
-                  {t.mover ? `${t.mover.ticker} ${fmtAccounting(t.mover.pct, 2, "%")}` : live || withBook ? "—" : <Skeleton className="h-4 w-24" />}
+                <span role="cell" className={cn("truncate text-body text-ink-2", withBook && "sr-only xl:not-sr-only")}>
+                  {t.mover ? `${t.mover.ticker} ${fmtChangePct(t.mover.pct)}` : live || withBook ? "—" : <Skeleton className="h-4 w-24" />}
                 </span>
               </div>
               {isOpen && (
@@ -146,7 +142,7 @@ export function TeamsPanel({
           );
         })}
       </div>
-    </Panel>
+    </section>
   );
 }
 
@@ -176,7 +172,7 @@ function TeamHoldings({ team, live }: { team: TeamRowData; live: boolean }) {
         {team.holdings.map((h) => (
           <div role="row" key={h.id} className={cn(HOLDING_COLS, "relative min-h-9 border-t border-row py-1 xl:py-0")}>
             <span role="rowheader" className="flex min-w-0 flex-col xl:flex-row xl:items-baseline xl:gap-2">
-              <RowLink cover="cell" href={h.href} aria-label={tickerName(h.ticker, h.company)} className="shrink-0 font-mono font-semibold hover:underline">
+              <RowLink cover="cell" href={h.href} aria-label={tickerName(h.ticker, h.company)} className="shrink-0 font-semibold hover:underline">
                 {h.ticker}
               </RowLink>
               <span aria-hidden className="text-caption text-muted-foreground xl:truncate xl:text-body">
@@ -185,9 +181,9 @@ function TeamHoldings({ team, live }: { team: TeamRowData; live: boolean }) {
             </span>
             {live ? (
               <>
-                <span role="cell" className="text-right font-mono tabular-nums">{fmtCurrency(h.price, h.currency)}</span>
-                <span role="cell" className={cn("text-right font-mono tabular-nums", tone(h.changePct))}><Acct value={h.changePct} unit="%" /></span>
-                <span role="cell" className="text-right font-mono text-muted-foreground tabular-nums"><Acct value={h.relativePp == null ? null : h.relativePp * 100} digits={0} unit=" bp" /></span>
+                <span role="cell" className="text-right tabular-nums">{fmtCurrency(h.price, h.currency)}</span>
+                <span role="cell" className={cn("text-right tabular-nums", tone(h.changePct))}>{fmtChangePct(h.changePct)}</span>
+                <span role="cell" className="text-right text-muted-foreground tabular-nums">{h.relativePp == null ? "—" : fmtChangeBp(h.relativePp * 100)}</span>
               </>
             ) : (
               <>
@@ -196,7 +192,7 @@ function TeamHoldings({ team, live }: { team: TeamRowData; live: boolean }) {
                 <span role="cell"><Skeleton className="ml-auto h-4 w-12" /></span>
               </>
             )}
-            <span role="cell" className="text-right font-mono text-muted-foreground">{h.nextReport ?? "—"}</span>
+            <span role="cell" className="text-right text-muted-foreground">{h.nextReport ?? "—"}</span>
           </div>
         ))}
       </div>

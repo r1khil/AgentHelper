@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Activity, CalendarDays, CalendarRange, FileText, Mic, Sparkles, Table2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { dismissHootNudge } from "@/lib/actions/preferences";
 import type { HootFeed, HootNudge } from "@/lib/hoot/types";
-import { analystSentence, isOverdue, listNudges, listSentence, nudgeAction, nudgeWhen } from "@/lib/today";
-import { Panel, PanelHeader, PanelFooter } from "@/components/app/panel";
-import { Button } from "@/components/ui/button";
+import { analystSentence, isOverdue, listNudges, needsSentence, nudgeWhen } from "@/lib/today";
 import { fmtTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -16,24 +14,19 @@ const REFRESH_MS = 5 * 60_000;
 const SHOWN = 5;
 /** Opening these is the same as dealing with them, as in Hoot's panel. */
 const DISMISS_ON_OPEN = new Set(["sell_side", "changelog", "weekly", "proposal"]);
-/**
- * A row: icon, title over detail, when, action, dismiss. Below xl (a 1,045 px window) "when" leads the detail line so
- * the title keeps its width; the title and detail wrap rather than cut off, so a long one makes its row taller.
- */
-const LIST_ROW = "grid min-h-[58px] grid-cols-[32px_minmax(0,1fr)_116px_20px] items-center gap-3 px-4 py-1.5 xl:grid-cols-[32px_minmax(0,1fr)_150px_116px_20px]";
 
 type Feed = { nudges: HootNudge[]; updatedAt: string; dismiss: (n: HootNudge) => void };
 const FeedContext = createContext<Feed | null>(null);
 
 function useFeed() {
   const f = useContext(FeedContext);
-  if (!f) throw new Error("Today's Hoot list needs <TodayFeed>.");
+  if (!f) throw new Error("Home's list needs <TodayFeed>.");
   return f;
 }
 
 /**
- * Hoot's nudges for Today: seeded by the server, re-fetched from /api/hoot every five minutes (and when the tab
- * comes back), shared by the list and the greeting's sentence so both count the same things.
+ * Hoot's nudges for Home: seeded by the server, re-fetched from /api/hoot every five minutes (and when the tab comes
+ * back), shared by the list and the greeting's sentence so both count the same things.
  */
 export function TodayFeed({ initial, loadedAt, children }: { initial: HootNudge[]; loadedAt: string; children: React.ReactNode }) {
   const [nudges, setNudges] = useState(() => listNudges(initial));
@@ -85,90 +78,102 @@ export function TodayFeed({ initial, loadedAt, children }: { initial: HootNudge[
 }
 
 /**
- * "I found four things for you, one of them overdue.", or for an analyst "Your team owes 1 write-up, due 12:00 ET Monday."
- * Follows the list as it refreshes.
+ * The line's last sentence: "3 things need you." (a link down to the list), or for an analyst what their team owes
+ * ("Your team owes 1 write-up, due 12:00 PM ET Monday."). Follows the list as it refreshes.
  */
-export function ListSentence({ analyst }: { analyst: boolean }) {
+export function NeedsSentence({ analyst }: { analyst: boolean }) {
   const { nudges } = useFeed();
-  return <>{analyst ? analystSentence(nudges) : listSentence(nudges.length, nudges.filter(isOverdue).length)}</>;
+  const owed = analyst ? analystSentence(nudges) : null;
+  const need = needsSentence(nudges.length);
+  if (owed) return <>{owed}</>;
+  if (!need) return <>Nothing needs you right now.</>;
+  return (
+    <a href="#needs" className="font-semibold text-foreground underline-offset-2 hover:underline">
+      {need}
+    </a>
+  );
 }
 
-function iconFor(n: HootNudge) {
-  if (n.kind === "proposal" && n.id.startsWith("proposal:model:")) return Table2;
-  return { movement: Activity, earnings: CalendarDays, sell_side: Mic, proposal: FileText, weekly: CalendarRange, changelog: Sparkles, tip: Sparkles }[n.kind];
+/** The tag word in front of a row: red when overdue, amber when something failed, grey for what's just waiting. */
+function tagOf(n: HootNudge): { word: string; className: string } {
+  if (isOverdue(n)) return { word: "Overdue", className: "text-down" };
+  switch (n.kind) {
+    case "sell_side":
+      return n.id.endsWith(":error") ? { word: "Failed", className: "text-caution-foreground" } : { word: "Ready", className: "text-muted-foreground" };
+    case "movement":
+      return { word: "Due", className: "text-muted-foreground" };
+    case "earnings":
+      return { word: n.id.endsWith(":expectations") ? "Due" : "Soon", className: "text-muted-foreground" };
+    case "proposal":
+      return { word: "Review", className: "text-muted-foreground" };
+    case "weekly":
+      return { word: "Weekly", className: "text-muted-foreground" };
+    case "changelog":
+      return { word: "New", className: "text-muted-foreground" };
+    default:
+      return { word: "Note", className: "text-muted-foreground" };
+  }
 }
 
-/** Hoot's list for you: the "For you" feed from his panel, most urgent first. */
-export function HootList() {
+/** "Needs you": Hoot's list for you, most urgent first: a tag word, the title, and when and why underneath. */
+export function NeedsYou() {
   const { nudges, updatedAt, dismiss } = useFeed();
   const [all, setAll] = useState(false);
   const shown = all ? nudges : nudges.slice(0, SHOWN);
   const more = nudges.length - shown.length;
 
   return (
-    <Panel data-tour="today-list" aria-label="Hoot's list for you" className="shrink-0">
-      <PanelHeader
-        title="Hoot's list for you"
-        count={nudges.length ? nudges.length : undefined}
-        hot
-        aside={<span suppressHydrationWarning>Updated {fmtTime(updatedAt)} · refreshes every 5 min</span>}
-      />
+    <section id="needs" data-tour="today-list" aria-labelledby="h-needs" className="scroll-mt-6">
+      <div className="flex items-baseline justify-between border-b pb-1.5">
+        <h2 id="h-needs" className="text-body font-bold">
+          Needs you
+        </h2>
+        {nudges.length > 0 && <span className={cn("text-caption", nudges.some(isOverdue) ? "font-semibold text-down" : "text-muted-foreground")}>{nudges.length}</span>}
+      </div>
       {nudges.length === 0 ? (
-        <p className="flex h-[58px] items-center px-4 text-body text-muted-foreground">Nothing needs you right now. I&rsquo;ll put things here as they come up.</p>
+        <p className="py-2.5 text-body text-muted-foreground">Nothing needs you right now. Hoot puts things here as they come up.</p>
       ) : (
-        <ul className="divide-y divide-row">
-          {shown.map((n, i) => {
-            const Icon = iconFor(n);
-            const urgent = n.priority <= 2;
+        <ul>
+          {shown.map((n) => {
+            const tag = tagOf(n);
             return (
-              <li key={n.id} className={LIST_ROW}>
-                <span className={cn("grid size-8 place-items-center rounded-full", urgent ? "bg-hoot text-hoot-foreground" : "bg-muted text-muted-foreground")}>
-                  <Icon className="size-[15px]" aria-hidden />
-                </span>
-                <div className="min-w-0">
-                  <div className="text-emph font-semibold">{n.title}</div>
-                  <div className={cn("mt-px text-body text-muted-foreground", !n.detail && "xl:hidden")}>
-                    {/* Below xl "when" leads the detail line instead of taking a column of its own. */}
-                    <span suppressHydrationWarning className={cn("font-mono text-caption xl:hidden", urgent ? "text-hoot-foreground" : "text-muted-foreground")}>
-                      {nudgeWhen(n)}
-                    </span>
-                    {n.detail && <span className="xl:hidden"> · </span>}
-                    {n.detail}
-                  </div>
-                </div>
-                <span suppressHydrationWarning className={cn("hidden font-mono text-caption xl:block", urgent ? "text-hoot-foreground" : "text-muted-foreground")}>
-                  {nudgeWhen(n)}
-                </span>
-                <Button
-                  nativeButton={false}
-                  size="sm"
-                  variant={i === 0 ? "default" : "outline"}
-                  className="justify-self-end"
-                  render={<Link href={n.href} onClick={() => DISMISS_ON_OPEN.has(n.kind) && dismiss(n)} />}
+              <li key={n.id} className="group relative flex items-start gap-1 border-b border-row hover:bg-band has-[a:focus-visible]:bg-band">
+                <Link
+                  href={n.href}
+                  onClick={() => DISMISS_ON_OPEN.has(n.kind) && dismiss(n)}
+                  className="flex min-w-0 flex-1 flex-col gap-0.5 py-[9px] no-underline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
                 >
-                  {nudgeAction(n)}
-                </Button>
+                  <span className="text-body">
+                    <b className={cn("mr-1.5 text-caption font-semibold", tag.className)}>{tag.word}</b>
+                    <span className="font-medium">{n.title}</span>
+                  </span>
+                  <span suppressHydrationWarning className="truncate text-caption text-muted-foreground">
+                    {/* A title that already says when it's due doesn't say it again underneath. */}
+                    {[n.detail, / due /i.test(n.title) ? null : nudgeWhen(n)].filter(Boolean).join(" · ")}
+                  </span>
+                </Link>
                 <button
                   type="button"
                   onClick={() => dismiss(n)}
                   aria-label={`Dismiss: ${n.title}`}
                   title="Dismiss"
-                  className="grid size-5 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  className="mt-2 grid size-5 shrink-0 place-items-center rounded text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
                 >
-                  <X className="size-3.5" />
+                  <X className="size-3.5" aria-hidden />
                 </button>
               </li>
             );
           })}
         </ul>
       )}
-      {(more > 0 || all) && nudges.length > SHOWN && (
-        <PanelFooter className="border-row">
-          <button type="button" onClick={() => setAll((a) => !a)} className="font-medium text-foreground hover:underline">
-            {all ? "Show fewer" : `Show ${more} more`}
-          </button>
-        </PanelFooter>
+      {nudges.length > SHOWN && (
+        <button type="button" onClick={() => setAll((a) => !a)} className="mt-1.5 text-caption font-semibold text-foreground hover:underline">
+          {all ? "Show fewer" : `Show ${more} more`}
+        </button>
       )}
-    </Panel>
+      <p suppressHydrationWarning className="mt-1.5 text-caption text-muted-foreground">
+        Updated {fmtTime(updatedAt)} · refreshes every 5 min
+      </p>
+    </section>
   );
 }

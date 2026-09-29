@@ -1,6 +1,7 @@
 import { LastSessionSkeleton } from "@/app/(app)/_today/last-session";
 import { StressPanelFallback } from "@/components/app/risk/stress-panel";
 import { cn } from "@/lib/utils";
+import { SkeletonPageHead } from "./page-head";
 import { Bone, ReplaySkeleton, SkeletonChart, SkeletonPage, SkeletonPanel, SkeletonPanelHeader, SkeletonPill, SkeletonRows, SkeletonStatStrip, SkeletonTabs, TextBone } from "./skeletons";
 
 // One loading skeleton per page, used by the route's loading.tsx. Each copies its page's outer layout classes
@@ -9,84 +10,93 @@ import { Bone, ReplaySkeleton, SkeletonChart, SkeletonPage, SkeletonPanel, Skele
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
-/* ------------------------------------------------------------------------------------------------ Today */
+/* ------------------------------------------------------------------------------------------------ Home */
+
+/** One of Home's three columns (`_today/hoot-list.tsx`, movers.tsx, coming-up.tsx): a 13px heading over a hairline, then rows. */
+function HomeColumn({ rows, row, className }: { rows: number; row: string; className?: string }) {
+  return (
+    <section className={className}>
+      <div className="flex items-baseline justify-between border-b pb-1.5">
+        <TextBone className="text-body font-bold" w="w-28" />
+        <Bone className="h-3 w-12 rounded-[4px]" />
+      </div>
+      {range(rows).map((i) => (
+        <div key={i} className={cn("flex items-center border-b border-row", row)}>
+          <Bone className="h-3 w-full rounded-[4px]" />
+        </div>
+      ))}
+    </section>
+  );
+}
 
 /**
- * Today (`_today/today-view.tsx`): the greeting, Hoot's list and Teams on the left; the last session, the evening
- * brief and Coming up on the right. The last-session card is only for readers who see a book (execs, admins, leads)
- * and the brief only for the fund's book, so those follow the reader's role, which the shell sets on <main>.
+ * Home (`_today/today-view.tsx`): no page header, a thin line at the top, then Hoot's face, the greeting, the question
+ * box, the starter chips and the three columns (Needs you, Moving the book today, This week). Below them, for readers
+ * who see a book, the last session and the evening brief (the fund's book only), and the teams. Those follow the reader's
+ * role, which the shell sets on <main>.
  */
 export function TodaySkeleton() {
   return (
-    <SkeletonPage className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
-      <div className="flex min-w-0 flex-col gap-5">
-        {/* Greeting */}
-        <div className="flex min-h-[84px] shrink-0 items-center gap-4">
-          <Bone className="size-[84px] shrink-0 rounded-full" />
-          <div className="min-w-0">
-            <TextBone className="font-mono text-body" w="w-56" />
-            <TextBone className="mt-0.5 text-display leading-tight" w="w-60" />
-            <TextBone className="mt-0.5 text-emph" w="w-80" />
-            {/* Below xl the sentence runs to a second line. */}
-            <TextBone className="text-emph xl:hidden" w="w-40" />
+    <SkeletonPage>
+      <div className="-mx-10 -mt-8 flex h-[52px] items-center justify-end px-10">
+        <Bone className="h-3 w-72 rounded-[4px]" />
+      </div>
+      <div className="mx-auto flex w-full max-w-[760px] flex-col items-center pt-10">
+        <Bone className="size-[52px] rounded-full" />
+        <TextBone className="mt-3.5 text-hero" w="w-[26rem]" />
+        <TextBone className="mt-2.5 text-emph" w="w-[30rem]" />
+        {/* The question box: two 26px lines of text and the control row. */}
+        <div className="mt-[26px] flex w-full flex-col rounded-xl border border-border-strong px-4 pt-4 pb-3">
+          <div className="h-[52px]" />
+          <div className="mt-2.5 flex items-center gap-2">
+            <Bone className="h-[30px] w-28 rounded-md" />
+            <span className="flex-1" />
+            <Bone className="size-[34px] rounded-lg" />
           </div>
         </div>
-        {/* Hoot's list: below xl "when" moves under the title, so the row loses that column. */}
-        <SkeletonPanel className="shrink-0">
-          <SkeletonPanelHeader w="w-36" aside="w-52" />
-          <SkeletonRows
-            count={3}
-            row="grid h-[58px] grid-cols-[32px_minmax(0,1fr)_116px_20px] gap-3 xl:grid-cols-[32px_minmax(0,1fr)_150px_116px_20px]"
-            cells={["size-8 rounded-full", "w-3/5", "hidden w-20 xl:block", "h-7 w-20 justify-self-end rounded-full", ""]}
-          />
-        </SkeletonPanel>
-        {/* Teams: a 52px row per team under a divider, as tall as its rows. */}
-        <SkeletonPanel>
-          <SkeletonPanelHeader w="w-32" aside="w-16" />
-          <div className="flex h-8 shrink-0 items-center px-4">
-            <Bone className="h-2.5 w-10 rounded-[4px]" />
-          </div>
-          {range(6).map((i) => (
-            <div key={i} className="border-t border-row">
-              <div className="flex h-[52px] items-center gap-3 px-4">
-                <Bone className="h-3 w-32 rounded-[4px]" />
-                <span className="flex-1" />
-                <Bone className="h-3 w-24 rounded-[4px]" />
-              </div>
-            </div>
+        <TextBone className="mt-2.5 text-caption" w="w-96" />
+        <div className="mt-[18px] flex flex-wrap justify-center gap-2">
+          {["w-64", "w-56", "w-64", "w-60"].map((w, i) => (
+            <Bone key={i} className={cn("h-[30px] rounded-md", w)} />
           ))}
-        </SkeletonPanel>
-      </div>
-      <div className="flex min-w-0 flex-col gap-5">
-        <div className="hidden in-data-[role=admin]:block in-data-[role=exec]:block in-data-[role^=lead]:block">
-          <LastSessionSkeleton />
         </div>
-        {/* Hoot's evening brief comes with the fund's book only; a plain section. */}
-        <section className="panel-plain hidden shrink-0 px-[18px] py-2 in-data-[role=admin]:block in-data-[role=exec]:block">
-          <div className="flex items-center">
-            <TextBone className="text-emph leading-5 font-semibold" w="w-36" />
-          </div>
-          <div className="mt-2">
-            {["w-full", "w-full", "w-full", "w-3/5"].map((w, i) => (
-              <TextBone key={i} className="text-emph leading-[1.55]" w={w} />
-            ))}
-          </div>
-          <TextBone className="mt-2 text-body" w="w-32" />
-        </section>
-        {/* Coming up: a plain section of 38px rows; execs and admins also get the Sunday weekly pack. */}
-        <SkeletonPanel variant="plain">
-          <SkeletonPanelHeader className="px-[18px]" w="w-24" aside="w-20" />
-          <div className="flex flex-col pb-1">
-            {range(6).map((i) => (
-              <div key={i} className={cn("grid h-[38px] grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-2.5 px-[18px]", i === 5 && "hidden in-data-[role=admin]:grid in-data-[role=exec]:grid")}>
-                <Bone className="h-3 w-14 rounded-[4px]" />
-                <Bone className="h-3 w-3/5 rounded-[4px]" />
-                <Bone className="h-3 w-12 rounded-[4px]" />
-              </div>
-            ))}
-          </div>
-        </SkeletonPanel>
       </div>
+      <div className="mx-auto mt-12 grid w-full max-w-[1048px] grid-cols-3 items-start gap-10">
+        <HomeColumn rows={3} row="h-[52px]" />
+        <HomeColumn rows={5} row="h-[38px]" />
+        <HomeColumn rows={5} row="h-[38px]" />
+      </div>
+      {/* Readers who see a book: the last session, and Hoot's brief for the fund's. */}
+      <div className="mx-auto mt-14 hidden w-full max-w-[1048px] grid-cols-2 items-start gap-10 in-data-[role=admin]:grid in-data-[role=exec]:grid in-data-[role^=lead]:grid">
+        <LastSessionSkeleton />
+        <section className="hidden in-data-[role=admin]:block in-data-[role=exec]:block">
+          <div className="flex items-baseline justify-between border-b pb-1.5">
+            <TextBone className="text-body font-bold" w="w-40" />
+          </div>
+          <div className="mt-3">
+            {["w-full", "w-full", "w-full", "w-full", "w-3/5"].map((w, i) => (
+              <TextBone key={i} className="hoot-prose" w={w} />
+            ))}
+          </div>
+        </section>
+      </div>
+      {/* Teams: a 52px row per team under a divider. */}
+      <section className="mx-auto mt-12 w-full max-w-[1048px]">
+        <div className="flex items-baseline justify-between border-b pb-1.5">
+          <TextBone className="text-body font-bold" w="w-32" />
+          <Bone className="h-3 w-14 rounded-[4px]" />
+        </div>
+        <div className="flex h-8 shrink-0 items-center">
+          <Bone className="h-2.5 w-10 rounded-[4px]" />
+        </div>
+        {range(6).map((i) => (
+          <div key={i} className="flex h-[52px] items-center gap-3 border-t border-row">
+            <Bone className="h-3 w-32 rounded-[4px]" />
+            <span className="flex-1" />
+            <Bone className="h-3 w-24 rounded-[4px]" />
+          </div>
+        ))}
+      </section>
     </SkeletonPage>
   );
 }
@@ -493,157 +503,165 @@ export function EarningsReportSkeleton() {
 
 /* ------------------------------------------------------------------------------------------------ Research */
 
-/** agent/research-columns.tsx ListColumn with the conversation list (agent/conversation-list.tsx). */
-function ConversationColumn() {
+/** A 13px section heading over a hairline (Recent chats, Holding boards, the board's side column). */
+function SectionHead({ w = "w-28", aside }: { w?: string; aside?: string }) {
   return (
-    <div className="flex min-h-0 flex-col gap-4 border-b px-3 py-4 lg:border-r lg:border-b-0">
-      <div className="flex shrink-0 gap-2">
-        <Bone className="h-[34px] min-w-0 flex-1 rounded-full" />
-        <Bone className="h-[34px] w-[74px] rounded-full" />
-      </div>
-      <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-1 pt-px pb-1">
-        {[4, 6].map((rows, g) => (
-          <div key={g}>
-            <TextBone className="px-2.5 pb-1.5 font-mono text-caption" w="w-24" />
-            {range(rows).map((i) => (
-              <div key={i} className="px-2.5 py-2">
-                <TextBone className="text-body" w={i % 2 ? "w-40" : "w-48"} />
-                <TextBone className="mt-px text-caption" w="w-32" />
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** chat/thread-parts.tsx ComposerBox: an empty box with the send button. */
-function ComposerSkeleton({ rows = 1 }: { rows?: 1 | 2 }) {
-  return (
-    <div className="flex flex-col gap-2.5 rounded-2xl bg-background px-3.5 py-3 shadow-[0_0_0_1px_var(--border)]">
-      <div className={rows === 2 ? "h-11" : "h-[22px]"} />
-      <div className="flex items-center gap-2">
-        <span className="flex-1" />
-        <Bone className="size-8 rounded-full" />
-      </div>
+    <div className="flex items-baseline gap-2.5 border-b pb-1.5">
+      <TextBone className="flex-1 text-body font-bold" w={w} />
+      {aside && <Bone className={cn("h-3 rounded-[4px]", aside)} />}
     </div>
   );
 }
 
 /**
- * A Hoot conversation (`hoot/[chatId]`, chat/chat-panel.tsx ChatWorkspace) and a holding's research board
- * (`agent/h/[ticker]`, agent/holding-board.tsx): full-bleed conversations, thread and composer, sources.
+ * A holding's research board (`agent/h/[ticker]`, agent/holding-board.tsx): the header (breadcrumb, no tabs), then
+ * this holding's chats (240px), the conversation with its box pinned at the bottom, and the side column (300px). The
+ * page is exactly the window tall; the columns scroll inside it.
  */
-export function ResearchWorkspaceSkeleton() {
+export function ResearchBoardSkeleton() {
   return (
-    <SkeletonPage
-      fullBleed
-      className="grid min-h-0 flex-1 grid-cols-1 lg:h-[calc(100dvh-6rem)] lg:flex-none lg:grid-cols-[288px_minmax(0,1fr)_312px] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden"
-    >
-      <ConversationColumn />
-      <section className="flex min-h-[560px] min-w-0 flex-col bg-card lg:min-h-0">
-        <div className="flex h-12 shrink-0 items-center gap-2.5 border-b px-7">
-          <TextBone className="text-body font-semibold" w="w-48" />
-          <TextBone className="text-body" w="w-40" />
-        </div>
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <div className="flex flex-col gap-4 px-6 py-6 xl:px-14">
-            <div className="flex justify-end">
-              <Bone className="h-10 w-[min(360px,70%)] rounded-[16px_16px_4px_16px]" />
+    <SkeletonPage fullBleed className="flex h-dvh min-h-0 flex-col">
+      <SkeletonPageHead />
+      <div className="flex min-h-0 flex-1">
+        <aside className="w-60 shrink-0 overflow-hidden border-r pt-[18px] pr-4 pl-10">
+          <TextBone className="pb-1 text-caption font-semibold" w="w-24" />
+          {range(4).map((i) => (
+            <div key={i} className="flex flex-col border-b border-row py-2">
+              <TextBone className="text-body" w={i % 2 ? "w-32" : "w-40"} />
+              <TextBone className="text-caption" w="w-24" />
             </div>
-            <div className="max-w-[700px]">
-              {["w-full", "w-full", "w-11/12", "w-4/5", "w-full", "w-2/3"].map((w, i) => (
-                <TextBone key={i} className="text-emph leading-[1.65]" w={w} />
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="shrink-0 border-t px-6 pt-3.5 pb-[18px] xl:px-14">
-          <ComposerSkeleton />
-        </div>
-      </section>
-      <aside className="flex min-h-0 min-w-0 flex-col border-t px-3.5 py-4 lg:border-t-0 lg:border-l">
-        <TextBone className="text-body font-semibold" w="w-16" />
-        <div className="-mx-1 mt-2.5 flex min-h-0 flex-1 flex-col gap-2 overflow-hidden px-1 pt-px pb-1">
-          {range(3).map((i) => (
-            <Bone key={i} className="h-[72px] w-full rounded-[10px]" />
           ))}
-        </div>
-      </aside>
-    </SkeletonPage>
-  );
-}
-
-/** agent/research-boards.tsx ROW. */
-const BOARD_ROW =
-  "grid grid-cols-[minmax(140px,1fr)_84px_minmax(104px,150px)_118px_minmax(110px,160px)_12px] items-center gap-x-3 px-4 xl:grid-cols-[minmax(200px,1fr)_128px_128px_128px_150px_minmax(150px,210px)_16px] xl:gap-x-4";
-
-/** Research (`agent/page.tsx`, agent/hoot-home.tsx): conversations, then the ask panel over the research boards. */
-export function ResearchHomeSkeleton() {
-  return (
-    <SkeletonPage
-      fullBleed
-      className="grid min-h-0 flex-1 grid-cols-1 lg:h-[calc(100dvh-6rem)] lg:flex-none lg:grid-cols-[248px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[288px_minmax(0,1fr)]"
-    >
-      <ConversationColumn />
-      <div className="flex min-h-0 min-w-0 flex-col gap-4 p-5 xl:gap-5 xl:p-6">
-        {/* Ask Hoot */}
-        <SkeletonPanel className="shrink-0">
-          <div className="grid gap-x-8 gap-y-3 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,400px)] xl:p-5">
-            <div className="flex min-w-0 gap-4">
-              <Bone className="-mt-1 size-14 shrink-0 rounded-full" />
-              <div className="min-w-0 flex-1">
-                <TextBone className="text-title font-semibold" w="w-64" />
-                <TextBone className="mt-1 text-body leading-relaxed" w="w-full" />
-                <TextBone className="text-body leading-relaxed xl:hidden" w="w-1/3" />
-                <div className="mt-3.5">
-                  <ComposerSkeleton rows={2} />
-                </div>
+        </aside>
+        <section className="relative flex min-w-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-hidden px-8 pt-[22px]">
+            <div className="flex max-w-[720px] flex-col gap-4">
+              <div className="flex justify-end">
+                <Bone className="h-10 w-[min(360px,70%)] rounded-xl" />
               </div>
-            </div>
-            <div className="min-w-0">
-              <TextBone className="label-mono pb-1.5" w="w-20" />
-              <div className="-mx-1 flex gap-1.5 overflow-hidden px-1 pb-1 xl:mx-0 xl:flex-col xl:gap-0 xl:px-0 xl:pb-0">
-                {range(5).map((i) => (
-                  <div key={i} className="shrink-0 rounded-full bg-band px-3 py-1.5 text-body leading-snug xl:rounded-[8px] xl:bg-transparent xl:px-2 xl:py-[7px] xl:text-body">
-                    <TextBone w="w-40 xl:w-60" />
-                  </div>
+              <TextBone className="text-caption" w="w-40" />
+              <div>
+                {["w-full", "w-full", "w-11/12", "w-full", "w-2/3"].map((w, i) => (
+                  <TextBone key={i} className="hoot-prose" w={w} />
                 ))}
               </div>
             </div>
           </div>
-        </SkeletonPanel>
-        {/* Research boards */}
-        <SkeletonPanel className="min-h-[420px] flex-1 lg:min-h-0">
-          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-2.5">
-            <TextBone className="text-emph font-semibold" w="w-32" />
-            <SkeletonPill className="ml-2 w-[400px] max-w-full" />
+          <div className="absolute inset-x-8 bottom-5 flex h-11 items-center gap-2 rounded-[10px] border border-border-strong py-1.5 pr-1.5 pl-3">
             <span className="flex-1" />
-            <SkeletonPill className="w-24" />
-            <SkeletonPill className="w-44" />
+            <Bone className="size-[30px] rounded-[7px]" />
           </div>
-          <div className="min-h-0 flex-1 overflow-hidden">
-            <div className={cn(BOARD_ROW, "h-9 border-b bg-band")}>
-              <Bone className="h-2.5 w-14 rounded-[4px]" />
-            </div>
-            {range(10).map((i) => (
-              <div key={i} className={cn(BOARD_ROW, "min-h-[54px] border-b border-row py-2")}>
-                <div>
-                  <TextBone className="font-mono text-body" w="w-12" />
-                  <TextBone className="text-body" w="w-28" />
+        </section>
+        <aside className="flex w-[300px] shrink-0 flex-col gap-[22px] overflow-hidden border-l pt-[18px] pr-10 pl-6">
+          {[5, 3, 1].map((rows, s) => (
+            <section key={s}>
+              <TextBone className="text-body font-bold" w="w-40" />
+              {range(rows).map((i) => (
+                <div key={i} className="border-b border-row py-[7px]">
+                  <TextBone className="text-caption leading-[17px]" w="w-full" />
                 </div>
-                <Bone className="h-3 w-14 justify-self-end rounded-[4px]" />
-                <Bone className="h-3 w-20 rounded-[4px]" />
-                <Bone className="hidden h-3 w-20 rounded-[4px] xl:block" />
-                <Bone className="h-3 w-24 rounded-[4px]" />
-                <Bone className="h-[22px] w-20 rounded-full" />
-              </div>
-            ))}
-          </div>
-        </SkeletonPanel>
+              ))}
+            </section>
+          ))}
+        </aside>
       </div>
     </SkeletonPage>
+  );
+}
+
+/**
+ * A Hoot thread (`hoot/[chatId]`, chat/chat-panel.tsx ChatWorkspace): the header (breadcrumb, no tabs), the question, what
+ * Hoot did, the source cards and the answer in a 760px column, and the follow-up box fixed at the bottom over a fade.
+ */
+export function ThreadSkeleton() {
+  return (
+    <SkeletonPage fullBleed className="flex h-dvh min-h-0 flex-col">
+      <SkeletonPageHead />
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div className="mx-auto flex w-full max-w-[840px] flex-col px-10 pt-[30px]">
+          <div className="flex justify-end">
+            <Bone className="h-11 w-[min(420px,70%)] rounded-xl" />
+          </div>
+          <div className="mt-6 flex items-center gap-2">
+            <Bone className="size-[26px] rounded-full" />
+            <TextBone className="text-body" w="w-56" />
+          </div>
+          <div className="mt-3.5 grid grid-cols-4 gap-2">
+            {range(4).map((i) => (
+              <Bone key={i} className="h-[82px] rounded-lg" />
+            ))}
+          </div>
+          <div className="mt-[22px]">
+            {["w-full", "w-full", "w-11/12", "w-full", "w-full", "w-3/5"].map((w, i) => (
+              <TextBone key={i} className="hoot-prose leading-[29px]" w={w} />
+            ))}
+          </div>
+        </div>
+        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center bg-linear-to-b from-transparent to-background to-35% px-10 pt-6 pb-4">
+          <div className="flex h-[52px] w-[760px] max-w-full items-center gap-2 rounded-xl border border-border-strong py-2 pr-2 pl-4">
+            <span className="flex-1" />
+            <Bone className="size-[34px] rounded-lg" />
+          </div>
+          <TextBone className="mt-1.5 text-caption" w="w-80" />
+        </div>
+      </div>
+    </SkeletonPage>
+  );
+}
+
+/**
+ * Research (`agent/page.tsx`): the header with its two tabs, then Hoot's face, the serif heading, the question box and
+ * three starter chips in a 760px column, and Recent chats beside the holding boards.
+ */
+export function ResearchHomeSkeleton() {
+  return (
+    <>
+      <SkeletonPageHead tabs={2} />
+      <SkeletonPage>
+      <div className="mx-auto flex w-full max-w-[760px] flex-col items-center pt-3">
+        <Bone className="size-11 rounded-full" />
+        <TextBone className="mt-3 text-hero" w="w-[28rem]" />
+        <TextBone className="mt-2 text-emph" w="w-[40rem]" />
+        <div className="mt-6 flex w-full flex-col rounded-xl border border-border-strong px-4 pt-4 pb-3">
+          <div className="h-[52px]" />
+          <div className="mt-2.5 flex items-center gap-2">
+            <Bone className="h-[30px] w-28 rounded-md" />
+            <Bone className="h-[30px] w-36 rounded-md" />
+            <span className="flex-1" />
+            <Bone className="size-[34px] rounded-lg" />
+          </div>
+        </div>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {["w-72", "w-72", "w-52"].map((w, i) => (
+            <Bone key={i} className={cn("h-[30px] rounded-md", w)} />
+          ))}
+        </div>
+      </div>
+      <div className="mx-auto mt-12 grid w-full max-w-[1048px] grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] items-start gap-12">
+        <section>
+          <SectionHead w="w-24" aside="w-32" />
+          {range(6).map((i) => (
+            <div key={i} className="flex flex-col gap-0.5 border-b border-row py-[9px]">
+              <TextBone className="text-body font-medium" w={i % 2 ? "w-64" : "w-72"} />
+              <TextBone className="text-caption" w="w-40" />
+            </div>
+          ))}
+        </section>
+        <section>
+          <SectionHead w="w-56" aside="w-10" />
+          {range(6).map((i) => (
+            <div key={i} className="grid min-h-12 grid-cols-[60px_minmax(0,1fr)_auto] items-center gap-3 border-b border-row py-1.5">
+              <Bone className="h-3 w-10 rounded-[4px]" />
+              <div>
+                <TextBone className="text-body" w="w-32" />
+                <TextBone className="text-caption" w="w-48" />
+              </div>
+              <Bone className="h-3 w-24 rounded-[4px]" />
+            </div>
+          ))}
+        </section>
+      </div>
+      </SkeletonPage>
+    </>
   );
 }
 

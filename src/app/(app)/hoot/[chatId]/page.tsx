@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
-import { Trash2 } from "lucide-react";
 import { canOpenChat, isFundWide, listAccessibleTeams, requireUser, transparencyEnabled } from "@/lib/auth";
 import { getTeam, rememberedScope } from "@/lib/teams";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
@@ -10,11 +9,15 @@ import { effectiveRunStatus, getChat, loadMessages } from "@/lib/chats";
 import { listTeamHoldings } from "@/lib/holdings";
 import { deleteChat } from "@/lib/actions/chats";
 import { agentConfigured } from "@/lib/agent/model";
+import { chatNextQuestions } from "@/lib/agent/memory/store";
+import { profiles } from "@/db/schema";
+import { db } from "@/db/client";
+import { eq } from "drizzle-orm";
 import { ChatWorkspace } from "@/components/app/chat/chat-panel";
-import { headerAction } from "@/components/app/chat/styles";
+import type { PinTarget } from "@/components/app/chat/pin-to-board";
+import { ShareButton } from "@/components/app/chat/share-button";
 import { TraceToggle } from "@/components/app/chat/trace-toggle";
-import { ConversationSidebar } from "@/components/app/agent/conversation-list";
-import { loadResearchSidebar } from "@/components/app/agent/load-sidebar";
+import { Button } from "@/components/ui/button";
 
 // One read per request, shared by the title and the page.
 const loadChat = cache(getChat);
@@ -42,31 +45,42 @@ export default async function HootChatPage({ params }: { params: Promise<{ chatI
   const pinned = holdings.find(({ h }) => h.id === chat.holdingId)?.h.ticker;
   if (pinned) redirect(boardHref(remembered, team.slug, pinned, chat.id));
   const fundWide = isFundWide(user);
-  // The list follows the scope the member is in (this page keeps it): the fund's chats or one team's. Without one
-  // remembered, every team for execs and admins, their own team otherwise.
+  // Research in the breadcrumb goes to the scope the member is in (this page keeps it): the fund's chats or one team's.
+  // Without one remembered, every team for execs and admins, their own team otherwise.
   const listScope = remembered ?? (fundWide ? FUND_SCOPE_SLUG : team.slug);
-  const scopeIds = listScope === FUND_SCOPE_SLUG ? accessible.map((t) => t.id) : (accessible.find((t) => t.slug === listScope)?.id ?? team.id);
-  const [messages, sidebar] = await Promise.all([loadMessages(chat.id), loadResearchSidebar(scopeIds, { fundWide }, listScope)]);
+  const [messages, related, [author], pinnable] = await Promise.all([
+    loadMessages(chat.id),
+    chatNextQuestions(chat.id).catch(() => []),
+    chat.createdBy ? db.select({ name: profiles.fullName }).from(profiles).where(eq(profiles.id, chat.createdBy)).limit(1) : Promise.resolve([]),
+    // The holdings this conversation can be pinned to: any team's for execs and admins, the team's own otherwise.
+    listTeamHoldings(fundWide ? accessible.map((t) => t.id) : team.id),
+  ]);
   const tickers = holdings.filter(({ h }) => h.status === "active").map(({ h }) => h.ticker);
-  const author = sidebar.general.find((c) => c.id === chat.id)?.authorName ?? (chat.createdBy === user.id ? user.fullName : null);
+  const teamById = new Map(accessible.map((t) => [t.id, t]));
+  const pinTargets: PinTarget[] = pinnable.flatMap(({ h }) => {
+    const t = teamById.get(h.teamId);
+    return t ? [{ ticker: h.ticker, company: h.companyName, teamSlug: t.slug, team: t.name }] : [];
+  });
   const transparency = transparencyEnabled(user);
 
   return (
     <ChatWorkspace
-      sidebar={<ConversationSidebar data={sidebar} selectedId={chat.id} teamSlug={listScope === FUND_SCOPE_SLUG ? null : listScope} configured={agentConfigured()} />}
       title={chat.title}
       team={team.name}
-      author={author}
+      teamSlug={team.slug}
+      author={author?.name ?? (chat.createdBy === user.id ? user.fullName : null)}
+      updatedAt={chat.updatedAt.toISOString()}
+      researchHref={`/t/${listScope}/agent`}
       actions={
         <>
           {fundWide && <TraceToggle on={transparency} />}
           <form action={deleteChat} className="flex">
             <input type="hidden" name="id" value={chat.id} />
-            <button type="submit" className={`${headerAction} hover:text-destructive`}>
-              <Trash2 />
+            <Button type="submit" variant="ghost">
               Delete
-            </button>
+            </Button>
           </form>
+          <ShareButton />
         </>
       }
       chatId={chat.id}
@@ -75,6 +89,8 @@ export default async function HootChatPage({ params }: { params: Promise<{ chatI
       tickers={tickers}
       configured={agentConfigured()}
       transparency={transparency}
+      related={related}
+      pinTargets={pinTargets}
     />
   );
 }

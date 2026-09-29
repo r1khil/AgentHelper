@@ -12,7 +12,6 @@ import { listHoldingMemories } from "@/lib/agent/memory/store";
 import { getUpcomingEarnings } from "@/lib/earnings";
 import { PrepPackCard } from "@/components/app/agent/prep-pack-card";
 import { HoldingBoard, type BoardChat, type BoardMarket } from "@/components/app/agent/holding-board";
-import { loadResearchSidebar } from "@/components/app/agent/load-sidebar";
 
 export async function generateMetadata({ params }: { params: Promise<{ ticker: string }> }): Promise<Metadata> {
   const { ticker } = await params;
@@ -21,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ ticker: s
 
 export default async function HoldingBoardPage({ params, searchParams }: { params: Promise<{ team: string; ticker: string }>; searchParams: Promise<{ chat?: string }> }) {
   const [{ team: slug, ticker }, { chat: requested }] = await Promise.all([params, searchParams]);
-  // The fund scope shows any team's board; a team scope only its own. The list beside it follows the scope.
+  // The fund scope shows any team's board; a team scope only its own.
   const scope = await loadScope(slug);
   const { user } = scope;
   const row = await getHolding(scope.teamIds, ticker);
@@ -29,12 +28,11 @@ export default async function HoldingBoardPage({ params, searchParams }: { param
   const { h } = row;
   const team = itemTeam(scope, h.teamId);
   const viewer = { fundWide: isFundWide(user) };
-  const [rows, movement, memories, upcoming, sidebar] = await Promise.all([
+  const [rows, movement, memories, upcoming] = await Promise.all([
     listHoldingChats(h.id, viewer),
     getOpenMovement(h.id),
     listHoldingMemories(h.id).catch(() => []),
     getUpcomingEarnings(h.id).catch(() => null),
-    loadResearchSidebar(scope.teamIds, viewer, scope.slug),
   ]);
   const fundWide = user.role === "admin" || user.role === "lead_analyst" || user.role === "exec";
   const chats: BoardChat[] = rows.map(({ c, authorName, questions }) => ({
@@ -44,6 +42,7 @@ export default async function HoldingBoardPage({ params, searchParams }: { param
     questions,
     updatedAt: c.updatedAt.toISOString(),
     canDelete: c.createdBy === user.id || fundWide,
+    running: effectiveRunStatus(c) === "running",
   }));
   const selected = (requested && rows.find((r) => r.c.id === requested)) || rows[0] || null;
   const initialMessages = selected ? await loadMessages(selected.c.id) : [];
@@ -52,6 +51,7 @@ export default async function HoldingBoardPage({ params, searchParams }: { param
     const r = m.rows[h.ticker];
     return { price: r?.quote?.price, changePct: r?.quote?.changePct, relativePp: r?.relativePp, asOf: r?.quote?.asOf };
   });
+  const num = (v: string | null) => (v === null ? null : Number(v));
 
   return (
     <HoldingBoard
@@ -59,7 +59,18 @@ export default async function HoldingBoardPage({ params, searchParams }: { param
       scopeSlug={scope.slug}
       holding={{ id: h.id, ticker: h.ticker, name: h.companyName }}
       market={market}
-      movement={movement ? { id: movement.id, dueAt: movement.dueAt?.toISOString() ?? null, overdue: movement.dueAt ? movement.dueAt < new Date() : false } : null}
+      movement={
+        movement
+          ? {
+              id: movement.id,
+              dueAt: movement.dueAt?.toISOString() ?? null,
+              overdue: movement.dueAt ? movement.dueAt < new Date() : false,
+              sessionDate: movement.sessionDate,
+              returnPct: num(movement.holdingReturnPct),
+              relativePp: num(movement.relativeMovePp),
+            }
+          : null
+      }
       chats={chats}
       initialChatId={selected?.c.id ?? null}
       initialMessages={initialMessages}
@@ -70,9 +81,8 @@ export default async function HoldingBoardPage({ params, searchParams }: { param
       userName={user.fullName}
       memories={memories}
       canManage={canManageTeam(user, team.id)}
+      earnings={upcoming ? { reportDate: upcoming.reportDate, dateStatus: upcoming.dateStatus, fiscalPeriod: upcoming.fiscalPeriod } : null}
       prepCard={upcoming?.prepPack ? <PrepPackCard pack={upcoming.prepPack} compact /> : undefined}
-      sidebar={sidebar}
-      newTeamSlug={team.slug}
     />
   );
 }
