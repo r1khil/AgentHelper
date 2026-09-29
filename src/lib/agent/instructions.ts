@@ -82,6 +82,7 @@ export async function buildInstructions(teamId: string | null, opts: { holdingId
     .where(and(onTeam, ne(movements.status, "completed")))
     .orderBy(desc(movements.sessionDate))
     .limit(teamId ? 10 : 20);
+  const allTeams = await db.select({ slug: teams.slug, name: teams.name }).from(teams).orderBy(teams.name);
   const drive = await driveStatus().catch(() => null);
   const driveOn = Boolean(drive?.connected && drive.rootFolderId && !drive.needsReconnect);
   const fundNotes = fundMemoryBlock(await listFundMemories().catch(() => []));
@@ -203,9 +204,21 @@ ${appMapPromptBlock()}
 ${driveLine}
 ${webLine}
 
+${teamsLine(allTeams)}
+
 ${teamId ? "Holdings" : "The Fund's holdings (ticker, company and team; answer which team holds what, and how many, from this list without a lookup)"}:
 ${holdingsList}
 
 Open movement investigations:
 ${openList}${fundNotes}${pinned}${external}${opts.page ? pageContextBlock(opts.page) : ""}`;
+}
+
+/**
+ * The Fund's teams and the short names members use for them. "Take me to the fig sector" once became an 86-source
+ * research run on Figma (NYSE: FIG): a team's name wins over a ticker that happens to match it.
+ */
+export function teamsLine(all: { slug: string; name: string }[]): string {
+  if (!all.length) return "";
+  const names = all.map((t) => (t.slug.toLowerCase() === t.name.toLowerCase() ? t.name : `${t.name} ("${t.slug}")`)).join(", ");
+  return `The Fund's teams: ${names}. FIG is the financials team. When a member names one of these, by name or short name ("fig", "tech", "the consumer team"), they mean the team, not a stock whose ticker matches (FIG the team is not Figma), unless they say the stock, shares or company.`;
 }

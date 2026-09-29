@@ -60,7 +60,18 @@ export function commandHref(destination: string, links: HootLink[]): string | nu
 
 /** Match only a rendered, accessible scope option. No generated team slugs or arbitrary URLs. */
 export function scopeHref(scope: string, links: HootLink[]): string | null {
-  const requested = scope.toLowerCase().trim();
-  const link = links.find(({ label }) => label.toLowerCase() === requested || (requested === "fund" && label === "Whole fund"));
+  const said = scope.toLowerCase().trim();
+  const slug = (href: string) => /^\/t\/([^/?#]+)/.exec(href)?.[1]?.toLowerCase();
+  const words = (label: string) => label.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 2);
+  // The team's name, its short name in the address ("tech", "fig"), or one word of a long name ("consumer", "technology");
+  // then the same for what members call a team that is in neither ("financials" for FIG).
+  const find = (requested: string) =>
+    links.find(({ label }) => label.toLowerCase() === requested || (requested === "fund" && label === "Whole fund")) ??
+    links.find(({ href }) => slug(href) === requested) ??
+    links.find(({ label }) => label !== "Whole fund" && words(label).includes(requested));
+  const link = find(said) ?? (SCOPE_ALIASES[said] ? find(SCOPE_ALIASES[said]) : undefined);
   return link ? commandHref(link.label, links) : null;
 }
+
+/** What members call a team that is in neither its name nor its address: FIG is the financials team. */
+const SCOPE_ALIASES: Record<string, string> = { financials: "fig", financial: "fig", banks: "fig", it: "tech" };

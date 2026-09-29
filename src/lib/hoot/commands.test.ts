@@ -54,6 +54,21 @@ describe("Hoot UI commands", () => {
     expect(scopeHref("fund", links)).toBe("/t/fund/risk");
     expect(scopeHref("technology", links)).toBeNull();
   });
+  it("finds a team by its short name or one word of its name, and FIG as financials", () => {
+    const links = [
+      { label: "Whole fund", href: "/t/fund" },
+      { label: "FIG", href: "/t/fig" },
+      { label: "Information Technology", href: "/t/tech" },
+      { label: "Consumer & Communication Services", href: "/t/consumer" },
+    ];
+    expect(scopeHref("fig", links)).toBe("/t/fig");
+    expect(scopeHref("financials", links)).toBe("/t/fig");
+    expect(scopeHref("tech", links)).toBe("/t/tech");
+    expect(scopeHref("technology", links)).toBe("/t/tech");
+    expect(scopeHref("consumer", links)).toBe("/t/consumer");
+    expect(scopeHref("healthcare", links)).toBeNull();
+    expect(scopeHref("services", links)).toBe("/t/consumer");
+  });
   it.each(["https://example.com", "//example.com", "javascript:alert(1)", "/\\example.com"]) ("rejects unsafe routes: %s", (href) => {
     expect(commandHref("Risk", [{ label: "Risk", href }])).toBeNull();
   });

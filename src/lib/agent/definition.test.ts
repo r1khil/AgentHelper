@@ -97,6 +97,16 @@ describe("tool routing in an agent definition", () => {
     expect(def.activeToolCounts).toEqual([r!.activeTools!.length]);
   });
 
+  it("answers a buy/sell call or an off-topic question in one step with no tools", async () => {
+    for (const question of ["Should we sell AXP?", "Who won the World Series?"]) {
+      const def = await buildAgentDefinition({ ...base, viewer: exec, chatId: "c1", purpose: "chat", routing: { question, priorTools: [] } });
+      const r = def.prepareStep({ stepNumber: 0, messages: [{ role: "user", content: "q" }], steps: [] });
+      expect(r).toMatchObject({ toolChoice: "none", activeTools: [] });
+      expect(r?.instructions).toMatch(/^SYS\n\nTHIS REPLY: /);
+      expect(def.activeToolCounts).toEqual([0]);
+    }
+  });
+
   it("turns on what find_tools asks for from the next step", async () => {
     const def = await buildAgentDefinition({ ...base, viewer: exec, chatId: "c1", purpose: "chat", routing: { question: "what's going on?", priorTools: [] } });
     const step0 = def.prepareStep({ stepNumber: 0, messages: [{ role: "user", content: "q" }], steps: [] });
