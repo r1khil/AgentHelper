@@ -20,7 +20,7 @@ export type EvalCase = {
   ticker?: string;
   /** Where the member asked from. */
   page?: PageContext;
-  tags: ("portfolio" | "research" | "boundary" | "control" | "macro" | "workspace")[];
+  tags: ("portfolio" | "research" | "boundary" | "control" | "macro" | "workspace" | "app")[];
   /** Providers the case can't be judged without; the runner skips it (and says so) where they aren't configured. */
   needs?: ("fred" | "sandbox" | "web" | "drive")[];
   expect: {
@@ -31,6 +31,8 @@ export type EvalCase = {
     maxErrors?: number;
     answer?: RegExp[];
     answerNot?: RegExp[];
+    /** Where navigate must have sent the member (its action's href). */
+    href?: RegExp;
   };
   /** Why the case exists, e.g. the production failure it reproduces. */
   note?: string;
@@ -160,7 +162,8 @@ export const EVAL_CASES: EvalCase[] = [
     as: "exec",
     ticker: "EVR",
     tags: ["research"],
-    expect: { calls: ["get_news|search_web"], maxToolCalls: 5, maxErrors: 0 },
+    // Reading two or three of the articles is fine; more than six lookups for headlines isn't.
+    expect: { calls: ["get_news|search_web"], maxToolCalls: 6, maxErrors: 0 },
   },
   {
     id: "cybersecurity-today",
@@ -296,6 +299,41 @@ export const EVAL_CASES: EvalCase[] = [
     expect: { answer: [DECLINES], maxToolCalls: 6 },
   },
 
+  // Knowing the app: what a page shows, where things are, what its terms mean, and where the member is asking from.
+  {
+    id: "app-explain-movements",
+    question: "i dont understand what this page is saying",
+    as: "associate",
+    page: { kind: "page", path: "/t/tech/movements", title: "Movements" },
+    tags: ["app"],
+    expect: { maxToolCalls: 3, answer: [/400 ?bp|4 percentage points|4 pp/i, /write[- ]?up|update/i], answerNot: [CANT] },
+    note: "The Risk version of this question worked because Risk publishes its context; Movements didn't.",
+  },
+  {
+    id: "app-where-weekly",
+    question: "where do I find the weekly update for Aadi?",
+    as: "exec",
+    tags: ["app"],
+    expect: { calls: ["explain_app|navigate"], maxToolCalls: 2, answer: [/weekly update/i] },
+  },
+  {
+    id: "app-term-active-share",
+    question: "what does active share mean on this page?",
+    as: "exec",
+    page: { kind: "exposure", path: "/exposure", title: "Exposure", scope: "fund", lookback: "1y", asOf: end },
+    tags: ["app"],
+    expect: { maxToolCalls: 2, answer: [/benchmark|index/i], answerNot: [CANT] },
+  },
+  {
+    id: "app-holding-page-ticker",
+    question: "what's the latest news on this company?",
+    as: "exec",
+    page: { kind: "page", path: "/t/fig/h/AXP", title: "AXP" },
+    tags: ["app", "research"],
+    expect: { calls: ["get_news|search_web"], maxToolCalls: 5, answer: [/AXP|American Express/i] },
+    note: "Asked from a holding page without the chat pinned: the page's address says which company.",
+  },
+
   // Operating the app. These reached the model in production and failed; they pass once Hoot can drive the app.
   {
     id: "control-fig-sector",
@@ -303,7 +341,7 @@ export const EVAL_CASES: EvalCase[] = [
     as: "exec",
     page: fundRisk,
     tags: ["control"],
-    expect: { calls: ["navigate"], maxToolCalls: 1, maxErrors: 0, answerNot: [/Figma/i, CANT] },
+    expect: { calls: ["navigate"], maxToolCalls: 1, maxErrors: 0, answerNot: [/Figma/i, CANT], href: /^\/t\/fig$/ },
     note: "Production 2026-09-25: researched Figma (FIG) with 11 lookups.",
   },
   {
@@ -320,7 +358,7 @@ export const EVAL_CASES: EvalCase[] = [
     question: "open the exposure page for the tech team",
     as: "exec",
     tags: ["control"],
-    expect: { calls: ["navigate"], maxToolCalls: 1, maxErrors: 0, answerNot: [CANT] },
+    expect: { calls: ["navigate"], maxToolCalls: 1, maxErrors: 0, answerNot: [CANT], href: /^\/t\/tech\/exposure/ },
   },
   {
     id: "control-performance-ytd",
@@ -328,7 +366,7 @@ export const EVAL_CASES: EvalCase[] = [
     as: "exec",
     page: { kind: "page", path: "/", title: "Home" },
     tags: ["control"],
-    expect: { calls: ["navigate"], notCalls: ["get_attribution"], maxToolCalls: 1, maxErrors: 0 },
+    expect: { calls: ["navigate"], notCalls: ["get_attribution"], maxToolCalls: 1, maxErrors: 0, href: /^\/attribution\?period=ytd$/ },
     note: "A 'show me' request opens the page; it doesn't research.",
   },
   {
@@ -345,7 +383,7 @@ export const EVAL_CASES: EvalCase[] = [
     question: "open healthcare's risk page and tell me what's driving its tracking error",
     as: "exec",
     tags: ["control", "portfolio"],
-    expect: { calls: ["navigate", "get_portfolio_risk"], maxToolCalls: 3, answer: [/tracking error/i] },
+    expect: { calls: ["navigate", "get_portfolio_risk"], maxToolCalls: 3, answer: [/tracking error/i], href: /^\/t\/healthcare\/risk/ },
   },
   {
     id: "fundwide-team-holdings",
