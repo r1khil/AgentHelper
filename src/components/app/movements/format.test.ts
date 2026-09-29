@@ -26,9 +26,9 @@ describe("movement formatting", () => {
   });
 
   it("formats session and due dates", () => {
-    expect(sessionShort("2026-09-22", new Date(now))).toBe("Tue 22 Sep");
-    expect(sessionShort("2025-09-22", new Date(now))).toBe("22 Sep 2025");
-    expect(dueLabel(new Date("2026-09-23T16:00:00Z"), new Date(now))).toBe("Wed 23 Sep, 12:00 ET");
+    expect(sessionShort("2026-09-22", new Date(now))).toBe("Tue, Sep 22");
+    expect(sessionShort("2025-09-22", new Date(now))).toBe("Sep 22, 2025");
+    expect(dueLabel(new Date("2026-09-23T16:00:00Z"), new Date(now))).toBe("Wed, Sep 23, 12:00 PM ET");
     expect(dueLabel(null)).toBe("—");
   });
 });

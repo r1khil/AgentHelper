@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { AttributionResult } from "./attribution";
 import { attributionHeadline, summarizeAttribution } from "./summary";
 
-// Dates this year print without the year ("Tue 22 Sep"); pin the clock so these stay 2026's.
+// Dates this year print without the year ("Tue, Sep 22"); pin the clock so these stay 2026's.
 beforeAll(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-28T12:00:00Z"));
@@ -58,7 +58,7 @@ describe("summarizeAttribution", () => {
     expect(s.daily?.[1].returnPct).toBeCloseTo(((1 - 0.012) / 1.01 - 1) * 100, 2);
   });
   it("summarizes in one line", () => {
-    expect(attributionHeadline(s)).toContain("Whole fund, 7D (Fri 18 Sep close to Tue 22 Sep close): return (1.20%); S&P 500 1.00%, active (220 bp)");
+    expect(attributionHeadline(s)).toContain("Whole fund, 7D (Fri, Sep 18 close to Tue, Sep 22 close): return (1.20%); S&P 500 1.00%, active (220 bp)");
     expect(attributionHeadline(s)).toContain("biggest detractors NVDA (40 bp); top contributors JPM 8 bp");
   });
 });

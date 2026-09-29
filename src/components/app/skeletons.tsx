@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { stripGrid, wrapDivider } from "./panel";
+import { stripGrid } from "./panel";
 
 // Loading-skeleton parts for the page-shaped fallbacks in page-skeletons.tsx. Each part keeps the outer geometry of
 // its counterpart in panel.tsx (same padding, header and row heights, same text classes for line boxes), so the
@@ -50,8 +50,8 @@ export function SkeletonPanel({ className, children, variant = "outlined" }: { c
  */
 export function SkeletonPanelHeader({ className, w = "w-36", aside }: { className?: string; w?: string; aside?: string | false }) {
   return (
-    <div className={cn("flex h-11 shrink-0 items-center gap-2 border-b px-4 group-data-[variant=plain]/panel:h-10 group-data-[variant=plain]/panel:border-b-0", className)}>
-      <TextBone className="text-emph font-semibold" w={w} />
+    <div className={cn("flex h-11 shrink-0 items-center gap-2 border-b px-4 group-data-[variant=plain]/panel:h-10 group-data-[variant=plain]/panel:border-b-0 group-data-[variant=plain]/panel:px-0", className)}>
+      <TextBone className="text-title font-bold" w={w} />
       <span className="flex-1" />
       {aside && <Bone className={cn("h-3 rounded-[4px]", aside)} />}
     </div>
@@ -62,12 +62,12 @@ export function SkeletonPanelHeader({ className, w = "w-36", aside }: { classNam
 export function SkeletonStatStrip({ cells, notes = true, wrap, className }: { cells: number; notes?: boolean; wrap?: boolean; className?: string }) {
   const grid = stripGrid(cells, wrap);
   const strip = (
-    <section className={cn("panel grid shrink-0 overflow-hidden", grid.className, className)} style={grid.style}>
+    <section className={cn("grid shrink-0 gap-x-4 border-y py-[18px]", grid.className, className)} style={grid.style}>
       {Array.from({ length: cells }, (_, i) => (
-        <div key={i} className={cn("min-w-0 px-[18px] py-3.5", wrap ? wrapDivider(i) : i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
-          <TextBone className="text-body" w="w-20" />
-          <TextBone className="figure mt-1 text-display leading-tight" w="w-24" />
-          {notes && <TextBone className="mt-1 text-caption" w="w-28" />}
+        <div key={i} className="flex min-w-0 flex-col gap-[3px]">
+          <TextBone className="text-caption" w="w-20" />
+          <TextBone className="figure text-title" w="w-24" />
+          {notes && <TextBone className="text-caption" w="w-28" />}
         </div>
       ))}
     </section>

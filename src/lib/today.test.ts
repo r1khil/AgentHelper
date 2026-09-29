@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { fmtDay } from "@/lib/format";
 import { agendaDate, analystSentence, citationParts, daysAway, greeting, greetingWord, inDays, listNudges, listSentence, marketLine, nextReportByTicker, nextSunday, nudgeAction, nudgeWhen, owedSentence, reportDays, reportsLine, scoreboard, sessionHeading, sessionSentence, sessionStamp, type UpcomingReport } from "./today";
 
-// Dates this year print without the year ("Tue 22 Sep"); pin the clock so these stay 2026's.
+// Dates this year print without the year ("Tue, Sep 22"); pin the clock so these stay 2026's.
 beforeAll(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-28T12:00:00Z"));
@@ -69,20 +69,20 @@ describe("dates", () => {
 
 describe("Today v2", () => {
   it("says when the market opens or closes, New York time", () => {
-    // Mon 28 Sep 2026, 8:18 NY (EDT = UTC-4).
-    expect(marketLine(new Date("2026-09-28T12:18:00Z"))).toBe("Mon 28 Sep · Market opens in 1h 12m");
-    expect(marketLine(new Date("2026-09-28T15:00:00Z"))).toBe("Mon 28 Sep · Market closes in 5h 0m");
-    expect(marketLine(new Date("2026-09-28T19:45:00Z"))).toBe("Mon 28 Sep · Market closes in 15m");
-    expect(marketLine(new Date("2026-09-28T21:00:00Z"))).toBe("Mon 28 Sep · Market closed · opens tomorrow 9:30 ET");
-    expect(marketLine(new Date("2026-09-26T15:00:00Z"))).toBe("Sat 26 Sep · Market closed · opens Mon 28 Sep, 9:30 ET");
+    // Mon, Sep 28, 2026, 8:18 NY (EDT = UTC-4).
+    expect(marketLine(new Date("2026-09-28T12:18:00Z"))).toBe("Mon, Sep 28 · Market opens in 1h 12m");
+    expect(marketLine(new Date("2026-09-28T15:00:00Z"))).toBe("Mon, Sep 28 · Market closes in 5h 0m");
+    expect(marketLine(new Date("2026-09-28T19:45:00Z"))).toBe("Mon, Sep 28 · Market closes in 15m");
+    expect(marketLine(new Date("2026-09-28T21:00:00Z"))).toBe("Mon, Sep 28 · Market closed · opens tomorrow 9:30 AM ET");
+    expect(marketLine(new Date("2026-09-26T15:00:00Z"))).toBe("Sat, Sep 26 · Market closed · opens Mon, Sep 28, 9:30 AM ET");
   });
 
   it("formats greeting, stamps and agenda dates", () => {
     expect(greetingWord(new Date("2026-09-25T12:15:00Z"))).toBe("Morning");
     expect(greetingWord(new Date("2026-09-25T23:00:00Z"))).toBe("Evening");
     expect(sessionStamp("2026-09-25")).toBe(fmtDay("2026-09-25"));
-    expect(fmtDay("2026-09-25", new Date("2026-09-28T12:00:00Z"))).toBe("Fri 25 Sep");
-    expect(agendaDate("2026-10-13")).toBe("Tue 13 Oct");
+    expect(fmtDay("2026-09-25", new Date("2026-09-28T12:00:00Z"))).toBe("Fri, Sep 25");
+    expect(agendaDate("2026-10-13")).toBe("Tue, Oct 13");
     expect(daysAway("2026-09-28", "2026-10-13")).toBe("15 days");
     expect(daysAway("2026-09-28", "2026-09-29")).toBe("tomorrow");
   });
@@ -126,21 +126,21 @@ describe("Today v2", () => {
     expect(nudgeWhen(n("movement:1:overdue", "movement"))).toBe("Overdue");
     expect(nudgeWhen(n("movement:1:due", "movement", "Your team's UNH write-up is due in 5h"))).toBe("Due in 5h");
     expect(nudgeWhen(n("earnings:1:expectations", "earnings", "Write down expectations for JPM", "It reports Tuesday before the open."))).toBe("Reports Tue");
-    expect(nudgeWhen(n("weekly:2026-09-25", "weekly"), new Date("2026-09-28T12:00:00Z"))).toBe("Week to Fri 25 Sep");
+    expect(nudgeWhen(n("weekly:2026-09-25", "weekly"), new Date("2026-09-28T12:00:00Z"))).toBe("Week to Fri, Sep 25");
     expect(nudgeWhen(n("changelog:120", "changelog"))).toBe("PR #120");
     expect(nudgeAction(n("movement:1:overdue", "movement"))).toBe("Open write-up");
     expect(nudgeAction(n("weekly:2026-09-25", "weekly"))).toBe("Review pack");
   });
 
   it("dates write-ups in New York time, and says how late they are", () => {
-    // Fri 25 Sep 2026, 18:00 NY.
+    // Fri, Sep 25, 2026, 18:00 NY.
     const now = new Date("2026-09-25T22:00:00Z");
     const m = (id: string, at?: string) => ({ id, kind: "movement", title: "", at });
-    expect(nudgeWhen(m("movement:1:due", "2026-09-28T16:00:00Z"), now)).toBe("Due Mon 28 Sep");
-    expect(nudgeWhen(m("movement:1:due", "2026-09-25T16:00:00Z"), new Date("2026-09-25T13:00:00Z"))).toBe("Due 12:00 ET");
+    expect(nudgeWhen(m("movement:1:due", "2026-09-28T16:00:00Z"), now)).toBe("Due Mon, Sep 28");
+    expect(nudgeWhen(m("movement:1:due", "2026-09-25T16:00:00Z"), new Date("2026-09-25T13:00:00Z"))).toBe("Due 12:00 PM ET");
     expect(nudgeWhen(m("movement:1:overdue", "2026-09-23T16:00:00Z"), now)).toBe("2 days overdue");
     expect(nudgeWhen(m("movement:1:team:overdue", "2026-09-25T16:00:00Z"), now)).toBe("6 hours overdue");
-    expect(nudgeWhen(m("movement:1:team:due", "2026-09-29T16:00:00Z"), now)).toBe("Due Tue 29 Sep");
+    expect(nudgeWhen(m("movement:1:team:due", "2026-09-29T16:00:00Z"), now)).toBe("Due Tue, Sep 29");
     expect(nudgeAction(m("movement:1:team:overdue", "2026-09-25T16:00:00Z"))).toBe("Open write-up");
     expect(nudgeAction(m("movement:1:team:due", "2026-09-29T16:00:00Z"))).toBe("Open write-up");
   });
@@ -153,19 +153,19 @@ describe("Today v2", () => {
     const tomorrow = m("c:due", "2026-09-26T16:00:00Z");
     const earnings = { id: "earnings:e:expectations", kind: "earnings", title: "Write down expectations for JPM" };
 
-    expect(owedSentence([monday], now)).toBe("Your team owes 1 write-up, due 12:00 ET Monday.");
-    expect(owedSentence([tomorrow], now)).toBe("Your team owes 1 write-up, due 12:00 ET tomorrow.");
+    expect(owedSentence([monday], now)).toBe("Your team owes 1 write-up, due 12:00 PM ET Monday.");
+    expect(owedSentence([tomorrow], now)).toBe("Your team owes 1 write-up, due 12:00 PM ET tomorrow.");
     expect(owedSentence([late], now)).toBe("Your team owes 1 write-up, 2 days overdue.");
-    expect(owedSentence([monday, tomorrow], now)).toBe("Your team owes 2 write-ups; the next is due 12:00 ET tomorrow.");
+    expect(owedSentence([monday, tomorrow], now)).toBe("Your team owes 2 write-ups; the next is due 12:00 PM ET tomorrow.");
     expect(owedSentence([monday, late], now)).toBe("Your team owes 2 write-ups; one is overdue.");
     expect(owedSentence([late, m("d:overdue", "2026-09-24T16:00:00Z")], now)).toBe("Your team owes 2 write-ups; both are overdue.");
     expect(owedSentence([monday, tomorrow, late], now)).toBe("Your team owes 3 write-ups; one is overdue.");
     // Another team's write-up, overdue or not, which an exec is shown, is not their own team's to owe.
     expect(owedSentence([m("x:team:overdue", "2026-09-23T16:00:00Z"), m("y:team:due", "2026-09-28T16:00:00Z")], now)).toBeNull();
-    expect(analystSentence([monday, m("x:team:overdue", "2026-09-23T16:00:00Z"), m("y:team:due", "2026-09-28T16:00:00Z")], now)).toBe("Your team owes 1 write-up, due 12:00 ET Monday. I found two more things for you.");
+    expect(analystSentence([monday, m("x:team:overdue", "2026-09-23T16:00:00Z"), m("y:team:due", "2026-09-28T16:00:00Z")], now)).toBe("Your team owes 1 write-up, due 12:00 PM ET Monday. I found two more things for you.");
 
-    expect(analystSentence([monday], now)).toBe("Your team owes 1 write-up, due 12:00 ET Monday.");
-    expect(analystSentence([monday, earnings], now)).toBe("Your team owes 1 write-up, due 12:00 ET Monday. I found one more thing for you.");
+    expect(analystSentence([monday], now)).toBe("Your team owes 1 write-up, due 12:00 PM ET Monday.");
+    expect(analystSentence([monday, earnings], now)).toBe("Your team owes 1 write-up, due 12:00 PM ET Monday. I found one more thing for you.");
     expect(analystSentence([earnings], now)).toBe("I found one thing for you.");
     expect(analystSentence([], now)).toBe("Nothing on my list for you right now.");
   });

@@ -2,7 +2,8 @@
 export type HootCommand = { kind: "theme"; theme: "light" | "dark" | "system" | "toggle" } | { kind: "navigate"; destination: string } | { kind: "scope"; scope: string };
 
 const destinations: Record<string, string> = {
-  home: "Today", dashboard: "Today", today: "Today", portfolio: "Portfolio", holdings: "Holdings",
+  home: "Home", dashboard: "Home", today: "Home", portfolio: "Portfolio", overview: "Portfolio", holdings: "Holdings", positions: "Holdings",
+  activity: "Activity", ledger: "Activity", trades: "Activity", performance: "Attribution",
   research: "Research", hoot: "Research", chat: "Research", chats: "Research", conversations: "Research", agent: "Research",
   boards: "Research", "research boards": "Research", "sell side": "Sell-side calls", "sell side calls": "Sell-side calls", "sell side analyzer": "Sell-side calls",
   models: "Models", movements: "Movements", earnings: "Earnings", calendar: "Economic calendar",
@@ -33,7 +34,7 @@ export function parseHootCommand(text: string): HootCommand | null {
 }
 
 /** A rail section Hoot opens by name goes where the rail does: the first of its pages this member can open. */
-const SECTION_PAGES: Record<string, string[]> = { Portfolio: ["Attribution", "Backtesting"] };
+const SECTION_PAGES: Record<string, string[]> = { Portfolio: ["Portfolio", "Attribution", "Backtesting"], Holdings: ["Holdings", "Portfolio"] };
 
 export type HootLink = { label: string; href: string };
 /** Routes come from the member's scoped sidebar, never from user-provided URLs. */

@@ -35,20 +35,20 @@ describe("⌘K Enter rule", () => {
   it("opens the page a word names instead of asking Hoot", () => {
     expect(enter("movement")).toMatchObject({ kind: "page", page: { label: "Movements" } });
     expect(enter("Movements")).toMatchObject({ kind: "page", page: { label: "Movements" } });
-    expect(enter("attrib")).toMatchObject({ kind: "page", page: { label: "Attribution" } });
+    expect(enter("attrib")).toMatchObject({ kind: "page", page: { label: "Performance" } });
     expect(enter("sell side")).toMatchObject({ kind: "page", page: { label: "Sell-side calls" } });
   });
 
   it("counts Hoot's name for a page and its keywords as names", () => {
     expect(enter("hoot")).toMatchObject({ kind: "page", page: { label: "Research" } });
-    expect(enter("earnings")).toMatchObject({ kind: "page", page: { label: "Calendar" } });
+    expect(enter("earnings")).toMatchObject({ kind: "page", page: { label: "Earnings" } });
     expect(enter("research")).toMatchObject({ kind: "page", page: { label: "Research" } });
     expect(enter("analyzer")).toMatchObject({ kind: "page", page: { label: "Sell-side calls" } });
   });
 
-  it("opens the Portfolio section's first page for \"portfolio\", and Holdings for \"holdings\"", () => {
-    expect(enter("portfolio")).toMatchObject({ kind: "page", page: { label: "Attribution" } });
-    expect(enter("holdings")).toMatchObject({ kind: "page", page: { label: "Holdings" } });
+  it("opens the Portfolio for \"portfolio\", and the team page for \"holdings\"", () => {
+    expect(enter("portfolio")).toMatchObject({ kind: "page", page: { label: "Portfolio" } });
+    expect(enter("holdings")).toMatchObject({ kind: "page", page: { label: "Team page" } });
     // Without the book, the Portfolio section is Backtesting alone.
     const pages = destinations({ scope: { slug: "tech" }, fundWide: false, seesBook: false });
     expect(enter("portfolio", { pages })).toMatchObject({ kind: "page", page: { label: "Backtesting" } });
@@ -109,8 +109,26 @@ describe("⌘K with nothing typed", () => {
   it("lists pages first, then the page's starting questions for Hoot", () => {
     const groups = run("", { suggestions: ["What moved our holdings today versus the S&P 500, and why?"] });
     expect(groups.map((g) => g.label)).toEqual(["Go to", "Ask Hoot"]);
-    expect(enterItem(groups)).toMatchObject({ kind: "page", page: { label: "Today" } });
+    expect(enterItem(groups)).toMatchObject({ kind: "page", page: { label: "Home" } });
     expect(groups[1].items[0]).toMatchObject({ kind: "suggest" });
+  });
+});
+
+describe("⌘J with nothing typed", () => {
+  const recent = [{ title: "Why are we behind since Sep 17?", href: "/hoot/c1", at: "2026-09-28T18:39:00Z" }];
+  it("asks about the page first, then recent answers, then three pages", () => {
+    const groups = run("", { mode: "ask", pageLabel: "Risk", recent, suggestions: ["Which holdings add the most risk for their size?"] });
+    expect(groups.map((g) => g.label)).toEqual(["Ask about Risk", "Recent answers", "Go to"]);
+    expect(enterItem(groups)).toMatchObject({ kind: "suggest" });
+    expect(groups[1].items[0]).toMatchObject({ kind: "recent", chat: { href: "/hoot/c1" } });
+    expect(groups[2].items).toHaveLength(3);
+  });
+  it("asks a typed question on Enter, with the pages it names after", () => {
+    expect(enter("what moved risk today", { mode: "ask" })).toMatchObject({ kind: "ask" });
+    expect(run("risk today", { mode: "ask" })[0].label).toBe("Ask Hoot");
+  });
+  it("says Ask Hoot when the page has no name, and drops empty groups", () => {
+    expect(run("", { mode: "ask", suggestions: ["x"] }).map((g) => g.label)).toEqual(["Ask Hoot", "Go to"]);
   });
 });
 

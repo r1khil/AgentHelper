@@ -60,24 +60,19 @@ export function teamSlugFromPath(pathname: string) {
 }
 
 /**
- * One Hoot per screen: the corner companion steps aside where the page shows Hoot in its content. That's Today
- * (the greeter), Research conversations (the thinking sprite) and the Calendar (sleeping Hoot on an empty day).
+ * Hoot's corner button is on every page except the conversation ones, where Hoot is the page: Home, Research and its
+ * boards, a thread, and a movement write-up (which asks him for feedback in place).
  */
 export function companionHiddenOn(pathname: string) {
-  return (
-    pathname === "/" ||
-    /^\/t\/[^/]+\/agent(\/|$)/.test(pathname) ||
-    /^\/hoot(\/|$)/.test(pathname) ||
-    /^\/t\/[^/]+\/(earnings|economic-calendar)(\/?$)/.test(pathname)
-  );
+  return pathname === "/" || /^\/t\/[^/]+\/(agent|movements)(\/|$)/.test(pathname) || /^\/hoot(\/|$)/.test(pathname);
 }
 
 type Tip = { id: string; match: RegExp; title: string; detail: string };
 
 const TIPS: Tip[] = [
-  { id: "tip:today", match: /^\/$/, title: "Hi, I'm Hoot!", detail: "I'll flag deadlines and earnings as they come up. Press ⌘K any time to ask me a research question." },
+  { id: "tip:today", match: /^\/$/, title: "Hi, I'm Hoot!", detail: "I'll flag deadlines and earnings as they come up. Press ⌘J any time to ask me a research question." },
   { id: "tip:holdings", match: /^\/t\/[^/]+$/, title: "Every holding has its own research", detail: "Open a ticker to see its thesis, notes and research chats where I cite every fact." },
-  { id: "tip:holding", match: /^\/t\/[^/]+\/h\/[^/]+$/, title: "Ask about this holding", detail: "Press ⌘K and ask: on this page, the question goes to this ticker's research." },
+  { id: "tip:holding", match: /^\/t\/[^/]+\/h\/[^/]+$/, title: "Ask about this holding", detail: "Press ⌘J and ask: on this page, the question goes to this ticker's research." },
   { id: "tip:movements", match: /^\/t\/[^/]+\/movements$/, title: "Movements", detail: "A holding lands here when it moves 400 bp or more against the S&P 500. Anyone on the team can write up why, by noon the next trading day." },
   { id: "tip:earnings", match: /^\/t\/[^/]+\/earnings$/, title: "Earnings calendar", detail: "Write down expectations before the report. The prep pack gathers evidence, and the reflection afterwards checks your thesis." },
   { id: "tip:sell-side", match: /^\/t\/[^/]+\/sell-side$/, title: "Sell-side calls", detail: "Record a call, and you'll get a transcript, a brief and cross-checks against your team's files. I'll tell you when it's ready." },
@@ -108,7 +103,35 @@ export function suggestionsFor(pathname: string, ticker: string | null): string[
       "Which recent reports from our holdings surprised versus consensus?",
     ];
   }
-  if (/\/attribution$/.test(pathname)) {
+  if (/^\/t\/fund\/?$/.test(pathname)) {
+    return [
+      "What moved the fund today, and which holdings drove it?",
+      "Why are we ahead of or behind the benchmark since Sep 17?",
+      "Which positions have grown the most since the ledger opened?",
+    ];
+  }
+  if (/\/risk$/.test(pathname)) {
+    return [
+      "Which holdings add the most risk for their size?",
+      "What would trimming our largest risk source do to tracking error?",
+      "How would the book have done in the 2022 rate shock, and why?",
+    ];
+  }
+  if (/\/exposure$/.test(pathname)) {
+    return [
+      "Where are we most overweight against the S&P 500, and since when?",
+      "What do our ETFs hold underneath, and where does that overlap our stocks?",
+      "Which sector tilt cost us the most this month?",
+    ];
+  }
+  if (/^\/attribution\/ledger$/.test(pathname)) {
+    return [
+      "Which trades changed the book the most since the ledger opened?",
+      "Check the last week's trades against the closing prices.",
+      "How much cash came in or went out this month, and why?",
+    ];
+  }
+  if (/\/(attribution|daily)$/.test(pathname)) {
     return [
       "What drove this period's performance versus the S&P 500?",
       "Which holdings and sectors hurt most, and was it allocation or selection?",

@@ -15,12 +15,12 @@
 // any trailing modifier (/6, !) in place.
 //
 // The scale (px / line-height / role):
-//   text-caption  11 / 16  chips, badges, counts, uppercase labels, avatar initials, tiny meta
-//   text-body     13 / 20  everything you read: table cells, rows, secondary lines, footers, help, buttons
-//   text-emph     15 / 22  panel titles, card headings, large reading text (chat answers), a ticker's company line
-//   text-title    20 / 28  page titles (header h1), section and dialog titles
-//   text-display  26 / 32  big figures in stat strips, the ticker/greeting h1
-//   text-hero     44 / 44  the one hero number (Today's Last session)
+//   text-caption  12 / 17  the floor: labels, meta, column headers, counts, status words
+//   text-body     13 / 20  everything you read: table cells, rows, controls, buttons, lists
+//   text-emph     15 / 24  the line under a big number, reading text, Hoot's prose in a panel
+//   text-title    17 / 24  section headings and the figures in a stat strip
+//   text-display  22 / 30  item titles on a detail page, sign-in and dialog titles
+//   text-hero     44 / 52  the one big number that opens a page
 //
 // Mapping from what the code used before (see mapPx / NAMED):
 //   ≤ 11.5px (10, 10.5, 11, 11.5)           → caption
@@ -39,12 +39,12 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const SCALE = {
-  caption: { px: 11, leading: 16 },
+  caption: { px: 12, leading: 17 },
   body: { px: 13, leading: 20 },
-  emph: { px: 15, leading: 22 },
-  title: { px: 20, leading: 28 },
-  display: { px: 26, leading: 32 },
-  hero: { px: 44, leading: 44 },
+  emph: { px: 15, leading: 24 },
+  title: { px: 17, leading: 24 },
+  display: { px: 22, leading: 30 },
+  hero: { px: 44, leading: 52 },
 };
 export const SCALE_NAMES = Object.keys(SCALE);
 

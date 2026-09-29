@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fixed, fmtAccounting, fmtBp, fmtCompact, fmtCurrency, fmtDate, fmtDateTime, fmtDay, fmtDayMonth, fmtMonth, fmtMoney, fmtNumber, fmtPct, fmtTime, fmtUsd, fmtUsdCompact, ppToBp, relativeTime } from "./format";
+import { fixed, fmtAccounting, fmtBp, fmtChangeBp, fmtChangeMoney, fmtChangePct, fmtChangeUsd, fmtCompact, fmtCurrency, fmtDate, fmtDateTime, fmtDay, fmtDayMonth, fmtMonth, fmtMoney, fmtNumber, fmtPct, fmtTime, fmtUsd, fmtUsdCompact, ppToBp, relativeTime } from "./format";
 
 describe("fixed", () => {
   it("drops the minus from a value that rounds to zero", () => {
@@ -176,47 +176,90 @@ describe("fmtCurrency", () => {
   });
 });
 
+describe("fmtChange*, a change with a plus when it is up", () => {
+  it("fmtChangePct puts a plus on a gain, parentheses on a loss and nothing on zero", () => {
+    expect(fmtChangePct(0.39)).toBe("+0.39%");
+    expect(fmtChangePct(-1.42)).toBe("(1.42%)");
+    expect(fmtChangePct(0)).toBe("0.00%");
+    expect(fmtChangePct(0.001)).toBe("0.00%");
+    expect(fmtChangePct(-0.001)).toBe("0.00%");
+    expect(fmtChangePct(12.345, 1)).toBe("+12.3%");
+    expect(fmtChangePct("2.5")).toBe("+2.50%");
+    expect(fmtChangePct(null)).toBe("—");
+  });
+
+  it("fmtChangeBp writes bp and signs the change the same way", () => {
+    expect(fmtChangeBp(12)).toBe("+12 bp");
+    expect(fmtChangeBp(-430)).toBe("(430 bp)");
+    expect(fmtChangeBp(0)).toBe("0 bp");
+    expect(fmtChangeBp(0.4)).toBe("0 bp");
+    expect(fmtChangeBp(-0.4)).toBe("0 bp");
+    expect(fmtChangeBp(1250)).toBe("+1,250 bp");
+    expect(fmtChangeBp(undefined)).toBe("—");
+  });
+
+  it("fmtChangeMoney is a signed amount with no symbol", () => {
+    expect(fmtChangeMoney(3918.51)).toBe("+3,918.51");
+    expect(fmtChangeMoney(-22092)).toBe("(22,092.00)");
+    expect(fmtChangeMoney(0)).toBe("0.00");
+    expect(fmtChangeMoney(0.004)).toBe("0.00");
+    expect(fmtChangeMoney(-0.004)).toBe("0.00");
+    expect(fmtChangeMoney(null)).toBe("—");
+  });
+
+  it("fmtChangeUsd puts the plus before the dollar sign and the dollar sign inside the parentheses", () => {
+    expect(fmtChangeUsd(17294.21)).toBe("+$17,294.21");
+    expect(fmtChangeUsd(-6.2)).toBe("($6.20)");
+    expect(fmtChangeUsd(0)).toBe("$0.00");
+    expect(fmtChangeUsd(0.004)).toBe("$0.00");
+    expect(fmtChangeUsd(-0.004)).toBe("$0.00");
+    expect(fmtChangeUsd(-1234.4, 0)).toBe("($1,234)");
+    expect(fmtChangeUsd(null)).toBe("—");
+  });
+});
+
 describe("dates, in New York time", () => {
-  // Mon 28 Sep 2026, 08:00 New York.
+  // Mon, Sep 28, 2026, 8:00 AM New York.
   const now = new Date("2026-09-28T12:00:00Z");
 
-  it("fmtDay: weekday, day and month this year; the full date in another", () => {
-    expect(fmtDay("2026-09-28", now)).toBe("Mon 28 Sep");
-    expect(fmtDay("2026-10-05", now)).toBe("Mon 5 Oct");
-    expect(fmtDay("2025-09-22", now)).toBe("22 Sep 2025");
-    expect(fmtDay("2027-01-04", now)).toBe("4 Jan 2027");
+  it("fmtDay: weekday, month and day this year; the full date in another", () => {
+    expect(fmtDay("2026-09-28", now)).toBe("Mon, Sep 28");
+    expect(fmtDay("2026-10-05", now)).toBe("Mon, Oct 5");
+    expect(fmtDay("2025-09-22", now)).toBe("Sep 22, 2025");
+    expect(fmtDay("2027-01-04", now)).toBe("Jan 4, 2027");
   });
 
   it("reads a calendar date as that date, whatever the time zone", () => {
-    expect(fmtDay("2026-01-01", new Date("2026-06-01T12:00:00Z"))).toBe("Thu 1 Jan");
-    expect(fmtDate("2026-12-31")).toBe("31 Dec 2026");
+    expect(fmtDay("2026-01-01", new Date("2026-06-01T12:00:00Z"))).toBe("Thu, Jan 1");
+    expect(fmtDate("2026-12-31")).toBe("Dec 31, 2026");
   });
 
   it("reads an instant in New York, so a late-evening UTC time keeps its New York day", () => {
     // 01:30 UTC on the 29th is 21:30 on the 28th in New York.
-    expect(fmtDay("2026-09-29T01:30:00Z", now)).toBe("Mon 28 Sep");
-    expect(fmtDate(new Date("2026-09-29T01:30:00Z"))).toBe("28 Sep 2026");
+    expect(fmtDay("2026-09-29T01:30:00Z", now)).toBe("Mon, Sep 28");
+    expect(fmtDate(new Date("2026-09-29T01:30:00Z"))).toBe("Sep 28, 2026");
   });
 
   it("fmtDate always carries the year", () => {
-    expect(fmtDate("2026-10-28")).toBe("28 Oct 2026");
-    expect(fmtDate(new Date("2026-10-28T16:00:00Z"))).toBe("28 Oct 2026");
+    expect(fmtDate("2026-10-28")).toBe("Oct 28, 2026");
+    expect(fmtDate(new Date("2026-10-28T16:00:00Z"))).toBe("Oct 28, 2026");
   });
 
-  it("fmtTime is 24-hour, no seconds, marked ET, and follows daylight saving", () => {
-    expect(fmtTime("2026-09-28T16:00:00Z")).toBe("12:00 ET");
-    expect(fmtTime("2026-09-28T21:07:48Z")).toBe("17:07 ET");
-    expect(fmtTime("2026-09-28T13:30:00Z")).toBe("9:30 ET");
-    expect(fmtTime("2026-12-01T17:00:00Z")).toBe("12:00 ET");
+  it("fmtTime is 12-hour, no seconds, marked ET, and follows daylight saving", () => {
+    expect(fmtTime("2026-09-28T16:00:00Z")).toBe("12:00 PM ET");
+    expect(fmtTime("2026-09-28T21:07:48Z")).toBe("5:07 PM ET");
+    expect(fmtTime("2026-09-28T13:30:00Z")).toBe("9:30 AM ET");
+    expect(fmtTime("2026-09-29T04:05:00Z")).toBe("12:05 AM ET");
+    expect(fmtTime("2026-12-01T17:00:00Z")).toBe("12:00 PM ET");
   });
 
   it("fmtDateTime joins the day and the time", () => {
-    expect(fmtDateTime("2026-09-28T16:00:00Z", now)).toBe("Mon 28 Sep, 12:00 ET");
-    expect(fmtDateTime(new Date("2025-03-03T15:00:00Z"), now)).toBe("3 Mar 2025, 10:00 ET");
+    expect(fmtDateTime("2026-09-28T16:00:00Z", now)).toBe("Mon, Sep 28, 12:00 PM ET");
+    expect(fmtDateTime(new Date("2025-03-03T15:00:00Z"), now)).toBe("Mar 3, 2025, 10:00 AM ET");
   });
 
   it("fmtDayMonth and fmtMonth for axes and calendar headings", () => {
-    expect(fmtDayMonth("2026-09-28")).toBe("28 Sep");
+    expect(fmtDayMonth("2026-09-28")).toBe("Sep 28");
     expect(fmtMonth("2026-09-01")).toBe("September 2026");
   });
 
@@ -234,7 +277,7 @@ describe("dates, in New York time", () => {
     expect(relativeTime(new Date(t - 5 * 60_000), t)).toBe("5m ago");
     expect(relativeTime(new Date(t - 3 * 3_600_000), t)).toBe("3h ago");
     expect(relativeTime(new Date(t - 2 * 86_400_000), t)).toBe("2d ago");
-    expect(relativeTime("2026-07-01T16:00:00Z", t)).toBe("1 Jul 2026");
+    expect(relativeTime("2026-07-01T16:00:00Z", t)).toBe("Jul 1, 2026");
     expect(relativeTime(null, t)).toBe("");
   });
 });

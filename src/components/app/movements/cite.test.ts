@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { citationFor, gist, insertAt } from "./cite";
 
-// Dates this year print without the year ("Tue 22 Sep"); pin the clock so these stay 2026's.
+// Dates this year print without the year ("Tue, Sep 22"); pin the clock so these stay 2026's.
 beforeAll(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-28T12:00:00Z"));
@@ -28,12 +28,12 @@ describe("gist", () => {
 describe("citationFor", () => {
   it("names the publisher, the New York date and the headline", () => {
     const e = { title: "Meta's stock surges as it moves from AI laggard to leader", publisher: "Yahoo", publishedAt: new Date("2026-09-24T19:40:25Z") };
-    expect(citationFor(e, "News")).toBe("[Yahoo, Thu 24 Sep: Meta's stock surges as it moves from AI…]");
+    expect(citationFor(e, "News")).toBe("[Yahoo, Thu, Sep 24: Meta's stock surges as it moves from AI…]");
   });
 
   it("uses New York's date for a late-evening UTC time", () => {
     const e = { title: "After-hours note", publisher: "Yahoo", publishedAt: new Date("2026-09-25T02:00:00Z") };
-    expect(citationFor(e, "News")).toBe("[Yahoo, Thu 24 Sep: After-hours note]");
+    expect(citationFor(e, "News")).toBe("[Yahoo, Thu, Sep 24: After-hours note]");
   });
 
   it("leaves out a missing date and falls back to the kind for a missing publisher", () => {
@@ -43,7 +43,7 @@ describe("citationFor", () => {
 });
 
 describe("insertAt", () => {
-  const cite = "[Yahoo, Thu 24 Sep: X]";
+  const cite = "[Yahoo, Thu, Sep 24: X]";
 
   it("inserts into an empty draft", () => {
     expect(insertAt("", 0, 0, cite)).toEqual({ start: 0, end: 0, insert: cite, text: cite, caret: cite.length });

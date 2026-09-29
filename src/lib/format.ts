@@ -5,13 +5,15 @@ import { DateTime } from "luxon";
  * Today, Holdings, Attribution, Risk, Research, Weekly, in Hoot's copy and in email.
  *
  * Numbers use accounting style: negatives in parentheses with the unit inside ("(0.29%)", "(2 bp)", "($1,234.50)"),
- * no plus sign on positives, and a value that rounds to zero is never negative. Returns and weights are in percent;
- * relative figures (fund vs benchmark, contribution, active weight, a movement's move against the S&P) are in basis
- * points, always written "bp". Direction is shown by color, which callers choose separately.
+ * and a value that rounds to zero is never negative. Levels (a weight, a price, a value) carry no sign; a change (a
+ * return, a gain, a move against the benchmark) is written with a plus when it is up: "+0.39%", "+12 bp", "(1.42%)"
+ * (the fmtChange* helpers). Returns and weights are in percent; relative figures (fund vs benchmark, contribution,
+ * active weight, a movement's move against the S&P) are in basis points, always written "bp". Direction is also shown
+ * by color, which callers choose separately.
  *
- * Dates have one format per level of detail, all in New York time: "Mon 28 Sep" for a day this year, "28 Sep 2026"
- * for a full date or one in another year, "12:00 ET" for a time (24-hour, no seconds) and "Mon 28 Sep, 12:00 ET"
- * for both. A bare "YYYY-MM-DD" is a calendar date and is never shifted by a time zone.
+ * Dates have one format per level of detail, all in New York time: "Mon, Sep 28" for a day this year, "Sep 28, 2026"
+ * for a full date or one in another year, "Sep 28" where the weekday and year are clear, "2:41 PM ET" for a time and
+ * "Mon, Sep 28, 2:41 PM ET" for both. A bare "YYYY-MM-DD" is a calendar date and is never shifted by a time zone.
  */
 
 type Num = number | string | null | undefined;
@@ -60,6 +62,32 @@ export function fmtPct(n: Num, digits = 2) {
 /** A relative figure already in basis points: -2 → "(2 bp)", 25 → "25 bp". Always "bp", never "bps". */
 export function fmtBp(n: Num, digits = 0) {
   return fmtAccounting(n, digits, " bp");
+}
+
+/** A plus in front of a formatted change that is up (and does not round to zero). */
+function plus(n: Num, body: string) {
+  const v = toNumber(n);
+  return v !== null && v > 0 && /[1-9]/.test(body) ? `+${body}` : body;
+}
+
+/** A return or move in percent: 0.39 → "+0.39%", -1.42 → "(1.42%)", 0 → "0.00%". */
+export function fmtChangePct(n: Num, digits = 2) {
+  return plus(n, fmtPct(n, digits));
+}
+
+/** A relative move in basis points: 12 → "+12 bp", -430 → "(430 bp)". */
+export function fmtChangeBp(n: Num, digits = 0) {
+  return plus(n, fmtBp(n, digits));
+}
+
+/** A gain or loss with no symbol: 3918.51 → "+3,918.51", -22092 → "(22,092.00)". */
+export function fmtChangeMoney(n: Num, digits = 2) {
+  return plus(n, fmtMoney(n, digits));
+}
+
+/** A gain or loss in dollars: 17294.21 → "+$17,294.21", -6.2 → "($6.20)". */
+export function fmtChangeUsd(n: Num, digits = 2) {
+  return plus(n, fmtUsd(n, digits));
 }
 
 /** Percentage points to basis points (1 pp = 100 bp), keeping a missing value missing. */
@@ -132,21 +160,21 @@ function toNY(d: When): DateTime | null {
 
 const sameYear = (dt: DateTime, now: Date) => dt.year === DateTime.fromJSDate(now).setZone(NY).year;
 
-/** "28 Sep 2026": a full date, or any date where the year matters. */
+/** "Sep 28, 2026": a full date, or any date where the year matters. */
 export function fmtDate(d: When) {
-  return toNY(d)?.toFormat("d LLL yyyy") ?? "";
+  return toNY(d)?.toFormat("LLL d, yyyy") ?? "";
 }
 
-/** "Mon 28 Sep" for a day this year; "28 Sep 2025" for one in another year. */
+/** "Mon, Sep 28" for a day this year; "Sep 22, 2025" for one in another year. */
 export function fmtDay(d: When, now: Date = new Date()) {
   const dt = toNY(d);
   if (!dt) return "";
-  return sameYear(dt, now) ? dt.toFormat("ccc d LLL") : dt.toFormat("d LLL yyyy");
+  return sameYear(dt, now) ? dt.toFormat("ccc, LLL d") : dt.toFormat("LLL d, yyyy");
 }
 
-/** "28 Sep": chart axes and tight columns, where the weekday and year are clear from context. */
+/** "Sep 28": chart axes and tight columns, where the weekday and year are clear from context. */
 export function fmtDayMonth(d: When) {
-  return toNY(d)?.toFormat("d LLL") ?? "";
+  return toNY(d)?.toFormat("LLL d") ?? "";
 }
 
 /** "September 2026": a month, as a calendar heading. */
@@ -154,13 +182,13 @@ export function fmtMonth(d: When) {
   return toNY(d)?.toFormat("LLLL yyyy") ?? "";
 }
 
-/** "12:00 ET": 24-hour New York time, no seconds. */
+/** "2:41 PM ET": 12-hour New York time, no seconds. */
 export function fmtTime(d: When) {
   const dt = toNY(d);
-  return dt ? `${dt.toFormat("H:mm")} ET` : "";
+  return dt ? `${dt.toFormat("h:mm a")} ET` : "";
 }
 
-/** "Mon 28 Sep, 12:00 ET"; "28 Sep 2025, 12:00 ET" in another year. */
+/** "Mon, Sep 28, 12:00 PM ET"; "Sep 22, 2025, 10:00 AM ET" in another year. */
 export function fmtDateTime(d: When, now: Date = new Date()) {
   const dt = toNY(d);
   return dt ? `${fmtDay(dt.toJSDate(), now)}, ${fmtTime(dt.toJSDate())}` : "";

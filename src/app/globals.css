@@ -9,24 +9,24 @@
    lint error, and scripts/codemods/type-scale.mjs moves old classes onto the scale. */
 @theme {
     --text-*: initial;
-    /* Chips, badges, counts, uppercase labels, avatar initials, tiny meta. */
-    --text-caption: 11px;
-    --text-caption--line-height: 16px;
-    /* Everything you read: table cells and rows, secondary lines, column headers, footers, help text, buttons. */
+    /* The floor: labels, meta, column headers, counts and status words. Grey unless it is a status. */
+    --text-caption: 12px;
+    --text-caption--line-height: 17px;
+    /* Everything you read in a table or list: cells, rows, controls, buttons. */
     --text-body: 13px;
     --text-body--line-height: 20px;
-    /* Panel titles, card headings, large reading text (chat answers), the line under a page title. */
+    /* The line under a big number, reading text, and Hoot's prose in a panel. */
     --text-emph: 15px;
-    --text-emph--line-height: 22px;
-    /* Page titles in the header, section and dialog titles. */
-    --text-title: 20px;
-    --text-title--line-height: 28px;
-    /* Big figures in stat strips, the greeting and ticker headings. */
-    --text-display: 26px;
-    --text-display--line-height: 32px;
-    /* The one hero number (Today's Last session). */
+    --text-emph--line-height: 24px;
+    /* Section headings and the figures in a stat strip. */
+    --text-title: 17px;
+    --text-title--line-height: 24px;
+    /* Item titles on a detail page, sign-in and dialog titles. */
+    --text-display: 22px;
+    --text-display--line-height: 30px;
+    /* The one big number that opens a page. */
     --text-hero: 44px;
-    --text-hero--line-height: 44px;
+    --text-hero--line-height: 52px;
     /* Tailwind's named sizes are only a safety net for a pasted component or a branch that predates the codemod: they
        land on the scale instead of falling back to 16px. Lint forbids them in src; write the scale names. */
     --text-xs: var(--text-caption);
@@ -49,8 +49,15 @@
 
 @theme inline {
     --font-heading: var(--font-sans);
-    --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
-    --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+    --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+    --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+    /* Hoot's own words: answers, notes and the greeting. Nothing else is set in serif. */
+    --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
+    --color-ink-3: var(--ink-3);
+    --color-up-line: var(--up-line);
+    --color-down-line: var(--down-line);
+    --color-down-fill: var(--down-fill);
+    --color-hairline: var(--hairline);
     --color-ink-2: var(--ink-2);
     --color-row: var(--row);
     --color-band: var(--band);
@@ -126,165 +133,179 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* The Owl's Nest palette: charcoal and cream from Hoot's feathers and face, pink from his cheeks. */
+/* The new look: a white page, zinc greys, ink for text and the primary control. Green and red mean up and down and
+   nothing else; one amber means "check this" (stale, held, missing, failed). Hairlines, not boxes. */
 :root {
-    --background: oklch(0.982 0.007 85);
-    --foreground: oklch(0.23 0.01 60);
-    --card: oklch(0.997 0.003 85);
-    --card-foreground: oklch(0.23 0.01 60);
-    --popover: oklch(0.997 0.003 85);
-    --popover-foreground: oklch(0.23 0.01 60);
-    --primary: oklch(0.25 0.01 60);
-    --primary-foreground: oklch(0.97 0.012 85);
-    --secondary: oklch(0.955 0.011 82);
-    --secondary-foreground: oklch(0.23 0.01 60);
-    --muted: oklch(0.955 0.011 82);
-    --muted-foreground: oklch(0.52 0.014 65);
-    --accent: oklch(0.965 0.01 82);
-    --accent-foreground: oklch(0.23 0.01 60);
-    --destructive: oklch(0.56 0.17 32);
-    --border: oklch(0.9 0.012 80);
-    --border-strong: oklch(0.85 0.014 78);
-    --input: oklch(0.9 0.012 80);
-    --ring: oklch(0.23 0.01 60 / 0.4);
-    --chart-1: oklch(0.5 0.1 245);
-    --chart-2: oklch(0.66 0.14 50);
-    --chart-3: oklch(0.62 0.012 70);
-    --chart-4: oklch(0.52 0.12 155);
-    --chart-5: oklch(0.44 0.013 62);
-    --radius: 0.625rem;
-    /* Secondary body text (company names), row dividers, the header band of a panel and its footer band. */
-    --ink-2: oklch(0.44 0.013 62);
-    --row: oklch(0.915 0.011 80);
-    --band: oklch(0.965 0.01 82);
-    --band-2: oklch(0.975 0.008 84);
-    /* The navigation rail and the dark scoreboard cards, with the cream of the active item. */
-    --rail: oklch(0.24 0.009 60);
-    --rail-2: oklch(0.32 0.01 60);
-    --rail-line: oklch(0.36 0.01 60);
-    --rail-foreground: oklch(0.72 0.012 75);
-    --rail-label: oklch(0.8 0.012 80);
-    --cream: oklch(0.95 0.015 85);
-    --cream-foreground: oklch(0.23 0.01 60);
-    --avatar: oklch(0.86 0.05 20);
-    /* Hoot's cheek pink marks anything Hoot found or wrote, and nothing else. */
-    --hoot: oklch(0.93 0.035 20);
-    --hoot-foreground: oklch(0.45 0.1 20);
-    --hoot-panel: oklch(0.97 0.018 30);
-    --hoot-panel-ring: oklch(0.9 0.03 25);
-    --caution: oklch(0.94 0.05 85);
-    --caution-foreground: oklch(0.46 0.1 70);
-    --good: oklch(0.93 0.05 155);
-    --good-foreground: oklch(0.4 0.1 155);
-    --good-tint: oklch(0.97 0.025 155);
-    /* Categorical series for multi-series charts: the fund or holding, a scenario or economic release, the index. */
-    --series-1: oklch(0.5 0.1 245);
-    --series-2: oklch(0.66 0.14 50);
-    --series-3: oklch(0.52 0.12 155);
-    --series-neutral: oklch(0.62 0.012 70);
-    --bench-bar: oklch(0.8 0.014 75);
-    --up: oklch(0.52 0.12 155);
-    --down: oklch(0.56 0.17 32);
-    --up-on-rail: oklch(0.8 0.13 155);
-    --down-on-rail: oklch(0.76 0.13 35);
-    --warning: oklch(0.8 0.13 80);
-    --warning-foreground: oklch(0.46 0.1 70);
-    /* Charcoal Hoot needs no light behind him on a light page. */
+    --background: #ffffff;
+    --foreground: #0a0a0a;
+    --card: #ffffff;
+    --card-foreground: #0a0a0a;
+    --popover: #ffffff;
+    --popover-foreground: #0a0a0a;
+    --primary: #0a0a0a;
+    --primary-foreground: #ffffff;
+    /* Secondary controls (30px, 6px radius) and the hover of a row or menu item. */
+    --secondary: #f4f4f5;
+    --secondary-foreground: #0a0a0a;
+    --muted: #f4f4f5;
+    /* Labels and meta text (4.8:1 on white). */
+    --muted-foreground: #71717a;
+    --accent: #f4f4f5;
+    --accent-foreground: #0a0a0a;
+    --destructive: #d12d35;
+    /* Section dividers: under a header, a table's column row, a stat strip. */
+    --border: #ededed;
+    /* Input outlines and underlines, and the composer's frame. */
+    --border-strong: #d4d4d8;
+    --input: #d4d4d8;
+    --ring: #0a0a0a;
+    --chart-1: #0a0a0a;
+    --chart-2: #52525b;
+    --chart-3: #8a8a93;
+    --chart-4: #009456;
+    --chart-5: #a1a1aa;
+    --radius: 0.375rem;
+    /* Secondary text; unselected controls and nav items; row dividers; the sidebar and footer bands. */
+    --ink-2: #52525b;
+    --ink-3: #3f3f46;
+    --row: #f4f4f5;
+    --hairline: #f4f4f5;
+    --band: #fafafa;
+    --band-2: #fafafa;
+    /* The sign-in page's dark pane and the boot splash. Nothing in the app shell is dark any more. */
+    --rail: #0a0a0a;
+    --rail-2: #27272a;
+    --rail-line: #3f3f46;
+    --rail-foreground: #a1a1aa;
+    --rail-label: #d4d4d8;
+    --cream: #fafafa;
+    --cream-foreground: #0a0a0a;
+    --avatar: #0a0a0a;
+    /* Hoot is marked by his face, not a colour: what used to be his pink is plain ink on a grey fill. */
+    --hoot: #f4f4f5;
+    --hoot-foreground: #0a0a0a;
+    --hoot-panel: #ffffff;
+    --hoot-panel-ring: #e4e4e7;
+    /* The amber of "check this". A fill only behind a whole notice; statuses are words. */
+    --caution: #fdf6ec;
+    --caution-foreground: #b45309;
+    --good: #f4f4f5;
+    --good-foreground: #52525b;
+    --good-tint: #fafafa;
+    /* Charts: black for the fund or a comparison series, greys for the benchmark and replays, green and red only by
+       sign. No gradients; the only fill is a drawdown. */
+    --series-1: #0a0a0a;
+    --series-2: #52525b;
+    --series-3: #8a8a93;
+    --series-neutral: #8a8a93;
+    --bench-bar: #a1a1aa;
+    --up: #007a45;
+    --down: #d12d35;
+    --up-line: #009456;
+    --down-line: #e5484d;
+    --down-fill: #fdecec;
+    --up-on-rail: #3dd68c;
+    --down-on-rail: #ff6369;
+    --warning: #b45309;
+    --warning-foreground: #b45309;
     --hoot-halo: none;
-    /* Hoot's tour: the dim over the app, and the lit window over the part he's explaining. */
-    --tour-scrim: oklch(0.18 0.01 60 / 0.66);
+    --tour-scrim: rgb(10 10 10 / 0.6);
     --tour-lift: transparent;
     --tour-halo: transparent;
-    --tour-ring: oklch(1 0 0 / 0.95);
-    --tour-glow: oklch(1 0 0 / 0.55);
-    /* Direction against consensus on the economic calendar: blue above, orange below, never good or bad. */
-    --above: oklch(0.5 0.1 245);
-    --below: oklch(0.55 0.13 45);
-    --sidebar: oklch(0.975 0.008 84);
-    --sidebar-foreground: oklch(0.23 0.01 60);
-    --sidebar-primary: oklch(0.25 0.01 60);
-    --sidebar-primary-foreground: oklch(0.97 0.012 85);
-    --sidebar-accent: oklch(0.955 0.011 82);
-    --sidebar-accent-foreground: oklch(0.23 0.01 60);
-    --sidebar-border: oklch(0.9 0.012 80);
-    --sidebar-ring: oklch(0.23 0.01 60 / 0.4);
+    --tour-ring: rgb(255 255 255 / 0.95);
+    --tour-glow: rgb(255 255 255 / 0.55);
+    /* Against consensus on the economic calendar: said in words; ink above, secondary ink below. */
+    --above: #0a0a0a;
+    --below: #52525b;
+    --sidebar: #fafafa;
+    --sidebar-foreground: #0a0a0a;
+    --sidebar-primary: #0a0a0a;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f1f1f3;
+    --sidebar-accent-foreground: #0a0a0a;
+    --sidebar-border: #ebebee;
+    --sidebar-ring: #0a0a0a;
 }
 
+/* The same world at night: zinc blacks, the same hairline structure, up and down lifted to stay readable. */
 .dark {
-    --background: oklch(0.2 0.008 60);
-    --foreground: oklch(0.94 0.012 85);
-    --card: oklch(0.24 0.009 60);
-    --card-foreground: oklch(0.94 0.012 85);
-    --popover: oklch(0.24 0.009 60);
-    --popover-foreground: oklch(0.94 0.012 85);
-    --primary: oklch(0.95 0.015 85);
-    --primary-foreground: oklch(0.23 0.01 60);
-    --secondary: oklch(0.29 0.01 60);
-    --secondary-foreground: oklch(0.94 0.012 85);
-    --muted: oklch(0.29 0.01 60);
-    --muted-foreground: oklch(0.7 0.012 75);
-    --accent: oklch(0.27 0.01 60);
-    --accent-foreground: oklch(0.94 0.012 85);
-    --destructive: oklch(0.74 0.14 35);
-    --border: oklch(0.31 0.01 60);
-    --border-strong: oklch(0.38 0.01 60);
-    --input: oklch(0.31 0.01 60);
-    --ring: oklch(0.94 0.012 85 / 0.4);
-    --chart-1: oklch(0.72 0.1 245);
-    --chart-2: oklch(0.72 0.13 50);
-    --chart-3: oklch(0.62 0.012 70);
-    --chart-4: oklch(0.78 0.13 155);
-    --chart-5: oklch(0.82 0.012 78);
-    --ink-2: oklch(0.82 0.012 78);
-    --row: oklch(0.32 0.009 60);
-    --band: oklch(0.27 0.01 60);
-    --band-2: oklch(0.26 0.009 60);
-    --rail: oklch(0.155 0.006 60);
-    --rail-2: oklch(0.24 0.009 60);
-    --rail-line: oklch(0.3 0.01 60);
-    --rail-foreground: oklch(0.72 0.012 75);
-    --rail-label: oklch(0.8 0.012 80);
-    --cream: oklch(0.95 0.015 85);
-    --cream-foreground: oklch(0.23 0.01 60);
-    --avatar: oklch(0.86 0.05 20);
-    --hoot: oklch(0.34 0.05 20);
-    --hoot-foreground: oklch(0.85 0.07 20);
-    --hoot-panel: oklch(0.26 0.02 25);
-    --hoot-panel-ring: oklch(0.36 0.04 22);
-    --caution: oklch(0.33 0.05 80);
-    --caution-foreground: oklch(0.85 0.1 80);
-    --good: oklch(0.32 0.05 155);
-    --good-foreground: oklch(0.83 0.1 155);
-    --good-tint: oklch(0.26 0.025 155);
-    --series-1: oklch(0.72 0.1 245);
-    --series-2: oklch(0.72 0.13 50);
-    --series-3: oklch(0.78 0.13 155);
-    --series-neutral: oklch(0.62 0.012 70);
-    --bench-bar: oklch(0.45 0.01 60);
-    --up: oklch(0.78 0.13 155);
-    --down: oklch(0.74 0.14 35);
-    --up-on-rail: oklch(0.8 0.13 155);
-    --down-on-rail: oklch(0.76 0.13 35);
-    --warning: oklch(0.8 0.12 80);
-    --warning-foreground: oklch(0.85 0.1 80);
-    /* Hoot is charcoal: a soft light behind every sprite keeps him visible on a dark page. */
-    --hoot-halo: radial-gradient(circle at 50% 55%, oklch(1 0 0 / 0.14), transparent 68%);
-    /* A plain dim barely shows on a dark page, so dim harder and lift the window a little. */
-    --tour-scrim: oklch(0 0 0 / 0.74);
-    --tour-lift: oklch(1 0 0 / 0.045);
-    --tour-halo: oklch(1 0 0 / 0.1);
-    --tour-ring: oklch(1 0 0 / 0.6);
-    --tour-glow: oklch(1 0 0 / 0.3);
-    --above: oklch(0.75 0.1 245);
-    --below: oklch(0.76 0.12 45);
-    --sidebar: oklch(0.155 0.006 60);
-    --sidebar-foreground: oklch(0.94 0.012 85);
-    --sidebar-primary: oklch(0.95 0.015 85);
-    --sidebar-primary-foreground: oklch(0.23 0.01 60);
-    --sidebar-accent: oklch(0.24 0.009 60);
-    --sidebar-accent-foreground: oklch(0.94 0.012 85);
-    --sidebar-border: oklch(0.31 0.01 60);
-    --sidebar-ring: oklch(0.94 0.012 85 / 0.4);
+    --background: #09090b;
+    --foreground: #fafafa;
+    --card: #09090b;
+    --card-foreground: #fafafa;
+    --popover: #131316;
+    --popover-foreground: #fafafa;
+    --primary: #fafafa;
+    --primary-foreground: #09090b;
+    --secondary: #1f1f23;
+    --secondary-foreground: #fafafa;
+    --muted: #1f1f23;
+    --muted-foreground: #a1a1aa;
+    --accent: #1f1f23;
+    --accent-foreground: #fafafa;
+    --destructive: #ff6369;
+    --border: #26262b;
+    --border-strong: #3f3f46;
+    --input: #3f3f46;
+    --ring: #fafafa;
+    --chart-1: #fafafa;
+    --chart-2: #d4d4d8;
+    --chart-3: #8a8a93;
+    --chart-4: #2fbf71;
+    --chart-5: #71717a;
+    --ink-2: #d4d4d8;
+    --ink-3: #e4e4e7;
+    --row: #1a1a1e;
+    --hairline: #1a1a1e;
+    --band: #111114;
+    --band-2: #111114;
+    --rail: #000000;
+    --rail-2: #1f1f23;
+    --rail-line: #3f3f46;
+    --rail-foreground: #a1a1aa;
+    --rail-label: #d4d4d8;
+    --cream: #fafafa;
+    --cream-foreground: #09090b;
+    --avatar: #fafafa;
+    --hoot: #1f1f23;
+    --hoot-foreground: #fafafa;
+    --hoot-panel: #131316;
+    --hoot-panel-ring: #3f3f46;
+    --caution: #2a1e10;
+    --caution-foreground: #f0a64a;
+    --good: #1f1f23;
+    --good-foreground: #d4d4d8;
+    --good-tint: #111114;
+    --series-1: #fafafa;
+    --series-2: #d4d4d8;
+    --series-3: #8a8a93;
+    --series-neutral: #8a8a93;
+    --bench-bar: #52525b;
+    --up: #3dd68c;
+    --down: #ff6369;
+    --up-line: #2fbf71;
+    --down-line: #f2555a;
+    --down-fill: #2d1416;
+    --up-on-rail: #3dd68c;
+    --down-on-rail: #ff6369;
+    --warning: #f0a64a;
+    --warning-foreground: #f0a64a;
+    --hoot-halo: none;
+    --tour-scrim: rgb(0 0 0 / 0.74);
+    --tour-lift: rgb(255 255 255 / 0.045);
+    --tour-halo: rgb(255 255 255 / 0.1);
+    --tour-ring: rgb(255 255 255 / 0.6);
+    --tour-glow: rgb(255 255 255 / 0.3);
+    --above: #fafafa;
+    --below: #d4d4d8;
+    --sidebar: #111114;
+    --sidebar-foreground: #fafafa;
+    --sidebar-primary: #fafafa;
+    --sidebar-primary-foreground: #09090b;
+    --sidebar-accent: #1f1f23;
+    --sidebar-accent-foreground: #fafafa;
+    --sidebar-border: #1f1f23;
+    --sidebar-ring: #fafafa;
 }
 
 /* The classic Backtesting layout (profile preference) keeps the previous look: neutral grays and Inter. */
@@ -397,26 +418,47 @@
     }
   body {
     @apply bg-background text-foreground;
+    font-variant-numeric: tabular-nums;
     }
   html {
     @apply font-sans;
     }
+  ::selection { background: #e4e4e7; color: var(--foreground); }
+  .dark ::selection { background: #3f3f46; }
+  :focus-visible { outline-color: var(--ring); }
+  ::placeholder { color: var(--muted-foreground); }
+  input, textarea { caret-color: var(--foreground); }
+  a { text-underline-offset: 3px; }
+  /* Scrollbars in the palette: thin zinc thumbs, no track. */
+  * { scrollbar-width: thin; scrollbar-color: #d4d4d8 transparent; }
+  .dark * { scrollbar-color: #3f3f46 transparent; }
 }
 @layer utilities {
   .tnum { font-variant-numeric: tabular-nums; }
-  /* A page that renders a full-height workspace (the research board) opts out of the page padding. */
+  /* The page body: 32px under the header, 40px at the sides, room at the bottom for Hoot's corner button. */
+  .app-container { padding: 32px 40px 96px; }
+  /* A page that renders a full-height workspace (the research board, a thread) opts out of the page padding. */
   .app-container:has(> [data-full-bleed]) { padding: 0; }
-  /* A panel: card background, a 1px ring instead of a border, no drop shadow. */
-  .panel { background: var(--card); border-radius: 14px; box-shadow: 0 0 0 1px var(--border); }
+  /* A page that renders its own header (PageHead) hides the shell's default one; rendered first in the page, it
+     bleeds to the edges of the content area. */
+  .app-container > [data-page-head]:first-child { margin: -32px -40px 32px; }
+  .app-container > [data-page-head][hidden]:first-child { margin: 0; }
+  [data-shell-main]:has([data-page-head]) > [data-shell-head] { display: none; }
+  /* A panel: an object on the page (a table, an editor). Hairlines, not boxes: a 1px frame, no fill, no shadow. */
+  .panel { background: transparent; border-radius: 8px; box-shadow: 0 0 0 1px var(--border); }
   /* A plain panel: a section of the page, set apart by its title and spacing rather than a frame. */
   .panel-plain { background: transparent; }
-  /* Small uppercase mono labels, e.g. MON 28 SEP. */
-  .label-mono { font-family: var(--font-mono); font-size: var(--text-caption); letter-spacing: 0.06em; text-transform: uppercase; }
-  /* Big figures in mono. */
-  .figure { font-family: var(--font-mono); font-weight: 500; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-  /* Hoot is charcoal; on dark pages every sprite gets a soft light behind him. */
+  /* A small grey label (a date, a column group). Sentence case: no tracked capitals. */
+  .label-mono { font-size: var(--text-caption); line-height: var(--text-caption--line-height); letter-spacing: 0; }
+  /* Figures: the sans at its tabular setting, tightened as it grows. */
+  .figure { font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  /* The one big number that opens a page. */
+  .hero-figure { font-size: var(--text-hero); line-height: var(--text-hero--line-height); font-weight: 700; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
+  /* Hoot's own words. */
+  .hoot-prose { font-family: var(--font-serif); font-size: var(--text-title); line-height: 27px; color: color-mix(in oklab, var(--foreground) 92%, var(--background)); }
+  /* A citation marker in Hoot's prose. */
+  .cite { font-family: var(--font-sans); font-size: var(--text-caption); line-height: 0; vertical-align: super; font-weight: 600; padding: 0 1px; text-decoration: underline; text-underline-offset: 2px; }
   .hoot-halo { background: var(--hoot-halo); border-radius: 9999px; }
-  /* The rail (and the sign-in page's rail-colored pane) is dark in both themes, so there he always gets it. */
   [data-hoot-dock="rail"] .hoot-halo, [data-rail-surface] .hoot-halo { background: radial-gradient(circle at 50% 55%, oklch(1 0 0 / 0.14), transparent 68%); }
   /* One Hoot per screen: while the tour flies him around, the page's own Hoots step aside. */
   html[data-touring] [data-hoot-sprite]:not([data-tour-hoot] *) { visibility: hidden; }
