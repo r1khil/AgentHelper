@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { parsePeriodKey, periodOptions } from "./periods";
 
 describe("attribution period options", () => {
-  it("defaults to the last session", () => {
-    expect(parsePeriodKey(undefined)).toBe("1d");
-    expect(parsePeriodKey("nonsense")).toBe("1d");
+  it("defaults to the whole ledger", () => {
+    expect(parsePeriodKey(undefined)).toBe("itd");
+    expect(parsePeriodKey("nonsense")).toBe("itd");
     expect(parsePeriodKey("6m")).toBe("6m");
   });
   it("always offers every preset", () => {

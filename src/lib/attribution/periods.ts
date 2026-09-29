@@ -30,8 +30,8 @@ function onOrBefore(iso: string) {
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
-/** The attribution pages open on the last completed session. */
-export const DEFAULT_PERIOD: PeriodKey = "1d";
+/** Performance opens on the whole ledger ("Since Sep 17"), the gap the page is about; Today and 1D are a click away. */
+export const DEFAULT_PERIOD: PeriodKey = "itd";
 
 export function parsePeriodKey(v: string | undefined): PeriodKey {
   return (PERIOD_KEYS as readonly string[]).includes(v ?? "") ? (v as PeriodKey) : DEFAULT_PERIOD;
