@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { ArrowRight, Check, Copy, Flag, Plus } from "lucide-react";
 import type { Source } from "@/lib/providers/types";
 import type { Turn, TurnSource } from "@/lib/agent/board";
@@ -36,7 +36,7 @@ export type TurnViewProps = {
   /** The chat's team, for "Open in Risk" on a team-scope lookup that left the team to default. */
   teamSlug: string | null;
   /** A general conversation can be pinned to a holding's board. */
-  pin?: { chatId: string; targets: PinTarget[] } | null;
+  pin?: { chatId: string; targets: PinTarget[]; onPinned?: () => void } | null;
   /** Put "check this number" into the question box. */
   onFlag?: () => void;
   /** Suggested next questions, under the last answer. */
@@ -248,7 +248,7 @@ function AnswerActions({
   text: string;
   unsourced: number;
   onFlag?: () => void;
-  pin?: { chatId: string; targets: PinTarget[] } | null;
+  pin?: { chatId: string; targets: PinTarget[]; onPinned?: () => void } | null;
   traceOpen: boolean;
   onToggleTrace: () => void;
 }) {
@@ -285,7 +285,7 @@ function AnswerActions({
         )}
         {unsourcedWord && <span className="ml-1 text-caption">{unsourcedWord}</span>}
         <span className="flex-1" />
-        {pin && <PinToBoard chatId={pin.chatId} targets={pin.targets} look="button" />}
+        {pin && <PinToBoard chatId={pin.chatId} targets={pin.targets} look="button" onPinned={pin.onPinned} />}
       </div>
     );
   }
@@ -302,7 +302,7 @@ function AnswerActions({
           Flag a wrong number
         </button>
       )}
-      {pin && <PinToBoard chatId={pin.chatId} targets={pin.targets} className={link} />}
+      {pin && <PinToBoard chatId={pin.chatId} targets={pin.targets} className={link} onPinned={pin.onPinned} />}
       <button type="button" onClick={onToggleTrace} aria-pressed={traceOpen} className={link}>
         {traceOpen ? "Hide trace" : "Show trace"}
       </button>
@@ -314,11 +314,13 @@ function AnswerActions({
 function Related({ variant, questions, onAsk }: { variant: TurnVariant; questions: string[]; onAsk: (q: string) => void }) {
   const panel = variant === "panel";
   const Icon = panel ? ArrowRight : Plus;
-  const Heading = ({ children }: { children: ReactNode }) =>
-    panel ? <div className="mt-[18px] text-caption font-semibold text-muted-foreground">{children}</div> : <h2 className="mt-7 border-b pb-1.5 text-body font-bold">{children}</h2>;
   return (
     <section aria-label={panel ? "Ask next" : "Related"}>
-      <Heading>{panel ? "Ask next" : "Related"}</Heading>
+      {panel ? (
+        <div className="mt-[18px] text-caption font-semibold text-muted-foreground">Ask next</div>
+      ) : (
+        <h2 className="mt-7 border-b pb-1.5 text-body font-bold">Related</h2>
+      )}
       {questions.map((q) => (
         <button
           key={q}

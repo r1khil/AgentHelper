@@ -47,8 +47,23 @@ describe("research answer rendering (actual react-markdown pipeline)", () => {
   );
   it("handles tables and repeated references with stable numbering", () => {
     const html = render("| Metric | Citation |\n| --- | --- |\n| Revenue | [src:sec-1] |\n\nAgain [src:sec-1]");
-    expect(html).toContain("<table>");
+    expect(html).toContain("<table");
     expect(html.match(/>1<\/a>/g)).toHaveLength(2);
+  });
+  it("draws a table with hairlines, its figures right-aligned and coloured up and down", () => {
+    const html = render("| Sector | Weights | Total |\n| --- | --- | --- |\n| Health Care | (6.4) [src:sec-1] | +14.1 |\n| Utilities | +1.7 | (2.2) |");
+    // Text columns stay left; a column of figures aligns right whether or not the answer said so.
+    expect(html).toMatch(/<td[^>]*>Health Care<\/td>/);
+    expect(html.match(/text-align:\s?right/g)?.length).toBe(6);
+    expect(html).toContain("text-down");
+    expect(html).toContain("text-up");
+    expect(html).not.toMatch(/<td[^>]*text-(?:up|down)[^>]*>Health Care/);
+  });
+  it("writes each citation as the page's superscript, amber when the source is unavailable", () => {
+    const html = render("Found [src:sec-1] and not [src:invented].");
+    expect(html.match(/class="cite /g)).toHaveLength(2);
+    expect(html).toContain("text-caution-foreground");
+    expect(html).not.toContain("bg-hoot");
   });
   it("renders internal and unavailable citations as buttons, never navigable anchors", () => {
     const html = render("[src:drive-1] [src:missing-url] [src:invented]");

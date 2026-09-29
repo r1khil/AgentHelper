@@ -195,12 +195,18 @@ export function savedTurnMs(turn: Pick<Turn, "assistant">): number | null {
   return typeof ms === "number" && ms > 0 ? ms : null;
 }
 
-/** When a chat last moved, the way the lists give it: "2:41 PM ET" today, "Fri" within the week, "Jul 31" after. */
-export function chatWhen(iso: string, now: Date = new Date()): string {
+/** The day a time falls on, the way the lists give it: "today", "Fri" within the week, "Jul 31" after. Null for a time that can't be read. */
+export function dayWhen(iso: string, now: Date = new Date()): string | null {
   const t = DateTime.fromISO(iso).setZone(NY);
-  if (!t.isValid) return "";
+  if (!t.isValid) return null;
   const today = DateTime.fromJSDate(now).setZone(NY).startOf("day");
   const days = Math.round(today.diff(t.startOf("day"), "days").days);
-  if (days <= 0) return fmtTime(iso);
+  if (days <= 0) return "today";
   return days < 7 ? t.toFormat("ccc") : fmtDayMonth(iso);
+}
+
+/** When a chat last moved: "2:41 PM ET" today, then "Fri" within the week, "Jul 31" after. */
+export function chatWhen(iso: string, now: Date = new Date()): string {
+  const day = dayWhen(iso, now);
+  return day === "today" ? fmtTime(iso) : (day ?? "");
 }

@@ -13,8 +13,6 @@ import { pageContextFromMessages, pageContextLabel } from "@/lib/agent/page-cont
 import type { RunStatus } from "@/lib/chats";
 import { cn } from "@/lib/utils";
 
-export { ActivityRow } from "./thread-parts";
-
 const SUGGESTIONS = [
   "What moved {T} today versus the S&P 500, and what filings or news are in the window?",
   "Summarize the last 10-Q for {T}: revenue, margins, and guidance, with sources.",

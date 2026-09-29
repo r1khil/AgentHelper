@@ -74,7 +74,7 @@ export function ConversationTurns({
   conv: Conversation;
   variant: TurnVariant;
   teamSlug: string | null;
-  pin?: { chatId: string; targets: PinTarget[] } | null;
+  pin?: { chatId: string; targets: PinTarget[]; onPinned?: () => void } | null;
   /** Suggested next questions, shown under the last answer. */
   related?: string[];
   gap?: string;

@@ -273,6 +273,20 @@ export function nudgeAction(n: NudgeLike): string {
   }
 }
 
+/** The date `n` days after an ISO date. */
+export const plusDays = (iso: string, n: number) => day(iso).plus({ days: n }).toISODate()!;
+
+/** A day on the This week list: "Tue" within the coming week, "Oct 15" after. */
+export function weekDayLabel(today: string, date: string) {
+  const n = Math.round(day(date).diff(day(today), "days").days);
+  return n >= 0 && n < 7 ? day(date).toFormat("ccc") : fmtDayMonth(date);
+}
+
+/** Home's line under the greeting when Hoot's list has something: "3 things need you." Null when nothing does. */
+export function needsSentence(count: number) {
+  return count === 0 ? null : `${count} ${count === 1 ? "thing needs" : "things need"} you.`;
+}
+
 /** A brief paragraph split into text and numbered citations: "added 14 bp [1]." → ["added 14 bp ", 1, "."]. */
 export function citationParts(text: string): (string | number)[] {
   const out: (string | number)[] = [];
