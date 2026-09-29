@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { fmtDay } from "@/lib/format";
-import { agendaDate, analystSentence, citationParts, daysAway, greeting, greetingWord, inDays, listNudges, listSentence, marketLine, nextReportByTicker, nextSunday, nudgeAction, nudgeWhen, owedSentence, reportDays, reportsLine, scoreboard, sessionHeading, sessionSentence, sessionStamp, type UpcomingReport } from "./today";
+import { plusDays, weekDayLabel, needsSentence, agendaDate, analystSentence, citationParts, daysAway, greeting, greetingWord, inDays, listNudges, listSentence, marketLine, nextReportByTicker, nextSunday, nudgeAction, nudgeWhen, owedSentence, reportDays, reportsLine, scoreboard, sessionHeading, sessionSentence, sessionStamp, type UpcomingReport } from "./today";
 
 // Dates this year print without the year ("Tue, Sep 22"); pin the clock so these stay 2026's.
 beforeAll(() => {
@@ -173,5 +173,20 @@ describe("Today v2", () => {
   it("splits citations out of the brief", () => {
     expect(citationParts("NVDA added 14 bps [1]. UNH cost 7 bps [2][3].")).toEqual(["NVDA added 14 bps", 1, ". UNH cost 7 bps", 2, 3, "."]);
     expect(citationParts("No citations.")).toEqual(["No citations."]);
+  });
+});
+
+describe("Home's week", () => {
+  it("counts days forward and labels them by weekday within the week, by date after", () => {
+    expect(plusDays("2026-09-28", 6)).toBe("2026-10-04");
+    expect(weekDayLabel("2026-09-28", "2026-09-29")).toBe("Tue");
+    expect(weekDayLabel("2026-09-28", "2026-10-04")).toBe("Sun");
+    expect(weekDayLabel("2026-09-28", "2026-10-15")).toBe("Oct 15");
+  });
+
+  it("says how many things need the reader", () => {
+    expect(needsSentence(0)).toBeNull();
+    expect(needsSentence(1)).toBe("1 thing needs you.");
+    expect(needsSentence(3)).toBe("3 things need you.");
   });
 });

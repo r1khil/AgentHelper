@@ -10,7 +10,7 @@ import type { RunStatus } from "@/lib/chats";
 import type { Source } from "@/lib/providers/types";
 import { collectSources } from "@/lib/agent/citations";
 import { chatWhen, marketFigure, pairTurns, stepLabel, turnSources, type Turn, type TurnSource } from "@/lib/agent/board";
-import { resolveSource, sourceType } from "@/lib/agent/source-resolution";
+import { resolveSource } from "@/lib/agent/source-resolution";
 import { clearHootQuestion, peekHootQuestion } from "@/components/app/hoot/handoff";
 import { createHoldingChat, deleteChat } from "@/lib/actions/chats";
 import { boardHref, holdingHref, movementHref } from "@/lib/scope";
@@ -18,7 +18,7 @@ import type { CitationLinks } from "@/components/app/chat/research-answer";
 import { SourceViewer } from "@/components/app/chat/source-viewer";
 import { FLAG_PROMPT } from "@/components/app/chat/conversation";
 import { Composer, SideHeading, shortDate, SourceNumber, ThinkingRow, ThreadNote } from "@/components/app/chat/thread-parts";
-import { TurnView } from "@/components/app/chat/turn-view";
+import { cardKind, TurnView } from "@/components/app/chat/turn-view";
 import { TraceToggle } from "@/components/app/chat/trace-toggle";
 import { useResearchChat } from "@/components/app/chat/use-research-chat";
 import { PageHead } from "@/components/app/page-head";
@@ -654,7 +654,7 @@ function BoardSourceRow({
   const unavailable = target.kind === "unavailable";
   const snippet = s.excerpt?.trim();
   const toneClass = figure?.tone === "up" ? "text-up" : figure?.tone === "down" ? "text-down" : "text-foreground";
-  const kind = unavailable ? "unavailable" : figure ? "market data" : sourceType(s).toLowerCase();
+  const kind = unavailable ? "unavailable" : figure ? "market data" : cardKind(s).toLowerCase();
   const meta = [s.publisher || "Publisher unavailable", shortDate(s.publishedAt)].filter(Boolean).join(" · ");
   return (
     <div

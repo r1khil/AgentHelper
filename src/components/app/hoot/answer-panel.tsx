@@ -7,14 +7,10 @@ import { ArrowUpRight, X } from "lucide-react";
 import type { CommandHolding } from "@/lib/nav-data";
 import { closeAnswerPanel, useAnswerPanel, type AnswerPanelState } from "./answer-panel-store";
 import { HootOnPage } from "./presence";
-import { ConversationTurns, useConversation } from "@/components/app/chat/conversation";
+import { ConversationTurns, useConversation, useRelated } from "@/components/app/chat/conversation";
 import type { PinTarget } from "@/components/app/chat/pin-to-board";
 import { Composer, HootFace } from "@/components/app/chat/thread-parts";
 import { cn } from "@/lib/utils";
-
-/** After an answer, Hoot notes his next questions a few seconds later; look for them this often, this many times. */
-const RELATED_EVERY_MS = 5000;
-const RELATED_TRIES = 5;
 
 const icon = "grid size-[30px] place-items-center rounded-md text-ink-2 transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
@@ -47,7 +43,7 @@ function Panel({ panel, holdings }: { panel: NonNullable<AnswerPanelState>; hold
     return () => cancelAnimationFrame(id);
   }, []);
 
-  const conv = useConversation({ chatId: panel.chatId, initialMessages: [], initialRunStatus: "idle", transparency: false });
+  const conv = useConversation({ chatId: panel.chatId, initialMessages: panel.messages ?? [], initialRunStatus: "idle", transparency: false });
   const related = useRelated(panel.chatId, conv.turns.length > 0 && !conv.busy && !!conv.turns[conv.turns.length - 1]?.answerText, conv.turns.length);
   const targets = useMemo<PinTarget[]>(() => holdings.map((h) => ({ ticker: h.ticker, company: h.company, teamSlug: h.teamSlug, team: h.team })), [holdings]);
 
@@ -59,6 +55,11 @@ function Panel({ panel, holdings }: { panel: NonNullable<AnswerPanelState>; hold
   const { composerRef } = conv;
   useEffect(() => {
     composerRef.current?.focus({ preventScroll: true });
+    // The palette that asked the question hands focus back to the page as it closes; take it again once it has.
+    const t = setTimeout(() => {
+      if (!document.activeElement || document.activeElement === document.body) composerRef.current?.focus({ preventScroll: true });
+    }, 260);
+    return () => clearTimeout(t);
   }, [composerRef]);
 
   return (
@@ -109,34 +110,4 @@ function Panel({ panel, holdings }: { panel: NonNullable<AnswerPanelState>; hold
       </div>
     </aside>
   );
-}
-
-/** Hoot's next questions for the chat, once he has noted them (a few seconds after an answer). Empty until then. */
-function useRelated(chatId: string, answered: boolean, turns: number): string[] {
-  const [found, setFound] = useState<{ chatId: string; turns: number; questions: string[] } | null>(null);
-  useEffect(() => {
-    if (!answered) return;
-    let cancelled = false;
-    let tries = 0;
-    let timer: ReturnType<typeof setTimeout>;
-    const look = async () => {
-      tries++;
-      try {
-        const res = await fetch(`/api/chat/${chatId}?related=1`, { cache: "no-store" });
-        const data = res.ok ? ((await res.json()) as { related?: string[] }) : null;
-        if (cancelled) return;
-        if (data?.related?.length) return setFound({ chatId, turns, questions: data.related });
-      } catch {
-        // Offline: no suggestions.
-      }
-      if (!cancelled && tries < RELATED_TRIES) timer = setTimeout(look, RELATED_EVERY_MS);
-    };
-    timer = setTimeout(look, RELATED_EVERY_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [chatId, answered, turns]);
-  // Suggestions belong to the answer they followed; a new question clears them.
-  return found && found.chatId === chatId && found.turns === turns ? found.questions : [];
 }

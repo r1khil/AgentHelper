@@ -210,3 +210,14 @@ export function chatWhen(iso: string, now: Date = new Date()): string {
   const day = dayWhen(iso, now);
   return day === "today" ? fmtTime(iso) : (day ?? "");
 }
+
+/** The answer's words with its [src:…] markers turned into the numbers its cards carry ("[1][2]"), for pasting elsewhere. */
+export function answerForCopy(text: string, numbers: Map<string, number>): string {
+  return text.replace(new RegExp(CITATION_RE), (_, ids: string) =>
+    ids
+      .split(",")
+      .map((raw) => raw.replace(/^\s*src:\s*/, "").trim())
+      .map((id) => `[${numbers.get(id) ?? "?"}]`)
+      .join(""),
+  );
+}

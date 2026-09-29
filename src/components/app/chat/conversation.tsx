@@ -11,6 +11,10 @@ import { TurnView, type TurnVariant } from "./turn-view";
 import type { PinTarget } from "./pin-to-board";
 import { useResearchChat } from "./use-research-chat";
 
+/** After an answer, Hoot notes his next questions a few seconds later; look for them this often, this many times. */
+const RELATED_EVERY_MS = 5000;
+const RELATED_TRIES = 5;
+
 /** The words the "Flag a wrong number" control puts in the question box: Hoot re-checks against the sources, the member reads the answer. */
 export const FLAG_PROMPT = "One number in your last answer looks wrong. Check it against the sources: ";
 
@@ -112,4 +116,42 @@ export function ConversationTurns({
       {requestError && <ThreadNote tone="error">{requestError}</ThreadNote>}
     </div>
   );
+}
+
+/**
+ * Hoot's next questions for the chat, once he has noted them (a few seconds after an answer): the answer panel's "Ask
+ * next" and a thread's "Related" after a new question. Empty until then, and cleared by the next question.
+ */
+export function useRelated(chatId: string, answered: boolean, turns: number, stale: readonly string[] = []): string[] {
+  const [found, setFound] = useState<{ chatId: string; turns: number; questions: string[] } | null>(null);
+  // What the previous answer left behind is not this answer's: wait for a list that differs from it.
+  const old = useRef(new Set(stale));
+  useEffect(() => {
+    if (!answered) return;
+    let cancelled = false;
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const look = async () => {
+      tries++;
+      try {
+        const res = await fetch(`/api/chat/${chatId}?related=1`, { cache: "no-store" });
+        const data = res.ok ? ((await res.json()) as { related?: string[] }) : null;
+        if (cancelled) return;
+        if (data?.related?.length && !data.related.some((q) => old.current.has(q))) {
+          data.related.forEach((q) => old.current.add(q));
+          return setFound({ chatId, turns, questions: data.related });
+        }
+      } catch {
+        // Offline: no suggestions.
+      }
+      if (!cancelled && tries < RELATED_TRIES) timer = setTimeout(look, RELATED_EVERY_MS);
+    };
+    timer = setTimeout(look, RELATED_EVERY_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [chatId, answered, turns]);
+  // Suggestions belong to the answer they followed; a new question clears them.
+  return found && found.chatId === chatId && found.turns === turns ? found.questions : [];
 }

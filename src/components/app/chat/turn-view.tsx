@@ -5,8 +5,7 @@ import { useMemo, useState } from "react";
 import { ArrowRight, Check, Copy, Flag, Plus } from "lucide-react";
 import type { Source } from "@/lib/providers/types";
 import type { Turn, TurnSource } from "@/lib/agent/board";
-import { savedTurnMs } from "@/lib/agent/board";
-import { CITATION_RE } from "@/lib/agent/citations";
+import { answerForCopy, savedTurnMs } from "@/lib/agent/board";
 import { resolveSource, sourceType } from "@/lib/agent/source-resolution";
 import { turnPageLinks } from "@/lib/agent/turn-links";
 import { cn } from "@/lib/utils";
@@ -46,17 +45,6 @@ export type TurnViewProps = {
   links?: CitationLinks;
   className?: string;
 };
-
-/** The answer's words with its [src:…] markers turned into the numbers the cards carry, for pasting elsewhere. */
-export function answerForCopy(text: string, numbers: Map<string, number>) {
-  return text.replace(new RegExp(CITATION_RE), (_, ids: string) =>
-    ids
-      .split(",")
-      .map((raw) => raw.replace(/^\s*src:\s*/, "").trim())
-      .map((id) => `[${numbers.get(id) ?? "?"}]`)
-      .join(""),
-  );
-}
 
 /**
  * One question and its answer, as the conversation pages draw it: the question as a grey bubble, what Hoot did (one
@@ -153,6 +141,11 @@ export function TurnView(props: TurnViewProps) {
   );
 }
 
+/** What a card calls its source: the fund's own pages are "Fund data", the rest by kind ("SEC filing", "Web page"). */
+export function cardKind(s: Source) {
+  return /^Owl Fund/.test(s.publisher) ? "Fund data" : sourceType(s);
+}
+
 /** A row of numbered source cards under Hoot's line, in the order the answer numbers them. */
 function SourceCards({ turnId, rows, open, hover, onHover, anchor }: { turnId: string; rows: TurnSource[]; open: ReadonlySet<string>; hover: string | null; onHover: (id: string | null) => void; anchor: (id: string) => string }) {
   const view = useSourceViewer();
@@ -161,7 +154,7 @@ function SourceCards({ turnId, rows, open, hover, onHover, anchor }: { turnId: s
       {rows.map(({ source: s, n }) => {
         const target = resolveSource(s);
         const unavailable = target.kind === "unavailable";
-        const kind = unavailable ? "Unavailable" : sourceType(s);
+        const kind = unavailable ? "Unavailable" : cardKind(s);
         const title = unavailable && !s.title?.trim() ? "Source unavailable" : (s.title?.trim() ?? "Untitled source");
         const active = open.has(s.id) || hover === s.id;
         const body = (

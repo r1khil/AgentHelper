@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { UIMessage } from "ai";
 import { PageHead } from "@/components/app/page-head";
 import { useSourceViewer, ResearchSources } from "./research-answer";
 import { Composer, HootFace, SourceListCard, SourcesHeading } from "./thread-parts";
-import { ConversationTurns, useConversation, type Conversation } from "./conversation";
+import { ConversationTurns, useConversation, useRelated, type Conversation } from "./conversation";
 import type { PinTarget } from "./pin-to-board";
 import { fmtTime } from "@/lib/format";
 import { isMemberQuestion } from "@/lib/agent/hidden-prompt";
@@ -150,6 +150,11 @@ export function ChatWorkspace({
 }) {
   const conv = useConversation(props);
   const bottom = useFollow(conv);
+  // The questions the page came with belong to the answers it came with; a new question gets Hoot's next ones for it.
+  const [openingTurns] = useState(() => conv.turns.length);
+  const last = conv.turns[conv.turns.length - 1];
+  const fresh = useRelated(props.chatId, !conv.busy && !!last?.answerText && conv.turns.length > openingTurns, conv.turns.length, related);
+  const nextQuestions = conv.turns.length > openingTurns ? fresh : related;
   const questions = conv.messages.filter(isMemberQuestion).length;
   const first = conv.messages.find(isMemberQuestion);
   const firstText = first?.parts.map((p) => (p.type === "text" ? p.text : "")).join(" ").replace(/\s+/g, " ").trim();
@@ -162,7 +167,7 @@ export function ChatWorkspace({
         <div className="h-full overflow-y-auto">
           <article className="mx-auto flex w-full max-w-[840px] flex-col px-10 pt-[30px] pb-48">
             {conv.messages.length === 0 && <EmptyIntro suggestions={chatSuggestions(props.tickers[0])} onPick={conv.setInput} disabled={!props.configured} />}
-            <ConversationTurns conv={conv} variant="thread" teamSlug={teamSlug} pin={pinTargets?.length ? { chatId: props.chatId, targets: pinTargets } : null} related={related} />
+            <ConversationTurns conv={conv} variant="thread" teamSlug={teamSlug} pin={pinTargets?.length ? { chatId: props.chatId, targets: pinTargets } : null} related={nextQuestions} />
             <div ref={bottom} />
           </article>
         </div>

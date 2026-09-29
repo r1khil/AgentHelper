@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { UIMessage } from "ai";
 import { collectSources } from "./citations";
-import { citedIds, marketFigure, pairTurns, savedTurnMs, traceLine, turnSources, workedFor } from "./board";
+import { answerForCopy, chatWhen, citedIds, dayWhen, marketFigure, pairTurns, savedTurnMs, traceLine, turnSources, workedFor } from "./board";
 import { hiddenPromptMessage } from "./hidden-prompt";
 
 // Dates this year print without the year ("Tue, Sep 22"); pin the clock so these stay 2026's.
@@ -139,5 +139,27 @@ describe("how long a turn worked", () => {
     expect(savedTurnMs({ assistant: { id: "a", role: "assistant", parts: [], metadata: { ms: 9100 } } })).toBe(9100);
     expect(savedTurnMs({ assistant: { id: "a", role: "assistant", parts: [] } })).toBeNull();
     expect(savedTurnMs({})).toBeNull();
+  });
+});
+
+describe("copying an answer", () => {
+  it("turns citation markers into the card numbers", () => {
+    const numbers = new Map([["a", 1], ["b", 2]]);
+    expect(answerForCopy("Up 1.04%.[src:a] Weights cost (6.3 bp).[src:a][src: b, a] Odd.[src:zzz]", numbers)).toBe("Up 1.04%.[1] Weights cost (6.3 bp).[1][2][1] Odd.[?]");
+  });
+});
+
+describe("when a chat last moved", () => {
+  // The clock is pinned to 2026-09-28 12:00 UTC (8:00 AM in New York).
+  it("says today, a weekday within the week, then the date", () => {
+    expect(dayWhen("2026-09-28T15:05:00Z")).toBe("today");
+    expect(dayWhen("2026-09-25T15:05:00Z")).toBe("Fri");
+    expect(dayWhen("2026-09-20T15:05:00Z")).toBe("Sep 20");
+    expect(dayWhen("nonsense")).toBeNull();
+  });
+
+  it("gives the time for today's chats", () => {
+    expect(chatWhen("2026-09-28T15:05:00Z")).toBe("11:05 AM ET");
+    expect(chatWhen("2026-09-25T15:05:00Z")).toBe("Fri");
   });
 });

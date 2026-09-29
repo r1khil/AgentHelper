@@ -343,7 +343,7 @@ export function Composer({
         onSend();
       }}
       className={cn(
-        "flex items-center gap-2 border border-border-strong bg-background focus-within:border-foreground",
+        "@container flex items-center gap-2 border border-border-strong bg-background focus-within:border-foreground",
         thread ? cn("w-full rounded-xl py-2 pr-2 pl-4", COMPOSER_SHADOW) : "rounded-[10px] py-1.5 pr-1.5 pl-3",
       )}
     >
@@ -367,7 +367,7 @@ export function Composer({
         )}
       />
       {sees ? (
-        <span className="inline-flex min-w-0 max-w-[40%] items-center gap-1 text-caption text-muted-foreground">
+        <span className="hidden min-w-0 max-w-[40%] items-center gap-1 text-caption text-muted-foreground @min-[520px]:inline-flex">
           <Eye className="size-3 shrink-0" aria-hidden />
           <span className="truncate">Hoot can see: {sees}</span>
         </span>
