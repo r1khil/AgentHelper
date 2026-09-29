@@ -7,6 +7,7 @@ import { getCurrentUser, canOpenChat, transparencyEnabled } from "@/lib/auth";
 import { effectiveRunStatus, getChat, loadMessages, maybeTitleChat, saveMessages, setRunStatus } from "@/lib/chats";
 import { agentConfigured } from "@/lib/agent/model";
 import { runAgentTurn } from "@/lib/agent/run";
+import { appendQuestion } from "@/lib/agent/incoming";
 import { distillTurn } from "@/lib/agent/memory/distill";
 import { usesPtSheet } from "@/lib/agent/pt-sheet-guard";
 import { ensureDriveIndexFresh } from "@/lib/jobs/drive";
@@ -29,18 +30,22 @@ export async function POST(req: Request) {
   if (call && call.status !== "ready") return new Response("Finish call processing before asking follow-up questions.", { status: 409 });
   const prior = await loadMessages(chat.id);
   const incoming: UIMessage = { ...body.message, role: "user" };
-  const messages = [...prior.filter((m) => m.id !== incoming.id), incoming];
+  const appended = appendQuestion(prior, incoming);
+  if ("error" in appended) return new Response(appended.error, { status: 400 });
+  const { messages } = appended;
+  // The saved copy when the question was sent twice.
+  const asked = messages[messages.length - 1];
 
   // Persist the user turn before streaming so a failed generation never loses it.
   await saveMessages(chat.id, messages);
   await setRunStatus(chat.id, "running");
-  const firstText = incoming.parts.find((p) => p.type === "text");
+  const firstText = asked.parts.find((p) => p.type === "text");
   if (prior.length === 0 && firstText && "text" in firstText) await maybeTitleChat(chat.id, firstText.text);
 
   await ensureDriveIndexFresh();
   after(() => ensureIngested());
   // Transparency mode (exec/admin preference) streams a live trace of steps and provider calls to this browser only.
-  const question = incoming.parts.map((p) => (p.type === "text" ? p.text : "")).join("").trim();
+  const question = asked.parts.map((p) => (p.type === "text" ? p.text : "")).join("").trim();
   const { clientStream, persisted } = await runAgentTurn({
     chat,
     user,
