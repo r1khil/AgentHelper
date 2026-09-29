@@ -33,7 +33,7 @@ function filing(over: Partial<IngestRow> = {}): IngestRow {
   return row({ id: "d1", kind: "filing", version: "0000004962-25-000010", drive: undefined, ...over });
 }
 
-const cfg = { embedModel: "nvidia/nemotron-3-embed-1b:free", embedEnabled: true };
+const cfg = { summaryEnabled: true, embedModel: "nvidia/nemotron-3-embed-1b:free", embedEnabled: true };
 
 describe("isIngestible", () => {
   it("rejects folders, unmatched files, unsupported types, and oversized files", () => {
@@ -55,6 +55,11 @@ describe("isIngestible", () => {
 describe("ingestNeeds", () => {
   it("needs everything for a brand-new file", () => {
     expect(ingestNeeds(row(), cfg)).toEqual({ text: true, summary: true, embed: true });
+  });
+
+  it("never asks for a summary when summaries are off", () => {
+    expect(ingestNeeds(row(), { ...cfg, summaryEnabled: false })).toEqual({ text: true, summary: false, embed: true });
+    expect(ingestNeeds(row(), { ...cfg, summaryEnabled: undefined }).summary).toBe(false);
   });
 
   it("needs nothing when every step matches the current version", () => {
