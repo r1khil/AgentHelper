@@ -16,7 +16,8 @@ export const stressDates = (from: string, to: string) => (from === to ? fmtDate(
 export const STRESS_DETAIL = { id: "stress-tests", label: "Stress tests", title: "Stress tests" };
 /** Anchor of a window's row, which a link to `#stress-<key>` opens. */
 export const stressAnchor = (key: string) => `stress-${key}`;
-export const backtestHref = (r: StressOk) => `/backtesting?${new URLSearchParams({ from: r.backtestFrom, to: r.end, stress: r.key })}`;
+/** The window replayed in What if (`whatIf`: the scope's What if view), with its dates filled in. */
+export const backtestHref = (r: StressOk, whatIf = "/t/fund/what-if") => `${whatIf}?${new URLSearchParams({ from: r.backtestFrom, to: r.end, stress: r.key })}`;
 
 /** The heading of the stress table's section: what the tests are, in one line. */
 export function StressHead({ aside }: { aside?: React.ReactNode }) {

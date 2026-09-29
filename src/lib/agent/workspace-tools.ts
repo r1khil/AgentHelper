@@ -208,6 +208,7 @@ export function makeWorkspaceTools(ctx: { viewer: CurrentUser; teamId: string | 
           const range = from || to ? validateRange(from ?? to!, to ?? DateTime.fromISO(from!, { zone: NY }).plus({ days: 6 }).toISODate()!) : calendarWeek();
           const feed = await getEconomicCalendar(range);
           const t = Date.now();
+          const today = DateTime.now().setZone(NY).toISODate()!;
           const picked = pickEconomicEvents(feed.events, { importance, search, limit });
           const sources: Source[] = [];
           const events = picked.events.map((e) => {
@@ -220,7 +221,8 @@ export function makeWorkspaceTools(ctx: { viewer: CurrentUser; teamId: string | 
             const source: Source = {
               id: sourceId("econ", `${e.id}:${actual ?? ""}`),
               title: `${name}, ${fmtDay(e.date)}`,
-              url: appUrl("/markets"),
+              // Markets opens on the window the release is in: past releases up to its day, or the schedule from it.
+              url: appUrl(e.date < today ? `/markets?view=past&to=${e.date}` : `/markets?from=${e.date}`),
               publisher: e.source ?? feed.provider,
               publishedAt: e.timestamp ?? e.date,
               retrievedAt: feed.fetchedAt,

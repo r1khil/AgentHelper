@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
+import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { rejectHeldTicket } from "@/lib/attribution/held-tickets";
 import { markRepeats, MAX_PASTED_TICKETS, recordable, ticketsToCsv, type TicketRead } from "@/lib/attribution/ticket";
 import { checkLedger, checkPastedTickets, checkPrices, MAX_TICKET_BYTES, readTicketDocx, recordTickets } from "@/lib/attribution/ticket-record";
@@ -89,6 +90,6 @@ export async function rejectTicket(id: string): Promise<ActionResult> {
   const user = await requireRole("exec", "admin");
   if (!/^[0-9a-f-]{36}:\d{1,3}$/.test(id)) return { ok: false, error: "That ticket is not on the list." };
   await rejectHeldTicket(id, user.id);
-  revalidatePath("/attribution/ledger");
+  revalidatePath(`/t/${FUND_SCOPE_SLUG}/activity`);
   return { ok: true, message: "Rejected. It is not in the ledger." };
 }

@@ -64,6 +64,9 @@ describe("resolveNavigation", () => {
     expect(go(resolveNavigation({ page: "backtesting", trade: { ticker: "avgo", changePp: -2, fundFrom: "cash" } }, exec))).toBe("/t/fund/what-if?trade=AVGO%3A-2%3Acash (What if)");
     expect(go(resolveNavigation({ page: "attribution", team: "tech" }, exec))).toBe("/t/tech/performance (Performance for Information Technology)");
     expect(go(resolveNavigation({ page: "ledger" }, exec))).toBe("/t/fund/activity (Activity)");
+    // One ledger for the whole Fund: a team's is the Fund's.
+    expect(go(resolveNavigation({ page: "ledger", team: "tech" }, exec))).toBe("/t/fund/activity (Activity)");
+    expect(go(resolveNavigation({ page: "activity" }, { ...exec, path: "/t/fig/risk" }))).toBe("/t/fund/activity (Activity)");
     expect(go(resolveNavigation({ page: "research" }, analyst))).toBe("/hoot (All threads)");
     expect(go(resolveNavigation({ page: "economic_calendar" }, exec))).toBe("/markets (Markets)");
     expect(go(resolveNavigation({ page: "movements" }, analyst))).toBe("/t/tech/movements (Write-ups for Information Technology)");

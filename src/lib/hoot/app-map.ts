@@ -2,6 +2,7 @@
 // questions about it. Pure and client-safe. The page list is tied to the sidebar's destinations and to the page files
 // by tests, so a page added to the app without an entry here fails CI instead of leaving Hoot unaware of it.
 import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
+import { PREP_BUILD_TRADING_DAYS } from "@/lib/earnings-calendar";
 import { PERIOD_KEYS, PERIOD_LABELS } from "@/lib/attribution/periods";
 import { STRESS_WINDOWS } from "@/lib/risk/stress";
 import { VAR_LEVEL } from "@/lib/risk/model";
@@ -12,6 +13,7 @@ const RULE_BP = `${Math.round(MOVEMENT_THRESHOLD_PP * 100)} bp`;
 const PERIODS = PERIOD_KEYS.filter((k) => k !== "custom" && k !== "itd").map((k) => PERIOD_LABELS[k]).join(", ");
 const STRESS = STRESS_WINDOWS.map((w) => w.label).join(", ");
 const VAR_PCT = `${Math.round(VAR_LEVEL * 100)}%`;
+const PREP_WHEN = `${PREP_BUILD_TRADING_DAYS} trading days before a report`;
 /** The Risk view flags a holding whose share of risk is this multiple of its weight (ADDS_MORE in risk-sources.tsx). */
 export const ADDS_MORE_MULTIPLE = 1.5;
 
@@ -80,11 +82,11 @@ export const APP_MAP: AppMapEntry[] = [
     access: "all",
     summary: "one conversation with Hoot: the answer with numbered citations, its sources, the steps Hoot took, and follow-ups",
     shows: [
-      "The question as the title, with the scope it was asked in; Save as note, Share",
+      "The question as the title, with the scope it was asked in; Trace (execs and admins: every step and tool call), Pin to a holding, Delete, Share",
       "Tabs: Answer (cited prose and live tables), Sources (every source cited, numbered), Steps (the tools Hoot used)",
       "Related questions and the follow-up box",
     ],
-    actions: ["ask a follow-up", "save as a note on a holding", "share", "delete"],
+    actions: ["ask a follow-up", "pin to a holding", "share", "delete", "open the trace (execs and admins)"],
     formerly: ["Hoot conversation", "Research chat"],
   },
   {
@@ -94,7 +96,7 @@ export const APP_MAP: AppMapEntry[] = [
     access: "all",
     summary: "every conversation with Hoot, general and about a holding, newest first",
     shows: ["Each thread's question, the holding it is about, when it was last asked"],
-    actions: ["open a thread", "start a new one"],
+    actions: ["open a thread (a new question starts from New in the sidebar, which goes Home)"],
     navigate: "threads",
     formerly: ["Research", "Chats", "Conversations"],
   },
@@ -209,8 +211,8 @@ export const APP_MAP: AppMapEntry[] = [
     shows: [
       "Portfolio / TICKER; Upload model, Record trade (execs and admins); company, exchange and team; price and today's move; chart",
       "Ask about TICKER, with suggested questions; open write-ups and other things due on it, most urgent first",
-      "Tabs: All (everything, newest first), Threads (Hoot's conversations about it), Write-ups (major movements), Model (the Excel model and values to approve), Filings & notes (SEC filings, documents, sell-side calls, the thesis and team notes), Earnings (past and next reports, expectations, prep pack)",
-      "Beside it: Fund position for those who see the book (Market value, Weight, Today, Total gain, Team, Lead); Next report (Date, Time, EPS estimate, Expectations)",
+      "Tabs: All (everything, newest first), Threads (Hoot's conversations about it), Write-ups (major movements), Model (the Excel model and values to approve), Filings & notes (SEC filings, documents, sell-side calls, team notes), Earnings (past and next reports, expectations, prep pack)",
+      "Right rail: the team's thesis (and any proposed update to review); Fund position for those who see the book (Market value, Weight, Today, Total gain, Team, Lead); Next report (Date, Time, EPS estimate, Expectations)",
     ],
     actions: ["ask Hoot about it", "write up a movement", "upload a model", "edit the thesis or add a note", "record a trade (execs and admins)"],
     hoot: 'The page is about one company: treat "this company", "it" and "the stock" as that ticker.',
@@ -321,7 +323,7 @@ export const APP_MAP: AppMapEntry[] = [
       "Fund holdings (or one team's, from its Portfolio or ?team=), with Sector bellwethers to add; the next five weeks day by day",
       "Earnings: holding, company, time (before the open, after the close; est. = date not confirmed by the company), expectations status",
       "Economic releases: time, importance, previous, consensus, market-implied odds and the result once out",
-      "Prep packs: which reports have one built and when the next builds (two weeks before a report)",
+      `Prep packs: which reports have one built and when the next builds (${PREP_WHEN})`,
     ],
     hoot: "get_upcoming_earnings and get_earnings_calendar for reports; get_economic_calendar for releases, get_macro_series for the data behind one, get_market_odds for what traders price in.",
     navigate: "markets",
@@ -399,7 +401,7 @@ export const GLOSSARY: Record<string, string> = {
   "write-up": "The team update on a major movement: what happened and what the evidence supports. The analyst writes it; Hoot can give feedback.",
   expectations: "Before an earnings report, what the analyst expects, key questions and what would change the thesis. Locks on the report date.",
   reflection: "After an earnings report, what happened against what the analyst expected.",
-  "prep pack": "Hoot's cited earnings prep: last quarter's numbers, guidance, what changed in filings and the sell-side, and questions to watch. Builds two weeks before a report.",
+  "prep pack": `Hoot's cited earnings prep: last quarter's numbers, guidance, what changed in filings and the sell-side, and questions to watch. Builds ${PREP_WHEN}.`,
   bellwethers: "Large companies whose results tend to signal how a sector is doing.",
   "bmo / amc": "Before market open / after market close: when a company reports.",
   consensus: "The average forecast of sell-side analysts (or of economists, for a release).",

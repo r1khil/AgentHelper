@@ -65,7 +65,7 @@ export default async function RiskPage({ params, searchParams }: PageProps<"/t/[
           notices={riskNotices(report.notices, { canEdit: true })}
           stress={
             <Suspense fallback={<StressSectionFallback />}>
-              <StressSection report={report} fundLabel="Fund" scopeLabel="NAV" benchmarkLabel="S&P 500 sectors" transparency={transparency} exportQuery="" />
+              <StressSection report={report} fundLabel="Fund" scopeLabel="NAV" benchmarkLabel="S&P 500 sectors" transparency={transparency} exportQuery="" whatIf={`/t/${slug}/what-if`} />
             </Suspense>
           }
         />
@@ -105,7 +105,7 @@ export default async function RiskPage({ params, searchParams }: PageProps<"/t/[
         notices={notices}
         stress={
           <Suspense fallback={<StressSectionFallback />}>
-            <StressSection report={report} fundLabel={team.name} scopeLabel={`${team.name} holdings`} benchmarkLabel={benchmarkLabel} transparency={transparency} exportQuery={`&team=${team.slug}`} />
+            <StressSection report={report} fundLabel={team.name} scopeLabel={`${team.name} holdings`} benchmarkLabel={benchmarkLabel} transparency={transparency} exportQuery={`&team=${team.slug}`} whatIf={`/t/${slug}/what-if`} />
           </Suspense>
         }
       />

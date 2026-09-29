@@ -1,4 +1,5 @@
-// Client-safe: no server imports and no date library, so the companion stays light.
+// Client-safe: no server imports.
+import { PREP_BUILD_TRADING_DAYS } from "@/lib/earnings-calendar";
 import { BUBBLE_MAX_PRIORITY, type HootMood, type HootNudge } from "./types";
 
 /** Hoot's resting face when nothing is happening: awake while the market trades, dozing otherwise. */
@@ -76,7 +77,7 @@ const TIPS: Tip[] = [
   { id: "tip:portfolio", match: /^\/t\/[^/]+$/, title: "Every holding has its own page", detail: "Open a row for its threads, write-ups, model, filings and earnings in one place." },
   { id: "tip:holding", match: /^\/t\/[^/]+\/h\/[^/]+$/, title: "Ask about this holding", detail: "Use the box under the price: the question goes to this ticker, and the thread lands on its Threads tab." },
   { id: "tip:movements", match: /^\/t\/[^/]+\/movements$/, title: "Write-ups", detail: "A holding lands here when it moves 400 bp or more against the S&P 500. Anyone on the team can write up why, by noon the next trading day." },
-  { id: "tip:markets", match: /^\/markets$/, title: "Markets", detail: "Our holdings' reports and the economic releases on one schedule. Write down expectations before a report; the prep pack builds two weeks ahead." },
+  { id: "tip:markets", match: /^\/markets$/, title: "Markets", detail: `Our holdings' reports and the economic releases on one schedule. Write down expectations before a report; the prep pack builds ${PREP_BUILD_TRADING_DAYS} trading days ahead.` },
   { id: "tip:sell-side", match: /^\/t\/[^/]+\/sell-side$/, title: "Sell-side calls", detail: "Record a call, and you'll get a transcript, a brief and cross-checks against your team's files. I'll tell you when it's ready." },
   { id: "tip:models", match: /^\/t\/[^/]+\/models$/, title: "Models", detail: "Upload a model and map its cells. New filings are proposed as updates for you to approve, never written silently." },
   { id: "tip:attribution", match: /^\/t\/[^/]+\/performance$/, title: "Reading performance", detail: "Allocation is about which sectors we over- or under-weighted. Selection is about the stocks we picked within a sector." },

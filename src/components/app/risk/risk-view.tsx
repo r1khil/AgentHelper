@@ -221,7 +221,7 @@ export function RiskView({
           }
         />
         <div id="holdings-risk" className="mt-2 scroll-mt-4">
-          <HoldingsRiskTable rows={rows} teams={teams} totals={{ weight: p.invested, vol: p.vol, riskRows: r.holdings.length }} showActive={p.trackingError !== null} />
+          <HoldingsRiskTable rows={rows} teams={teams} totals={{ weight: p.invested, vol: p.vol, riskRows: r.holdings.length }} showActive={p.trackingError !== null} whatIf={basePath.replace(/\/risk$/, "/what-if")} />
         </div>
       </section>
 

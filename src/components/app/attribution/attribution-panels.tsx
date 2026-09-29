@@ -138,7 +138,7 @@ export function TeamBars({ rows, teams, cashContribution, cashWeight, portfolioR
             <div key={t.teamId ?? "none"} role="row" className={cn("relative grid min-h-11 items-center gap-x-2.5 border-b border-row py-1 transition-colors", TEAM_COLS, team && "hover:bg-band has-[a:focus-visible]:bg-band")}>
               <span role="rowheader" className="min-w-0 leading-4">
                 {team ? (
-                  <RowLink cover="stretch" href={`/t/${team.slug}/attribution${query}`} className="focus-visible:after:ring-0">
+                  <RowLink cover="stretch" href={`/t/${team.slug}/performance${query}`} className="focus-visible:after:ring-0">
                     {team.name}
                   </RowLink>
                 ) : (

@@ -29,6 +29,7 @@ export function StressTests({
   transparency,
   exportQuery,
   backtesting = true,
+  whatIf = "/t/fund/what-if",
   label = STRESS_DETAIL.label,
 }: {
   results: StressResult[];
@@ -40,8 +41,10 @@ export function StressTests({
   transparency: boolean;
   /** Query for the CSV downloads, e.g. "&team=tech"; null hides them. */
   exportQuery: string | null;
-  /** Link each window to Backtesting with its dates. */
+  /** Link each window to What if with its dates. */
   backtesting?: boolean;
+  /** The scope's What if view, e.g. "/t/tech/what-if". */
+  whatIf?: string;
   /** The section's accessible name. */
   label?: string;
   title?: string;
@@ -62,8 +65,8 @@ export function StressTests({
         aside={
           backtesting &&
           worst && (
-            <Link href={backtestHref(worst)} title={`Opens ${worst.label} in Backtesting with its dates filled in`} className="font-semibold text-foreground hover:underline">
-              Replay the worst in Backtesting →
+            <Link href={backtestHref(worst, whatIf)} title={`Opens ${worst.label} in What if with its dates filled in`} className="font-semibold text-foreground hover:underline">
+              Replay the worst in What if →
             </Link>
           )
         }
@@ -72,7 +75,7 @@ export function StressTests({
         <StressColumnHeads fundLabel={fundLabel} />
         {results.map((r) =>
           r.status === "ok" ? (
-            <StressRow key={r.key} r={r} fundLabel={fundLabel} scopeLabel={scopeLabel} benchmarkLabel={benchmarkLabel} transparency={transparency} backtesting={backtesting} />
+            <StressRow key={r.key} r={r} fundLabel={fundLabel} scopeLabel={scopeLabel} benchmarkLabel={benchmarkLabel} transparency={transparency} backtesting={backtesting} whatIf={whatIf} />
           ) : (
             <div key={r.key} role="row" className={cn(STRESS_COLS, "min-h-10 items-center border-b border-row")}>
               <span role="rowheader" className="font-semibold">{r.label}</span>
@@ -96,7 +99,7 @@ export function StressTests({
   );
 }
 
-function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, backtesting }: { r: StressOk; fundLabel: string; scopeLabel: string; benchmarkLabel: string; transparency: boolean; backtesting: boolean }) {
+function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, backtesting, whatIf }: { r: StressOk; fundLabel: string; scopeLabel: string; benchmarkLabel: string; transparency: boolean; backtesting: boolean; whatIf: string }) {
   const stoodIn = r.holdings.filter((h) => h.proxied);
   return (
     <ExpandRow
@@ -159,10 +162,10 @@ function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, bac
           {transparency && <StressWorking r={r} />}
           {backtesting && (
             <div className="text-body">
-              <Link href={backtestHref(r)} className="font-semibold underline underline-offset-2 hover:text-foreground">
-                Open in Backtesting →
+              <Link href={backtestHref(r, whatIf)} className="font-semibold underline underline-offset-2 hover:text-foreground">
+                Open in What if →
               </Link>
-              <span className="text-muted-foreground"> with {fmtDate(r.backtestFrom)} – {fmtDate(r.end)} filled in. Backtesting replays saved weights rebalanced daily, so its result will differ.</span>
+              <span className="text-muted-foreground"> with {fmtDate(r.backtestFrom)} – {fmtDate(r.end)} filled in. What if replays saved weights rebalanced daily, so its result will differ.</span>
             </div>
           )}
         </div>

@@ -5,6 +5,7 @@ import { PairBars } from "@/components/app/portfolio/parts";
 import { Tip } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "./explainers";
 import { rnum, rpct } from "./format";
+import { trimHref } from "./risk-sources";
 import { tickerName } from "@/components/app/read-as";
 import { RowLink } from "@/components/app/row-link";
 
@@ -13,7 +14,7 @@ export type TeamNames = Map<string, { name: string; slug: string }>;
 const head = "text-caption first:pl-0 last:pr-0";
 
 /** Holdings ranked by their share of portfolio risk, beside their share of its value, with a trim what-if on each. */
-export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: HoldingRisk[]; teams: TeamNames; totals: { weight: number; vol: number; riskRows: number }; showActive: boolean }) {
+export function HoldingsRiskTable({ rows, teams, totals, showActive, whatIf = "/t/fund/what-if" }: { rows: HoldingRisk[]; teams: TeamNames; totals: { weight: number; vol: number; riskRows: number }; showActive: boolean; /** The scope's What if view. */ whatIf?: string }) {
   const maxShare = Math.max(...rows.flatMap((h) => [Math.abs(h.riskShare), h.weight]), 0);
   return (
     <div className="overflow-x-auto">
@@ -29,7 +30,7 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
             <TableHead className={`${head} text-right`}><Tip label="Beta" side="bottom">{RISK_EXPLAIN.holdingBeta}</Tip></TableHead>
             <TableHead className={`${head} text-right`}><Tip label="Corr. to Fund" side="bottom">{RISK_EXPLAIN.corr}</Tip></TableHead>
             {showActive && <TableHead className={`${head} text-right`}><Tip label="Active risk" side="bottom">{RISK_EXPLAIN.activeRiskShare}</Tip></TableHead>}
-            <TableHead className={`${head} text-right`}><Tip label="What if" side="bottom">Opens Backtesting with this holding trimmed by 2 percentage points into cash, so you can see how performance and risk would change. Adjust the trade there before running.</Tip></TableHead>
+            <TableHead className={`${head} text-right`}><Tip label="What if" side="bottom">Opens What if with this holding trimmed by 2 percentage points into cash, so you can see how performance and risk would change. Adjust the trade there before running.</Tip></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -62,7 +63,7 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
                 <TableCell className="text-right">{rnum(h.corrToPortfolio)}</TableCell>
                 {showActive && <TableCell className="text-right">{rpct(h.activeRiskShare)}</TableCell>}
                 <TableCell className="text-right last:pr-0">
-                  <Link href={`/backtesting?trade=${encodeURIComponent(`${h.ticker}:-2:cash`)}`} aria-label={`Trim ${h.ticker} by 2 percentage points`} className="text-body whitespace-nowrap text-muted-foreground hover:text-foreground hover:underline">
+                  <Link href={trimHref(h.ticker, 2, whatIf)} aria-label={`Trim ${h.ticker} by 2 percentage points`} className="text-body whitespace-nowrap text-muted-foreground hover:text-foreground hover:underline">
                     Trim 2 pp →
                   </Link>
                 </TableCell>

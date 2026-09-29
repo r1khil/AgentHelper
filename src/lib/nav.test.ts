@@ -7,7 +7,7 @@ describe("sectionFor", () => {
   it("puts every page in one of the five screens, or under the account menu", () => {
     expect(sectionFor("/")).toBe("home");
     expect(sectionFor("/hoot/c1")).toBe("thread");
-    expect(sectionFor("/t/tech/agent/h/NVDA")).toBe("thread");
+    expect(sectionFor("/hoot")).toBe("thread");
     expect(sectionFor("/markets")).toBe("markets");
     expect(sectionFor("/t/fund")).toBe("portfolio");
     expect(sectionFor("/t/tech")).toBe("portfolio");
@@ -24,6 +24,9 @@ describe("sectionFor", () => {
     expect(sectionFor("/weekly/2026-09-25")).toBe("weekly");
     expect(sectionFor("/changelog")).toBe("changelog");
     expect(sectionFor("/admin/pt-sheet")).toBe("admin");
+    // Addresses from before the five screens redirect in next.config, so they belong nowhere.
+    expect(sectionFor("/attribution")).toBeNull();
+    expect(sectionFor("/t/tech/agent")).toBeNull();
   });
 });
 

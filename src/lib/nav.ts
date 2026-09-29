@@ -86,8 +86,8 @@ export function sectionFor(pathname: string): NavKey | null {
   if (pathname === "/") return "home";
   if (/^\/hoot(\/|$)/.test(pathname)) return "thread";
   if (/^\/markets(\/|$)/.test(pathname)) return "markets";
-  // Pages from before the five screens, until their redirects land.
-  if (/^\/(attribution|daily|risk|exposure|backtesting)(\/|$)/.test(pathname)) return "portfolio";
+  // Backtesting from before the five screens, until its redirect moves to next.config.
+  if (/^\/backtesting(\/|$)/.test(pathname)) return "portfolio";
   if (/^\/weekly(\/|$)/.test(pathname)) return "weekly";
   if (/^\/changelog(\/|$)/.test(pathname)) return "changelog";
   if (/^\/admin(\/|$)/.test(pathname)) return "admin";
@@ -97,9 +97,6 @@ export function sectionFor(pathname: string): NavKey | null {
   switch (m[1]) {
     case "h":
       return "holding";
-    // A holding's research thread.
-    case "agent":
-      return m[2] === "h" ? "thread" : "home";
     // One write-up, model, call or report belongs to its holding; the old lists were the Portfolio's and Markets'.
     case "movements":
     case "models":
@@ -109,9 +106,6 @@ export function sectionFor(pathname: string): NavKey | null {
       return m[2] ? "holding" : "markets";
     case "economic-calendar":
       return "markets";
-    case "attribution":
-    case "daily":
-      return "portfolio";
     default:
       return null;
   }

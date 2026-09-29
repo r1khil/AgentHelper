@@ -178,7 +178,8 @@ export function resolveNavigation(req: NavigateRequest, ctx: NavigateContext): {
     const here = (ctx.path ? (isFundBookPath(ctx.path) ? FUND_SCOPE_SLUG : scopeSlugFromPath(ctx.path)) : null) ?? (fundWide ? FUND_SCOPE_SLUG : null);
     return { action: { kind: "navigate", href: holdingHref(here, h.teamSlug, t, tab ? `?tab=${tab}` : ""), label: tab ? `${t}, ${HOLDING_TABS[tab]}` : t } };
   }
-  const where = scopeFor(req, ctx);
+  // The ledger is the whole Fund's, one book for every team: "the ledger for tech" is the Fund's Activity.
+  const where = page === "activity" && fundWide ? { scope: "fund" as const, slug: FUND_SCOPE_SLUG } : scopeFor(req, ctx);
   if ("error" in where) return where;
   const ownTeam = ctx.teams.find((t) => t.id === ctx.viewer.teamId);
   const lead = ctx.viewer.role === "lead_analyst" && where.scope !== "fund" && where.scope !== null && ownTeam?.slug === where.scope.slug;

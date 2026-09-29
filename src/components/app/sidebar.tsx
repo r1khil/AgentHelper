@@ -10,7 +10,6 @@ import {
   Activity,
   Gauge,
   CalendarDays,
-  CalendarClock,
   CalendarRange,
   Check,
   ChevronDown,
@@ -133,14 +132,13 @@ function SidebarBody({ user, teams, signOut, dock }: Props & { dock?: React.Reac
   const current = useCurrentTeam(teams, user, fundWide);
   const team = current === "fund" ? null : current;
   const base = current === "fund" ? `/t/${FUND_SCOPE_SLUG}` : team ? `/t/${team.slug}` : null;
-  // Position sizes and P&L: the whole fund for fund-wide roles, a team for its lead. The fund's pages live outside /t/.
+  // Position sizes and P&L: the whole fund for fund-wide roles, a team for its lead.
   const seesBook = current === "fund" || (!!team && (fundWide || (user.role === "lead_analyst" && user.teamId === team.id)));
-  const bookBase = current === "fund" ? "" : base;
 
   const research: NavLink[] = base
     ? [
         { href: base, label: "Holdings", icon: Briefcase, exact: true },
-        { href: `${base}/agent`, label: "Research", icon: HootIcon, also: "/hoot" },
+        { href: "/hoot", label: "Threads", icon: HootIcon },
         { href: `${base}/sell-side`, label: "Sell-side calls", icon: Mic },
         { href: `${base}/models`, label: "Models", icon: Table2 },
       ]
@@ -148,16 +146,15 @@ function SidebarBody({ user, teams, signOut, dock }: Props & { dock?: React.Reac
   const markets: NavLink[] = base
     ? [
         { href: `${base}/movements`, label: "Movements", icon: Activity },
-        { href: `${base}/earnings`, label: "Earnings", icon: CalendarDays },
-        { href: `${base}/economic-calendar`, label: "Economic calendar", icon: CalendarClock },
+        { href: "/markets", label: "Markets", icon: CalendarDays },
       ]
     : [];
   const portfolio: NavLink[] = seesBook
     ? [
-        { href: `${bookBase}/attribution`, label: "Attribution", icon: ChartColumn },
-        { href: `${bookBase}/daily`, label: "Daily", icon: Gauge },
-        { href: `${bookBase}/risk`, label: "Risk", icon: ShieldAlert },
-        { href: `${bookBase}/exposure`, label: "Exposure", icon: ChartPie },
+        { href: `${base}/performance`, label: "Performance", icon: ChartColumn },
+        { href: `${base}/performance?period=today`, label: "Today", icon: Gauge },
+        { href: `${base}/risk`, label: "Risk", icon: ShieldAlert },
+        { href: `${base}/exposure`, label: "Exposure", icon: ChartPie },
       ]
     : [];
 
@@ -177,7 +174,7 @@ function SidebarBody({ user, teams, signOut, dock }: Props & { dock?: React.Reac
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3">
         <nav className="flex flex-col gap-px">
           <NavItem href="/" label="Today" icon={Home} active={pathname === "/"} />
-          <NavItem href="/backtesting" label="Backtesting" icon={FlaskConical} active={isActive("/backtesting")} />
+          <NavItem href={base ? `${base}/what-if` : "/backtesting"} label="What if" icon={FlaskConical} active={/^\/t\/[^/]+\/what-if$/.test(pathname)} />
         </nav>
 
         <div className="mt-4">

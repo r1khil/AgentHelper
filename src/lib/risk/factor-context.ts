@@ -1,5 +1,6 @@
 import "server-only";
 import type { CurrentUser } from "@/lib/auth";
+import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { bookExposure, factorLineAudience, type CalendarFactorContext } from "@/lib/economic-calendar/factor-lines";
 import { isFactorReport } from "./factors";
 import { loadRisk } from "./load";
@@ -16,7 +17,7 @@ export async function calendarFactorContext(user: Pick<CurrentUser, "role" | "te
   const audience = factorLineAudience(user);
   if (audience.kind === "label") return { audience: "label", exposure: null, href: null, basis: null };
   const team = audience.kind === "team" ? user.team : null;
-  const href = audience.kind === "fund" ? "/exposure#factors" : team ? `/t/${team.slug}/exposure#factors` : null;
+  const href = audience.kind === "fund" ? `/t/${FUND_SCOPE_SLUG}/exposure#factors` : team ? `/t/${team.slug}/exposure#factors` : null;
   try {
     const loaded = await loadRisk(DEFAULT_LOOKBACK, audience.kind === "team" ? audience.teamId : null);
     const f = loaded.state === "ok" ? loaded.report.factors : null;

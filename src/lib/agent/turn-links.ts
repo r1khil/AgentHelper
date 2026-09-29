@@ -15,8 +15,8 @@ const PAGES: Record<string, { label: string; path: (input: Record<string, unknow
   get_portfolio_risk: { label: "Risk", path: (i) => (i.page === "exposure" ? "/exposure" : "/risk"), book: true },
   // What if replays the chat's team (the member's own, for everyone but execs and admins) or the whole fund.
   run_backtest: { label: "What if", path: () => "/what-if", scoped: true },
-  // Write-ups and reports are on each holding's page now; across a team they are the Portfolio's and Markets'.
-  get_movements: { label: "Portfolio", path: () => "", scoped: true },
+  // Across a team, write-ups have their own list; reports are on Markets.
+  get_movements: { label: "Write-ups", path: () => "/movements", scoped: true },
   get_upcoming_earnings: { label: "Markets", path: () => "/markets" },
   get_economic_calendar: { label: "Markets", path: () => "/markets" },
   get_ledger: { label: "Activity", path: () => `/t/${FUND_SCOPE_SLUG}/activity` },

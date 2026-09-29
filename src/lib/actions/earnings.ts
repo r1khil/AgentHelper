@@ -98,6 +98,6 @@ export async function rebuildPrepPack(fd: FormData) {
   if (!canManageTeam(row.user, row.h.teamId)) redirect(back);
   const r = await buildPrepPack(row.e.id, { notify: String(fd.get("send") ?? "none") === "list" });
   revalidatePath(row.path);
-  revalidatePath(`/t/${row.slug}/agent/h/${row.h.ticker}`);
+  revalidatePath(`/t/${row.slug}/h/${row.h.ticker}`);
   redirect(r.ok ? back : `${back}?error=${encodeURIComponent(r.error)}`);
 }
