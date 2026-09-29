@@ -122,7 +122,10 @@ export function MovementWorkspace({
       </div>
       <aside aria-label="Evidence Hoot gathered" className="flex w-80 shrink-0 flex-col overflow-y-auto border-l pt-[22px] pr-10 pb-10 pl-6">
         <div className="flex items-baseline">
-          <h2 className="flex-1 text-body font-bold">Evidence Hoot gathered</h2>
+          <h2 className="flex flex-1 items-center gap-2 text-body font-bold">
+            <OwlMark className="size-[18px] rounded-full" />
+            Evidence Hoot gathered
+          </h2>
           <form action={rerunEvidence}>
             <input type="hidden" name="id" value={d.id} />
             <RegatherButton />
