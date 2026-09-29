@@ -97,6 +97,22 @@ describe("tool routing in an agent definition", () => {
     expect(def.activeToolCounts).toEqual([r!.activeTools!.length]);
   });
 
+  it("turns on what find_tools asks for from the next step", async () => {
+    const def = await buildAgentDefinition({ ...base, viewer: exec, chatId: "c1", purpose: "chat", routing: { question: "what's going on?", priorTools: [] } });
+    const step0 = def.prepareStep({ stepNumber: 0, messages: [{ role: "user", content: "q" }], steps: [] });
+    expect(step0?.activeTools).toContain("find_tools");
+    expect(step0?.activeTools).not.toContain("run_backtest");
+    const out = await (def.tools.find_tools as { execute: (i: unknown, o: unknown) => Promise<{ data: { enabled: string[] } }> }).execute({ tools: ["book"] }, { toolCallId: "t", messages: [] });
+    expect(out.data.enabled).toContain("get_daily_performance");
+    const step1 = def.prepareStep({ stepNumber: 1, messages: [{ role: "user", content: "q" }], steps: [{ toolCalls: [{ toolName: "find_tools" }] }] });
+    expect(step1?.activeTools).toEqual(expect.arrayContaining(["get_daily_performance", "run_backtest"]));
+  });
+
+  it("gives a job no find_tools", async () => {
+    const def = await buildAgentDefinition({ ...base, purpose: "prep" });
+    expect(def.tools).not.toHaveProperty("find_tools");
+  });
+
   it("offers every tool to a job, which has no routing", async () => {
     const def = await buildAgentDefinition({ ...base, purpose: "prep" });
     expect(def.prepareStep({ stepNumber: 0, messages: [{ role: "user", content: "q" }], steps: [] })).toBeUndefined();

@@ -14,7 +14,7 @@ vi.mock("@/lib/sandbox/python", async (original) => ({ ...(await original<object
 import { buildAgentDefinition } from "./definition";
 import { EVAL_CASES } from "./eval/cases";
 import { PROPOSAL_TOOLS } from "@/lib/hoot/proposals";
-import { activeToolsFor, CORE, FOLLOW_UPS, RETIRED, routingFromMessages, TIERS, toolsNamedOnPage, WRITE } from "./tool-routing";
+import { activeToolsFor, CORE, FOLLOW_UPS, RETIRED, routingFromMessages, TIERS, toolCatalog, toolsNamedOnPage, WRITE } from "./tool-routing";
 import type { PageContext } from "./page-context";
 
 const viewer = (role: string) => ({ id: "u1", role, teamId: "t1", team: { id: "t1", slug: "tech", name: "Information Technology" }, fullName: "U", transparencyMode: false }) as never;
@@ -108,6 +108,29 @@ describe("activeToolsFor", () => {
     expect(route("did we make money?", { seesBook: false })).not.toContain("get_attribution");
   });
 
+  it("reads a question about the benchmark as the book", async () => {
+    available = await allRegisteredTools();
+    for (const q of [
+      "Why are we ahead of the benchmark today?",
+      "Why are we behind the S&P today?",
+      "why is the fund trailing the index this week",
+      "are we green today?",
+      "what's our active return this month?",
+      "how much alpha did tech add?",
+    ])
+      expect(route(q), q).toContain("get_daily_performance");
+  });
+
+  it("offers what find_tools turned on, but never a change or retired tool", async () => {
+    available = await allRegisteredTools();
+    const q = "what's going on?";
+    expect(route(q, { seesBook: false })).not.toContain("get_macro_series");
+    const later = route(q, { seesBook: false, stepNumber: 1, requestedTools: ["get_macro_series", "add_note", "list_filing_documents"] });
+    expect(later).toContain("get_macro_series");
+    expect(later).not.toContain("add_note");
+    expect(later).not.toContain("list_filing_documents");
+  });
+
   it("offers every tool the page-context block names", async () => {
     available = await allRegisteredTools();
     const pages: PageContext[] = [
@@ -185,5 +208,21 @@ describe("routingFromMessages", () => {
 
   it("has no prior tools on a first question", () => {
     expect(routingFromMessages([{ role: "user", parts: [{ type: "text", text: "hi" }] }])).toEqual({ question: "hi", priorTools: [] });
+  });
+});
+
+describe("toolCatalog", () => {
+  it("lists every tool outside CORE by tier and resolves names and group names", async () => {
+    const available = await allRegisteredTools();
+    const { lines, resolve } = toolCatalog([...available, "av_news_sentiment"]);
+    const listed = lines.join("\n");
+    for (const t of Object.values(TIERS).flat()) if (available.includes(t)) expect(listed, t).toContain(t);
+    for (const t of [...CORE, ...RETIRED, ...WRITE]) expect(listed, t).not.toMatch(new RegExp(`\\b${t}\\b`));
+    expect(listed).toContain("av_news_sentiment");
+    expect(resolve(["book"]).enabled).toEqual([...TIERS.book]);
+    expect(resolve(["get_market_odds", "external"]).enabled).toEqual(["get_market_odds", "av_news_sentiment"]);
+    expect(resolve(["add_note", "list_filing_documents", "nope"])).toEqual({ enabled: [], unknown: ["add_note", "list_filing_documents", "nope"] });
+    // Already on: nothing to turn on, and not an unknown name.
+    expect(resolve(["get_news"])).toEqual({ enabled: [], unknown: [] });
   });
 });
