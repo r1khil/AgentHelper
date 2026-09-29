@@ -26,7 +26,7 @@ export function CumulativeActiveChart({ data, portfolioLabel, benchmarkLabel, in
         { key: "benchmark", label: benchmarkLabel, color: BENCH_LINE.color },
         ...(withIndex ? [{ key: "index", label: indexLabel!, color: "var(--series-2)" }] : []),
       ]}
-      note="Cumulative return · page period"
+      note="Cumulative return over the period"
     />
   );
 }

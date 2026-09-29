@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { UIMessage } from "ai";
-import { PageHead } from "@/components/app/page-head";
+import { PageHead, type Crumb } from "@/components/app/page-head";
 import { useSourceViewer, ResearchSources } from "./research-answer";
 import { Composer, HootFace, SourceListCard, SourcesHeading } from "./thread-parts";
 import { ConversationTurns, useConversation, useRelated, type Conversation } from "./conversation";
-import type { PinTarget } from "./pin-to-board";
-import { fmtTime } from "@/lib/format";
+import { fmtDateTime, fmtDay, fmtTime } from "@/lib/format";
+import { isCallTitle, threadTitle } from "@/lib/thread-title";
 import { isMemberQuestion } from "@/lib/agent/hidden-prompt";
 import { pageContextFromMessages, pageContextLabel } from "@/lib/agent/page-context";
 import type { RunStatus } from "@/lib/chats";
-import { cn } from "@/lib/utils";
 
 const SUGGESTIONS = [
   "What moved {T} today versus the S&P 500, and what filings or news are in the window?",
@@ -39,8 +38,6 @@ type ChatProps = {
   sees?: string;
 };
 
-const LEARNING_BOUNDARY = "Hoot finds and cites the evidence. The analysis and the write-ups stay yours.";
-
 function composerProps(conv: Conversation, { configured, sees }: { configured: boolean; sees?: string }) {
   const ctx = pageContextFromMessages(conv.messages);
   return {
@@ -57,14 +54,29 @@ function composerProps(conv: Conversation, { configured, sees }: { configured: b
   };
 }
 
-/** Follow the answer to the bottom of the scroller as it arrives. */
+/** Within this many pixels of the end, the reader is following the latest and the thread keeps up with the answer. */
+const FOLLOW_SLACK = 240;
+
+/**
+ * Follow the answer to the bottom of the scroller as it arrives, but only while the reader is at (or near) the end: someone
+ * who scrolled up to read earlier text stays where they are. Sending a question always goes to it. Put `onScroll` on
+ * the scroller.
+ */
 function useFollow(conv: Conversation) {
   const bottom = useRef<HTMLDivElement>(null);
+  const following = useRef(true);
   const { messages, status, catchingUp } = conv;
+  const onScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    following.current = el.scrollHeight - el.scrollTop - el.clientHeight < FOLLOW_SLACK;
+  }, []);
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
+    if (status === "submitted") following.current = true;
+  }, [status]);
+  useEffect(() => {
+    if (following.current) bottom.current?.scrollIntoView({ block: "end" });
   }, [messages, status, catchingUp]);
-  return bottom;
+  return { bottom, onScroll };
 }
 
 /** The sources every answer in the thread cites, in citation-number order: a short list beside a call's chat. */
@@ -94,13 +106,13 @@ function SourceList({ sources }: { sources: Conversation["allSources"] }) {
 /** A chat on its own (a sell-side call's saved chat): the thread with its sources beside it. */
 export function ChatPanel(props: ChatProps) {
   const conv = useConversation(props);
-  const bottom = useFollow(conv);
+  const { bottom, onScroll } = useFollow(conv);
   return (
     <ResearchSources sources={conv.allSources} chatId={props.chatId}>
       <div className="flex h-[calc(100vh-7rem)] min-h-[480px] gap-8">
         <section className="flex min-w-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 overflow-y-auto pr-2">
-            {conv.messages.length === 0 && <EmptyIntro suggestions={chatSuggestions(props.tickers[0])} onPick={conv.setInput} disabled={!props.configured} />}
+          <div onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto pr-2">
+            {conv.messages.length === 0 && !conv.handingOff && <EmptyIntro suggestions={chatSuggestions(props.tickers[0])} onPick={conv.setInput} disabled={!props.configured} />}
             <ConversationTurns conv={conv} variant="board" teamSlug={null} gap="gap-6" />
             <div ref={bottom} />
           </div>
@@ -117,39 +129,41 @@ export function ChatPanel(props: ChatProps) {
 }
 
 /**
- * A Hoot thread, drawn like Perplexity: the question as a grey bubble, what Hoot did, the sources he read as cards, his
- * cited answer in serif, and the follow-up box fixed at the bottom over a white fade. General conversations live at
- * /hoot/<id>; a holding's chats open on its board instead.
+ * A Hoot thread at /hoot/<id>, drawn like Perplexity: every chat, general or pinned to a holding. The header says where
+ * it belongs ("Whole fund", a team, or the holding) and carries its actions; the turns run down a 760px column, each
+ * question a heading over its Answer, Sources and Steps; the follow-up box floats at the bottom over the page, with room
+ * left under the last answer so it never hides behind it.
  */
 export function ChatWorkspace({
   title,
-  team,
+  ticker = null,
+  crumbs,
   teamSlug,
   author,
   updatedAt,
-  researchHref,
   actions,
   related,
-  pinTargets,
+  times,
   ...props
 }: ChatProps & {
   title: string;
-  team: string;
+  /** The holding a pinned thread is about (its ticker already leads the breadcrumb). */
+  ticker?: string | null;
+  /** What the thread belongs to, ahead of its title in the breadcrumb: "Whole fund", a team, or the holding's ticker. */
+  crumbs: Crumb[];
   /** The team the conversation is filed under, for the pages a team-scope lookup opens; null for a fund-wide one. */
   teamSlug: string | null;
   author: string | null;
   updatedAt?: string;
-  /** Where "Research" in the breadcrumb goes: the list of chats and boards in the scope the member is in. */
-  researchHref: string;
-  /** Header actions on the right: Share, Trace for execs and admins, Delete. */
+  /** Header actions on the right: Trace for execs and admins, Pin to a holding, Delete, and Share (the primary). */
   actions?: ReactNode;
   /** Suggested next questions from Hoot's research log. */
   related?: string[];
-  /** Holdings this conversation can be pinned to. */
-  pinTargets?: PinTarget[];
+  /** When each saved message was written (ISO), by id: "Hoot answered at …". */
+  times?: Record<string, string>;
 }) {
   const conv = useConversation(props);
-  const bottom = useFollow(conv);
+  const { bottom, onScroll } = useFollow(conv);
   // The questions the page came with belong to the answers it came with; a new question gets Hoot's next ones for it.
   const [openingTurns] = useState(() => conv.turns.length);
   const last = conv.turns[conv.turns.length - 1];
@@ -158,24 +172,24 @@ export function ChatWorkspace({
   const questions = conv.messages.filter(isMemberQuestion).length;
   const first = conv.messages.find(isMemberQuestion);
   const firstText = first?.parts.map((p) => (p.type === "text" ? p.text : "")).join(" ").replace(/\s+/g, " ").trim();
-  const shown = title === "New chat" ? firstText?.slice(0, 80) || "New conversation" : title;
-  const asof = [team, author, `${questions} question${questions === 1 ? "" : "s"}`, updatedAt ? fmtTime(updatedAt) : null].filter(Boolean).join(" · ");
+  const shown = title === "New chat" ? firstText?.slice(0, 80) || "New conversation" : threadTitle(title, ticker);
+  const asof = [author, isCallTitle(title) && questions === 0 ? null : `${questions} question${questions === 1 ? "" : "s"}`, updatedAt ? `updated ${fmtDay(updatedAt) === fmtDay(new Date()) ? fmtTime(updatedAt) : fmtDateTime(updatedAt)}` : null].filter(Boolean).join(", ");
   return (
     <div data-full-bleed className="flex h-dvh min-h-0 flex-col">
-      <PageHead crumbs={[{ label: "Research", href: researchHref }, { label: shown }]} tabs={false} asof={asof} actions={actions} />
+      <PageHead crumbs={[...crumbs, { label: shown }]} tabs={false} asof={asof} actions={actions} />
       <div className="relative min-h-0 flex-1">
-        <div className="h-full overflow-y-auto">
-          <article className="mx-auto flex w-full max-w-[840px] flex-col px-10 pt-[30px] pb-48">
-            {conv.messages.length === 0 && <EmptyIntro suggestions={chatSuggestions(props.tickers[0])} onPick={conv.setInput} disabled={!props.configured} />}
-            <ConversationTurns conv={conv} variant="thread" teamSlug={teamSlug} pin={pinTargets?.length ? { chatId: props.chatId, targets: pinTargets } : null} related={nextQuestions} />
-            <div ref={bottom} />
+        <div onScroll={onScroll} className="h-full overflow-y-auto">
+          <article className="mx-auto flex w-full max-w-[840px] flex-col px-10 pt-[34px]">
+            {conv.messages.length === 0 && !conv.busy && !conv.handingOff && <EmptyIntro suggestions={chatSuggestions(props.tickers[0])} onPick={conv.setInput} disabled={!props.configured} />}
+            <ConversationTurns conv={conv} variant="thread" teamSlug={teamSlug} related={nextQuestions} times={times} />
+            {/* Room under the last answer for the floating box; following the answer scrolls to its end. */}
+            <div ref={bottom} aria-hidden className="h-40 shrink-0" />
           </article>
         </div>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center bg-linear-to-b from-transparent to-background to-35% px-10 pt-6 pb-4">
-          <div className={cn("pointer-events-auto w-[760px] max-w-full")}>
-            <Composer variant="thread" {...composerProps(conv, props)} />
+        <div className="pointer-events-none absolute inset-x-0 bottom-6 flex justify-center px-10">
+          <div className="pointer-events-auto w-[760px] max-w-full">
+            <Composer variant="pill" {...composerProps(conv, props)} />
           </div>
-          <p className="pointer-events-auto mt-1.5 text-caption text-muted-foreground">{LEARNING_BOUNDARY}</p>
         </div>
       </div>
     </div>
@@ -196,7 +210,7 @@ export function EmptyIntro({ suggestions, onPick, disabled }: { suggestions: str
             type="button"
             disabled={disabled}
             onClick={() => onPick(s)}
-            className={cn("rounded-md bg-secondary px-3 py-1.5 text-left text-body text-ink-3 transition-colors hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60")}
+            className="rounded-md bg-secondary px-3 py-1.5 text-left text-body text-ink-3 transition-colors hover:bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60"
           >
             {s}
           </button>

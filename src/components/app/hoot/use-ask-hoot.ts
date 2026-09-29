@@ -10,14 +10,14 @@ import { leaveHootQuestion } from "./handoff";
 import { pageContextFor } from "./page-context";
 import { useHootCommand } from "./use-hoot-command";
 
-/** Pages that are Hoot's own conversations: Home, Research and its threads. A question asked there opens the thread. */
-export const onConversationPage = (pathname: string) => pathname === "/" || /^\/hoot(\/|$)/.test(pathname) || /^\/t\/[^/]+\/agent(\/|$)/.test(pathname);
+/** Pages that are Hoot's own conversations: Home, a thread and All threads. A question asked there opens the thread. */
+export const onConversationPage = (pathname: string) => pathname === "/" || /^\/hoot(\/|$)/.test(pathname);
 
 /**
- * The one way a question reaches Hoot from outside Research: open a chat that fits, hand it the question with the page it
- * was asked from, and show the answer. On an ordinary page the answer slides in as a panel over it (with "Open as a full
- * thread" for the whole conversation); a question about one holding goes to that holding's research board, and on Home
- * and Research, which are conversations themselves, it opens the thread. ⌘J and the pages' written-for-you "Ask Hoot"
+ * The one way a question reaches Hoot from a page: open a chat that fits, hand it the question with the page it was asked
+ * from, and show the answer. On an ordinary page the answer slides in as a panel over it (with "Open as a full thread"
+ * for the whole conversation); a question about one holding opens its thread (filed under the holding), and on Home and
+ * the threads, which are conversations themselves, it opens the thread. ⌘J and the pages' written-for-you "Ask Hoot"
  * buttons both come through here. Resolves true once the chat is opening.
  */
 export function useAskHoot() {

@@ -136,12 +136,13 @@ describe("FilterChip", () => {
     const link = renderToStaticMarkup(h(FilterChip, { href: "/t/fund?filter=attention", active: true, count: 5, children: "Needs attention" }));
     expect(link).toMatch(/^<a /);
     expect(link).toContain('aria-current="true"');
-    expect(link).toContain(">· 5</span>");
+    expect(link).toContain(">5</span>");
+    expect(link).not.toContain("·");
 
     const button = renderToStaticMarkup(h(FilterChip, { active: false, count: 0, onClick: noop, children: "High" }));
     expect(button).toMatch(/^<button type="button"/);
     expect(button).toContain('aria-pressed="false"');
-    expect(button).toContain(">· 0</span>");
+    expect(button).toContain(">0</span>");
   });
 
   it("groups a row of chips under a label", () => {

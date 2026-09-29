@@ -6,6 +6,10 @@ import { loadModelsView } from "./_load";
 
 export const metadata: Metadata = { title: "Models" };
 
+/**
+ * Every holding's model in the scope, the first with values to decide open. A holding's own model is on its page (the
+ * Model tab); this is the whole list, reached from there ("All models").
+ */
 export default async function ModelsPage({ params, searchParams }: { params: Promise<{ team: string }>; searchParams: Promise<{ error?: string; tab?: string }> }) {
   const { team: slug } = await params;
   const { error, tab } = await searchParams;
@@ -13,7 +17,7 @@ export default async function ModelsPage({ params, searchParams }: { params: Pro
   if (items.length === 0) {
     return (
       <>
-        <PageHead crumbs={[{ label: "Models" }]} asof={scope.team?.name ?? "Whole fund"} tabs={false} />
+        <PageHead crumbs={[{ label: "Portfolio", href: `/t/${scope.slug}` }, { label: "Models" }]} asof={scope.team?.name ?? "Whole fund"} tabs={false} />
         <EmptyState title="No holdings yet" hoot="wave">
           Add holdings first; each one can carry a model.
         </EmptyState>
@@ -22,6 +26,7 @@ export default async function ModelsPage({ params, searchParams }: { params: Pro
   }
   return (
     <ModelsView
+      list
       scope={{ slug: scope.slug, label: scope.team?.name ?? "Whole fund" }}
       items={items}
       uploadTargets={uploadTargets}

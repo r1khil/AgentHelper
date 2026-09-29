@@ -1,450 +1,706 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-29T13:15:59.077704+00:00",
+  "generatedAt": "2026-09-29T19:18:45.414049+00:00",
   "title": "Design System: Owl Fund",
   "extensions": {
     "colorMeta": {
       "ink": {
         "role": "primary",
-        "displayName": "Ink",
-        "canonical": "#0a0a0a",
+        "displayName": "Night Ink",
+        "canonical": "#e8e8e6",
         "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
+          "#20201d",
+          "#3a3a36",
+          "#585851",
+          "#78786e",
+          "#96968d",
+          "#b3b3ad",
+          "#d1d1cd",
+          "#eeeeec"
+        ],
+        "theme": "dark (default)"
       },
-      "up-text": {
-        "role": "secondary",
-        "displayName": "Up Green (text)",
-        "canonical": "#007a45",
-        "tonalRamp": [
-          "#003d22",
-          "#005a33",
-          "#007a45",
-          "#009456",
-          "#2fbf71",
-          "#3dd68c",
-          "#9fe8c4",
-          "#e6f7ee"
-        ]
-      },
-      "up-line": {
-        "role": "secondary",
-        "displayName": "Up Green (chart)",
-        "canonical": "#009456",
-        "tonalRamp": [
-          "#003d22",
-          "#005a33",
-          "#007a45",
-          "#009456",
-          "#2fbf71",
-          "#3dd68c",
-          "#9fe8c4",
-          "#e6f7ee"
-        ]
-      },
-      "down-text": {
-        "role": "secondary",
-        "displayName": "Down Red (text)",
-        "canonical": "#d12d35",
-        "tonalRamp": [
-          "#5c1216",
-          "#8f1c22",
-          "#d12d35",
-          "#e5484d",
-          "#f2555a",
-          "#ff6369",
-          "#f8b4b6",
-          "#fdecec"
-        ]
-      },
-      "down-line": {
-        "role": "secondary",
-        "displayName": "Down Red (chart)",
-        "canonical": "#e5484d",
-        "tonalRamp": [
-          "#5c1216",
-          "#8f1c22",
-          "#d12d35",
-          "#e5484d",
-          "#f2555a",
-          "#ff6369",
-          "#f8b4b6",
-          "#fdecec"
-        ]
-      },
-      "down-fill": {
-        "role": "secondary",
-        "displayName": "Drawdown Fill",
-        "canonical": "#fdecec",
-        "tonalRamp": [
-          "#5c1216",
-          "#8f1c22",
-          "#d12d35",
-          "#e5484d",
-          "#f2555a",
-          "#ff6369",
-          "#f8b4b6",
-          "#fdecec"
-        ]
-      },
-      "caution": {
-        "role": "secondary",
-        "displayName": "Check Amber",
-        "canonical": "#b45309",
-        "tonalRamp": [
-          "#3a1f04",
-          "#6b3a07",
-          "#b45309",
-          "#d97706",
-          "#f0a64a",
-          "#f5c27f",
-          "#fae3c0",
-          "#fdf6ec"
-        ]
-      },
-      "caution-fill": {
-        "role": "secondary",
-        "displayName": "Notice Amber Fill",
-        "canonical": "#fdf6ec",
-        "tonalRamp": [
-          "#3a1f04",
-          "#6b3a07",
-          "#b45309",
-          "#d97706",
-          "#f0a64a",
-          "#f5c27f",
-          "#fae3c0",
-          "#fdf6ec"
-        ]
-      },
-      "paper": {
+      "page": {
         "role": "neutral",
-        "displayName": "Paper",
+        "displayName": "Warm Night Page",
+        "canonical": "#191a1a",
         "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
+          "#1e1f1f",
+          "#373939",
+          "#525656",
+          "#717575",
+          "#8f9393",
+          "#aeb2b2",
+          "#ced0d0",
+          "#edeeee"
+        ],
+        "theme": "dark (default)"
       },
-      "band": {
+      "surface": {
         "role": "neutral",
-        "displayName": "Band",
+        "displayName": "Raised Surface",
+        "canonical": "#202222",
         "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
+          "#1e2020",
+          "#363a3a",
+          "#525757",
+          "#6f7676",
+          "#8e9595",
+          "#aeb2b2",
+          "#cdd0d0",
+          "#edeeee"
+        ],
+        "theme": "dark (default)"
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Sidebar Band",
+        "canonical": "#1f2121",
+        "tonalRamp": [
+          "#1e2020",
+          "#363a3a",
+          "#525757",
+          "#6f7676",
+          "#8e9595",
+          "#adb2b2",
+          "#cdd0d0",
+          "#edeeee"
+        ],
+        "theme": "dark (default)"
       },
       "secondary-fill": {
         "role": "neutral",
         "displayName": "Secondary Fill",
+        "canonical": "#2a2c2c",
         "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
+          "#1e1f1f",
+          "#373939",
+          "#525656",
+          "#707575",
+          "#8f9494",
+          "#aeb2b2",
+          "#cdd0d0",
+          "#edeeee"
+        ],
+        "theme": "dark (default)"
       },
       "row-divider": {
         "role": "neutral",
         "displayName": "Row Divider",
+        "canonical": "#242626",
         "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
+          "#1e1f1f",
+          "#373a3a",
+          "#525656",
+          "#707676",
+          "#8e9494",
+          "#aeb2b2",
+          "#cdd0d0",
+          "#edeeee"
+        ],
+        "theme": "dark (default)"
       },
       "section-divider": {
         "role": "neutral",
         "displayName": "Section Divider",
+        "canonical": "#2d2f2f",
         "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
+          "#1e1f1f",
+          "#373939",
+          "#525656",
+          "#707575",
+          "#8f9494",
+          "#aeb2b2",
+          "#cdd0d0",
+          "#edeeee"
+        ],
+        "theme": "dark (default)"
       },
       "control-outline": {
         "role": "neutral",
         "displayName": "Control Outline",
+        "canonical": "#3a3d3d",
         "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
-      },
-      "panel-ring": {
-        "role": "neutral",
-        "displayName": "Panel Ring",
-        "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
+          "#1e1f1f",
+          "#373a3a",
+          "#525656",
+          "#707676",
+          "#8f9494",
+          "#aeb2b2",
+          "#cdd0d0",
+          "#edeeee"
+        ],
+        "theme": "dark (default)"
       },
       "meta-grey": {
         "role": "neutral",
         "displayName": "Meta Grey",
+        "canonical": "#8d9191",
         "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
+          "#1e1f1f",
+          "#373939",
+          "#535656",
+          "#717575",
+          "#8f9393",
+          "#afb1b1",
+          "#cecfcf",
+          "#ededed"
+        ],
+        "theme": "dark (default)"
       },
       "ink-2": {
         "role": "neutral",
         "displayName": "Ink 2",
+        "canonical": "#b5b8b8",
         "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
+          "#1e1f1f",
+          "#373939",
+          "#525656",
+          "#707575",
+          "#8f9494",
+          "#aeb2b2",
+          "#ced0d0",
+          "#edeeee"
+        ],
+        "theme": "dark (default)"
       },
       "ink-3": {
         "role": "neutral",
         "displayName": "Ink 3",
+        "canonical": "#c9cccc",
         "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
+          "#1e1f1f",
+          "#363a3a",
+          "#525757",
+          "#6f7676",
+          "#8e9494",
+          "#aeb2b2",
+          "#cdd0d0",
+          "#edeeee"
+        ],
+        "theme": "dark (default)"
       },
       "series-grey": {
         "role": "neutral",
         "displayName": "Series Grey",
+        "canonical": "#6b6f6f",
         "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
+          "#1e1f1f",
+          "#373939",
+          "#535656",
+          "#717575",
+          "#8f9393",
+          "#aeb1b1",
+          "#cecfcf",
+          "#ededed"
+        ],
+        "theme": "dark (default)"
       },
       "bench-grey": {
         "role": "neutral",
-        "displayName": "Benchmark Grey",
+        "displayName": "Bench Grey",
+        "canonical": "#4a4d4d",
         "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
+          "#1e1f1f",
+          "#373939",
+          "#525656",
+          "#707575",
+          "#8f9494",
+          "#aeb2b2",
+          "#ced0d0",
+          "#edeeee"
+        ],
+        "theme": "dark (default)"
       },
-      "sidebar-accent": {
-        "role": "neutral",
-        "displayName": "Sidebar Accent",
-        "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
-      },
-      "sidebar-border": {
-        "role": "neutral",
-        "displayName": "Sidebar Border",
-        "tonalRamp": [
-          "#09090b",
-          "#18181b",
-          "#27272a",
-          "#3f3f46",
-          "#52525b",
-          "#71717a",
-          "#a1a1aa",
-          "#d4d4d8"
-        ]
-      },
-      "night-background": {
-        "role": "neutral",
-        "displayName": "Night Background (dark mode)"
-      },
-      "night-popover": {
-        "role": "neutral",
-        "displayName": "Night Popover (dark mode)"
-      },
-      "night-band": {
-        "role": "neutral",
-        "displayName": "Night Band (dark mode)"
-      },
-      "night-secondary": {
-        "role": "neutral",
-        "displayName": "Night Secondary (dark mode)"
-      },
-      "night-divider": {
-        "role": "neutral",
-        "displayName": "Night Divider (dark mode)"
-      },
-      "night-row": {
-        "role": "neutral",
-        "displayName": "Night Row (dark mode)"
-      },
-      "night-ink": {
-        "role": "neutral",
-        "displayName": "Night Ink (dark mode)"
-      },
-      "night-meta": {
-        "role": "neutral",
-        "displayName": "Night Meta (dark mode)"
-      },
-      "night-up-text": {
+      "up": {
         "role": "secondary",
-        "displayName": "Night Up Text (dark mode)",
+        "displayName": "Up Green",
+        "canonical": "#3dd68c",
         "tonalRamp": [
-          "#003d22",
-          "#005a33",
-          "#007a45",
-          "#009456",
-          "#2fbf71",
-          "#3dd68c",
-          "#9fe8c4",
-          "#e6f7ee"
-        ]
+          "#0b331f",
+          "#145d39",
+          "#1d8b56",
+          "#28bd75",
+          "#4ad994",
+          "#7ce3b2",
+          "#afeed0",
+          "#e2f9ee"
+        ],
+        "theme": "dark (default)"
       },
-      "night-up-line": {
+      "down": {
         "role": "secondary",
-        "displayName": "Night Up Line (dark mode)",
+        "displayName": "Down Red",
+        "canonical": "#ff6369",
         "tonalRamp": [
-          "#003d22",
-          "#005a33",
-          "#007a45",
-          "#009456",
-          "#2fbf71",
-          "#3dd68c",
-          "#9fe8c4",
-          "#e6f7ee"
-        ]
+          "#3d0002",
+          "#700004",
+          "#a80006",
+          "#e60009",
+          "#ff242c",
+          "#ff6167",
+          "#ff9ea2",
+          "#ffdbdd"
+        ],
+        "theme": "dark (default)"
       },
-      "night-down-text": {
+      "down-fill": {
         "role": "secondary",
-        "displayName": "Night Down Text (dark mode)",
+        "displayName": "Drawdown Fill",
+        "canonical": "#2d1818",
         "tonalRamp": [
-          "#5c1216",
-          "#8f1c22",
-          "#d12d35",
-          "#e5484d",
-          "#f2555a",
-          "#ff6369",
-          "#f8b4b6",
-          "#fdecec"
-        ]
+          "#281515",
+          "#492727",
+          "#6e3b3b",
+          "#965050",
+          "#b37070",
+          "#c89898",
+          "#ddc0c0",
+          "#f3e8e8"
+        ],
+        "theme": "dark (default)"
       },
-      "night-down-line": {
+      "caution": {
         "role": "secondary",
-        "displayName": "Night Down Line (dark mode)",
+        "displayName": "Check Amber",
+        "canonical": "#f0a64a",
         "tonalRamp": [
-          "#5c1216",
-          "#8f1c22",
-          "#d12d35",
-          "#e5484d",
-          "#f2555a",
-          "#ff6369",
-          "#f8b4b6",
-          "#fdecec"
-        ]
+          "#392105",
+          "#683d09",
+          "#9b5c0d",
+          "#d47d12",
+          "#ee9b34",
+          "#f3b76d",
+          "#f8d3a6",
+          "#fcefde"
+        ],
+        "theme": "dark (default)"
       },
-      "night-caution": {
+      "caution-fill": {
         "role": "secondary",
-        "displayName": "Night Caution (dark mode)",
+        "displayName": "Notice Fill",
+        "canonical": "#231e17",
         "tonalRamp": [
-          "#3a1f04",
-          "#6b3a07",
-          "#b45309",
-          "#d97706",
-          "#f0a64a",
-          "#f5c27f",
-          "#fae3c0",
-          "#fdf6ec"
-        ]
+          "#252018",
+          "#443a2c",
+          "#665743",
+          "#8a775b",
+          "#a8957b",
+          "#c0b3a0",
+          "#d9d0c5",
+          "#f1eee9"
+        ],
+        "theme": "dark (default)"
       },
-      "night-caution-fill": {
+      "caution-line": {
         "role": "secondary",
-        "displayName": "Night Caution Fill (dark mode)",
+        "displayName": "Notice Frame",
+        "canonical": "#3b2e1c",
         "tonalRamp": [
-          "#3a1f04",
-          "#6b3a07",
-          "#b45309",
-          "#d97706",
-          "#f0a64a",
-          "#f5c27f",
-          "#fae3c0",
-          "#fdf6ec"
-        ]
+          "#2a2014",
+          "#4c3b24",
+          "#725936",
+          "#9c794a",
+          "#b8986a",
+          "#ccb494",
+          "#e0d1bd",
+          "#f4eee7"
+        ],
+        "theme": "dark (default)"
+      },
+      "economy": {
+        "role": "tertiary",
+        "displayName": "Economy Blue",
+        "canonical": "#9cc3ff",
+        "tonalRamp": [
+          "#00183d",
+          "#002c70",
+          "#0042a8",
+          "#005ae6",
+          "#247aff",
+          "#619fff",
+          "#9ec4ff",
+          "#dbe9ff"
+        ],
+        "theme": "dark (default)"
+      },
+      "day-ink": {
+        "role": "primary",
+        "displayName": "Day Ink",
+        "canonical": "#0a0a0a",
+        "tonalRamp": [
+          "#1f1f1f",
+          "#383838",
+          "#545454",
+          "#737373",
+          "#919191",
+          "#b0b0b0",
+          "#cfcfcf",
+          "#ededed"
+        ],
+        "theme": "light"
+      },
+      "day-paper": {
+        "role": "neutral",
+        "displayName": "Day Paper",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#1f1f1f",
+          "#383838",
+          "#545454",
+          "#737373",
+          "#919191",
+          "#b0b0b0",
+          "#cfcfcf",
+          "#ededed"
+        ],
+        "theme": "light"
+      },
+      "day-surface": {
+        "role": "neutral",
+        "displayName": "Day Raised Surface",
+        "canonical": "#fafafa",
+        "tonalRamp": [
+          "#1f1f1f",
+          "#383838",
+          "#545454",
+          "#737373",
+          "#919191",
+          "#b0b0b0",
+          "#cfcfcf",
+          "#ededed"
+        ],
+        "theme": "light"
+      },
+      "day-sidebar": {
+        "role": "neutral",
+        "displayName": "Day Sidebar Band",
+        "canonical": "#fafafa",
+        "tonalRamp": [
+          "#1f1f1f",
+          "#383838",
+          "#545454",
+          "#737373",
+          "#919191",
+          "#b0b0b0",
+          "#cfcfcf",
+          "#ededed"
+        ],
+        "theme": "light"
+      },
+      "day-secondary-fill": {
+        "role": "neutral",
+        "displayName": "Day Secondary Fill",
+        "canonical": "#f4f4f5",
+        "tonalRamp": [
+          "#1d1d20",
+          "#35353b",
+          "#505058",
+          "#6d6d78",
+          "#8c8c97",
+          "#acacb4",
+          "#ccccd1",
+          "#ececee"
+        ],
+        "theme": "light"
+      },
+      "day-row-divider": {
+        "role": "neutral",
+        "displayName": "Day Row Divider",
+        "canonical": "#f4f4f5",
+        "tonalRamp": [
+          "#1d1d20",
+          "#35353b",
+          "#505058",
+          "#6d6d78",
+          "#8c8c97",
+          "#acacb4",
+          "#ccccd1",
+          "#ececee"
+        ],
+        "theme": "light"
+      },
+      "day-section-divider": {
+        "role": "neutral",
+        "displayName": "Day Section Divider",
+        "canonical": "#ededed",
+        "tonalRamp": [
+          "#1f1f1f",
+          "#383838",
+          "#545454",
+          "#737373",
+          "#919191",
+          "#b0b0b0",
+          "#cfcfcf",
+          "#ededed"
+        ],
+        "theme": "light"
+      },
+      "day-control-outline": {
+        "role": "neutral",
+        "displayName": "Day Control Outline",
+        "canonical": "#d4d4d8",
+        "tonalRamp": [
+          "#1d1d20",
+          "#35353b",
+          "#505058",
+          "#6d6d78",
+          "#8c8c97",
+          "#acacb4",
+          "#ccccd1",
+          "#ececee"
+        ],
+        "theme": "light"
+      },
+      "day-meta-grey": {
+        "role": "neutral",
+        "displayName": "Day Meta Grey",
+        "canonical": "#71717a",
+        "tonalRamp": [
+          "#1d1d20",
+          "#36363a",
+          "#515157",
+          "#6e6e77",
+          "#8d8d96",
+          "#adadb3",
+          "#cdcdd0",
+          "#ececee"
+        ],
+        "theme": "light"
+      },
+      "day-ink-2": {
+        "role": "neutral",
+        "displayName": "Day Ink 2",
+        "canonical": "#52525b",
+        "tonalRamp": [
+          "#1d1d20",
+          "#35353b",
+          "#505059",
+          "#6d6d79",
+          "#8c8c97",
+          "#acacb4",
+          "#ccccd1",
+          "#ececee"
+        ],
+        "theme": "light"
+      },
+      "day-ink-3": {
+        "role": "neutral",
+        "displayName": "Day Ink 3",
+        "canonical": "#3f3f46",
+        "tonalRamp": [
+          "#1d1d20",
+          "#35353b",
+          "#505059",
+          "#6d6d79",
+          "#8c8c97",
+          "#acacb4",
+          "#ccccd1",
+          "#ececee"
+        ],
+        "theme": "light"
+      },
+      "day-series-grey": {
+        "role": "neutral",
+        "displayName": "Day Series Grey",
+        "canonical": "#8a8a93",
+        "tonalRamp": [
+          "#1d1d20",
+          "#36363a",
+          "#515158",
+          "#6e6e77",
+          "#8d8d96",
+          "#adadb3",
+          "#cdcdd0",
+          "#ececee"
+        ],
+        "theme": "light"
+      },
+      "day-bench-grey": {
+        "role": "neutral",
+        "displayName": "Day Bench Grey",
+        "canonical": "#a1a1aa",
+        "tonalRamp": [
+          "#1d1d20",
+          "#35353b",
+          "#505058",
+          "#6d6d79",
+          "#8c8c97",
+          "#acacb4",
+          "#ccccd1",
+          "#ececee"
+        ],
+        "theme": "light"
+      },
+      "day-sidebar-accent": {
+        "role": "neutral",
+        "displayName": "Day Sidebar Accent",
+        "canonical": "#f1f1f3",
+        "tonalRamp": [
+          "#1c1c21",
+          "#34343c",
+          "#4e4e5b",
+          "#6a6a7c",
+          "#89899a",
+          "#aaaab6",
+          "#cbcbd2",
+          "#ececef"
+        ],
+        "theme": "light"
+      },
+      "day-up-text": {
+        "role": "secondary",
+        "displayName": "Day Up Text",
+        "canonical": "#007a45",
+        "tonalRamp": [
+          "#003d23",
+          "#00703f",
+          "#00a85f",
+          "#00e682",
+          "#24ffa0",
+          "#61ffba",
+          "#9effd5",
+          "#dbffef"
+        ],
+        "theme": "light"
+      },
+      "day-down-text": {
+        "role": "secondary",
+        "displayName": "Day Down Text",
+        "canonical": "#d12d35",
+        "tonalRamp": [
+          "#320b0d",
+          "#5c1417",
+          "#8a1e23",
+          "#bd2930",
+          "#d84b51",
+          "#e37d82",
+          "#eeafb2",
+          "#f9e2e3"
+        ],
+        "theme": "light"
+      },
+      "day-up-line": {
+        "role": "secondary",
+        "displayName": "Day Up Line",
+        "canonical": "#009456",
+        "tonalRamp": [
+          "#003d24",
+          "#007041",
+          "#00a862",
+          "#00e685",
+          "#24ffa3",
+          "#61ffbd",
+          "#9effd6",
+          "#dbfff0"
+        ],
+        "theme": "light"
+      },
+      "day-down-line": {
+        "role": "secondary",
+        "displayName": "Day Down Line",
+        "canonical": "#e5484d",
+        "tonalRamp": [
+          "#360809",
+          "#620e11",
+          "#931519",
+          "#c91d22",
+          "#e43f44",
+          "#eb7578",
+          "#f3aaac",
+          "#fbe0e1"
+        ],
+        "theme": "light"
+      },
+      "day-down-fill": {
+        "role": "secondary",
+        "displayName": "Day Drawdown Fill",
+        "canonical": "#fdecec",
+        "tonalRamp": [
+          "#370606",
+          "#660b0b",
+          "#981010",
+          "#d01616",
+          "#ea3939",
+          "#f07070",
+          "#f6a7a7",
+          "#fcdfdf"
+        ],
+        "theme": "light"
+      },
+      "day-caution": {
+        "role": "secondary",
+        "displayName": "Day Check Amber",
+        "canonical": "#b45309",
+        "tonalRamp": [
+          "#3a1b03",
+          "#6b3105",
+          "#a04a08",
+          "#db650b",
+          "#f5842e",
+          "#f7a668",
+          "#fac9a3",
+          "#fdebdd"
+        ],
+        "theme": "light"
+      },
+      "day-caution-fill": {
+        "role": "secondary",
+        "displayName": "Day Notice Fill",
+        "canonical": "#fdf6ec",
+        "tonalRamp": [
+          "#372306",
+          "#66400b",
+          "#986010",
+          "#d08316",
+          "#eaa139",
+          "#f0bb70",
+          "#f6d5a7",
+          "#fcf0df"
+        ],
+        "theme": "light"
+      },
+      "day-caution-line": {
+        "role": "secondary",
+        "displayName": "Day Notice Frame",
+        "canonical": "#f3dfc1",
+        "tonalRamp": [
+          "#33230a",
+          "#5e4012",
+          "#8d601b",
+          "#c08225",
+          "#dba047",
+          "#e5bb7b",
+          "#efd5ae",
+          "#f9f0e1"
+        ],
+        "theme": "light"
+      },
+      "day-economy": {
+        "role": "tertiary",
+        "displayName": "Day Economy Blue",
+        "canonical": "#1d5fae",
+        "tonalRamp": [
+          "#091d34",
+          "#103560",
+          "#184f90",
+          "#216bc5",
+          "#438ae0",
+          "#77abe8",
+          "#accbf1",
+          "#e0ecfa"
+        ],
+        "theme": "light"
       }
     },
     "typographyMeta": {
       "hero": {
         "displayName": "Hero",
-        "purpose": "The one big number that opens a page."
+        "purpose": "The one big number that opens Portfolio or a Holding."
       },
       "display": {
         "displayName": "Display",
-        "purpose": "Item titles on a detail page, sign-in and dialog titles."
+        "purpose": "A holding's name, a Markets heading, a view's headline figure, sign-in and dialog titles."
       },
       "title": {
         "displayName": "Title",
@@ -456,7 +712,7 @@
       },
       "emph": {
         "displayName": "Emph",
-        "purpose": "The line under the big number; reading text."
+        "purpose": "The line under a big number, the ask box, sidebar rows, reading text."
       },
       "body": {
         "displayName": "Body",
@@ -473,6 +729,14 @@
       "hoot-prose": {
         "displayName": "Hoot Prose",
         "purpose": "Hoot's own words only."
+      },
+      "greeting": {
+        "displayName": "Greeting",
+        "purpose": "Hoot's serif greeting on Home, on the hero step."
+      },
+      "question": {
+        "displayName": "Question",
+        "purpose": "The question heading a thread's turn."
       }
     },
     "shadows": [
@@ -480,6 +744,11 @@
         "name": "hairline-ring",
         "value": "0 0 0 1px var(--border)",
         "purpose": "Outlined panel frame; structural, not lifted."
+      },
+      {
+        "name": "floating-composer",
+        "value": "0 10px 30px rgb(0 0 0 / 0.18)",
+        "purpose": "A thread's pill composer floating over the answer."
       },
       {
         "name": "hoot-corner",
@@ -537,12 +806,13 @@
     "breakpoints": [
       {
         "name": "desktop-only",
-        "value": "no mobile layouts; content pane ~1045px beside the 232px sidebar"
+        "value": "no mobile layouts; 248px sidebar (hideable with ⌘\\), main column plus a 300px rail on book pages"
       }
     ],
     "themes": {
-      "dark": "`.dark` class via next-themes; every role remaps through CSS variables (night-* tokens).",
-      "classic": "`.theme-classic` keeps the pre-redesign look (Inter, oklch greys, blue/orange series) for the opt-in classic Backtesting layout only; not part of this system."
+      "dark": "Default (defaultTheme=\"dark\" in src/app/layout.tsx): Perplexity warm greys in the `.dark` block; the unprefixed tokens.",
+      "light": "The white New look in `:root`, selectable from the account menu; the day-* tokens, role for role.",
+      "classic": "`.theme-classic` keeps the pre-redesign look for the opt-in classic Backtesting layout only; not part of this system."
     }
   },
   "components": [
@@ -552,7 +822,7 @@
       "refersTo": "button-primary",
       "description": "The one ink action in a page header.",
       "html": "<button class=\"ds-btn-primary\">Record trade</button>",
-      "css": ".ds-btn-primary{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);height:30px;padding:0 12px;border:1px solid transparent;border-radius:6px;background:var(--primary,#0a0a0a);color:var(--primary-foreground,#fff);font-size:13px;line-height:20px;font-weight:500;cursor:pointer;transition:background-color .15s}.ds-btn-primary:hover{background:color-mix(in oklab,var(--primary,#0a0a0a),var(--background,#fff) 18%)}.ds-btn-primary:focus-visible{outline:2px solid var(--ring,#0a0a0a);outline-offset:2px}"
+      "css": ".ds-btn-primary{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);height:30px;padding:0 12px;border:1px solid transparent;border-radius:6px;background:var(--primary,#e8e8e6);color:var(--primary-foreground,#191a1a);font-size:13px;line-height:20px;font-weight:500;cursor:pointer;transition:background-color .15s}.ds-btn-primary:hover{background:color-mix(in oklab,var(--primary,#e8e8e6),var(--background,#191a1a) 18%)}.ds-btn-primary:focus-visible{outline:2px solid var(--ring,#e8e8e6);outline-offset:2px}"
     },
     {
       "name": "Secondary Button",
@@ -560,7 +830,7 @@
       "refersTo": "button-secondary",
       "description": "Every other action: grey fill, ink words.",
       "html": "<button class=\"ds-btn-secondary\">Export CSV</button>",
-      "css": ".ds-btn-secondary{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);height:30px;padding:0 12px;border:1px solid transparent;border-radius:6px;background:var(--secondary,#f4f4f5);color:var(--secondary-foreground,#0a0a0a);font-size:13px;line-height:20px;font-weight:500;cursor:pointer;transition:background-color .15s}.ds-btn-secondary:hover{background:color-mix(in oklab,var(--secondary,#f4f4f5),var(--foreground,#0a0a0a) 6%)}.ds-btn-secondary:focus-visible{outline:2px solid var(--ring,#0a0a0a);outline-offset:2px}"
+      "css": ".ds-btn-secondary{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);height:30px;padding:0 12px;border:1px solid transparent;border-radius:6px;background:var(--secondary,#2a2c2c);color:var(--secondary-foreground,#e8e8e6);font-size:13px;line-height:20px;font-weight:500;cursor:pointer;transition:background-color .15s}.ds-btn-secondary:hover{background:color-mix(in oklab,var(--secondary,#2a2c2c),var(--foreground,#e8e8e6) 6%)}.ds-btn-secondary:focus-visible{outline:2px solid var(--ring,#e8e8e6);outline-offset:2px}"
     },
     {
       "name": "Range Buttons",
@@ -568,7 +838,7 @@
       "refersTo": "segment-active",
       "description": "Segmented choice: chosen is filled ink, the rest bare words.",
       "html": "<div class=\"ds-seg\"><button>1D</button><button>1W</button><button aria-pressed=\"true\">1M</button><button>3M</button><button>1Y</button><button>All</button></div>",
-      "css": ".ds-seg{display:inline-flex;gap:2px}.ds-seg button{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);height:28px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--ink-3,#3f3f46);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;cursor:pointer;transition:background-color .15s,color .15s}.ds-seg button:hover{background:var(--secondary,#f4f4f5);color:var(--foreground,#0a0a0a)}.ds-seg button[aria-pressed=true]{background:var(--primary,#0a0a0a);color:var(--primary-foreground,#fff)}.ds-seg button:focus-visible{outline:2px solid var(--ring,#0a0a0a);outline-offset:2px}"
+      "css": ".ds-seg{display:inline-flex;gap:2px}.ds-seg button{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);height:28px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--ink-3,#c9cccc);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;cursor:pointer;transition:background-color .15s,color .15s}.ds-seg button:hover{background:var(--secondary,#2a2c2c);color:var(--foreground,#e8e8e6)}.ds-seg button[aria-pressed=true]{background:var(--primary,#e8e8e6);color:var(--primary-foreground,#191a1a)}.ds-seg button:focus-visible{outline:2px solid var(--ring,#e8e8e6);outline-offset:2px}"
     },
     {
       "name": "Tabs",
@@ -576,7 +846,7 @@
       "refersTo": "tabs",
       "description": "Section tabs: 13px, active 600 ink with a 2px underline; a count is grey, ink when it needs action, red only when overdue.",
       "html": "<nav class=\"ds-tabs\"><a aria-current=\"page\">Overview</a><a>Holdings <b>12</b></a><a>Activity <b class=\"hot\">2</b></a></nav>",
-      "css": ".ds-tabs{display:flex;gap:22px;height:44px;border-bottom:1px solid var(--border,#ededed)}.ds-tabs a{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--muted-foreground,#71717a);text-decoration:none;cursor:pointer}.ds-tabs a:hover{color:var(--foreground,#0a0a0a)}.ds-tabs a[aria-current=page]{font-weight:600;color:var(--foreground,#0a0a0a);box-shadow:inset 0 -2px 0 var(--foreground,#0a0a0a)}.ds-tabs b{font-size:12px;font-weight:600;color:var(--muted-foreground,#71717a)}.ds-tabs b.hot{color:var(--down,#d12d35)}"
+      "css": ".ds-tabs{display:flex;gap:22px;height:44px;border-bottom:1px solid var(--border,#2d2f2f)}.ds-tabs a{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--muted-foreground,#8d9191);text-decoration:none;cursor:pointer}.ds-tabs a:hover{color:var(--foreground,#e8e8e6)}.ds-tabs a[aria-current=page]{font-weight:600;color:var(--foreground,#e8e8e6);box-shadow:inset 0 -2px 0 var(--foreground,#e8e8e6)}.ds-tabs b{font-size:12px;font-weight:600;color:var(--muted-foreground,#8d9191)}.ds-tabs b.hot{color:var(--down,#ff6369)}"
     },
     {
       "name": "Page Hero",
@@ -584,7 +854,7 @@
       "refersTo": "hero",
       "description": "Label, the one big number, and the sentence that explains it.",
       "html": "<div class=\"ds-hero\"><span class=\"l\">Fund value</span><span class=\"n\">$4,462,310</span><span class=\"s\"><b>+$18,204 (0.41%)</b> <i>today, led by AVGO and KRE</i></span></div>",
-      "css": ".ds-hero{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);display:flex;flex-direction:column}.ds-hero .l{font-size:13px;color:var(--muted-foreground,#71717a)}.ds-hero .n{font-size:44px;line-height:52px;font-weight:700;letter-spacing:-.035em;font-variant-numeric:tabular-nums;color:var(--foreground,#0a0a0a)}.ds-hero .s{font-size:15px;line-height:24px}.ds-hero b{font-weight:600;color:var(--up,#007a45)}.ds-hero i{font-style:normal;color:var(--muted-foreground,#71717a)}"
+      "css": ".ds-hero{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);display:flex;flex-direction:column}.ds-hero .l{font-size:13px;color:var(--muted-foreground,#8d9191)}.ds-hero .n{font-size:44px;line-height:52px;font-weight:700;letter-spacing:-.035em;font-variant-numeric:tabular-nums;color:var(--foreground,#e8e8e6)}.ds-hero .s{font-size:15px;line-height:24px}.ds-hero b{font-weight:600;color:var(--up,#3dd68c)}.ds-hero i{font-style:normal;color:var(--muted-foreground,#8d9191)}"
     },
     {
       "name": "Stat Strip",
@@ -592,15 +862,15 @@
       "refersTo": "stat-strip",
       "description": "Equal cells between two hairlines; no boxes.",
       "html": "<section class=\"ds-strip\"><div><span>Day</span><b class=\"up\">+0.41%</b><em>vs S&amp;P +0.22%</em></div><div><span>Since inception</span><b class=\"down\">(1.42%)</b><em>relative (38 bp)</em></div><div><span>Cash</span><b>$212,040</b><em>4.8% of fund</em></div></section>",
-      "css": ".ds-strip{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);display:grid;grid-template-columns:repeat(3,1fr);column-gap:16px;padding:18px 0;border-top:1px solid var(--border,#ededed);border-bottom:1px solid var(--border,#ededed)}.ds-strip div{display:flex;flex-direction:column;gap:3px}.ds-strip span,.ds-strip em{font-size:12px;line-height:17px;font-style:normal;color:var(--muted-foreground,#71717a)}.ds-strip b{font-size:17px;line-height:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--foreground,#0a0a0a)}.ds-strip .up{color:var(--up,#007a45)}.ds-strip .down{color:var(--down,#d12d35)}"
+      "css": ".ds-strip{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);display:grid;grid-template-columns:repeat(3,1fr);column-gap:16px;padding:18px 0;border-top:1px solid var(--border,#2d2f2f);border-bottom:1px solid var(--border,#2d2f2f)}.ds-strip div{display:flex;flex-direction:column;gap:3px}.ds-strip span,.ds-strip em{font-size:12px;line-height:17px;font-style:normal;color:var(--muted-foreground,#8d9191)}.ds-strip b{font-size:17px;line-height:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--foreground,#e8e8e6)}.ds-strip .up{color:var(--up,#3dd68c)}.ds-strip .down{color:var(--down,#ff6369)}"
     },
     {
       "name": "Outlined Panel with Table",
       "kind": "card",
       "refersTo": "panel-outlined",
-      "description": "An object you act on: 1px hairline ring, 44px header, row dividers, status as words.",
+      "description": "An object you act on: a 1px hairline ring, no fill; rows split by row dividers, a logo on each holding row.",
       "html": "<section class=\"ds-panel\"><header><h2>Holdings</h2><span>12</span></header><table><thead><tr><th>Ticker</th><th>Weight</th><th>Day</th><th>Status</th></tr></thead><tbody><tr><td>AVGO</td><td>6.2%</td><td class=\"up\">+1.84%</td><td class=\"w\">Held</td></tr><tr><td>KRE</td><td>3.1%</td><td class=\"down\">(0.72%)</td><td class=\"g\">Reviewed</td></tr></tbody></table></section>",
-      "css": ".ds-panel{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);border-radius:8px;box-shadow:0 0 0 1px var(--border,#ededed);overflow:hidden;font-variant-numeric:tabular-nums}.ds-panel header{display:flex;align-items:center;gap:8px;height:44px;padding:0 16px;border-bottom:1px solid var(--border,#ededed)}.ds-panel h2{margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em}.ds-panel header span{font-size:12px;font-weight:600;color:var(--muted-foreground,#71717a)}.ds-panel table{width:100%;border-collapse:collapse;font-size:13px}.ds-panel th{height:40px;padding:0 8px;text-align:left;font-weight:400;color:var(--muted-foreground,#71717a);border-bottom:1px solid var(--border,#ededed)}.ds-panel td{height:40px;padding:0 8px;border-bottom:1px solid var(--row,#f4f4f5)}.ds-panel th:first-child,.ds-panel td:first-child{padding-left:16px}.ds-panel tr:last-child td{border-bottom:0}.ds-panel tbody tr:hover{background:var(--band,#fafafa)}.ds-panel .up{color:var(--up,#007a45)}.ds-panel .down{color:var(--down,#d12d35)}.ds-panel .w{font-size:12px;font-weight:600;color:var(--caution-foreground,#b45309)}.ds-panel .g{font-size:12px;font-weight:600;color:var(--muted-foreground,#71717a)}"
+      "css": ".ds-panel{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);border-radius:8px;box-shadow:0 0 0 1px var(--border,#2d2f2f);overflow:hidden;font-variant-numeric:tabular-nums}.ds-panel header{display:flex;align-items:center;gap:8px;height:44px;padding:0 16px;border-bottom:1px solid var(--border,#2d2f2f)}.ds-panel h2{margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em}.ds-panel header span{font-size:12px;font-weight:600;color:var(--muted-foreground,#8d9191)}.ds-panel table{width:100%;border-collapse:collapse;font-size:13px}.ds-panel th{height:40px;padding:0 8px;text-align:left;font-weight:400;color:var(--muted-foreground,#8d9191);border-bottom:1px solid var(--border,#2d2f2f)}.ds-panel td{height:40px;padding:0 8px;border-bottom:1px solid var(--row,#242626)}.ds-panel th:first-child,.ds-panel td:first-child{padding-left:16px}.ds-panel tr:last-child td{border-bottom:0}.ds-panel tbody tr:hover{background:var(--band,#1f2121)}.ds-panel .up{color:var(--up,#3dd68c)}.ds-panel .down{color:var(--down,#ff6369)}.ds-panel .w{font-size:12px;font-weight:600;color:var(--caution-foreground,#f0a64a)}.ds-panel .g{font-size:12px;font-weight:600;color:var(--muted-foreground,#8d9191)}"
     },
     {
       "name": "Input",
@@ -608,15 +878,15 @@
       "refersTo": "input",
       "description": "32px, 6px corners, grey outline that turns ink on focus.",
       "html": "<input class=\"ds-input\" placeholder=\"Ticker\" />",
-      "css": ".ds-input{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);height:32px;padding:4px 10px;border:1px solid var(--input,#d4d4d8);border-radius:6px;background:var(--card,#fff);color:var(--foreground,#0a0a0a);font-size:13px;outline:none;transition:border-color .15s}.ds-input::placeholder{color:var(--muted-foreground,#71717a)}.ds-input:focus-visible{border-color:var(--foreground,#0a0a0a)}"
+      "css": ".ds-input{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);height:32px;padding:4px 10px;border:1px solid var(--input,#3a3d3d);border-radius:6px;background:var(--card,#191a1a);color:var(--foreground,#e8e8e6);font-size:13px;outline:none;transition:border-color .15s}.ds-input::placeholder{color:var(--muted-foreground,#8d9191)}.ds-input:focus-visible{border-color:var(--foreground,#e8e8e6)}"
     },
     {
       "name": "Hoot Corner",
       "kind": "custom",
       "refersTo": "hoot-corner",
-      "description": "Hoot's face in the bottom-right; opens the ⌘J palette.",
+      "description": "Hoot's face in the bottom-right; opens the ⌘J palette. Hidden where the page has its own ask box.",
       "html": "<button class=\"ds-hoot\" aria-label=\"Ask Hoot\"><svg width=\"26\" height=\"26\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 9c0-3 3-5 7-5s7 2 7 5v6c0 3-3 5-7 5s-7-2-7-5z\"/><circle cx=\"9\" cy=\"10.5\" r=\"2\"/><circle cx=\"15\" cy=\"10.5\" r=\"2\"/></svg></button>",
-      "css": ".ds-hoot{display:grid;place-items:center;width:52px;height:52px;border-radius:9999px;border:1px solid var(--hoot-panel-ring,#e4e4e7);background:var(--popover,#fff);color:var(--foreground,#0a0a0a);box-shadow:0 4px 14px rgb(10 10 10/.10);cursor:pointer;transition:transform .2s ease-out,box-shadow .2s ease-out}.ds-hoot:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgb(10 10 10/.16)}.ds-hoot:focus-visible{outline:2px solid var(--ring,#0a0a0a);outline-offset:3px}"
+      "css": ".ds-hoot{display:grid;place-items:center;width:52px;height:52px;border-radius:9999px;border:1px solid var(--hoot-panel-ring,#3a3d3d);background:var(--popover,#202222);color:var(--foreground,#e8e8e6);box-shadow:0 4px 14px rgb(10 10 10/.10);cursor:pointer;transition:transform .2s ease-out,box-shadow .2s ease-out}.ds-hoot:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgb(10 10 10/.16)}.ds-hoot:focus-visible{outline:2px solid var(--ring,#e8e8e6);outline-offset:3px}"
     },
     {
       "name": "Hoot Prose",
@@ -624,85 +894,131 @@
       "refersTo": "hoot-prose",
       "description": "Hoot's own words in Source Serif 4 with sans citation markers.",
       "html": "<p class=\"ds-prose\">KRE lagged because regional bank deposits fell again in the H.8 release<sup>1</sup>, while AVGO carried the day on the custom-silicon guide<sup>2</sup>.</p>",
-      "css": ".ds-prose{font-family:var(--font-serif,'Source Serif 4',ui-serif,Georgia,serif);font-size:17px;line-height:27px;max-width:760px;color:color-mix(in oklab,var(--foreground,#0a0a0a) 92%,var(--background,#fff))}.ds-prose sup{font-family:var(--font-sans,Geist,sans-serif);font-size:12px;line-height:0;font-weight:600;padding:0 1px;text-decoration:underline;text-underline-offset:2px}"
+      "css": ".ds-prose{font-family:var(--font-serif,'Source Serif 4',ui-serif,Georgia,serif);font-size:17px;line-height:27px;max-width:760px;color:color-mix(in oklab,var(--foreground,#e8e8e6) 92%,var(--background,#191a1a))}.ds-prose sup{font-family:var(--font-sans,Geist,sans-serif);font-size:12px;line-height:0;font-weight:600;padding:0 1px;text-decoration:underline;text-underline-offset:2px}"
+    },
+    {
+      "name": "Rail Card",
+      "kind": "card",
+      "refersTo": "rail-card",
+      "description": "The raised surface in a page's 300px right rail: 12px corners, no border, label/value rows.",
+      "html": "<section class=\"ds-rail\"><div class=\"ds-rail-head\"><h2>Fund position</h2><a href=\"#\">Ledger</a></div><div class=\"ds-rail-row\"><span>Market value</span><b>$412,380</b></div><div class=\"ds-rail-row\"><span>Weight</span><b>9.2%</b></div><div class=\"ds-rail-row\"><span>Since entry</span><b class=\"up\">+18.4%</b></div><div class=\"ds-rail-row\"><span>Today</span><b class=\"down\">(0.62%)</b></div></section>",
+      "css": ".ds-rail{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);width:300px;padding:16px;border-radius:12px;background:var(--surface,#202222);color:var(--foreground,#e8e8e6)}.ds-rail-head{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}.ds-rail-head h2{flex:1;margin:0;font-size:13px;line-height:20px;font-weight:600}.ds-rail-head a{font-size:12px;color:var(--muted-foreground,#8d9191);text-decoration:none}.ds-rail-head a:hover{color:var(--foreground,#e8e8e6)}.ds-rail-row{display:flex;justify-content:space-between;align-items:center;min-height:34px;padding:7px 0;border-bottom:1px solid var(--row,#242626);font-size:13px;line-height:20px}.ds-rail-row:last-child{border-bottom:0}.ds-rail-row b{font-weight:600;font-variant-numeric:tabular-nums}.ds-rail-row .up{color:var(--up,#3dd68c)}.ds-rail-row .down{color:var(--down,#ff6369)}"
+    },
+    {
+      "name": "Ask Box",
+      "kind": "input",
+      "refersTo": "ask-box",
+      "description": "Home's ask box on the raised surface, with questions about today below a hairline.",
+      "html": "<form class=\"ds-ask\"><textarea placeholder=\"Ask about the book, a holding, a filing or the tape…\"></textarea><div class=\"ds-ask-foot\"><span class=\"ds-chip\">Whole fund</span><span class=\"ds-note\">Looks in the book, the team Drive, SEC filings and the web</span><button aria-label=\"Ask\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 19V5M5 12l7-7 7 7\"/></svg></button></div><div class=\"ds-ask-q\"><div class=\"ds-ask-label\">Ask about today</div><button>Why are we behind the benchmark today?</button><button>What’s on the calendar that touches the book?</button></div></form>",
+      "css": ".ds-ask{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);width:560px;overflow:hidden;border:1px solid var(--border,#2d2f2f);border-radius:12px;background:var(--surface,#202222);color:var(--foreground,#e8e8e6);transition:border-color .15s}.ds-ask:focus-within{border-color:var(--border-strong,#3a3d3d)}.ds-ask textarea{display:block;width:100%;min-height:64px;padding:18px 20px 0;border:0;resize:none;background:transparent;color:inherit;font:inherit;font-size:15px;line-height:24px;outline:none}.ds-ask textarea::placeholder{color:var(--muted-foreground,#8d9191)}.ds-ask-foot{display:flex;align-items:center;gap:8px;padding:10px 12px 12px}.ds-chip{height:28px;display:inline-flex;align-items:center;padding:0 10px;border-radius:6px;background:var(--secondary,#2a2c2c);font-size:13px}.ds-note{flex:1;font-size:12px;color:var(--muted-foreground,#8d9191)}.ds-ask-foot button{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:9999px;background:var(--primary,#e8e8e6);color:var(--primary-foreground,#191a1a);cursor:pointer}.ds-ask-foot button:focus-visible,.ds-ask-q button:focus-visible{outline:2px solid var(--ring,#e8e8e6);outline-offset:2px}.ds-ask-q{border-top:1px solid var(--border,#2d2f2f);padding:6px 0}.ds-ask-label{padding:10px 20px 4px;font-size:12px;color:var(--muted-foreground,#8d9191)}.ds-ask-q button{display:block;width:100%;min-height:44px;padding:8px 20px;border:0;background:transparent;color:inherit;font:inherit;font-size:15px;text-align:left;cursor:pointer}.ds-ask-q button:hover{background:var(--secondary,#2a2c2c)}"
+    },
+    {
+      "name": "Holding Logo",
+      "kind": "custom",
+      "refersTo": "holding-logo",
+      "description": "A company logo on a white tile wherever a holding is a row or a header; the ticker's letter until it loads.",
+      "html": "<div class=\"ds-logo-row\"><span class=\"ds-logo ds-logo-l\">A</span><b>AVGO</b><span class=\"ds-logo\">K</span><b>KRE</b><span class=\"ds-logo ds-logo-lg\">M</span><b>MSFT</b></div>",
+      "css": ".ds-logo-row{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);display:flex;align-items:center;gap:10px;font-size:13px;color:var(--foreground,#e8e8e6)}.ds-logo{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:5px;background:var(--secondary,#2a2c2c);color:var(--ink-2,#b5b8b8);font-size:12px;font-weight:600}.ds-logo-l{background:#fff;color:#0a0a0a}.ds-logo-lg{width:40px;height:40px;border-radius:10px;font-size:15px;background:#fff;color:#0a0a0a}"
+    },
+    {
+      "name": "Sidebar",
+      "kind": "nav",
+      "refersTo": "sidebar",
+      "description": "248px band: New ⌘J, Portfolio, Markets, then Threads newest first; account and bell in the footer.",
+      "html": "<nav class=\"ds-side\"><a class=\"on\" href=\"#\"><span class=\"ds-plus\">+</span><span>New</span><kbd>⌘J</kbd></a><a href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 17l6-6 4 4 8-8\"/><path d=\"M15 7h6v6\"/></svg><span>Portfolio</span></a><a href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M3 10h18M8 3v4M16 3v4\"/></svg><span>Markets</span></a><div class=\"ds-side-label\">Threads</div><a class=\"t\" href=\"#\"><b>AVGO</b> What changed since the thesis?</a><a class=\"t\" href=\"#\">Why are we behind the benchmark?</a></nav>",
+      "css": ".ds-side{font-family: var(--font-sans, Geist, ui-sans-serif, system-ui, sans-serif);display:flex;flex-direction:column;gap:2px;width:248px;padding:12px;background:var(--sidebar,#1f2121);border-right:1px solid var(--sidebar-border,#2d2f2f);color:var(--sidebar-foreground,#e8e8e6);font-size:15px}.ds-side a{display:flex;align-items:center;gap:10px;height:36px;padding:0 8px;border-radius:8px;color:inherit;text-decoration:none;transition:background-color .15s}.ds-side a:hover,.ds-side a.on{background:var(--sidebar-accent,#2a2c2c)}.ds-side a:focus-visible{outline:2px solid var(--ring,#e8e8e6);outline-offset:1px}.ds-plus{display:grid;place-items:center;width:24px;height:24px;border-radius:9999px;background:var(--secondary,#2a2c2c);font-size:14px}.ds-side span{flex:1}.ds-side kbd{font-family:var(--font-mono,ui-monospace,monospace);font-size:12px;color:var(--muted-foreground,#8d9191)}.ds-side-label{margin:22px 8px 6px;font-size:13px;color:var(--muted-foreground,#8d9191)}.ds-side a.t{display:block;height:32px;line-height:32px;font-size:13px;color:var(--ink-3,#c9cccc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ds-side a.t b{margin-right:6px;color:var(--foreground,#e8e8e6)}"
     }
   ],
   "narrative": {
-    "northStar": "The Brokerage Book, Ruled in Hairlines",
-    "overview": "Owl Fund is a student-run fund's book, read at a desk during market hours. The look joins two things. From consumer brokerages it takes the portfolio page: one big number, one big chart, and a sentence saying why it moved. From Linear it takes the structure: a white page divided by 1px hairlines, not boxes, with ink as the only strong colour. Conversation surfaces (Home, Research, Hoot threads) read like Claude or Perplexity instead: a centred 760px column, a large composer, and Hoot's own words set in a serif. Every page follows the same order: its number and the sentence explaining it, then what needs you, then the detail table.\n\nDensity is high but quiet. Six text sizes, tabular figures everywhere, greys for anything that isn't the point. Colour has a job or it doesn't appear: green and red for up and down, one amber for \"check this\". Hoot, the fund's AI, has no column on the page. He is a face in the bottom-right corner, a ⌘J palette, and an answer panel that slides in from the right.\n\nThese looks were rejected and should not come back: cream/charcoal, boxed rounded cards, Fidelity/Schwab boxiness, a dark terminal, editorial/newspaper, soft fintech cards, and a dashboard of panels. The app is desktop-only, so there is no phone layout.",
+    "northStar": "The Brokerage Book, Asked at Night",
+    "overview": "Owl Fund is a student-run fund's book, read at a desk during market hours. The look joins two things. From consumer brokerages it takes the portfolio page: one big number, one big chart, and a sentence saying why it moved. From Perplexity it takes the frame: a warm-grey night page, a quiet sidebar of places and threads, and a large box to ask in. The structure underneath is still Linear's: sections split by 1px hairlines, not boxes, with ink as the only strong colour.\n\nThe app is five screens. **Home** is a place to ask: Hoot's face, a serif greeting, one sentence on the book, and the ask box with questions about today. A **Thread** reads like a Perplexity answer: the question as a heading, Answer / Sources / Steps tabs, and Hoot's serif prose. **All threads** is the list of them. A **Holding** and the **Portfolio** open with their number and the sentence that explains it, with a 300px rail of cards on the right. **Markets** is the week's calendar of earnings and economic releases, with its own rail. What needs you lives in the bell, not on Home.\n\nDensity is high but quiet. Six text sizes, tabular figures everywhere, greys for anything that isn't the point. Colour has a job or it doesn't appear: green and red for up and down, one amber for \"check this\", and a blue word for an economic release. The dark theme is the default; the white \"New look\" is still selectable and maps role for role.\n\nThese looks were rejected and should not come back: cream/charcoal, Fidelity/Schwab boxiness, a dark terminal or Bloomberg look, editorial/newspaper, soft fintech cards everywhere, and a dashboard of panels. The night theme is Perplexity's warm greys, not a terminal: no neon, no mono body text, no grid of panels. The app is desktop-only.",
     "keyCharacteristics": [
-      "White page, a #FAFAFA sidebar band, zinc greys, ink (#0A0A0A) for text, primary buttons and selection.",
-      "Hairlines instead of boxes: #EDEDED section dividers, #F4F4F5 row dividers, and a 1px ring only around a panel you act on.",
-      "One big number (44px, 700) plus a 220px chart and a sentence on portfolio pages.",
+      "Dark by default: a #191A1A page, a #1F2121 sidebar, #202222 raised surfaces, #2D2F2F hairlines, #E8E8E6 ink. The white world is the light option.",
+      "Hairlines instead of boxes. The one boxed thing is the raised surface: right-rail cards and the boxes you ask Hoot in.",
+      "One big number (44px, 700) plus a 220px chart and a sentence on Portfolio and Holding.",
       "Geist and Geist Mono with tabular figures; Source Serif 4 only for Hoot's words.",
-      "Status is always a word. Green and red mean up and down; amber means check this.",
+      "Status is always a word, never a dot. Green and red mean up and down; amber means check this; overdue is red.",
+      "Company logos wherever a holding is a row or a header.",
       "Accounting format everywhere: negatives in parentheses, bp for relative figures, % for returns."
     ],
     "rules": [
       {
         "name": "The Up-and-Down Rule",
-        "body": "Green and red appear only for a signed figure: up or down, gain or loss, above or below zero. Red may also mark an overdue count. Nothing else gets them: not success, not \"open\", not a brand accent.",
+        "body": "Green and red appear only for a signed figure: up or down, gain or loss, above or below zero. Red also marks anything overdue, everywhere. Nothing else gets them: not success, not \"open\", not a brand accent.",
         "section": "colors"
       },
       {
         "name": "The One Amber Rule",
-        "body": "Anything needing a second look (stale, held, missing, failed) uses the same amber and always comes with a word. A failure is amber with the word \"Failed\", never red.",
+        "body": "Anything needing a second look (stale, held, missing, failed) uses the same amber and always comes with a word. An error or a failure is amber with the word (\"Failed\", \"Hoot isn't set up yet\"), never red.",
         "section": "colors"
       },
       {
         "name": "The Word-First Rule",
-        "body": "Every status is a word in 12px semibold, coloured by tone. Never use a colour alone, a dot alone, or a filled pill.",
+        "body": "Every status is a word in 12px semibold, coloured by tone. Never a colour alone, a status dot, or a filled pill. The only filled badge is the bell's count.",
         "section": "colors"
       },
       {
         "name": "The Six Steps Rule",
-        "body": "Only six sizes exist: 12, 13, 15, 17, 22 and 44px. Hierarchy comes from moving a whole step, or from weight and colour. An arbitrary `text-[Npx]` fails lint (owl/type-scale), and a test pins globals.css to the codemod's scale.",
+        "body": "Only six sizes exist: 12, 13, 15, 17, 22 and 44px. Hierarchy comes from moving a whole step, or from weight, face and colour. An arbitrary `text-[Npx]` fails lint (owl/type-scale), and a test pins globals.css to the codemod's scale.",
         "section": "typography"
       },
       {
         "name": "The Serif Is Hoot Rule",
-        "body": "Source Serif 4 sets Hoot's own words and nothing else. It is not for headings, marketing text or quotations from documents.",
+        "body": "Source Serif 4 sets Hoot's own words (his answers, his greeting, his questions to you) and nothing else. It is not for headings, marketing text or quotations from documents.",
         "section": "typography"
       },
       {
         "name": "The Accounting Rule",
-        "body": "Every figure and date goes through the shared formatter (a guard test fails on hand-rolled `toFixed` / `toLocaleString` / `Intl.DateTimeFormat`). Negatives go in parentheses with the unit inside: \"(0.29%)\", \"(2 bp)\", \"($1,234.50)\". A change carries a plus when it's up. Relative figures (active weight, moves against the benchmark) are in \"bp\", never \"bps\". Returns are in %.",
+        "body": "Every figure and date goes through the shared formatter (a guard test fails on hand-rolled `toFixed` / `toLocaleString` / `Intl.DateTimeFormat`). Negatives go in parentheses with the unit inside: \"(0.29%)\", \"(2 bp)\", \"($1,234.50)\". A change carries a plus when it's up. Relative figures are in \"bp\", never \"bps\". Returns are in %.",
+        "section": "typography"
+      },
+      {
+        "name": "The No-Middot Rule",
+        "body": "Parts of a line are joined with commas and periods, as in a sentence: \"Tue, Sep 29. Market open, closes in 2h 48m. Prices delayed 15 min\". Never a \"·\" separator.",
         "section": "typography"
       },
       {
         "name": "The Number-Sentence-Table Rule",
-        "body": "A page opens with its number and the sentence that explains it, then what needs you, then the detail. A page never opens with a grid of panels.",
+        "body": "A book page opens with its number and the sentence that explains it, then the detail. A page never opens with a grid of panels.",
+        "section": "layout"
+      },
+      {
+        "name": "The Bell Rule",
+        "body": "What needs you is the bell's, in the sidebar footer. Home has no \"Needs you\" section; a holding shows only its own.",
         "section": "layout"
       },
       {
         "name": "The Flat Page Rule",
-        "body": "Anything that is part of the page has no shadow. Only something floating above the page (Hoot's corner, the palette, the answer panel, menus) casts one.",
+        "body": "Anything that is part of the page has no shadow. Only something floating above it casts one.",
         "section": "elevation"
       },
       {
         "name": "The No-Box Rule",
-        "body": "A section of a page is set apart by its 17px title and the space around it, not by a frame. Only an object you act on (a table, an editor) gets the 1px panel ring. There are no filled cards and no nested frames.",
+        "body": "A section of a page is set apart by its title and the space around it, not by a frame. One exception: the raised surface, filled #202222 with 12px corners and no border or shadow, for the cards in a page's right rail and for the boxes you ask Hoot in. Page sections are never boxed, cards never nest, and a table or editor gets only the 1px panel ring.",
         "section": "shapes"
       }
     ],
     "dos": [
-      "Do open every page with PageHead: breadcrumb, grey as-of note, and at most one ink primary action.",
-      "Do put a portfolio page's story in the hero: the 44px number, the 15px sentence, the 220px chart, then a stat strip.",
-      "Do write every status as a word in 12px semibold: grey for done or neutral, amber (#B45309) for check/stale/held/failed, red only for overdue.",
-      "Do format every figure through the shared formatter: negatives in parentheses, \"bp\" for relative figures, \"%\" for returns.",
-      "Do keep Hoot to the corner face, ⌘J and the slide-in answer panel, with his words in Source Serif 4.",
-      "Do make anything that emails people ask first and name its recipients (\"Send to 6 people: …\", with a \"Send to me only\" option).",
-      "Do carry the night tokens through the CSS variables. Never hard-code a day hex into a component."
+      "**Do** build on the CSS variables so both themes work; dark (#191A1A) is the default and never hard-code a hex into a component.",
+      "**Do** open every page but Home with PageHead: breadcrumb, grey as-of note, and at most one ink primary action.",
+      "**Do** put a book page's story in the hero: the 44px number, the 15px sentence, the 220px chart, then a stat strip.",
+      "**Do** put rail content in RailCard on the surface fill, 12px corners, in the 300px right rail.",
+      "**Do** show a HoldingLogo wherever a holding is a row or a header.",
+      "**Do** write every status as a word in 12px semibold: grey for neutral, amber for check/stale/held/failed, red for overdue.",
+      "**Do** join parts of a line with commas and periods.",
+      "**Do** format every figure through the shared formatter: negatives in parentheses, \"bp\" for relative figures, \"%\" for returns.",
+      "**Do** keep one Hoot per screen: hide the corner where the page has its own ask box, and set his words in Source Serif 4."
     ],
     "donts": [
-      "Don't use green or red for anything but up, down and overdue: not success, not \"open\", not a live dot, not a destructive-looking status.",
-      "Don't colour a failure red. Failures and error messages are amber with a word; the `destructive` token is amber in this world.",
-      "Don't add a Hoot column or sidebar to a page.",
-      "Don't box sections into filled or shadowed cards, or build a dashboard of equal panels.",
-      "Don't bring back cream/charcoal, a dark terminal, an editorial/newspaper look, soft fintech cards, or Fidelity/Schwab boxiness.",
-      "Don't use a size outside the six-step scale, or set anything but Hoot's words in serif.",
-      "Don't use chart gradients. The only chart fill is the pale red under a drawdown.",
-      "Don't design phone layouts. The app is desktop-only."
+      "**Don't** use \"·\" separators or status dots.",
+      "**Don't** put a \"Needs you\" section on Home, or source cards on a thread's Answer tab.",
+      "**Don't** use green or red for anything but up, down and overdue.",
+      "**Don't** colour an error or failure red; it is amber with a word (`destructive` is amber in this world).",
+      "**Don't** box page sections, nest cards, shadow a card, or build a dashboard of equal panels. The raised surface is for rail cards and ask boxes only.",
+      "**Don't** bring back cream/charcoal, Fidelity/Schwab boxiness, a dark terminal or Bloomberg look, an editorial/newspaper look, or soft fintech cards everywhere.",
+      "**Don't** use a size outside the six-step scale, or set anything but Hoot's words in serif.",
+      "**Don't** use chart gradients. The only chart fill is down-fill under a drawdown.",
+      "**Don't** design phone layouts. The app is desktop-only."
     ]
   }
 }

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { EconomicView } from "@/components/app/economic-calendar/economic-view";
+import { MarketsView } from "@/app/(app)/markets/markets-view";
+import { parseMarketsQuery } from "@/app/(app)/markets/types";
 import { bookExposure, type CalendarFactorContext } from "@/lib/economic-calendar/factor-lines";
 import { calendarPreviewEnabled } from "@/lib/economic-calendar/preview";
 import { todayNY } from "@/lib/providers/calendar";
@@ -22,32 +23,41 @@ function previewFactorContext(audience: string | undefined): CalendarFactorConte
   };
 }
 
-/** The Calendar's Economic releases tab without signing in, on synthetic data (or the live feed with ?live=1). ?day= picks the week. */
+/**
+ * Markets' economic releases without signing in, on synthetic data (or the live feed with ?live=1), and no earnings.
+ * `?view=past&to=` looks back, as on /markets.
+ */
 export default async function Preview({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   if (!calendarPreviewEnabled()) notFound();
   const sp = await searchParams;
   const live = sp.live === "1";
   const audience = typeof sp.audience === "string" ? sp.audience : undefined;
-  const today = todayNY();
-  const day = typeof sp.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) ? sp.day : today;
   return (
     <main className="app-container flex min-h-dvh flex-col bg-background">
-      <EconomicView
+      <MarketsView
         base="/dev/economic-calendar"
-        day={day}
-        today={today}
+        query={parseMarketsQuery(sp)}
+        scopeSlug={null}
         teamSlug={null}
+        today={todayNY()}
+        events={[]}
+        accessibleTeamIds={[]}
+        reports={[]}
+        showTeam={false}
+        team={null}
+        teams={[]}
+        notices={[]}
         factorContext={Promise.resolve(previewFactorContext(audience))}
         feedSource={live ? { livePreview: true } : { preview: true }}
         askable={false}
         banner={
           live ? (
-            <p role="note" className="mt-4 text-caption text-muted-foreground">
-              Local verification view · live calendar feed · app authentication remains required on the main route.
+            <p role="note" className="mt-2 text-caption text-muted-foreground">
+              Local verification view with the live calendar feed. App sign-in is still required on /markets.
             </p>
           ) : (
-            <p role="note" className="mt-4 text-body text-caution-foreground">
-              <strong className="font-semibold">Development preview · synthetic data.</strong> Dates and values illustrate the interface, not the real economic schedule. Live coverage is not verified.
+            <p role="note" className="mt-2 text-body text-caution-foreground">
+              <strong className="font-semibold">Development preview, synthetic data.</strong> Dates and values illustrate the interface, not the real economic schedule. Live coverage is not verified.
             </p>
           )
         }

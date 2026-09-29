@@ -47,7 +47,7 @@ function memberIsBusy() {
 /**
  * Hoot in the bottom-right corner of every page that isn't a conversation: his face in a 52px button. Hover says what
  * a question would be about ("Ask Hoot about AVGO ⌘J"); a click opens the ⌘J palette (`onAsk`). Now and then he
- * leaves a note beside the button, a deadline or a first-visit tip, with an amber dot until it's read: a few per
+ * leaves a note beside the button, a deadline or a first-visit tip, headed "New note" in amber: a few per
  * session at most, never while the member is typing, and gone after a few seconds unless they're reading it.
  */
 export function HootCorner({ onAsk, suppressed = false }: { onAsk: () => void; suppressed?: boolean }) {
@@ -168,6 +168,7 @@ export function HootCorner({ onAsk, suppressed = false }: { onAsk: () => void; s
     >
       {note ? (
         <div role="status" className="relative flex max-w-[260px] flex-col rounded-lg border border-hoot-panel-ring bg-popover py-2 pr-8 pl-3 text-caption shadow-[0_6px_18px_rgb(10_10_10/0.08)]">
+          <span className="font-semibold text-caution-foreground">New note</span>
           <Link
             href={note.href}
             onClick={() => {
@@ -218,7 +219,6 @@ export function HootCorner({ onAsk, suppressed = false }: { onAsk: () => void; s
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/hoot/mark.webp" alt="" width={40} height={40} draggable={false} className="size-10 rounded-full" />
-        {note && <span aria-label="Hoot has a note" className="absolute top-0.5 right-0.5 size-2.5 rounded-full border-2 border-popover bg-warning" />}
       </button>
     </div>
   );

@@ -41,7 +41,8 @@ export async function runPricesNow() {
   await requireAdmin();
   const r = await runPricesJob();
   revalidatePath("/admin");
-  revalidatePath("/attribution", "layout");
+  // The Portfolio's views and holdings (cache tags carry the (app) route group).
+  revalidatePath("/(app)/t/[team]", "layout");
   const failed = Object.keys(r.failed);
   redirect(`/admin?tab=jobs&${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Prices job: ${r.status}${r.reason ? ` (${r.reason})` : ""}; updated ${r.updated.length}${failed.length ? `; failed ${failed.join(", ")}` : ""}${r.remaining.length ? `; remaining ${r.remaining.length}` : ""}`)}`);
 }
@@ -51,7 +52,7 @@ export async function runBellwethersNow() {
   const industries = await backfillIndustries();
   const r = await refreshBellwethers();
   revalidatePath("/admin");
-  revalidatePath("/t/[team]/earnings", "page");
+  revalidatePath("/markets");
   const failed = Object.keys(r.errors);
   redirect(`/admin?tab=jobs&ok=${encodeURIComponent(`Bellwethers: ${r.tickers} names across ${r.etfs} sector ETFs, ${r.dated} with a report date; industries filled ${industries.filled}/${industries.checked}${failed.length ? `; failed ${failed.join(", ")}` : ""}`)}`);
 }

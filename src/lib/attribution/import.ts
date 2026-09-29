@@ -22,9 +22,10 @@ import { fmtDate, fmtNumber, fmtUsd } from "@/lib/format";
 export const MAX_IMPORT_BYTES = 900_000;
 
 export function refreshLedgerPages() {
-  revalidatePath("/attribution", "layout");
-  revalidatePath("/t/[team]/attribution", "page");
-  revalidatePath("/t/[team]", "page");
+  // Every page under /t/<scope>: the Portfolio's views and the holdings. Cache tags carry the route groups, so the
+  // pattern names (app); "/t/[team]" alone would match nothing.
+  revalidatePath("/(app)/t/[team]", "layout");
+  revalidatePath("/");
 }
 
 /** Replay the ledger as it would be after an edit; returns the first problem, or a cash warning. */

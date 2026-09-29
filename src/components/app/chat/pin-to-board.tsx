@@ -5,17 +5,18 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { pinChatToHolding } from "@/lib/actions/chats";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /** A holding a conversation can be filed under. */
 export type PinTarget = { ticker: string; company: string; teamSlug: string; team: string };
 
 /**
- * "Pin to research board": pick a holding, and the conversation moves onto that holding's board (its chats, its sources
- * and research log), where it opens from then on. A general conversation only; one already on a board has nothing to pin.
- * `look` draws it as a text link under an answer or as the panel's small grey button.
+ * "Pin to a holding": pick a holding, and the conversation is filed under it (listed on the holding's Threads tab, read
+ * as its research). A general conversation only; one already pinned has nothing to pin. `look` draws it as a text link,
+ * the panel's small grey button, or a quiet header button beside a thread's Share.
  */
-export function PinToBoard({ chatId, targets, look = "link", onPinned, className }: { chatId: string; targets: PinTarget[]; look?: "link" | "button"; onPinned?: () => void; className?: string }) {
+export function PinToBoard({ chatId, targets, look = "link", onPinned, className }: { chatId: string; targets: PinTarget[]; look?: "link" | "button" | "header"; onPinned?: () => void; className?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [q, setQ] = useState("");
@@ -31,7 +32,9 @@ export function PinToBoard({ chatId, targets, look = "link", onPinned, className
         return;
       }
       onPinned?.();
+      // The thread keeps its address; refresh so the header names the holding.
       router.push(res.href);
+      router.refresh();
     });
 
   return (
@@ -39,14 +42,18 @@ export function PinToBoard({ chatId, targets, look = "link", onPinned, className
       <DropdownMenuTrigger
         disabled={pending}
         className={cn(
-          look === "link" ? "rounded-sm text-ink-2 hover:text-foreground" : "h-7 rounded-md bg-secondary px-2.5 text-body text-foreground hover:bg-border",
+          look === "link"
+            ? "rounded-sm text-ink-2 hover:text-foreground"
+            : look === "header"
+              ? buttonVariants({ variant: "ghost" })
+              : "h-7 rounded-md bg-secondary px-2.5 text-body text-foreground hover:bg-border",
           "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50",
           className,
         )}
       >
-        {pending ? "Pinning…" : "Pin to research board"}
+        {pending ? "Pinning…" : "Pin to a holding"}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-72 max-w-[calc(100vw-2rem)] p-0">
+      <DropdownMenuContent align={look === "header" ? "end" : "start"} className="w-72 max-w-[calc(100vw-2rem)] p-0">
         <div className="border-b p-2">
           <input
             value={q}

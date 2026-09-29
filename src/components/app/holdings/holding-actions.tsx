@@ -2,40 +2,93 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Ellipsis, MessageSquareText, Upload } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 import { exitHolding } from "@/lib/actions/holdings";
 import { DocumentUploadForm } from "@/components/app/document-upload-form";
+import { TradeDialog } from "@/components/app/attribution/trade-dialog";
+import { UploadModelDialog } from "@/components/app/models/upload-model-dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-/** The page header's secondary actions: Upload to Drive · Ask Hoot about T · ⋯ for the rest. The page adds its one primary (Record trade) after them. */
+/**
+ * The holding page header's actions: Upload model and Record trade side by side, and the rest in a quiet ⋯ menu
+ * (Upload to Drive, SEC EDGAR, Mark exited). Each is offered only to readers the old pages offered it to.
+ */
 export function HoldingActions({
   ticker,
   holdingId,
-  boardHref,
+  companyName,
+  hasModel,
   canUpload,
+  canUploadModel,
   uploadDisabledReason,
+  trade,
   canExit,
   links,
 }: {
   ticker: string;
   holdingId: string;
-  boardHref: string;
+  companyName: string;
+  hasModel: boolean;
+  /** An active holding: documents can be added to the Drive. */
   canUpload: boolean;
+  /** An active SEC filer: a model's values can be proposed from its filings (an ETF gets no "Upload model"). */
+  canUploadModel: boolean;
   uploadDisabledReason?: string;
+  /** Execs and admins record trades; `today` and the position size prefill the dialog. */
+  trade: { today: string; shares: number | null } | null;
   canExit: boolean;
   links: { label: string; href: string; external?: boolean }[];
 }) {
+  const [tradeOpen, setTradeOpen] = useState(false);
+  const [driveOpen, setDriveOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  const menu = canUpload || canExit || links.length > 0;
   return (
     <>
+      {canUploadModel && <UploadModelDialog targets={[{ id: holdingId, ticker, companyName, hasModel }]} label="Upload model" trigger="header" />}
+      {trade && (
+        <>
+          <Button variant="secondary" onClick={() => setTradeOpen(true)}>
+            Record trade
+          </Button>
+          <TradeDialog trigger={false} open={tradeOpen} onOpenChange={setTradeOpen} today={trade.today} positions={trade.shares != null ? [{ ticker, shares: trade.shares }] : []} defaults={{ ticker }} />
+        </>
+      )}
+      {menu && (
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label={`More actions for ${ticker}`} />}>
+            <Ellipsis className="size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            {canUpload && (
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={() => setDriveOpen(true)}>Upload to Drive…</DropdownMenuItem>
+              </DropdownMenuGroup>
+            )}
+            {links.length > 0 && (
+              <DropdownMenuGroup>
+                {links.map((l) => (
+                  <DropdownMenuItem key={l.href} render={l.external ? <a href={l.href} target="_blank" rel="noreferrer" /> : <Link href={l.href} />}>
+                    {l.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            )}
+            {canExit && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={() => setExitOpen(true)}>
+                  Mark exited…
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
       {canUpload && (
-        <Dialog>
-          <DialogTrigger render={<Button variant="secondary" />}>
-            <Upload className="size-3.5" />
-            Upload to Drive
-          </DialogTrigger>
+        <Dialog open={driveOpen} onOpenChange={setDriveOpen}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Upload to the Fund&apos;s Drive</DialogTitle>
@@ -45,32 +98,6 @@ export function HoldingActions({
           </DialogContent>
         </Dialog>
       )}
-      <Button variant="secondary" nativeButton={false} render={<Link href={boardHref} />}>
-        <MessageSquareText className="size-3.5" />
-        Ask Hoot about {ticker}
-      </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="secondary" size="icon" aria-label="More actions" />}>
-          <Ellipsis className="size-4" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuGroup>
-            {links.map((l) => (
-              <DropdownMenuItem key={l.href} render={l.external ? <a href={l.href} target="_blank" rel="noreferrer" /> : <Link href={l.href} />}>
-                {l.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
-          {canExit && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => setExitOpen(true)}>
-                Mark exited…
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
       {canExit && (
         <Dialog open={exitOpen} onOpenChange={setExitOpen}>
           <DialogContent className="sm:max-w-sm">

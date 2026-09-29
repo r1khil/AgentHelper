@@ -53,12 +53,12 @@ export function LookthroughSections({ state, scope, transparency, download, sect
         id={LOOKTHROUGH_ANCHOR}
         title="Through the ETFs"
         explain={RISK_EXPLAIN.lookthrough}
-        aside={lt.etfs.length ? `${lt.etfs.length} ETFs, ${rpct(etfWeight)} of the portfolio · ${rpct(etfWeight > 0 ? lookedThrough / etfWeight : 0)} of it looked through` : "No ETFs held"}
+        aside={lt.etfs.length ? `${lt.etfs.length} ETFs, ${rpct(etfWeight)} of the portfolio, ${rpct(etfWeight > 0 ? lookedThrough / etfWeight : 0)} of it looked through` : "No ETFs held"}
       >
         {lt.etfs.length > 0 && <EtfCoverageTable etfs={lt.etfs} stale={state.stale} />}
         {overlaps.length > 0 && (
           <p className="mb-3 text-body text-muted-foreground">
-            <Explained label="Held both ways">{RISK_EXPLAIN.overlap}</Explained>: {overlaps.map((n) => `${n.key} ${rpct(n.total)}`).join(" · ")}
+            <Explained label="Held both ways">{RISK_EXPLAIN.overlap}</Explained>: {overlaps.map((n) => `${n.key} ${rpct(n.total)}`).join(", ")}
           </p>
         )}
         <CombinedExposureTable lt={lt} scope={scope} transparency={transparency} />
@@ -68,7 +68,7 @@ export function LookthroughSections({ state, scope, transparency, download, sect
         id={STOCK_ACTIVE_ANCHOR}
         title="Stock-level active weights"
         explain={RISK_EXPLAIN.stockActive}
-        aside={lt.active ? `vs ${state.benchmarkLabel} holdings as of ${fmtDate(lt.active.benchmark.asOf)}${state.benchmarkStale ? " (stale)" : ""} · Active Share ${rpct(lt.active.activeShare)}` : undefined}
+        aside={lt.active ? `vs ${state.benchmarkLabel} holdings as of ${fmtDate(lt.active.benchmark.asOf)}${state.benchmarkStale ? " (stale)" : ""}, Active Share ${rpct(lt.active.activeShare)}` : undefined}
       >
         {lt.active ? (
           <>
@@ -127,12 +127,12 @@ function EtfCoverageTable({ etfs, stale }: { etfs: EtfCoverage[]; stale: string[
                   <span className="font-semibold">{e.etf}</span>
                   <div className={cn("text-caption", s.tone)}>
                     {s.label}
-                    {e.names > 0 && <span className="text-muted-foreground"> · {e.names} names</span>}
+                    {e.names > 0 && <span className="text-muted-foreground">, {e.names} names</span>}
                   </div>
                   {/* On a phone the as-of column is hidden, so the date and source sit under the ETF. */}
                   {e.asOf && e.source && (
                     <div className={cn("text-caption text-muted-foreground sm:hidden", isStale && "font-semibold text-caution-foreground")}>
-                      {fmtDay(e.asOf)} · {SOURCE_LABELS[e.source]}{isStale && " · stale"}
+                      {fmtDay(e.asOf)}, {SOURCE_LABELS[e.source]}{isStale && ", stale"}
                     </div>
                   )}
                 </TableCell>
@@ -146,7 +146,7 @@ function EtfCoverageTable({ etfs, stale }: { etfs: EtfCoverage[]; stale: string[
                 <TableCell className="hidden text-body sm:table-cell">
                   {e.asOf && e.source ? (
                     <>
-                      <span className={cn(isStale && "font-semibold text-caution-foreground")}>{fmtDay(e.asOf)}{isStale && " · stale"}</span>
+                      <span className={cn(isStale && "font-semibold text-caution-foreground")}>{fmtDay(e.asOf)}{isStale && ", stale"}</span>
                       <div className="text-caption text-muted-foreground">{SOURCE_LABELS[e.source]}</div>
                     </>
                   ) : (
@@ -164,7 +164,7 @@ function EtfCoverageTable({ etfs, stale }: { etfs: EtfCoverage[]; stale: string[
   );
 }
 
-const viaText = (n: NameExposure) => n.viaEtfs.map((v) => `${rpct(v.weight, 2)} ${v.via}`).join(" · ");
+const viaText = (n: NameExposure) => n.viaEtfs.map((v) => `${rpct(v.weight, 2)} ${v.via}`).join(", ");
 
 function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughReport; scope: "fund" | "team"; transparency: boolean }) {
   const shown = lt.names.slice(0, TOP_NAMES);
@@ -172,7 +172,7 @@ function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughRep
   const restTotal = rest.reduce((s, n) => s + n.total, 0);
   const max = shown[0]?.total ?? 0;
   const top = shown.find((n) => n.overlap) ?? shown[0];
-  const notLookedText = lt.notLookedThrough.byEtf.map((l) => `${rpct(l.weight, 2)} ${l.via}`).join(" · ");
+  const notLookedText = lt.notLookedThrough.byEtf.map((l) => `${rpct(l.weight, 2)} ${l.via}`).join(", ");
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -192,8 +192,8 @@ function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughRep
                 {n.overlap && <span className="ml-1.5 text-caption font-semibold text-muted-foreground" title={RISK_EXPLAIN.overlap}>both</span>}
                 <div className="max-w-56 text-caption whitespace-normal text-muted-foreground">
                   {n.name}
-                  {n.sector ? ` · ${SECTOR_LABELS[n.sector]}` : ""}
-                  {n.symbols.length > 1 ? ` · ${n.symbols.join(" + ")}` : ""}
+                  {n.sector ? `, ${SECTOR_LABELS[n.sector]}` : ""}
+                  {n.symbols.length > 1 ? `, ${n.symbols.join(" + ")}` : ""}
                 </div>
                 {/* On a phone the "Through ETFs" column is hidden, so the breakdown sits under the name. */}
                 {n.viaEtfs.length > 0 && <div className="max-w-44 text-caption whitespace-normal text-muted-foreground sm:hidden">via {viaText(n)}</div>}
@@ -237,7 +237,7 @@ function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughRep
             </TableRow>
           )}
           <TableRow>
-            <TableCell className="text-body font-semibold">Total <span className="font-normal text-muted-foreground">· {lt.names.length} companies</span></TableCell>
+            <TableCell className="text-body font-semibold">Total <span className="font-normal text-muted-foreground">{lt.names.length} companies</span></TableCell>
             <TableCell className="text-body font-semibold">{rpct(lt.total, 2)}</TableCell>
             <TableCell />
             <TableCell className="hidden sm:table-cell" />
@@ -271,7 +271,7 @@ function StockActiveTables({ rows, benchmarkLabel }: { rows: ActiveName[]; bench
         <TableHeader>
           <TableRow>
             <TableHead>{title}</TableHead>
-            <TableHead className="text-right">Portfolio · {benchmarkLabel}</TableHead>
+            <TableHead className="text-right">Portfolio, {benchmarkLabel}</TableHead>
             <TableHead className="text-right">Active, bp</TableHead>
           </TableRow>
         </TableHeader>
@@ -283,7 +283,7 @@ function StockActiveTables({ rows, benchmarkLabel }: { rows: ActiveName[]; bench
                 <div className="max-w-44 text-caption whitespace-normal text-muted-foreground">{r.name}</div>
               </TableCell>
               <TableCell className="text-right text-body">
-                {rpct(r.fund, 2)} <span className="text-muted-foreground">· {rpct(r.benchmark, 2)}</span>
+                {rpct(r.fund, 2)} <span className="text-muted-foreground">, {rpct(r.benchmark, 2)}</span>
               </TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-2">

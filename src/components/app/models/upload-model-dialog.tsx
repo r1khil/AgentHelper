@@ -46,7 +46,7 @@ export function UploadModelDialog({
           <NativeSelect id="model-holding" value={holdingId} onChange={(e) => setHoldingId(e.target.value)}>
             {targets.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.ticker} · {t.companyName}
+                {t.ticker}, {t.companyName}
                 {t.hasModel ? " (new version)" : ""}
               </option>
             ))}

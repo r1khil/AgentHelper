@@ -14,8 +14,8 @@ export const ADDS_MORE = 1.5;
 
 const COLS = "grid grid-cols-[minmax(0,1fr)_64px_84px_112px_minmax(0,120px)] gap-x-3.5 xl:grid-cols-[minmax(0,1fr)_70px_96px_140px_150px]";
 
-/** Backtesting with `ticker` trimmed by `pp` percentage points into cash, the Risk page's quick-trade link. */
-export const trimHref = (ticker: string, pp: number) => `/backtesting?trade=${encodeURIComponent(`${ticker}:-${pp}:cash`)}`;
+/** What if (`whatIf`: the scope's view) with `ticker` trimmed by `pp` percentage points into cash, the Risk view's quick-trade link. */
+export const trimHref = (ticker: string, pp: number, whatIf = "/t/fund/what-if") => `${whatIf}?trade=${encodeURIComponent(`${ticker}:-${pp}:cash`)}`;
 
 /**
  * "Where the risk comes from": the ten holdings with the largest share of the portfolio's volatility, each with its
@@ -33,7 +33,7 @@ export function RiskSources({ report: r, teams }: { report: RiskReport; teams: T
         title="Where the risk comes from"
         sub={
           <>
-            Top {rows.length} of the {r.holdings.length} holdings measured · {rpct(covered, 0)} of the {r.scope === "fund" ? "fund" : "team"}&apos;s volatility · <Tip label="Adds more">{RISK_EXPLAIN.addsMore}</Tip> when a holding&apos;s share of risk is {rnum(ADDS_MORE, 1)}× its weight or more
+            Top {rows.length} of the {r.holdings.length} holdings measured, {rpct(covered, 0)} of the {r.scope === "fund" ? "fund" : "team"}&apos;s volatility. <Tip label="Adds more">{RISK_EXPLAIN.addsMore}</Tip> when a holding&apos;s share of risk is {rnum(ADDS_MORE, 1)}× its weight or more
           </>
         }
       />

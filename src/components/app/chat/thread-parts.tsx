@@ -166,54 +166,8 @@ export function ActivityRow({
   const [own, setOwn] = useState(false);
   const open = openProp ?? own;
   const setOpen = (v: boolean) => (onOpenChange ? onOpenChange(v) : setOwn(v));
-  const summary = summarizeActivity(parts);
-  const { current } = summary;
-  // Live with no answer yet covers the gaps between lookups and the wait for the answer (or its write-up).
-  const liveDetail = live && trace ? latestLabel(trace) : null;
-  const label = live
-    ? current
-      ? `${TOOL_PROGRESS[current] ?? current}…${liveDetail ? ` ${liveDetail}` : ""}`
-      : `Working…${liveDetail ? ` ${liveDetail}` : ""}`
-    : workedLine(summary, elapsedMs);
-
-  // Insert a step divider before the first lookup of each model step; narration stays with the step it was written in.
-  const rows: ReactNode[] = [];
-  let currentStep = -1;
-  const seenSteps = new Set<number>();
-  parts.forEach((p, i) => {
-    if (isToolPart(p)) {
-      const step = trace?.stepOfCall.get(p.toolCallId);
-      if (step !== undefined && step !== currentStep) {
-        currentStep = step;
-        seenSteps.add(step);
-        rows.push(<StepDivider key={`step-${step}`} n={step} view={trace!} />);
-      }
-      rows.push(
-        <div key={p.toolCallId ?? i}>
-          <ToolRow part={p} />
-          {trace && <FetchRows events={trace.fetchesByCall.get(p.toolCallId) ?? []} end={trace.toolEnd.get(p.toolCallId)} />}
-        </div>,
-      );
-    } else if (p.type === "text" && p.text.trim()) {
-      rows.push(
-        <p key={i} className="py-1.5 whitespace-pre-wrap text-muted-foreground italic">
-          {p.text}
-        </p>,
-      );
-    }
-  });
-  if (trace) {
-    // Steps with no tool call (the written answer, or a step still in flight) go at the end.
-    for (const n of [...trace.steps.keys()].sort((a, b) => a - b)) if (!seenSteps.has(n)) rows.push(<StepDivider key={`step-${n}`} n={n} view={trace} />);
-    if (trace.looseFetches.length > 0) {
-      rows.push(
-        <div key="loose">
-          <div className="pt-1.5 text-caption text-muted-foreground">Outside any lookup</div>
-          <FetchRows events={trace.looseFetches} />
-        </div>,
-      );
-    }
-  }
+  const label = activityLabel(parts, live, trace, elapsedMs);
+  const rows = activityRows(parts, trace);
   const expandable = rows.length > 0 || trace !== null;
   const thread = variant === "thread";
   const toggle = (
@@ -260,7 +214,63 @@ export function ActivityRow({
   );
 }
 
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+/** What Hoot is doing, in a line: the lookup in flight while the turn is live ("Scanning news…"), else "worked for 12s, read 4 sources". */
+export function activityLabel(parts: Part[], live: boolean, trace: TraceView | null, elapsedMs?: number | null) {
+  const summary = summarizeActivity(parts);
+  const { current } = summary;
+  // Live with no answer yet covers the gaps between lookups and the wait for the answer (or its write-up).
+  const liveDetail = live && trace ? latestLabel(trace) : null;
+  if (!live) return workedLine(summary, elapsedMs);
+  return current ? `${TOOL_PROGRESS[current] ?? current}…${liveDetail ? ` ${liveDetail}` : ""}` : `Working…${liveDetail ? ` ${liveDetail}` : ""}`;
+}
+
+/**
+ * The individual lookups behind an answer, in order, with Hoot's interim notes; with a transparency trace, a divider
+ * before each model step and every provider call under each lookup. Empty when there were none.
+ */
+export function activityRows(parts: Part[], trace: TraceView | null): ReactNode[] {
+  // Insert a step divider before the first lookup of each model step; narration stays with the step it was written in.
+  const rows: ReactNode[] = [];
+  let currentStep = -1;
+  const seenSteps = new Set<number>();
+  parts.forEach((p, i) => {
+    if (isToolPart(p)) {
+      const step = trace?.stepOfCall.get(p.toolCallId);
+      if (step !== undefined && step !== currentStep) {
+        currentStep = step;
+        seenSteps.add(step);
+        rows.push(<StepDivider key={`step-${step}`} n={step} view={trace!} />);
+      }
+      rows.push(
+        <div key={p.toolCallId ?? i}>
+          <ToolRow part={p} />
+          {trace && <FetchRows events={trace.fetchesByCall.get(p.toolCallId) ?? []} end={trace.toolEnd.get(p.toolCallId)} />}
+        </div>,
+      );
+    } else if (p.type === "text" && p.text.trim()) {
+      rows.push(
+        <p key={i} className="py-1.5 whitespace-pre-wrap text-muted-foreground italic">
+          {p.text}
+        </p>,
+      );
+    }
+  });
+  if (trace) {
+    // Steps with no tool call (the written answer, or a step still in flight) go at the end.
+    for (const n of [...trace.steps.keys()].sort((a, b) => a - b)) if (!seenSteps.has(n)) rows.push(<StepDivider key={`step-${n}`} n={n} view={trace} />);
+    if (trace.looseFetches.length > 0) {
+      rows.push(
+        <div key="loose">
+          <div className="pt-1.5 text-caption text-muted-foreground">Outside any lookup</div>
+          <FetchRows events={trace.looseFetches} />
+        </div>,
+      );
+    }
+  }
+  return rows;
+}
+
+export const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function ToolRow({ part }: { part: ToolPart }) {
   const name = toolName(part);
@@ -270,7 +280,7 @@ function ToolRow({ part }: { part: ToolPart }) {
       ? Object.entries(part.input as Record<string, unknown>)
           .filter(([, v]) => v !== undefined && v !== null && v !== "")
           .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(",") : String(v)}`)
-          .join(" · ")
+          .join(", ")
       : "";
   const done = toolDone(part);
   const errored = toolFailed(part);
@@ -280,7 +290,7 @@ function ToolRow({ part }: { part: ToolPart }) {
       {!done && <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />}
       <span className="font-medium text-foreground">{label}</span>
       {input && <span className="truncate">{input}</span>}
-      {errored && <span className="truncate">· failed: {part.output?.error ?? part.errorText ?? "error"}</span>}
+      {errored && <span className="truncate">Failed: {part.output?.error ?? part.errorText ?? "error"}</span>}
       {done && !errored && n > 0 && (
         <span className="ml-auto shrink-0 text-caption">
           {n} source{n === 1 ? "" : "s"}
@@ -321,12 +331,13 @@ export function ThreadNote({ tone, children }: { tone: "caution" | "error" | "mu
   return <div className={cn("text-body", tone === "muted" ? "flex items-center gap-2 text-ink-2" : "font-medium text-caution-foreground")}>{children}</div>;
 }
 
-export type ComposerVariant = "thread" | "compact";
+export type ComposerVariant = "pill" | "thread" | "compact";
 
 /**
- * The question box under a conversation. `thread` is the follow-up box under a full thread (12px radius, the soft
- * two-layer shadow, a 34px send); `compact` is the board's and the panel's (10px radius, a 30px send). What Hoot can
- * see sits in the box, in grey; a stop button takes the send button's place while an answer streams.
+ * The question box under a conversation. `pill` is a thread's follow-up, floating over the page (the raised surface, a
+ * hairline, a soft shadow, fully round ends and a round send); `thread` is the older 12px-radius box with a 34px send;
+ * `compact` is the board's and the panel's (10px radius, a 30px send). What Hoot can see sits in the box, in grey; a
+ * stop button takes the send button's place while an answer streams.
  */
 export function Composer({
   value,
@@ -359,7 +370,8 @@ export function Composer({
   inputRef?: React.Ref<HTMLTextAreaElement>;
   label?: string;
 }) {
-  const thread = variant === "thread";
+  const pill = variant === "pill";
+  const thread = variant === "thread" || pill;
   return (
     <form
       onSubmit={(e) => {
@@ -367,8 +379,10 @@ export function Composer({
         onSend();
       }}
       className={cn(
-        "@container flex items-center gap-2 border border-border-strong bg-background focus-within:border-foreground",
-        thread ? cn("w-full rounded-composer py-2 pr-2 pl-4", COMPOSER_SHADOW) : "rounded-[10px] py-1.5 pr-1.5 pl-3",
+        "@container flex items-center gap-2 border",
+        pill
+          ? "min-h-14 w-full rounded-[28px] border-border bg-surface py-2.5 pr-2.5 pl-5 shadow-[0_10px_30px_rgb(0_0_0/0.18)] focus-within:border-border-strong"
+          : cn("border-border-strong bg-background focus-within:border-foreground", thread ? cn("w-full rounded-composer py-2 pr-2 pl-4", COMPOSER_SHADOW) : "rounded-[10px] py-1.5 pr-1.5 pl-3"),
       )}
     >
       <textarea
@@ -403,12 +417,12 @@ export function Composer({
           type="button"
           onClick={onStop}
           aria-label="Stop"
-          className={cn("grid shrink-0 place-items-center bg-secondary hover:bg-border", thread ? "size-[34px] rounded-lg" : "size-[30px] rounded-[7px]")}
+          className={cn("grid shrink-0 place-items-center bg-secondary hover:bg-border", pill ? "size-9 rounded-full" : thread ? "size-[34px] rounded-lg" : "size-[30px] rounded-[7px]")}
         >
           <span className="size-2.5 rounded-sm bg-foreground" />
         </button>
       ) : (
-        <SendButton disabled={disabled || sendDisabled || !value.trim()} size={thread ? "lg" : "sm"} />
+        <SendButton disabled={disabled || sendDisabled || !value.trim()} size={pill ? "round" : thread ? "lg" : "sm"} />
       )}
     </form>
   );
@@ -421,7 +435,8 @@ export function ComposerBox({ children, className }: { children: ReactNode; clas
   );
 }
 
-export function SendButton({ disabled, label = "Send", size = "lg" }: { disabled: boolean; label?: string; size?: "lg" | "sm" }) {
+/** The ink send button: a 36px circle in the raised boxes (Home's card, a thread's follow-up pill), squarer elsewhere. */
+export function SendButton({ disabled, label = "Send", size = "lg" }: { disabled: boolean; label?: string; size?: "lg" | "sm" | "round" }) {
   return (
     <button
       type="submit"
@@ -429,10 +444,10 @@ export function SendButton({ disabled, label = "Send", size = "lg" }: { disabled
       aria-label={label}
       className={cn(
         "grid shrink-0 place-items-center bg-primary text-primary-foreground transition-opacity hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-40",
-        size === "lg" ? "size-[34px] rounded-lg" : "size-[30px] rounded-[7px]",
+        size === "round" ? "size-9 rounded-full" : size === "lg" ? "size-[34px] rounded-lg" : "size-[30px] rounded-[7px]",
       )}
     >
-      <ArrowUp className={size === "lg" ? "size-[15px]" : "size-3.5"} strokeWidth={2} aria-hidden />
+      <ArrowUp className={size === "sm" ? "size-3.5" : size === "lg" ? "size-[15px]" : "size-4"} strokeWidth={size === "round" ? 2.4 : 2} aria-hidden />
     </button>
   );
 }

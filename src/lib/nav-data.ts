@@ -8,7 +8,7 @@ import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { todayNY } from "@/lib/providers/calendar";
 import { latestPackStatus } from "@/lib/weekly/latest";
 import { listGeneralChats, listRecentHoldingChats } from "@/lib/chats";
-import { boardHref } from "@/lib/scope";
+import { threadTitle } from "@/lib/thread-title";
 import { PACK_STATUS_LABELS } from "@/lib/weekly/status";
 
 /** A tab's count: `hot` when it needs action (ink), `overdue` when something is late (red). */
@@ -28,10 +28,21 @@ export type CommandHolding = {
 /** A sidebar badge in words: "1 overdue" (red), "4 to decide" (grey). */
 export type NavBadge = { label: string; hot?: boolean };
 
-/** A recent Hoot chat, for ⌘J's "Recent answers". */
-export type RecentChat = { title: string; href: string; at: string };
+/** A recent Hoot chat, for ⌘J's "Recent answers" and the sidebar's Threads. `ticker` when it's about one holding. */
+export type RecentChat = { title: string; href: string; at: string; ticker?: string };
 
-export type NavData = { counts: Record<string, TabCount>; badges: Partial<Record<"movements" | "models", NavBadge>>; holdings: CommandHolding[]; recent: RecentChat[] };
+export type NavData = {
+  counts: Record<string, TabCount>;
+  badges: Partial<Record<"movements" | "models", NavBadge>>;
+  holdings: CommandHolding[];
+  /** The three newest, for ⌘J. */
+  recent: RecentChat[];
+  /** The sidebar's Threads, newest first. */
+  threads: RecentChat[];
+};
+
+/** Threads listed in the sidebar. */
+const SIDEBAR_THREADS = 15;
 
 /**
  * The header's tab counts and the ⌘K holding list for one scope. Small indexed queries in parallel; the member
@@ -42,7 +53,7 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
   const fund = scope === FUND_SCOPE_SLUG && isFundWide(user);
   const inScope = fund ? accessible : accessible.filter((t) => t.slug === scope);
   const teamIds = inScope.map((t) => t.id);
-  if (!teamIds.length) return { counts: {}, badges: {}, holdings: [], recent: [] };
+  if (!teamIds.length) return { counts: {}, badges: {}, holdings: [], recent: [], threads: [] };
   const today = todayNY();
   const lastWeek = DateTime.now().minus({ days: 7 }).toJSDate();
 
@@ -76,15 +87,18 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
       .where(and(inArray(holdings.teamId, teamIds), eq(earnings.status, "upcoming"), gte(earnings.reportDate, today)))
       .orderBy(asc(earnings.reportDate)),
     isFundWide(user) ? latestPackStatus() : Promise.resolve(null),
-    listGeneralChats(teamIds, viewer, 3),
-    listRecentHoldingChats(teamIds, viewer, 3),
+    listGeneralChats(teamIds, viewer, SIDEBAR_THREADS),
+    listRecentHoldingChats(teamIds, viewer, SIDEBAR_THREADS),
   ]);
-  const recent: RecentChat[] = [
-    ...general.map((g) => ({ title: g.c.title, href: `/hoot/${g.c.id}`, at: g.c.updatedAt.toISOString() })),
-    ...pinned.map((p) => ({ title: p.c.title, href: boardHref(scope, p.teamSlug, p.ticker, p.c.id), at: p.c.updatedAt.toISOString() })),
+  const threads: RecentChat[] = [
+    ...general.map((g) => ({ title: threadTitle(g.c.title), href: `/hoot/${g.c.id}`, at: g.c.updatedAt.toISOString() })),
+    // Every thread opens as a Thread, a holding's too; its holding shows in the breadcrumb.
+    ...pinned.map((p) => ({ title: threadTitle(p.c.title, p.ticker), href: `/hoot/${p.c.id}`, at: p.c.updatedAt.toISOString(), ticker: p.ticker })),
   ]
+    // A thread just asked is listed at once, under "New chat" until Hoot titles it.
     .sort((a, b) => b.at.localeCompare(a.at))
-    .slice(0, 3);
+    .slice(0, SIDEBAR_THREADS);
+  const recent = threads.slice(0, 3);
 
   const teamById = new Map(inScope.map((t) => [t.id, t]));
   const next = new Map<string, { date: string; estimated: boolean }>();
@@ -110,6 +124,7 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
     counts,
     badges,
     recent,
+    threads,
     holdings: rows.map((r) => {
       const t = teamById.get(r.teamId);
       const n = next.get(r.ticker);

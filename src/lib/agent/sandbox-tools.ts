@@ -54,7 +54,7 @@ export function makeSandboxTools(ctx: { viewer: CurrentUser; teamId: string | nu
         "Load inputs with `datasets` instead of typing numbers into the code; each becomes a CSV in data/ (the result lists every file's path, columns and date range): " +
         "'prices:<TICKER>' daily date,open,high,low,close,adj_close,volume from Yahoo Finance (range default 1y; use adj_close for returns); " +
         "'holdings' the current holdings and saved weights (the whole Fund for execs and admins, the member's team otherwise); " +
-        "'returns' (or 'returns:fund' / 'returns:team') daily portfolio returns from the trade ledger as decimals with the sector benchmark (and S&P 500 for the fund), under the Attribution pages' access rules (range default itd). " +
+        "'returns' (or 'returns:fund' / 'returns:team') daily portfolio returns from the trade ledger as decimals with the sector benchmark (and S&P 500 for the fund), under the Performance view's access rules (range default itd). " +
         "The code runs offline (no internet, no pip), for at most 60 seconds, and only printed output comes back (about 8,000 characters): print() the final numbers with labels and units, rounded, and small tables with DataFrame.to_string(); no charts. " +
         `Each member has ${limit} runs a day, so get the code right the first time. Cite computed numbers with the run's Computation sourceId and the inputs with their dataset sourceIds.`,
       inputSchema: z.object({

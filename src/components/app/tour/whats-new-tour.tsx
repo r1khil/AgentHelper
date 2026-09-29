@@ -37,10 +37,10 @@ const PERCHED = 64;
 const CENTERED = 112;
 /** The app is desktop-only; below this the menu is a drawer and there's nothing to fly around. */
 const MIN_WIDTH = 900;
-/** The menu: the rail (or the classic sidebar on the classic Backtesting layout). */
+/** The sidebar. */
 const MENU = '[data-tour="sidebar"]';
-/** The rail's width; Hoot docks at its bottom. */
-const RAIL = 76;
+/** Where Hoot's corner button sits (hoot-corner.tsx: right-7 bottom-6). */
+const CORNER = { right: 28, bottom: 24 };
 
 /** First element matching `selector` that's actually on screen (the mobile menu keeps a hidden copy). */
 function findVisible(selector: string): HTMLElement | null {
@@ -77,8 +77,7 @@ function bringIntoView(el: HTMLElement, reduced: boolean): Promise<void> {
 }
 
 /**
- * A Hoot the page itself shows (Today's greeting, Research's intro, an empty state), big enough to take off from and
- * land on. One Hoot per screen: while the tour runs these are hidden (globals.css), so the flying one replaces him.
+ * A Hoot the page itself shows (Home's greeting, an empty state), big enough to take off from and land on. One Hoot per screen: while the tour runs these are hidden (globals.css), so the flying one replaces him.
  */
 function pageHootSpot(): HootSpot | null {
   for (const el of document.querySelectorAll<HTMLElement>("[data-hoot-sprite]")) {
@@ -90,8 +89,8 @@ function pageHootSpot(): HootSpot | null {
 }
 
 /**
- * Where the companion sits, docked at the bottom of the menu, so the tour can take off from him and hand back to
- * him. While the tour runs he's stepped aside, but his spot in the menu stays reserved, so it can still be measured.
+ * Where the companion sits, in the bottom-right corner, so the tour can take off from him and hand back to him. While
+ * the tour runs he's stepped aside, but his spot stays reserved, so it can still be measured.
  */
 function dockSpot(): HootSpot | null {
   const el = findVisible("[data-hoot-companion]") ?? findVisible("[data-hoot-dock]");
@@ -100,16 +99,16 @@ function dockSpot(): HootSpot | null {
   return { x: r.left, y: r.top, size: r.width };
 }
 
-/** With Hoot switched off there's no spot to measure: take off from where he'd sit at the bottom of the rail. */
-function railBottomSpot(): HootSpot {
-  return { x: (RAIL - PERCHED) / 2, y: window.innerHeight - 150 - PERCHED, size: PERCHED };
+/** With Hoot switched off (or on a page without his corner) there's no spot to measure: take off from his corner. */
+function cornerSpot(): HootSpot {
+  return { x: window.innerWidth - CORNER.right - PERCHED, y: window.innerHeight - CORNER.bottom - PERCHED, size: PERCHED };
 }
 
 const sameSpot = (a: HootSpot, b: HootSpot) => Math.abs(a.x - b.x) < 3 && Math.abs(a.y - b.y) < 3 && Math.abs(a.size - b.size) < 1;
 
 /**
  * Hoot's guided tour of the new look, for execs and admins. After the loading screen, he flies to the middle of
- * the screen, asks light or dark, then offers the tour: he perches beside each menu item or tab, waits for a click,
+ * the screen, asks light or dark, then offers the tour: he perches beside each sidebar item, waits for a click,
  * and walks through the page's sections while the rest of the app dims. Progress is saved on the profile, so
  * a refresh picks up at the same page; finishing or declining is final until "Replay the tour".
  */
@@ -168,7 +167,7 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
   const begin = useCallback((first: Phase) => {
     if (runningRef.current || window.innerWidth < MIN_WIDTH) return;
     runningRef.current = true;
-    const from = pageHootSpot() ?? dockSpot() ?? railBottomSpot();
+    const from = pageHootSpot() ?? dockSpot() ?? cornerSpot();
     document.documentElement.dataset.touring = "";
     flightKey.current = null;
     setStart(from);
@@ -240,7 +239,7 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
   }, [phase, goTo]);
 
   /**
-   * Back to the page's own Hoot, or his spot in the menu (off screen if he's switched off or the page hides him),
+   * Back to the page's own Hoot, or his corner (off screen if he's switched off or the page hides him),
    * then hand over to that Hoot.
    */
   const leave = useCallback(
@@ -279,6 +278,11 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
         timer = window.setTimeout(poll, 150);
       } else if (s.ifMissing === "center" || !s.target) {
         setFound({ key: stepKey, el: null });
+      } else if (s.kind === "go" && !onPage) {
+        // Nothing to click to open this chapter's page (the member can't open it, or the page moved): skip the whole
+        // chapter rather than explain a page they aren't on.
+        const after = FLAT.findIndex((f, i) => i > index && f.chapter.id !== chapter.id);
+        goTo(after === -1 ? FLAT.length : after, index);
       } else if (direction.current < 0 && index > 0 && FLAT[index - 1].chapter.id === chapter.id && FLAT[index - 1].step.kind === "info") {
         setPhase({ kind: "step", index: index - 1 });
       } else {
@@ -292,7 +296,7 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
     };
   }, [phase, pathname, onPage, wandered, reduced, goTo]);
 
-  // The member clicked the highlighted menu item and the new page is here.
+  // The member clicked the highlighted sidebar item and the new page is here.
   useEffect(() => {
     if (phase.kind !== "step" || armed.current !== phase.index || !onPage) return;
     armed.current = null;
@@ -478,8 +482,8 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
           ],
           links: [{ id: "end", label: "No thanks" }],
           footnote: phase.chose
-            ? `${phase.chose === "system" ? "Matching your computer" : phase.chose === "dark" ? "Dark it is" : "Light it is"}. You can change it any time: click your initials at the bottom of the menu.`
-            : "You can replay the tour any time: click your initials at the bottom of the menu.",
+            ? `${phase.chose === "system" ? "Matching your computer" : phase.chose === "dark" ? "Dark it is" : "Light it is"}. You can change it any time: click your name at the bottom of the sidebar.`
+            : "You can replay the tour any time: click your name at the bottom of the sidebar.",
         };
       case "resume":
         return {
@@ -497,8 +501,8 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
           key,
           title: "That's the new look!",
           body: hootEnabled
-            ? `Press ⌘K any time to jump somewhere or ask me something. On most pages I'm at the bottom of the menu too, with what needs you: click me, or press ${hootShortcutLabel()}.`
-            : "Press ⌘K any time to jump somewhere or ask me something. Turn on Hoot in the menu under your initials if you'd like me at the bottom of the menu on every page too.",
+            ? `Press ⌘K any time to jump somewhere, or ⌘J to ask me about the page you're on. On most pages I'm in the bottom-right corner too, with what needs you: click me, or press ${hootShortcutLabel()}.`
+            : "Press ⌘K any time to jump somewhere, or ⌘J to ask me about the page you're on. Turn on Hoot in the corner under your name if you'd like me on every page too.",
           actions: [{ id: "end", label: "Thanks, Hoot" }],
         };
       case "step": {
@@ -510,7 +514,7 @@ export function WhatsNewTour({ firstName, offer, hootEnabled }: { firstName: str
           ...(moreInChapter && chapter.id !== "menu" ? [{ id: "skip-page", label: "Skip this page" }] : []),
           { id: "end", label: "End tour" },
         ];
-        const eyebrow = `${chapter.label} · ${at + 1} of ${chapter.steps.length}`;
+        const eyebrow = `${chapter.label}, ${at + 1} of ${chapter.steps.length}`;
         if (missing) return { key, eyebrow, title: s.title, body: s.missing, actions: [{ id: "next", label: "Next" }], links };
         if (s.kind === "go" && !onPage) {
           return { key, eyebrow, title: s.title, body: s.body, prompt: s.prompt, actions: [{ id: "go", label: "Take me there", variant: "outline" }], links };

@@ -24,7 +24,7 @@ describe("tourOffer", () => {
   });
 
   it("resumes at the saved chapter, ignoring chapters that no longer exist", () => {
-    expect(tourOffer(tour, "exec", { tours: { [id]: { status: "active", chapter: "research", themed: true, at: ago(1000) } } }, now)).toEqual({ mode: "resume", chapter: "research", themed: true });
+    expect(tourOffer(tour, "exec", { tours: { [id]: { status: "active", chapter: "markets", themed: true, at: ago(1000) } } }, now)).toEqual({ mode: "resume", chapter: "markets", themed: true });
     expect(tourOffer(tour, "exec", { tours: { [id]: { status: "active", chapter: "gone", at: ago(1000) } } }, now)).toEqual({ mode: "resume", chapter: undefined, themed: false });
   });
 
@@ -35,7 +35,7 @@ describe("tourOffer", () => {
 
 describe("cleanTourRecord", () => {
   it("keeps known fields and stamps the time", () => {
-    expect(cleanTourRecord(tour, { status: "active", chapter: "risk", themed: true, extra: "x" }, now)).toEqual({ status: "active", chapter: "risk", themed: true, at: now.toISOString() });
+    expect(cleanTourRecord(tour, { status: "active", chapter: "portfolio", themed: true, extra: "x" }, now)).toEqual({ status: "active", chapter: "portfolio", themed: true, at: now.toISOString() });
   });
 
   it("drops unknown chapters and rejects bad statuses", () => {
@@ -59,28 +59,24 @@ describe("the new-look tour script", () => {
   });
 
   it("says where the numbers come from on the sections that show figures", () => {
-    const figures = ["today-list", "today-teams", "today-result", "holdings-table", "movements-list", "calendar-week", "attribution-strip", "bt-weights", "weekly-packs"];
+    const figures = ["bell", "portfolio-views", "markets-schedule"];
     for (const id of figures) expect(steps.find((s) => s.id === id)?.source, id).toBeTruthy();
+  });
+
+  it("only waits on the sidebar: steps inside a page talk from the middle, so a page's layout can't strand the tour", () => {
+    const sidebar = ['[data-tour="sidebar"]', '[data-tour="command"]', '[data-tour="ask-hoot"]', '[data-tour="threads"]', '[data-tour="bell"]', '[data-tour="account"]', '[data-tour="nav-portfolio"]', '[data-tour="nav-markets"]'];
+    for (const s of steps.filter((s) => s.kind === "info" && s.target)) expect(sidebar, s.id).toContain(s.target);
   });
 
   it("matches each chapter's route to its page", () => {
     const route = (id: string) => tour.chapters.find((c) => c.id === id)!.route;
-    expect(route("risk").test("/risk")).toBe(true);
-    expect(route("risk").test("/t/tech/risk")).toBe(true);
-    expect(route("portfolio").test("/attribution")).toBe(true);
-    expect(route("portfolio").test("/t/tech/attribution")).toBe(true);
-    expect(route("calendar").test("/t/fund/earnings")).toBe(true);
-    expect(route("calendar").test("/t/fund/economic-calendar")).toBe(true);
-    expect(route("research").test("/t/fund/agent")).toBe(true);
-    expect(route("research").test("/t/fund/agent/abc")).toBe(false);
-    expect(route("holdings").test("/t/fund")).toBe(true);
-    expect(route("holdings").test("/t/fund/movements")).toBe(false);
+    expect(route("portfolio").test("/t/fund")).toBe(true);
+    expect(route("portfolio").test("/t/tech/risk")).toBe(true);
+    expect(route("portfolio").test("/t/fund/what-if")).toBe(true);
+    expect(route("portfolio").test("/t/fund/h/NVDA")).toBe(false);
+    expect(route("portfolio").test("/t/fund/movements")).toBe(false);
     expect(route("holding").test("/t/tech/h/NVDA")).toBe(true);
-    expect(route("movements").test("/t/tech/movements")).toBe(true);
-    expect(route("movements").test("/t/tech/movements/m1")).toBe(true);
-    expect(route("manage").test("/weekly")).toBe(true);
-    expect(route("manage").test("/weekly/2026-09-27")).toBe(true);
-    expect(route("today").test("/")).toBe(true);
-    expect(route("today").test("/risk")).toBe(false);
+    expect(route("markets").test("/markets")).toBe(true);
+    expect(route("markets").test("/t/fund/earnings")).toBe(false);
   });
 });

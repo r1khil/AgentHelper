@@ -120,8 +120,8 @@ function FormulaBlock({ row, days }: { row: SectorRow; days: SectorDayBreakdown[
         <div className="mt-1 rounded-md border bg-muted/30 px-2.5 py-2">
           <div className="mb-1 text-muted-foreground">
             Largest day, {fmtDate(example.date)}: wp {w(example.wp)}, wb {w(b.wb)}, rp {r(example.rp)}, rb {r(b.rb)}, Rb {r(b.Rb)}, coef {f(b.coef, 5)}
-            {b.borrowed === "rb" && " · rb borrowed from rp (not in the benchmark)"}
-            {b.borrowed === "rp" && " · rp borrowed from rb (not held)"}
+            {b.borrowed === "rb" && ". rb borrowed from rp (not in the benchmark)"}
+            {b.borrowed === "rp" && ". rp borrowed from rb (not held)"}
           </div>
           <ul className="grid gap-0.5 tnum">
             <li>
@@ -310,7 +310,7 @@ function LineageBlock({ lineage, sector }: { lineage: SectorLineage; sector: Buc
               {lineage.closes.map((c) => (
                 <li key={c.ticker} className="tnum">
                   <span className="font-medium">{c.ticker}</span> {c.rows} rows{c.from ? `, ${fmtDate(c.from)} to ${fmtDate(c.to)}` : ""}
-                  {c.missingDays.length > 0 && <span className="text-warning-foreground"> · no close on {c.missingDays.map(fmtDate).join(", ")}</span>}
+                  {c.missingDays.length > 0 && <span className="text-warning-foreground">, no close on {c.missingDays.map(fmtDate).join(", ")}</span>}
                 </li>
               ))}
             </ul>
@@ -335,7 +335,7 @@ function LineageBlock({ lineage, sector }: { lineage: SectorLineage; sector: Buc
           {lineage.benchmark ? (
             <>
               <span className="font-medium">{lineage.benchmark.etf}</span> {lineage.benchmark.rows} closes{lineage.benchmark.from ? `, ${fmtDate(lineage.benchmark.from)} to ${fmtDate(lineage.benchmark.to)}` : ""}
-              {lineage.benchmark.staleDays.length > 0 && <span className="text-warning-foreground"> · carried forward on {lineage.benchmark.staleDays.map(fmtDate).join(", ")}</span>}
+              {lineage.benchmark.staleDays.length > 0 && <span className="text-warning-foreground">, carried forward on {lineage.benchmark.staleDays.map(fmtDate).join(", ")}</span>}
             </>
           ) : (
             <span className="text-muted-foreground">none: {bucketLabel(sector)} has no benchmark, so its whole effect is allocation</span>
@@ -351,7 +351,7 @@ function LineageBlock({ lineage, sector }: { lineage: SectorLineage; sector: Buc
                 <li key={s.asOf} className={cn("tnum", !s.appliedFrom && "text-muted-foreground")}>
                   as of {fmtDate(s.asOf)}
                   {s.weight !== null && `: ${s.weight}%`}
-                  {s.appliedFrom ? ` · in effect ${fmtDate(s.appliedFrom)} to ${fmtDate(s.appliedTo)} (drifted daily)` : " · not used in this period"}
+                  {s.appliedFrom ? `, in effect ${fmtDate(s.appliedFrom)} to ${fmtDate(s.appliedTo)} (drifted daily)` : ", not used in this period"}
                 </li>
               ))}
             </ul>
@@ -369,7 +369,7 @@ function LineageBlock({ lineage, sector }: { lineage: SectorLineage; sector: Buc
                 }, {}),
               )
                 .map(([k, n]) => `${k} × ${n}`)
-                .join(" · ")}
+                .join(", ")}
             </dd>
           </>
         )}

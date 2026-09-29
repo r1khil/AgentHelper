@@ -62,8 +62,8 @@ export function useHootCommand() {
       }));
       const href = commandHref(command.destination, links);
       if (!href) return false;
-      router.push(href);
-      toast.success(`Hoot: Opening ${command.destination}.`);
+      router.push(`${href}${command.query ?? ""}`);
+      toast.success(`Hoot: Opening ${command.query === "?period=today" ? "Performance today" : command.destination}.`);
     }
     return true;
   }, [resolvedTheme, setTheme, router]);

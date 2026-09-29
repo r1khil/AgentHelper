@@ -1,137 +1,126 @@
 import { describe, expect, it } from "vitest";
-import { destinations, navModel, sectionFor } from "./nav";
+import { destinations, navModel, portfolioViewFor, portfolioViews, sectionFor } from "./nav";
 
 const exec = { scope: "fund" as const, fundWide: true, seesBook: true };
-const tabKeys = (pathname: string, input: Omit<Parameters<typeof navModel>[0], "pathname"> = exec) => navModel({ pathname, ...input }).tabs.map((t) => t.key);
-const activeTab = (pathname: string, input: Omit<Parameters<typeof navModel>[0], "pathname"> = exec) => navModel({ pathname, ...input }).tabs.find((t) => t.active)?.key;
 
 describe("sectionFor", () => {
-  it("puts every page under one sidebar destination", () => {
+  it("puts every page in one of the five screens, or under the account menu", () => {
     expect(sectionFor("/")).toBe("home");
+    expect(sectionFor("/hoot/c1")).toBe("thread");
+    expect(sectionFor("/hoot")).toBe("thread");
+    expect(sectionFor("/markets")).toBe("markets");
     expect(sectionFor("/t/fund")).toBe("portfolio");
-    expect(sectionFor("/t/fund/h/NVDA")).toBe("portfolio");
-    expect(sectionFor("/t/tech")).toBe("team");
-    expect(sectionFor("/t/tech/h/NVDA")).toBe("team");
-    expect(sectionFor("/t/tech/movements/abc")).toBe("movements");
-    expect(sectionFor("/t/tech/models/m1")).toBe("models");
-    expect(sectionFor("/t/tech/agent/h/NVDA")).toBe("research");
-    expect(sectionFor("/hoot/c1")).toBe("research");
-    expect(sectionFor("/t/tech/sell-side/c2")).toBe("research");
-    expect(sectionFor("/t/tech/earnings/e1")).toBe("calendar");
-    expect(sectionFor("/t/fund/economic-calendar")).toBe("calendar");
-    expect(sectionFor("/attribution/ledger")).toBe("portfolio");
+    expect(sectionFor("/t/tech")).toBe("portfolio");
     expect(sectionFor("/t/tech/risk")).toBe("portfolio");
-    expect(sectionFor("/daily")).toBe("portfolio");
-    expect(sectionFor("/t/tech/daily")).toBe("portfolio");
-    expect(sectionFor("/backtesting")).toBe("portfolio");
+    expect(sectionFor("/t/fund/what-if")).toBe("portfolio");
+    expect(sectionFor("/t/fund/activity")).toBe("portfolio");
+    expect(sectionFor("/t/fund/h/NVDA")).toBe("holding");
+    expect(sectionFor("/t/tech/movements/abc")).toBe("holding");
+    expect(sectionFor("/t/tech/models/m1")).toBe("holding");
+    expect(sectionFor("/t/tech/sell-side/c2")).toBe("holding");
+    expect(sectionFor("/t/tech/earnings/e1")).toBe("holding");
+    expect(sectionFor("/t/fund/earnings")).toBe("markets");
+    expect(sectionFor("/t/fund/economic-calendar")).toBe("markets");
     expect(sectionFor("/weekly/2026-09-25")).toBe("weekly");
     expect(sectionFor("/changelog")).toBe("changelog");
     expect(sectionFor("/admin/pt-sheet")).toBe("admin");
+    // Addresses from before the five screens redirect in next.config, so they belong nowhere.
+    expect(sectionFor("/attribution")).toBeNull();
+    expect(sectionFor("/t/tech/agent")).toBeNull();
+  });
+});
+
+describe("portfolio views", () => {
+  it("reads the view from the URL", () => {
+    expect(portfolioViewFor("/t/fund")).toBe("positions");
+    expect(portfolioViewFor("/t/fund/")).toBe("positions");
+    expect(portfolioViewFor("/t/tech/performance")).toBe("performance");
+    expect(portfolioViewFor("/t/fund/what-if")).toBe("what-if");
+    expect(portfolioViewFor("/t/fund/h/NVDA")).toBeNull();
+    expect(portfolioViewFor("/t/fund/movements")).toBeNull();
+  });
+
+  it("gives the fund all six to execs, and a team's book without Activity", () => {
+    expect(portfolioViews("fund", exec).map((v) => v.href)).toEqual(["/t/fund", "/t/fund/performance", "/t/fund/risk", "/t/fund/exposure", "/t/fund/activity", "/t/fund/what-if"]);
+    expect(portfolioViews({ slug: "tech" }, exec).map((v) => v.key)).toEqual(["positions", "performance", "risk", "exposure", "what-if"]);
+  });
+
+  it("keeps the book's views from members who can't see position sizes", () => {
+    expect(portfolioViews({ slug: "tech" }, { fundWide: false, seesBook: false }).map((v) => v.key)).toEqual(["positions", "what-if"]);
+    expect(portfolioViews(null, exec)).toEqual([]);
   });
 });
 
 describe("navModel: the sidebar", () => {
-  it("opens the fund's pages for execs and admins, whatever scope is in view", () => {
-    const nav = navModel({ pathname: "/t/tech/risk", scope: { slug: "tech" }, home: "fund", fundWide: true, seesBook: true, homeSeesBook: true });
+  it("opens the fund's Portfolio for execs and admins, whatever scope is in view", () => {
+    const nav = navModel({ pathname: "/t/tech/risk", scope: { slug: "tech" }, home: "fund", fundWide: true, seesBook: true });
     expect(nav.main.map((i) => [i.key, i.href])).toEqual([
-      ["home", "/"],
       ["portfolio", "/t/fund"],
-      ["research", "/t/fund/agent"],
-      ["movements", "/t/fund/movements"],
-      ["models", "/t/fund/models"],
-      ["calendar", "/t/fund/earnings"],
+      ["markets", "/markets"],
     ]);
     expect(nav.main.find((i) => i.active)?.key).toBe("portfolio");
-    expect(nav.manage.map((i) => i.href)).toEqual(["/weekly", "/changelog", "/admin"]);
   });
 
-  it("opens a lead's own team, with Portfolio on the team's Performance", () => {
-    const nav = navModel({ pathname: "/", scope: { slug: "health" }, fundWide: false, seesBook: true });
-    expect(nav.main.find((i) => i.key === "portfolio")?.href).toBe("/t/health/attribution");
-    expect(nav.main.find((i) => i.key === "movements")?.href).toBe("/t/health/movements");
-    expect(nav.main.find((i) => i.active)?.key).toBe("home");
-    expect(nav.manage).toEqual([]);
+  it("opens a member's own team, and marks Portfolio on a holding and the Weekly update", () => {
+    expect(navModel({ pathname: "/", scope: { slug: "health" }, fundWide: false, seesBook: true }).main.find((i) => i.key === "portfolio")?.href).toBe("/t/health");
+    expect(navModel({ pathname: "/t/fund/h/NVDA", ...exec }).main.find((i) => i.active)?.key).toBe("portfolio");
+    expect(navModel({ pathname: "/weekly", ...exec }).main.find((i) => i.active)?.key).toBe("portfolio");
+    expect(navModel({ pathname: "/markets", ...exec }).main.find((i) => i.active)?.key).toBe("markets");
+    expect(navModel({ pathname: "/", ...exec }).main.some((i) => i.active)).toBe(false);
   });
 
-  it("sends members without the book to Backtesting", () => {
-    const nav = navModel({ pathname: "/backtesting", scope: { slug: "tech" }, fundWide: false, seesBook: false });
-    expect(nav.main.find((i) => i.key === "portfolio")?.href).toBe("/backtesting");
-    expect(nav.tabs).toEqual([]);
-  });
-
-  it("drops the scoped places for a member with no team yet", () => {
-    const nav = navModel({ pathname: "/", scope: null, fundWide: false, seesBook: false });
-    expect(nav.main.map((i) => i.key)).toEqual(["home", "portfolio"]);
+  it("drops the Portfolio for a member with no team yet", () => {
+    expect(navModel({ pathname: "/", scope: null, fundWide: false, seesBook: false }).main.map((i) => i.key)).toEqual(["markets"]);
   });
 });
 
-describe("navModel: the page header", () => {
-  it("gives the fund's Portfolio six tabs and marks the one in view", () => {
-    expect(tabKeys("/t/fund")).toEqual(["overview", "activity", "performance", "risk", "exposure", "backtesting"]);
-    expect(navModel({ pathname: "/t/fund", ...exec }).tabs.map((t) => t.href)).toEqual(["/t/fund", "/attribution/ledger", "/attribution", "/risk", "/exposure", "/backtesting"]);
-    expect(activeTab("/t/fund")).toBe("overview");
-    expect(activeTab("/attribution/ledger")).toBe("activity");
-    expect(activeTab("/attribution")).toBe("performance");
-    expect(activeTab("/risk")).toBe("risk");
-    expect(activeTab("/backtesting")).toBe("backtesting");
-  });
-
-  it("treats Daily as the Today period of Performance", () => {
-    expect(activeTab("/daily")).toBe("performance");
-    expect(activeTab("/t/tech/daily", { scope: { slug: "tech" }, fundWide: true, seesBook: true })).toBe("performance");
-  });
-
-  it("gives a team's Portfolio its own book pages and Backtesting", () => {
-    const team = { scope: { slug: "tech" }, fundWide: true, seesBook: true };
-    expect(navModel({ pathname: "/t/tech/risk", ...team }).tabs.map((t) => t.href)).toEqual(["/t/tech/attribution", "/t/tech/risk", "/t/tech/exposure", "/backtesting"]);
-    expect(activeTab("/t/tech/risk", team)).toBe("risk");
-  });
-
-  it("leaves Activity to execs and admins", () => {
-    // A lead viewing the fund can't, but the tabs never offer the ledger to anyone who isn't fund-wide.
-    expect(tabKeys("/t/fund", { scope: "fund", fundWide: false, seesBook: true })).not.toContain("activity");
-  });
-
-  it("gives Research and the Calendar their two tabs, a general chat included", () => {
-    expect(navModel({ pathname: "/t/fund/agent", ...exec }).tabs.map((t) => t.label)).toEqual(["Chats and boards", "Sell-side calls"]);
-    expect(activeTab("/hoot/abc")).toBe("chats");
-    expect(activeTab("/t/fund/agent/h/NVDA")).toBe("chats");
-    expect(activeTab("/t/fund/sell-side/c1")).toBe("sell-side");
-    expect(navModel({ pathname: "/t/fund/economic-calendar", ...exec }).tabs.map((t) => t.label)).toEqual(["Earnings", "Economic releases"]);
-    expect(activeTab("/t/fund/earnings")).toBe("earnings");
-  });
-
-  it("gives a holding and one earnings report a breadcrumb back instead of tabs", () => {
-    const holding = navModel({ pathname: "/t/fund/h/NVDA", ...exec });
-    expect(holding.tabs).toEqual([]);
-    expect(holding.back).toEqual({ label: "Portfolio", href: "/t/fund" });
-    expect(holding.crumbs).toEqual([{ label: "Portfolio", href: "/t/fund" }]);
-
-    const teamHolding = navModel({ pathname: "/t/tech/h/BRK.B/", scope: { slug: "tech" }, fundWide: false, seesBook: false });
-    expect(teamHolding.back).toEqual({ label: "Teams", href: "/t/tech" });
-
-    const report = navModel({ pathname: "/t/fund/earnings/e1", ...exec });
-    expect(report.tabs).toEqual([]);
-    expect(report.back).toEqual({ label: "Calendar", href: "/t/fund/earnings" });
+describe("navModel: the default header", () => {
+  it("sends a holding and its write-ups, models, calls and reports back to the Portfolio", () => {
+    for (const pathname of ["/t/fund/h/NVDA", "/t/fund/movements/m1", "/t/fund/earnings/e1"]) {
+      const nav = navModel({ pathname, ...exec });
+      expect(nav.back, pathname).toEqual({ label: "Portfolio", href: "/t/fund" });
+      expect(nav.crumbs, pathname).toEqual([{ label: "Portfolio", href: "/t/fund" }]);
+    }
     // No scope (no team yet): nowhere to go back to, so nothing rather than a broken link.
     expect(navModel({ pathname: "/t/tech/h/NVDA", scope: null, fundWide: false, seesBook: false }).back).toBeNull();
-  });
-
-  it("has no tabs on Home, a team page, Movements, Models or Manage", () => {
-    for (const pathname of ["/", "/t/tech", "/t/fund/movements/m1", "/t/fund/models", "/weekly", "/changelog", "/admin"]) {
-      expect(navModel({ pathname, ...exec }).tabs, pathname).toEqual([]);
-    }
     expect(navModel({ pathname: "/admin/pt-sheet", ...exec }).back).toEqual({ label: "Admin", href: "/admin" });
     expect(navModel({ pathname: "/weekly", ...exec }).crumbs).toEqual([{ label: "Weekly update" }]);
+  });
+
+  it("has no header tabs anywhere: the Portfolio's views are on the page", () => {
+    for (const pathname of ["/", "/t/fund", "/t/fund/risk", "/markets", "/hoot/c1"]) expect(navModel({ pathname, ...exec }).tabs, pathname).toEqual([]);
   });
 });
 
 describe("destinations", () => {
-  it("names pages the way Hoot's commands do", () => {
-    const names = destinations(exec).map((d) => d.hoot).filter(Boolean);
-    expect(names).toEqual(
-      expect.arrayContaining(["Home", "Portfolio", "Research", "Sell-side calls", "Models", "Movements", "Earnings", "Economic calendar", "Attribution", "Daily performance", "Risk", "Exposure", "Backtesting", "Activity", "Weekly update", "Changelog", "Admin"]),
-    );
-    expect(destinations({ scope: { slug: "tech" }, fundWide: false, seesBook: false }).map((d) => d.hoot)).toContain("Holdings");
+  it("names the five screens and the Portfolio's views", () => {
+    expect(destinations(exec).map((d) => d.hoot)).toEqual([
+      "Home",
+      "Portfolio",
+      "Performance",
+      "Risk",
+      "Exposure",
+      "Activity",
+      "What if",
+      "Markets",
+      "Threads",
+      "Write-ups",
+      "Models",
+      "Sell-side calls",
+      "Weekly update",
+      "Changelog",
+      "Admin",
+    ]);
+    expect(destinations({ scope: { slug: "tech" }, fundWide: false, seesBook: false }).map((d) => d.href)).toEqual([
+      "/",
+      "/t/tech",
+      "/t/tech/what-if",
+      "/markets",
+      "/hoot",
+      "/t/tech/movements",
+      "/t/tech/models",
+      "/t/tech/sell-side",
+    ]);
+    expect(destinations({ scope: null, fundWide: false, seesBook: false }).map((d) => d.href)).toEqual(["/", "/markets", "/hoot"]);
   });
 });

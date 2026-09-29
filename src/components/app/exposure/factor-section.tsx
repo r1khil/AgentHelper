@@ -73,14 +73,14 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
       id={id}
       title="Factor and macro sensitivities"
       explain={RISK_EXPLAIN.factors}
-      aside={`${f.sample.n} trading days to ${fmtDate(f.sample.to)} · greyed: |t| < ${T_STAT_THRESHOLD}`}
+      aside={`${f.sample.n} trading days to ${fmtDate(f.sample.to)}, greyed: |t| < ${T_STAT_THRESHOLD}`}
     >
       <div className="mb-3 grid gap-2 text-body">
         {read.clear.length > 0 ? (
           <ul className="grid gap-1">
             {read.clear.map((x) => (
               <li key={x.key}>
-                <span className="font-semibold">{x.label}</span> <span className="text-body text-muted-foreground">β {formatBeta(x.beta, 2)}</span> · {x.text}
+                <span className="font-semibold">{x.label}</span> <span className="text-body text-muted-foreground">β {formatBeta(x.beta, 2)}</span>, {x.text}
               </li>
             ))}
           </ul>
@@ -144,7 +144,7 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
       <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 px-1 text-caption text-muted-foreground">
         <Explained label="t-stat under each beta">{RISK_EXPLAIN.factorT}</Explained>
         <span>
-          · {f.sample.n} days, {fmtDate(f.sample.from)} to {fmtDate(f.sample.to)}
+          {f.sample.n} days, {fmtDate(f.sample.from)} to {fmtDate(f.sample.to)}
           {f.sample.dropped ? ` (${f.sample.dropped} days without every factor's close left out)` : ""}
         </span>
       </p>

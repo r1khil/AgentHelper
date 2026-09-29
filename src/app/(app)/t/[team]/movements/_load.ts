@@ -1,7 +1,7 @@
 import "server-only";
 import { notFound } from "next/navigation";
 import { loadScope } from "@/lib/teams";
-import { boardHref, holdingHref } from "@/lib/scope";
+import { holdingHref } from "@/lib/scope";
 import { getMovement, getMovementAlert, listEvidence, listTeamMovements } from "@/lib/movements";
 import { listTeamMembers } from "@/lib/holdings";
 import { agentConfigured } from "@/lib/agent/model";
@@ -49,7 +49,8 @@ export async function loadMovementsView(slug: string, selectedId: string | null)
     ticker: h.ticker,
     companyName: h.companyName,
     holdingHref: holdingHref(scope.slug, team.slug, h.ticker),
-    askHootHref: boardHref(scope.slug, team.slug, h.ticker),
+    // Asking about the holding happens on its page: the ask box over its Threads tab.
+    askHootHref: holdingHref(scope.slug, team.slug, h.ticker, "?tab=threads"),
     sessionDate: m.sessionDate,
     holdingReturnPct: num(m.holdingReturnPct),
     spxReturnPct: num(m.spxReturnPct),

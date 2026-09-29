@@ -1,11 +1,13 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { OverviewSkeleton, TeamSkeleton } from "@/components/app/page-skeletons";
-import { FUND_SCOPE_SLUG } from "@/lib/constants";
+import { usePathname } from "next/navigation";
+import { PortfolioSkeleton } from "@/components/app/portfolio/view-skeletons";
+import { portfolioViewFor } from "@/lib/nav";
 
-/** The fund's Overview or a team's page (any team page without its own loading file too): shown at once on navigation, shaped like the page so nothing moves. */
+/**
+ * The Portfolio on the first visit or a change of scope (its layout and the view in the URL), and any page under a
+ * team without its own loading file: shown at once on navigation, shaped like the page so nothing moves.
+ */
 export default function Loading() {
-  const { team } = useParams<{ team: string }>();
-  return team === FUND_SCOPE_SLUG ? <OverviewSkeleton /> : <TeamSkeleton />;
+  return <PortfolioSkeleton view={portfolioViewFor(usePathname()) ?? "positions"} />;
 }

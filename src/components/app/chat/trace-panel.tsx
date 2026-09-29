@@ -136,7 +136,7 @@ export function StepDivider({ n, view }: { n: number; view: TraceView }) {
       <span className="font-medium text-foreground">{s.start.writeUp ? "Write-up" : `Step ${n + 1}`}</span>
       <span>
         tools: {s.start.toolChoice}
-        {s.start.activeTools !== undefined && s.start.totalTools !== undefined && s.start.activeTools < s.start.totalTools ? ` · ${s.start.activeTools} of ${s.start.totalTools} offered` : ""}
+        {s.start.activeTools !== undefined && s.start.totalTools !== undefined && s.start.activeTools < s.start.totalTools ? `, ${s.start.activeTools} of ${s.start.totalTools} offered` : ""}
       </span>
       {s.start.writeUp ? (
         <span className="text-warning-foreground">from the evidence, {WRITE_UP_REASONS[s.start.writeUp]}</span>
@@ -214,8 +214,8 @@ export function FetchRows({ events, end }: { events: TraceEvent[]; end?: Extract
           {!end.ok && <AlertTriangle className="size-3 shrink-0" />}
           <span>
             {end.ok ? "done" : "failed"} in {ms(end.ms)}
-            {end.sources ? ` · ${end.sources} source${end.sources === 1 ? "" : "s"}` : ""}
-            {end.bytes !== undefined ? ` · ${kb(end.bytes)} to the model` : ""}
+            {end.sources ? `, ${end.sources} source${end.sources === 1 ? "" : "s"}` : ""}
+            {end.bytes !== undefined ? `, ${kb(end.bytes)} to the model` : ""}
           </span>
         </li>
       )}

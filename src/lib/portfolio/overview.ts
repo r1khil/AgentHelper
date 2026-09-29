@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
+import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { fmtDayMonth } from "@/lib/format";
 import { computeAttribution } from "@/lib/attribution/attribution";
 import { withQuotes, type LiveQuote, type LiveStatus } from "@/lib/attribution/live";
@@ -80,7 +81,7 @@ const HISTORY = "2y" as const;
 
 function dataAttention(loaded: LoadedSeries, held: string[], session: string): LiveLedger["attention"] {
   const out: LiveLedger["attention"] = [];
-  const ledger = "/attribution/ledger";
+  const ledger = `/t/${FUND_SCOPE_SLUG}/activity`;
   const lastSet = loaded.weightSets.at(-1);
   if (!lastSet) out.push({ tag: "Check", title: "Benchmark weights", meta: "None saved, so allocation and selection can't be measured", href: `${ledger}?tab=benchmark` });
   else {

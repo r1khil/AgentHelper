@@ -41,7 +41,7 @@ export function SectorTilts({ x, benchShort, weightSetAsOf }: { x: Exposure; ben
           x.hasBenchmark ? (
             <>
               Black is overweight, grey underweight. {benchShort} weights{weightSetAsOf ? ` saved ${fmtDay(weightSetAsOf)}` : ""}
-              {x.throughEtfs ? " · each ETF split into its holdings" : ""}.
+              {x.throughEtfs ? ", each ETF split into its holdings" : ""}.
             </>
           ) : (
             "Add S&P 500 sector weights to compare against the benchmark."
@@ -53,7 +53,7 @@ export function SectorTilts({ x, benchShort, weightSetAsOf }: { x: Exposure; ben
           <span role="columnheader">Sector</span>
           <span role="columnheader" className="text-right">Fund</span>
           <span role="columnheader" className="truncate text-right">{x.hasBenchmark ? "Benchmark" : benchShort}</span>
-          <span aria-hidden className="text-center">Under · Over</span>
+          <span aria-hidden className="text-center">Under, over</span>
           <span role="columnheader" className="text-right"><Tip label={<ReadAs text="Tilt, active weight in basis points">Tilt</ReadAs>} side="bottom">{RISK_EXPLAIN.activeWeight}</Tip></span>
         </div>
         {rows.map((s) => (
@@ -61,7 +61,7 @@ export function SectorTilts({ x, benchShort, weightSetAsOf }: { x: Exposure; ben
             key={s.key}
             role="row"
             className={cn(SECTOR_COLS, "min-h-[38px] items-center border-b border-row")}
-            title={`${s.label}: ${rpct(s.weight)}${s.benchWeight !== null ? ` vs ${rpct(s.benchWeight)} in ${benchShort}` : ""}${s.tickers.length ? ` · ${s.tickers.join(", ")}` : ""}`}
+            title={`${s.label}: ${rpct(s.weight)}${s.benchWeight !== null ? ` vs ${rpct(s.benchWeight)} in ${benchShort}` : ""}${s.tickers.length ? `. ${s.tickers.join(", ")}` : ""}`}
           >
             <span role="rowheader" className="min-w-0 truncate">
               {s.label}
@@ -130,7 +130,7 @@ export function FactorTilts({ report: r, basePath, query }: { report: RiskReport
             key={x.key}
             role="row"
             className="grid min-h-[34px] grid-cols-[80px_minmax(0,1fr)_48px] items-center gap-x-2.5 border-b border-row"
-            title={`${x.definition} · β ${formatBeta(x.c.beta, 3)}, t ${formatBeta(x.c.t, 1)}${x.c.significant ? "" : " (not statistically clear)"}`}
+            title={`${x.definition}. β ${formatBeta(x.c.beta, 3)}, t ${formatBeta(x.c.t, 1)}${x.c.significant ? "" : " (not statistically clear)"}`}
           >
             <span role="rowheader" className="truncate">
               {x.label}
@@ -176,8 +176,8 @@ export function Concentration({ x, report: r }: { x: Exposure; report: RiskRepor
 
 const viaText = (n: NameExposure) => {
   const etfs = n.viaEtfs.map((v) => v.via).join(", ");
-  if (n.direct > 5e-5) return `Direct ${rpct(n.direct, 2)}${etfs ? ` · plus ${etfs}` : ""}`;
-  return etfs ? `Not held directly · through ${etfs}` : "Direct";
+  if (n.direct > 5e-5) return `Direct ${rpct(n.direct, 2)}${etfs ? `, plus ${etfs}` : ""}`;
+  return etfs ? `Not held directly, through ${etfs}` : "Direct";
 };
 
 /**
@@ -217,7 +217,7 @@ export function PositionsAfterLookthrough({ x, report: r, lookthrough }: { x: Ex
 
 const sectorOf = (r: RiskReport, ticker: string) => {
   const s = r.holdings.find((h) => h.ticker === ticker)?.sector;
-  return s ? ` · ${SECTOR_LABELS[s]}` : "";
+  return s ? `, ${SECTOR_LABELS[s]}` : "";
 };
 
 /**
@@ -258,7 +258,7 @@ export function ActiveBetsPanel({ report: r, x, lookthrough, teams, benchShort }
             const n = names.get(b.key);
             const note = team?.name ?? (n?.sector ? SECTOR_LABELS[n.sector] : b.name);
             return (
-              <div key={b.key} role="row" className={cn(COLS, "relative min-h-10 border-b border-row")} title={`${b.key} · ${b.name}`}>
+              <div key={b.key} role="row" className={cn(COLS, "relative min-h-10 border-b border-row")} title={`${b.key}, ${b.name}`}>
                 <span role="rowheader" className="truncate font-semibold">
                   {team ? (
                     <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(b.key)}`} aria-label={tickerName(b.key, b.name)} className="hover:underline">{b.key}</RowLink>
@@ -282,7 +282,7 @@ export function ActiveBetsPanel({ report: r, x, lookthrough, teams, benchShort }
   const bets = x.sectors.filter((s) => s.key !== "cash" && s.active !== null).sort((a, b) => Math.abs(b.active!) - Math.abs(a.active!)).slice(0, 6);
   return (
     <section id="stock-active" aria-labelledby="exp-bets" className="mt-[34px] scroll-mt-4">
-      {head(`By sector · against ${benchShort} weight, in bp`)}
+      {head(`By sector, against ${benchShort} weight, in bp`)}
       {bets.length > 0 && (
         <div role="table" aria-label="Largest active bets by sector" className="mt-2 text-body">
           {columns("ETF", "Sector", benchShort)}

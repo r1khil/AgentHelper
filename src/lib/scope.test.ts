@@ -54,8 +54,9 @@ describe("scoped hrefs", () => {
     expect(holdingHref("fund", "tech", "TSM")).toBe("/t/fund/h/TSM");
     expect(holdingHref("fund", "tech", "TSM", "?tab=earnings")).toBe("/t/fund/h/TSM?tab=earnings");
     expect(holdingHref("consumer", "consumer", "BRK.B")).toBe("/t/consumer/h/BRK.B");
-    expect(boardHref("fund", "tech", "TSM")).toBe("/t/fund/agent/h/TSM");
-    expect(boardHref("tech", "tech", "TSM", "c1")).toBe("/t/tech/agent/h/TSM?chat=c1");
+    expect(boardHref("fund", "tech", "TSM")).toBe("/t/fund/h/TSM?tab=threads");
+    expect(boardHref("consumer", "tech", "TSM")).toBe("/t/tech/h/TSM?tab=threads");
+    expect(boardHref("tech", "tech", "TSM", "c1")).toBe("/hoot/c1");
     expect(movementHref("fund", "tech", "m1")).toBe("/t/fund/movements/m1");
     expect(modelHref("consumer", "tech", "x1")).toBe("/t/tech/models/x1");
     expect(sellSideHref(null, "consumer", "s1")).toBe("/t/consumer/sell-side/s1");

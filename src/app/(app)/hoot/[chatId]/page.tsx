@@ -1,23 +1,24 @@
 import type { Metadata } from "next";
 import { cache } from "react";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
+import { eq } from "drizzle-orm";
 import { canOpenChat, isFundWide, listAccessibleTeams, requireUser, transparencyEnabled } from "@/lib/auth";
 import { getTeam, rememberedScope } from "@/lib/teams";
-import { FUND_SCOPE_SLUG } from "@/lib/constants";
-import { boardHref } from "@/lib/scope";
+import { holdingHref } from "@/lib/scope";
+import { threadTitle } from "@/lib/thread-title";
 import { effectiveRunStatus, getChat, loadMessages } from "@/lib/chats";
 import { listTeamHoldings } from "@/lib/holdings";
-import { deleteChat } from "@/lib/actions/chats";
 import { agentConfigured } from "@/lib/agent/model";
 import { chatNextQuestions } from "@/lib/agent/memory/store";
-import { profiles } from "@/db/schema";
+import { chatMessages, profiles } from "@/db/schema";
 import { db } from "@/db/client";
-import { eq } from "drizzle-orm";
 import { ChatWorkspace } from "@/components/app/chat/chat-panel";
-import type { PinTarget } from "@/components/app/chat/pin-to-board";
+import { PinToBoard, type PinTarget } from "@/components/app/chat/pin-to-board";
+import { DeleteThread } from "@/components/app/chat/delete-thread";
 import { ShareButton } from "@/components/app/chat/share-button";
 import { TraceToggle } from "@/components/app/chat/trace-toggle";
-import { Button } from "@/components/ui/button";
+import { HoldingLogo } from "@/components/app/holding-logo";
+import type { Crumb } from "@/components/app/page-head";
 
 // One read per request, shared by the title and the page.
 const loadChat = cache(getChat);
@@ -26,13 +27,13 @@ export async function generateMetadata({ params }: { params: Promise<{ chatId: s
   const { chatId } = await params;
   const [user, chat] = await Promise.all([requireUser(), loadChat(chatId)]);
   // A chat this member can't open gets no title of its own (the page 404s).
-  return { title: chat && canOpenChat(user, chat) ? `${chat.title} · Research` : "Research" };
+  return { title: chat && canOpenChat(user, chat) ? threadTitle(chat.title) : "Thread" };
 }
 
 /**
- * A general chat with Hoot (not about one holding), under Research. It lives outside /t/<team> on purpose: the team
- * it is filed under is bookkeeping, so opening it never changes the sector in the sidebar and changing the sector
- * never closes it. Holding chats open on the holding's research instead.
+ * A thread with Hoot: every chat opens here, a general one and one pinned to a holding alike. It lives outside
+ * /t/<team> on purpose: the team it is filed under is bookkeeping, so opening it never changes the scope in the sidebar
+ * and changing the scope never closes it. A holding's thread names the holding in its header and links back to it.
  */
 export default async function HootChatPage({ params }: { params: Promise<{ chatId: string }> }) {
   const { chatId } = await params;
@@ -44,44 +45,57 @@ export default async function HootChatPage({ params }: { params: Promise<{ chatI
   if (chat.teamId && !team) notFound();
   const [remembered, accessible] = await Promise.all([rememberedScope(user), listAccessibleTeams(user)]);
   const holdings = await listTeamHoldings(team ? team.id : accessible.map((t) => t.id), "all");
-  const pinned = team && holdings.find(({ h }) => h.id === chat.holdingId)?.h.ticker;
-  if (team && pinned) redirect(boardHref(remembered, team.slug, pinned, chat.id));
+  const pinned = team && chat.holdingId ? (holdings.find(({ h }) => h.id === chat.holdingId)?.h ?? null) : null;
   const fundWide = isFundWide(user);
-  // Research in the breadcrumb goes to the scope the member is in (this page keeps it): the fund's chats or one team's.
-  // Without one remembered, every team for execs and admins, their own team otherwise.
-  const listScope = remembered ?? (fundWide || !team ? FUND_SCOPE_SLUG : team.slug);
-  const [messages, related, [author], pinnable] = await Promise.all([
+  const [messages, times, related, [author], pinnable] = await Promise.all([
     loadMessages(chat.id),
+    db
+      .select({ id: chatMessages.id, createdAt: chatMessages.createdAt })
+      .from(chatMessages)
+      .where(eq(chatMessages.chatId, chat.id))
+      .then((rows) => Object.fromEntries(rows.map((r) => [r.id, r.createdAt.toISOString()]))),
     chatNextQuestions(chat.id).catch(() => []),
     chat.createdBy ? db.select({ name: profiles.fullName }).from(profiles).where(eq(profiles.id, chat.createdBy)).limit(1) : Promise.resolve([]),
-    // The holdings this conversation can be pinned to: any team's for execs and admins, the team's own otherwise.
-    listTeamHoldings(fundWide || !team ? accessible.map((t) => t.id) : team.id),
+    // The holdings a general conversation can be pinned to: any team's for execs and admins, the team's own otherwise.
+    pinned ? Promise.resolve([]) : listTeamHoldings(fundWide || !team ? accessible.map((t) => t.id) : team.id),
   ]);
-  const tickers = holdings.filter(({ h }) => h.status === "active").map(({ h }) => h.ticker);
+  // A holding's thread is about that holding; a general one can turn to any of the scope's active holdings.
+  const tickers = pinned ? [pinned.ticker] : holdings.filter(({ h }) => h.status === "active").map(({ h }) => h.ticker);
   const teamById = new Map(accessible.map((t) => [t.id, t]));
   const pinTargets: PinTarget[] = pinnable.flatMap(({ h }) => {
     const t = teamById.get(h.teamId);
     return t ? [{ ticker: h.ticker, company: h.companyName, teamSlug: t.slug, team: t.name }] : [];
   });
   const transparency = transparencyEnabled(user);
+  // The holding opens in the scope the member is in when that scope shows it (the fund shows every team's).
+  const crumbs: Crumb[] =
+    team && pinned
+      ? [
+          {
+            label: (
+              <span className="inline-flex items-center gap-2">
+                <HoldingLogo ticker={pinned.ticker} size={20} />
+                {pinned.ticker}
+              </span>
+            ),
+            href: holdingHref(remembered, team.slug, pinned.ticker),
+          },
+        ]
+      : [{ label: team?.name ?? "Whole fund" }];
 
   return (
     <ChatWorkspace
       title={chat.title}
-      team={team?.name ?? "Whole fund"}
+      ticker={pinned?.ticker ?? null}
+      crumbs={crumbs}
       teamSlug={team?.slug ?? null}
       author={author?.name ?? (chat.createdBy === user.id ? user.fullName : null)}
       updatedAt={chat.updatedAt.toISOString()}
-      researchHref={`/t/${listScope}/agent`}
       actions={
         <>
           {fundWide && <TraceToggle on={transparency} />}
-          <form action={deleteChat} className="flex">
-            <input type="hidden" name="id" value={chat.id} />
-            <Button type="submit" variant="ghost">
-              Delete
-            </Button>
-          </form>
+          {pinTargets.length > 0 && <PinToBoard chatId={chat.id} targets={pinTargets} look="header" />}
+          <DeleteThread chatId={chat.id} />
           <ShareButton />
         </>
       }
@@ -92,7 +106,7 @@ export default async function HootChatPage({ params }: { params: Promise<{ chatI
       configured={agentConfigured()}
       transparency={transparency}
       related={related}
-      pinTargets={pinTargets}
+      times={times}
     />
   );
 }

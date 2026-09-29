@@ -151,11 +151,11 @@ describe("weeks and the month picker", () => {
 
 describe("marketDayNote", () => {
   it("names bond-market-only closures and exchange holidays", () => {
-    expect(marketDayNote("2026-10-12")).toBe("Columbus Day · bond market closed");
-    expect(marketDayNote("2026-11-11")).toBe("Veterans Day · bond market closed");
-    expect(marketDayNote("2026-11-26")).toBe("Thanksgiving · markets closed");
-    expect(marketDayNote("2026-04-03")).toBe("Good Friday · markets closed");
-    expect(marketDayNote("2026-07-03")).toBe("Independence Day · markets closed");
+    expect(marketDayNote("2026-10-12")).toBe("Columbus Day, bond market closed");
+    expect(marketDayNote("2026-11-11")).toBe("Veterans Day, bond market closed");
+    expect(marketDayNote("2026-11-26")).toBe("Thanksgiving, markets closed");
+    expect(marketDayNote("2026-04-03")).toBe("Good Friday, markets closed");
+    expect(marketDayNote("2026-07-03")).toBe("Independence Day, markets closed");
     expect(marketDayNote("2025-01-09")).toBe("Markets closed");
   });
   it("says nothing on ordinary days and weekends", () => {
@@ -335,7 +335,7 @@ describe("expectationsWord", () => {
   });
   it("turns amber with the due day once the report is within two weeks", () => {
     expect(expectationsWord("not_started", report, "2026-10-20")).toMatchObject({ text: "Due Oct 29", tone: "caution" });
-    expect(expectationsWord("draft", report, "2026-10-20")).toMatchObject({ text: "Draft · due Oct 29", tone: "caution" });
+    expect(expectationsWord("draft", report, "2026-10-20")).toMatchObject({ text: "Draft, due Oct 29", tone: "caution" });
     // A pre-market report is due the session before.
     expect(expectationsWord("not_started", { reportDate: "2026-10-30", reportHour: "bmo" }, "2026-10-20").text).toBe("Due Oct 29");
   });

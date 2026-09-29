@@ -70,11 +70,11 @@ describe("dates", () => {
 describe("Today v2", () => {
   it("says when the market opens or closes, New York time", () => {
     // Mon, Sep 28, 2026, 8:18 NY (EDT = UTC-4).
-    expect(marketLine(new Date("2026-09-28T12:18:00Z"))).toBe("Mon, Sep 28 · Market opens in 1h 12m");
-    expect(marketLine(new Date("2026-09-28T15:00:00Z"))).toBe("Mon, Sep 28 · Market closes in 5h 0m");
-    expect(marketLine(new Date("2026-09-28T19:45:00Z"))).toBe("Mon, Sep 28 · Market closes in 15m");
-    expect(marketLine(new Date("2026-09-28T21:00:00Z"))).toBe("Mon, Sep 28 · Market closed · opens tomorrow 9:30 AM ET");
-    expect(marketLine(new Date("2026-09-26T15:00:00Z"))).toBe("Sat, Sep 26 · Market closed · opens Mon, Sep 28, 9:30 AM ET");
+    expect(marketLine(new Date("2026-09-28T12:18:00Z"))).toBe("Mon, Sep 28. Market opens in 1h 12m. Prices delayed 15 min");
+    expect(marketLine(new Date("2026-09-28T15:00:00Z"))).toBe("Mon, Sep 28. Market open, closes in 5h 0m. Prices delayed 15 min");
+    expect(marketLine(new Date("2026-09-28T19:45:00Z"))).toBe("Mon, Sep 28. Market open, closes in 15m. Prices delayed 15 min");
+    expect(marketLine(new Date("2026-09-28T21:00:00Z"))).toBe("Mon, Sep 28. Market closed, opens tomorrow 9:30 AM ET");
+    expect(marketLine(new Date("2026-09-26T15:00:00Z"))).toBe("Sat, Sep 26. Market closed, opens Mon, Sep 28, 9:30 AM ET");
   });
 
   it("formats greeting, stamps and agenda dates", () => {

@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PageHead } from "@/components/app/page-head";
 import { FilterChip, FilterChips, Pill, StatStrip, type PillTone } from "@/components/app/panel";
 import { Hero } from "@/components/app/portfolio/hero";
+import { ViewMeta } from "@/components/app/portfolio/view-meta";
 import { HowNote, SectionHead, Signed, signTone } from "@/components/app/portfolio/parts";
 import { BENCH_LINE, FUND_LINE, LineKey } from "@/components/app/portfolio/lines-chart";
 import { bridgeCells, LegendItem, PeriodBar, SectorEffectsSection, TeamBars } from "@/components/app/attribution/attribution-panels";
@@ -31,7 +31,7 @@ const PROVISIONAL_MS = 5 * 60_000;
 
 const STATUS: Record<LiveStatus, { label: string; tone: PillTone }> = {
   live: { label: "Live", tone: "good" },
-  provisional: { label: "Closed · provisional", tone: "caution" },
+  provisional: { label: "Closed, provisional", tone: "caution" },
   final: { label: "Final", tone: "neutral" },
 };
 
@@ -45,7 +45,7 @@ export type TodayPeriod = { basePath: string; inception: string; latest: string 
 function statusLine(s: LiveSnapshot) {
   if (s.status === "live") return `Prices as of ${s.asOf ? fmtTime(s.asOf) : "—"}`;
   if (s.status === "provisional") return "Closing quotes until the 5:00 pm price run stores the closes";
-  return s.phase === "open" ? fmtDay(s.session) : `${fmtDay(s.session)} · market opens ${fmtDateTime(s.opensAt)}`;
+  return s.phase === "open" ? fmtDay(s.session) : `${fmtDay(s.session)}, market opens ${fmtDateTime(s.opensAt)}`;
 }
 
 /**
@@ -173,25 +173,25 @@ export function TodayView({ initial, scope, teams: teamList, period, notices: pa
   );
   const note = (
     <>
-      · P&amp;L {fmtChangeUsd(snap.pnl, 0)}
+      , P&amp;L {fmtChangeUsd(snap.pnl, 0)}
       {r.benchmarkReturn !== null && (
         <>
-          {" "}· <Tip label="Benchmark">{fund ? EXPLAIN.benchmark : EXPLAIN.teamBenchmark}</Tip> {fmtChangePct(pct(r.benchmarkReturn))}
+          , <Tip label="Benchmark">{fund ? EXPLAIN.benchmark : EXPLAIN.teamBenchmark}</Tip> {fmtChangePct(pct(r.benchmarkReturn))}
           {!fund && <span title={scope.benchmarkSectors}> ({scope.benchmarkName})</span>}
         </>
       )}
       {fund ? (
         <>
-          {" "}· <Tip label={INDEX_LABEL}>{EXPLAIN.index}</Tip> {fmtChangePct(pct(snap.spx))}, Dow {fmtChangePct(pct(snap.dow))}
+          , <Tip label={INDEX_LABEL}>{EXPLAIN.index}</Tip> {fmtChangePct(pct(snap.spx))}, Dow {fmtChangePct(pct(snap.dow))}
           {active !== null && (
             <>
-              {" "}· {fmtChangeBp(bps(active))} <Tip label="vs S&P 500">{EXPLAIN.active}</Tip>
+              , {fmtChangeBp(bps(active))} <Tip label="vs S&P 500">{EXPLAIN.active}</Tip>
             </>
           )}
         </>
       ) : (
         <>
-          {" "}· <Tip label="To the Fund">{EXPLAIN.fundContribution}</Tip> {fmtChangeBp(bps(teamR.fundContribution))}, {fmtPct(pct(teamR.avgFundWeight), 1)} of the Fund at the open
+          , <Tip label="To the Fund">{EXPLAIN.fundContribution}</Tip> {fmtChangeBp(bps(teamR.fundContribution))}, {fmtPct(pct(teamR.avgFundWeight), 1)} of the Fund at the open
         </>
       )}
     </>
@@ -199,21 +199,14 @@ export function TodayView({ initial, scope, teams: teamList, period, notices: pa
 
   return (
     <>
-      <PageHead
-        crumbs={[{ label: "Portfolio" }]}
-        scope
-        asof={
-          <>
-            <Pill tone={status.tone} className="mr-1.5">
-              {snap.status === "live" && <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-current" aria-hidden />}
-              {status.label}
-            </Pill>
-            {statusLine(snap)}
-          </>
-        }
-      />
+      <ViewMeta>
+        <Pill tone={status.tone} className="mr-1.5">
+          {status.label}
+        </Pill>
+        {statusLine(snap)}
+      </ViewMeta>
       <Hero
-        label={`${gap === null ? `${portfolioLabel} return` : "Against the sector benchmark"}, ${hoursLabel} · from the ${fmtDay(snap.base)} close`}
+        label={`${gap === null ? `${portfolioLabel} return` : "Against the sector benchmark"}, ${hoursLabel}, from the ${fmtDay(snap.base)} close`}
         value={gap === null ? fmtChangePct(pct(snap.ret)) : fmtChangeBp(bps(gap))}
         tone={signTone(gap ?? snap.ret, 10_000)}
         change={change}
@@ -260,8 +253,8 @@ export function TodayView({ initial, scope, teams: teamList, period, notices: pa
           title={<Tip label="Holdings">{EXPLAIN.contributors}</Tip>}
           sub={
             <>
-              {snap.holdings.length} {snap.holdings.length === 1 ? "holding" : "holdings"} · {fmtUsd(snap.value, 0)} {fund ? "NAV" : "held"}
-              {top && top.contribution > 0 && <> · {top.ticker} added the most, {fmtChangeBp(bps(top.contribution), 1)}</>}
+              {snap.holdings.length} {snap.holdings.length === 1 ? "holding" : "holdings"}, {fmtUsd(snap.value, 0)} {fund ? "NAV" : "held"}
+              {top && top.contribution > 0 && <>. {top.ticker} added the most, {fmtChangeBp(bps(top.contribution), 1)}</>}
               {bottom && bottom.contribution < 0 && <>; {bottom.ticker} cost the most, {fmtChangeBp(bps(bottom.contribution), 1)}</>}
             </>
           }

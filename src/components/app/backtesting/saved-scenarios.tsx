@@ -17,15 +17,15 @@ export function SavedScenarios({ items, activeId, viewerId, fundWide }: { items:
   return (
     <details className="mb-5 rounded-xl ring-1 ring-foreground/10" open={Boolean(activeId)}>
       <summary className="cursor-pointer px-4 py-3 text-body font-medium">
-        Saved scenarios <span className="font-normal text-muted-foreground">· {items.length}</span>
+        Saved scenarios <span className="font-normal text-muted-foreground">{items.length}</span>
       </summary>
       <ul className="divide-y border-t text-body">
         {items.map((s) => (
           <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
             <div className="min-w-0">
-              <Link href={`/backtesting?scenario=${s.id}`} className={s.id === activeId ? "font-semibold" : "font-medium hover:underline"}>{s.name}</Link>
+              <Link href={`?scenario=${s.id}`} className={s.id === activeId ? "font-semibold" : "font-medium hover:underline"}>{s.name}</Link>
               <div className="text-body text-muted-foreground">
-                {s.changes} change{s.changes === 1 ? "" : "s"} · {fmtDate(s.from)} – {fmtDate(s.to)} vs {s.benchmark} · {s.createdBy ?? "Someone"}, {fmtDate(s.createdAt)}
+                {s.changes} change{s.changes === 1 ? "" : "s"}, {fmtDate(s.from)} – {fmtDate(s.to)} vs {s.benchmark}. {s.createdBy ?? "Someone"}, {fmtDate(s.createdAt)}
               </div>
               {s.note && <div className="mt-0.5 max-w-xl text-caption text-muted-foreground">{s.note}</div>}
             </div>
@@ -88,7 +88,7 @@ export function SaveScenarioFields({ onSave, disabled, audience }: SaveProps) {
   return (
     <>
       <div className="text-body font-medium">
-        Save and share <span className="font-normal text-muted-foreground">· keeps these weights, dates and benchmark under a link {audience} can open</span>
+        Save and share <span className="font-normal text-muted-foreground">, keeps these weights, dates and benchmark under a link {audience} can open</span>
       </div>
       {saved ? (
         <div className="flex flex-wrap items-center gap-2 text-body">

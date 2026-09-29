@@ -54,10 +54,10 @@ const end = lastSession();
 const monthBack = DateTime.fromISO(end).minus({ months: 1 }).toISODate()!;
 const quarterBack = DateTime.fromISO(end).minus({ months: 3 }).toISODate()!;
 
-const fundAttribution: PageContext = { kind: "attribution", path: "/attribution", title: "Performance", scope: "fund", period: "1m", start: monthBack, end };
-const fundRisk: PageContext = { kind: "risk", path: "/risk", title: "Risk", scope: "fund", lookback: "1y", asOf: end };
-const fundDaily: PageContext = { kind: "daily", path: "/daily", title: "Performance today", scope: "fund", session: end, status: "final" };
-const backtesting: PageContext = { kind: "backtesting", path: "/backtesting", title: "Backtesting", from: quarterBack, to: end, benchmark: "SPY", changed: [], addedTickers: [], ran: false };
+const fundAttribution: PageContext = { kind: "attribution", path: "/t/fund/performance", title: "Performance", scope: "fund", period: "1m", start: monthBack, end };
+const fundRisk: PageContext = { kind: "risk", path: "/t/fund/risk", title: "Risk", scope: "fund", lookback: "1y", asOf: end };
+const fundDaily: PageContext = { kind: "daily", path: "/t/fund/performance", title: "Performance today", scope: "fund", session: end, status: "final" };
+const backtesting: PageContext = { kind: "backtesting", path: "/t/fund/what-if", title: "What if", from: quarterBack, to: end, benchmark: "SPY", changed: [], addedTickers: [], ran: false };
 
 /** "I can't …" in either apostrophe. */
 const CANT = /\bcan(?:no|'|’)t\b|\bnot able\b|\bdon(?:'|’)t have\b/i;
@@ -320,10 +320,10 @@ export const EVAL_CASES: EvalCase[] = [
     id: "app-explain-movements",
     question: "i dont understand what this page is saying",
     as: "associate",
-    page: { kind: "page", path: "/t/tech/movements", title: "Movements" },
+    page: { kind: "page", path: "/t/tech/movements/00000000-0000-0000-0000-000000000000", title: "AVGO movement" },
     tags: ["app"],
     expect: { maxToolCalls: 3, answer: [/400 ?bp|4 percentage points|4 pp/i, /write[- ]?up|update/i], answerNot: [CANT] },
-    note: "The Risk version of this question worked because Risk publishes its context; Movements didn't.",
+    note: "The Risk version of this question worked because Risk publishes its context; a movement write-up doesn't.",
   },
   {
     id: "app-where-weekly",
@@ -336,7 +336,7 @@ export const EVAL_CASES: EvalCase[] = [
     id: "app-term-active-share",
     question: "what does active share mean on this page?",
     as: "exec",
-    page: { kind: "exposure", path: "/exposure", title: "Exposure", scope: "fund", lookback: "1y", asOf: end },
+    page: { kind: "exposure", path: "/t/fund/exposure", title: "Exposure", scope: "fund", lookback: "1y", asOf: end },
     tags: ["app"],
     expect: { maxToolCalls: 2, answer: [/benchmark|index/i], answerNot: [CANT] },
   },
@@ -382,8 +382,25 @@ export const EVAL_CASES: EvalCase[] = [
     as: "exec",
     page: { kind: "page", path: "/", title: "Home" },
     tags: ["control"],
-    expect: { calls: ["navigate"], notCalls: ["get_attribution"], maxToolCalls: 1, maxErrors: 0, href: /^\/attribution\?period=ytd$/ },
+    expect: { calls: ["navigate"], notCalls: ["get_attribution"], maxToolCalls: 1, maxErrors: 0, href: /^\/t\/fund\/performance\?period=ytd$/ },
     note: "A 'show me' request opens the page; it doesn't research.",
+  },
+  {
+    id: "control-old-page-name",
+    question: "take me to AVGO's movements",
+    as: "exec",
+    page: { kind: "page", path: "/t/fund", title: "Portfolio" },
+    tags: ["control"],
+    expect: { calls: ["navigate"], maxToolCalls: 1, maxErrors: 0, answerNot: [CANT], href: /^\/t\/fund\/h\/AVGO\?tab=write-ups$/ },
+    note: "Movements stopped being a page on Sep 29, 2026: a holding's write-ups are its Write-ups tab.",
+  },
+  {
+    id: "control-backtest-what-if",
+    question: "open backtesting with AVGO trimmed by 2 points from cash",
+    as: "exec",
+    page: { kind: "page", path: "/", title: "Home" },
+    tags: ["control"],
+    expect: { calls: ["navigate"], notCalls: ["run_backtest"], maxToolCalls: 1, maxErrors: 0, href: /^\/t\/fund\/what-if\?trade=AVGO/ },
   },
   {
     id: "control-research-not-navigate",

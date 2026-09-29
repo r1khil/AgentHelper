@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PageHead } from "@/components/app/page-head";
 import { Segmented, StatStrip } from "@/components/app/panel";
 import { Hero } from "@/components/app/portfolio/hero";
+import { ViewMeta } from "@/components/app/portfolio/view-meta";
 import { HowNote, SectionHead } from "@/components/app/portfolio/parts";
 import { fmtAccounting, fmtDate, fmtDay, fmtDayMonth } from "@/lib/format";
 import { LOOKBACKS, MIN_OBSERVATIONS, MIN_REALIZED_DAYS, type RiskReport } from "@/lib/risk/model";
@@ -79,17 +79,16 @@ export function RiskView({
   return (
     <>
       <OpenDetailsOnHash />
-      <PageHead
-        crumbs={[{ label: "Portfolio" }]}
-        scope
-        asof={`Today's weights · closes through ${fmtDay(r.asOf)}`}
+      <ViewMeta
         actions={
           <Button variant="secondary" nativeButton={false} render={<a href={`/api/risk/export?file=positions&lookback=${r.lookback}${exportQuery}`} download />}>
             <Download aria-hidden />
             Export CSV
           </Button>
         }
-      />
+      >
+        Today&apos;s weights, closes through {fmtDay(r.asOf)}
+      </ViewMeta>
       <div data-tour="risk-toolbar">
         <Hero
           label={`Volatility, ${LOOKBACKS[r.lookback].label}, annualized`}
@@ -97,7 +96,7 @@ export function RiskView({
           change={p.trackingError === null ? undefined : <span className="text-foreground"><Tip label="Tracking error">{RISK_EXPLAIN.trackingError}</Tip> {rpct(p.trackingError)}</span>}
           note={
             <>
-              {p.trackingError === null ? "Add S&P 500 sector weights for tracking error · " : "· "}S&amp;P 500 <Tip label="volatility">{RISK_EXPLAIN.vol}</Tip> {rpct(p.marketVol)} · <Tip label="beta">{RISK_EXPLAIN.beta}</Tip> {rnum(p.beta)} to the S&amp;P 500
+              {p.trackingError === null ? "Add S&P 500 sector weights for tracking error. " : ", "}S&amp;P 500 <Tip label="volatility">{RISK_EXPLAIN.vol}</Tip> {rpct(p.marketVol)}, <Tip label="beta">{RISK_EXPLAIN.beta}</Tip> {rnum(p.beta)} to the S&amp;P 500
             </>
           }
           aside={<HeroNotes notices={notices ?? []} />}
@@ -138,7 +137,7 @@ export function RiskView({
             label: <Tip label="Expected shortfall">{RISK_EXPLAIN.es}</Tip>,
             value: rpct(-p.var.es, 2),
             tone: "down",
-            note: `1 day · ${fmtAccounting(-p.var.esDollars, 0)}`,
+            note: `1 day, ${fmtAccounting(-p.var.esDollars, 0)}`,
           },
           { label: <Tip label="Effective positions">{RISK_EXPLAIN.effectiveN}</Tip>, value: rnum(p.effectiveN, 1), note: `of the ${r.holdings.length} measured` },
         ]}
@@ -155,7 +154,7 @@ export function RiskView({
         <SectionHead
           id="risk-more"
           title="More ways to read the same risk"
-          sub={<>Positions at the {fmtDate(r.asOf)} close · returns {r.window.from ? `${fmtDate(r.window.from)} – ${fmtDate(r.window.to)}` : "—"} ({r.window.days} trading days)</>}
+          sub={<>Positions at the {fmtDate(r.asOf)} close, returns {r.window.from ? `${fmtDate(r.window.from)} – ${fmtDate(r.window.to)}` : "—"} ({r.window.days} trading days)</>}
         />
         <div data-tour="risk-strip" className="mt-2">
           <StatStrip
@@ -167,7 +166,7 @@ export function RiskView({
                 tone: worst && worst.ret < 0 ? "down" : null,
                 note: worst ? fmtDate(worst.date) : "no days in the window",
               },
-              { label: <Tip label="If the S&P 500 fell 10%">{RISK_EXPLAIN.stress}</Tip>, value: rusd(p.stress.dollars), tone: p.stress.dollars < 0 ? "down" : null, note: `${rpct(p.stress.move)} · beta-implied` },
+              { label: <Tip label="If the S&P 500 fell 10%">{RISK_EXPLAIN.stress}</Tip>, value: rusd(p.stress.dollars), tone: p.stress.dollars < 0 ? "down" : null, note: `${rpct(p.stress.move)}, beta-implied` },
               { label: <Tip label="Top 5 weight">{RISK_EXPLAIN.top5}</Tip>, value: rpct(p.top5), note: r.scope === "fund" ? "of NAV" : "of the team's holdings" },
               { label: <Tip label="Cash">{RISK_EXPLAIN.cash}</Tip>, value: r.scope === "fund" ? rpct(r.cash.weight) : "—", note: r.scope === "fund" ? rusd(r.cash.value) : "Cash is held at Fund level" },
             ]}
@@ -191,7 +190,7 @@ export function RiskView({
           title={<Tip label="Sector exposure and where risk comes from">{RISK_EXPLAIN.riskShare}</Tip>}
           sub={
             <>
-              Today&apos;s weights · <Link href={basePath.replace(/\/risk$/, "/exposure")} className="font-semibold text-foreground hover:underline">by active weight on Exposure →</Link>
+              Today&apos;s weights. <Link href={basePath.replace(/\/risk$/, "/exposure")} className="font-semibold text-foreground hover:underline">by active weight on Exposure →</Link>
             </>
           }
         />
@@ -222,7 +221,7 @@ export function RiskView({
           }
         />
         <div id="holdings-risk" className="mt-2 scroll-mt-4">
-          <HoldingsRiskTable rows={rows} teams={teams} totals={{ weight: p.invested, vol: p.vol, riskRows: r.holdings.length }} showActive={p.trackingError !== null} />
+          <HoldingsRiskTable rows={rows} teams={teams} totals={{ weight: p.invested, vol: p.vol, riskRows: r.holdings.length }} showActive={p.trackingError !== null} whatIf={basePath.replace(/\/risk$/, "/what-if")} />
         </div>
       </section>
 
@@ -254,7 +253,7 @@ export function RiskView({
                 <Realized label="Beta" explain={RISK_EXPLAIN.beta} value={rnum(realized.beta)} />
                 <Realized label="Tracking error" explain={RISK_EXPLAIN.trackingError} value={rpct(realized.trackingError)} />
                 <Realized label="Sharpe ratio" explain={RISK_EXPLAIN.sharpe} value={rnum(realized.sharpe)} />
-                <Realized label="Max drawdown" explain={RISK_EXPLAIN.drawdown} value={rpct(realized.drawdown.max, 2)} hint={realized.drawdown.maxDate ? `${fmtDate(realized.drawdown.maxDate)} · S&P 500 ${rpct(realized.drawdown.marketMax, 2)}` : undefined} />
+                <Realized label="Max drawdown" explain={RISK_EXPLAIN.drawdown} value={rpct(realized.drawdown.max, 2)} hint={realized.drawdown.maxDate ? `${fmtDate(realized.drawdown.maxDate)}, S&P 500 ${rpct(realized.drawdown.marketMax, 2)}` : undefined} />
               </dl>
               <DrawdownChart
                 fundLabel={scopeLabel === "NAV" ? "Fund" : scopeLabel}

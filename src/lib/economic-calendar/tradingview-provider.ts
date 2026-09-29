@@ -113,7 +113,12 @@ export function tradingViewProvider(fetcher: typeof fetch = fetch): EconomicCale
       // About five weeks out the feed answers {"status":"ok"} with no result at all: nothing published yet.
       if (body && typeof body === "object" && !("result" in body))
         throw new CalendarNotice("not published this far ahead");
-      const events = inRange(parseTradingView(body), range);
+      const all = parseTradingView(body);
+      const events = inRange(all, range);
+      // At the edge of what is published (about 30 days out) the padded request can bring back only the day before
+      // the range: nothing in the range, and nothing after it. That's the same as not published, not an empty week.
+      if (events.length === 0 && all.length > 0 && all.every((e) => e.date < range.from))
+        throw new CalendarNotice("not published this far ahead");
       return {
         events,
         sources: [{ name: "TradingView", url: TRADINGVIEW_PAGE, status: "ok", count: events.length }],

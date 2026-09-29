@@ -10,12 +10,19 @@ describe("Hoot UI commands", () => {
   ])("recognizes %s", (text, theme) => expect(parseHootCommand(text)).toEqual({ kind: "theme", theme }));
 
   it.each([
-    ["Take me to holdings", "Holdings"], ["bring me to the risk page", "Risk"],
-    ["Open sell-side calls", "Sell-side calls"], ["Open sell-side analyzer", "Sell-side calls"], ["go to sell side", "Sell-side calls"], ["Can you take me to the economic calendar?", "Economic calendar"],
-    ["go to backtesting", "Backtesting"], ["navigate to the weekly update section", "Weekly update"],
-    ["take me to research", "Research"], ["open hoot", "Research"], ["go to conversations", "Research"], ["open the agent page", "Research"],
+    ["Take me to holdings", "Portfolio"], ["bring me to the risk page", "Risk"],
+    ["Open sell-side calls", "Sell-side calls"], ["Open sell-side analyzer", "Sell-side calls"], ["go to sell side", "Sell-side calls"],
+    ["Can you take me to the economic calendar?", "Markets"], ["go to earnings", "Markets"], ["open markets", "Markets"],
+    ["go to backtesting", "What if"], ["open what if", "What if"], ["open the attribution page", "Performance"], ["navigate to the weekly update section", "Weekly update"],
+    ["take me to research", "Threads"], ["go to conversations", "Threads"], ["open the agent page", "Threads"], ["open all threads", "Threads"], ["open hoot", "Home"],
+    ["go to movements", "Write-ups"], ["open write-ups", "Write-ups"], ["open models", "Models"], ["go to the ledger", "Activity"], ["open what's new", "Changelog"],
     ["take me to the portfolio", "Portfolio"], ["open portfolio", "Portfolio"],
   ])("recognizes %s", (text, destination) => expect(parseHootCommand(text)).toEqual({ kind: "navigate", destination }));
+
+  it("opens a view of a page by its old name", () => {
+    expect(parseHootCommand("go to daily performance")).toEqual({ kind: "navigate", destination: "Performance", query: "?period=today" });
+    expect(parseHootCommand("open the daily page")).toEqual({ kind: "navigate", destination: "Performance", query: "?period=today" });
+  });
 
   it.each([
     ["switch me to technology sector", "technology"],
@@ -36,16 +43,10 @@ describe("Hoot UI commands", () => {
 
   it("uses the current member's scoped links and refuses unavailable destinations", () => {
     expect(commandHref("Risk", [{ label: "Risk", href: "/t/tech/risk" }])).toBe("/t/tech/risk");
-    expect(commandHref("Risk", [{ label: "Risk", href: "/risk" }])).toBe("/risk");
-    expect(commandHref("Admin", [{ label: "Holdings", href: "/t/tech" }])).toBeNull();
-  });
-  it("opens Portfolio where the rail does: Attribution, or Backtesting without the book", () => {
-    const holdings = { label: "Holdings", href: "/t/tech" };
-    const backtesting = { label: "Backtesting", href: "/backtesting" };
-    expect(commandHref("Portfolio", [holdings, backtesting, { label: "Attribution", href: "/t/tech/attribution" }])).toBe("/t/tech/attribution");
-    expect(commandHref("Portfolio", [holdings, backtesting])).toBe("/backtesting");
-    expect(commandHref("Portfolio", [holdings])).toBeNull();
-    expect(commandHref("Portfolio", [{ label: "Attribution", href: "//example.com" }, backtesting])).toBeNull();
+    expect(commandHref("Risk", [{ label: "Risk", href: "/t/fund/risk" }])).toBe("/t/fund/risk");
+    expect(commandHref("Admin", [{ label: "Portfolio", href: "/t/tech" }])).toBeNull();
+    // Without the book there is no Performance link, so the command falls to Hoot, who says why.
+    expect(commandHref("Performance", [{ label: "Portfolio", href: "/t/tech" }, { label: "What if", href: "/t/tech/what-if" }])).toBeNull();
   });
   it("matches only the scope choices rendered for the member", () => {
     const links = [{ label: "Whole fund", href: "/t/fund/risk" }, { label: "Financials", href: "/t/financials/risk" }];

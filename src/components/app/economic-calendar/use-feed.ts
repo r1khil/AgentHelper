@@ -93,3 +93,55 @@ export function useNow() {
   }, []);
   return now;
 }
+
+/** The feed serves at most 31 days a call; a longer range is asked for in two parts. */
+const MAX_DAYS = 31;
+
+function addDays(iso: string, n: number) {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/** One feed from two adjoining ones: their releases together, the older fetch time, and the weaker coverage. */
+function mergeFeeds(a: CalendarFeed, b: CalendarFeed): CalendarFeed {
+  const seen = new Set(a.events.map((e) => e.id));
+  const sources = new Map((a.sources ?? []).map((s) => [s.name, { ...s }]));
+  for (const s of b.sources ?? []) {
+    const had = sources.get(s.name);
+    sources.set(s.name, had ? { ...had, count: had.count + s.count, status: had.status === "ok" && s.status === "ok" ? "ok" : "unavailable", error: had.error ?? s.error } : { ...s });
+  }
+  return {
+    ...a,
+    to: b.to,
+    events: [...a.events, ...b.events.filter((e) => !seen.has(e.id))],
+    sources: a.sources || b.sources ? [...sources.values()] : undefined,
+    coverage: a.coverage?.status === "partial" ? a.coverage : (b.coverage ?? a.coverage),
+    mode: a.mode === "demo" || b.mode === "demo" ? "demo" : "live",
+    fetchedAt: a.fetchedAt < b.fetchedAt ? a.fetchedAt : b.fetchedAt,
+    stale: a.stale || b.stale,
+  };
+}
+
+/**
+ * useEconomicFeed for a range of any length up to 62 days (Markets' five weeks): split at 31 days, both parts polled,
+ * and one feed once both have loaded.
+ */
+export function useEconomicFeedSpan(range: CalendarRange | null, source: FeedSource) {
+  const splitAt = range ? addDays(range.from, MAX_DAYS - 1) : null;
+  const first = range && splitAt ? { from: range.from, to: splitAt < range.to ? splitAt : range.to } : null;
+  const second = range && splitAt && splitAt < range.to ? { from: addDays(splitAt, 1), to: range.to } : null;
+  const a = useEconomicFeed(first, source);
+  const b = useEconomicFeed(second, source);
+  if (!second) return a;
+  const feed = a.feed && b.feed ? mergeFeeds(a.feed, b.feed) : null;
+  return {
+    feed,
+    error: a.error ?? b.error,
+    loading: a.loading || b.loading,
+    retry: () => {
+      a.retry();
+      b.retry();
+    },
+  };
+}

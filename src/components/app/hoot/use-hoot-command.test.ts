@@ -25,9 +25,14 @@ describe("Hoot command execution", () => {
     expect(mocks.setTheme).toHaveBeenLastCalledWith("dark");
   });
   it("navigates using the scoped sidebar href", () => {
-    vi.stubGlobal("document", { querySelectorAll: () => [{ dataset: { hootDestination: "Holdings" }, getAttribute: () => "/t/technology" }] });
+    vi.stubGlobal("document", { querySelectorAll: () => [{ dataset: { hootDestination: "Portfolio" }, getAttribute: () => "/t/technology" }] });
     expect(useHootCommand()("take me to holdings")).toBe(true);
     expect(mocks.push).toHaveBeenCalledWith("/t/technology");
+  });
+  it("opens a view of a page, like today's performance", () => {
+    vi.stubGlobal("document", { querySelectorAll: () => [{ dataset: { hootDestination: "Performance" }, getAttribute: () => "/t/fund/performance" }] });
+    expect(useHootCommand()("go to daily performance")).toBe(true);
+    expect(mocks.push).toHaveBeenCalledWith("/t/fund/performance?period=today");
   });
   it("switches to the available sector using the existing scope href", () => {
     vi.stubGlobal("document", { querySelectorAll: (selector: string) => selector === "[data-hoot-scope]"

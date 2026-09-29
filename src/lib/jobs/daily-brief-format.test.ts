@@ -42,7 +42,7 @@ describe("briefEmail", () => {
     const { subject, body } = briefEmail({ sessionDate: "2026-09-22", facts: "Fund return: +0.4%", analysis: null, sources: [], failure: "model timed out", appUrl: "https://x.app/" });
     expect(subject).toBe("Owl Fund Daily Attribution Analysis (Sep 22, 2026)");
     expect(body).toMatch(/^Hi all,\n\nMy analysis of Tue, Sep 22 didn't finish \(model timed out\)/);
-    expect(body).toContain("https://x.app/attribution");
+    expect(body).toContain("https://x.app/t/fund/performance?period=1d");
     expect(body.endsWith("Best,\nHoot")).toBe(true);
   });
 

@@ -70,32 +70,32 @@ describe("factorLine", () => {
   it("writes the plan's example line", () => {
     const shortRatesOnly = { subject: "the book", betas: { rates: { beta: -0.12, t: -3.1 } } };
     const line = factorLine(cpi, RELEASE_FACTORS.find((r) => r.key === "cpi")!, shortRatesOnly);
-    expect(line.text).toBe("CPI Thu, Oct 15, 8:30 AM ET · rates- and dollar-sensitive · the book is net short duration (β (0.12))");
+    expect(line.text).toBe("CPI Thu, Oct 15, 8:30 AM ET, rates- and dollar-sensitive, the book is net short duration (β (0.12))");
   });
 
   it("says when an exposure isn't statistically clear, and never describes it as a position", () => {
     const line = factorLine(cpi, releaseRule(cpi)!, book);
-    expect(line.text).toBe("CPI Thu, Oct 15, 8:30 AM ET · rates- and dollar-sensitive · the book is net short duration (β (0.12)); no clear dollar exposure (β 0.03, not significant)");
+    expect(line.text).toBe("CPI Thu, Oct 15, 8:30 AM ET, rates- and dollar-sensitive, the book is net short duration (β (0.12)); no clear dollar exposure (β 0.03, not significant)");
     // The Fund's real 1-year betas on 2026-09-25: rates +0.055 (t 1.6), dollar +0.038 (t 1.1).
     const today = factorLine(cpi, releaseRule(cpi)!, { subject: "the book", betas: { rates: { beta: 0.055, t: 1.6 }, dollar: { beta: 0.038, t: 1.1 } } });
-    expect(today.text).toBe("CPI Thu, Oct 15, 8:30 AM ET · rates- and dollar-sensitive · the book has no clear rates or dollar exposure (β 0.06 and 0.04, not significant)");
+    expect(today.text).toBe("CPI Thu, Oct 15, 8:30 AM ET, rates- and dollar-sensitive, the book has no clear rates or dollar exposure (β 0.06 and 0.04, not significant)");
     expect(today.text).not.toMatch(/duration|long|short/);
     const ratesOnly = factorLine(cpi, { ...releaseRule(cpi)!, factors: ["rates"] }, { subject: "the book", betas: { rates: { beta: 0.055, t: 1.6 } } });
-    expect(ratesOnly.text).toBe("CPI Thu, Oct 15, 8:30 AM ET · rates-sensitive · the book has no clear rates exposure (β 0.06, not significant)");
+    expect(ratesOnly.text).toBe("CPI Thu, Oct 15, 8:30 AM ET, rates-sensitive, the book has no clear rates exposure (β 0.06, not significant)");
   });
 
   it("calls a significant beta that rounds to zero negligible", () => {
     const eia = tv("EIA Crude Oil Stocks Change", "Energy", 2, "2026-10-14T14:30:00.000Z", "2026-10-14");
-    expect(factorLine(eia, releaseRule(eia)!, { subject: "the book", betas: { oil: { beta: 0.004, t: 2.2 } } }).text).toBe("EIA crude Wed, Oct 14, 10:30 AM ET · oil-sensitive · the book has no clear oil exposure (β 0.00, negligible)");
+    expect(factorLine(eia, releaseRule(eia)!, { subject: "the book", betas: { oil: { beta: 0.004, t: 2.2 } } }).text).toBe("EIA crude Wed, Oct 14, 10:30 AM ET, oil-sensitive, the book has no clear oil exposure (β 0.00, negligible)");
   });
 
   it("shows only the sensitivity without an exposure", () => {
-    expect(factorLine(cpi, releaseRule(cpi)!, null).text).toBe("CPI Thu, Oct 15, 8:30 AM ET · rates- and dollar-sensitive");
+    expect(factorLine(cpi, releaseRule(cpi)!, null).text).toBe("CPI Thu, Oct 15, 8:30 AM ET, rates- and dollar-sensitive");
   });
 
   it("describes oil for the EIA report", () => {
     const eia = tv("EIA Crude Oil Stocks Change", "Energy", 2, "2026-10-14T14:30:00.000Z", "2026-10-14");
-    expect(factorLine(eia, releaseRule(eia)!, { subject: "the book", betas: { oil: { beta: 0.06, t: 2.4 } } }).text).toBe("EIA crude Wed, Oct 14, 10:30 AM ET · oil-sensitive · the book is net long oil (β 0.06)");
+    expect(factorLine(eia, releaseRule(eia)!, { subject: "the book", betas: { oil: { beta: 0.06, t: 2.4 } } }).text).toBe("EIA crude Wed, Oct 14, 10:30 AM ET, oil-sensitive, the book is net long oil (β 0.06)");
   });
 
   it("builds the exposure from a regression row", () => {
@@ -123,9 +123,9 @@ describe("factorLines", () => {
       tv("EIA Crude Oil Imports Change", "Energy", 1, "2026-10-14T14:30:00.000Z", "2026-10-14"),
     ];
     expect(factorLines(events, null).map((l) => l.text)).toEqual([
-      "EIA crude Wed, Oct 14, 10:30 AM ET · oil-sensitive",
-      "FOMC Wed, Oct 14, 2:00 PM ET · rates- and dollar-sensitive",
-      "CPI Thu, Oct 15, 8:30 AM ET · rates- and dollar-sensitive",
+      "EIA crude Wed, Oct 14, 10:30 AM ET, oil-sensitive",
+      "FOMC Wed, Oct 14, 2:00 PM ET, rates- and dollar-sensitive",
+      "CPI Thu, Oct 15, 8:30 AM ET, rates- and dollar-sensitive",
     ]);
   });
 });

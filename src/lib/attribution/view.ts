@@ -1,5 +1,6 @@
 import "server-only";
 import { DateTime } from "luxon";
+import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { fmtDate } from "@/lib/format";
 import { parsePeriodKey, resolvePeriod, type ResolvedPeriod } from "./periods";
 import { SECTOR_LABELS } from "./sectors";
@@ -25,7 +26,7 @@ export function periodFromQuery(query: PageQuery, loaded: { inception: string; l
 /** Plain-language data problems, each pointing at where to fix it. */
 export function qualityNotices(loaded: LoadedSeries, period: ResolvedPeriod, opts: { canEdit: boolean }) {
   const out: { text: string; href?: string; action?: string; word?: "Stale" | "Missing" | "Check" | "Partial" }[] = [];
-  const ledger = opts.canEdit ? "/attribution/ledger" : undefined;
+  const ledger = opts.canEdit ? `/t/${FUND_SCOPE_SLUG}/activity` : undefined;
   if (period.clamped) out.push({ text: `The ledger starts on ${fmtDate(loaded.inception)}, so this period is measured from that date.` });
 
   const inPeriod = <T extends { date: string }>(xs: T[]) => xs.filter((x) => x.date > period.start && x.date <= period.end);

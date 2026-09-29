@@ -10,7 +10,7 @@ export type AnswerPanelState = {
   chatId: string;
   /** The full thread, for "Open as a full thread". */
   href: string;
-  /** What the question was asked about, in the chip: "Performance · since Sep 17". */
+  /** What the question was asked about, in the chip: "Performance, since Sep 17". */
   context: string;
   /** A conversation already under way, when the panel opens on one (a new question starts empty). */
   messages?: UIMessage[];

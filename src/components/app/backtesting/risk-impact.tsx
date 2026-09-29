@@ -45,7 +45,7 @@ export function RiskImpact({ data, busy, error, stale }: { data: ScenarioRisk | 
   return (
     <Card data-tour="bt-risk-impact" className="mb-6 gap-3 p-4">
       <SectionTitle aside={riskWindow(data)}>
-        <Explained label="Risk impact · current vs modified weights">
+        <Explained label="Risk impact, current vs modified weights">
           {RISK_IMPACT_EXPLAIN}
         </Explained>
       </SectionTitle>

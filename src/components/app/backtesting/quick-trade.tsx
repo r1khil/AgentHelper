@@ -37,7 +37,7 @@ export function QuickTrade({ positions, onApply, disabled }: { positions: Positi
   return (
     <div data-tour="bt-quick-trade" className="mt-3 rounded-md border border-dashed p-3">
       <div className="mb-2 text-body font-medium">
-        Quick trade <span className="font-normal text-muted-foreground">· change one holding by percentage points and offset it automatically</span>
+        Quick trade <span className="font-normal text-muted-foreground">, change one holding by percentage points and offset it automatically</span>
       </div>
       <div className="flex flex-wrap items-end gap-2 text-body">
         <select aria-label="Trade direction" className={select} value={side} onChange={(e) => setSide(e.target.value as "trim" | "add")}>

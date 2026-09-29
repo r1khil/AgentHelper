@@ -36,14 +36,14 @@ export function releaseFigures(e: EconomicEvent, now: number | null): ReactNode 
     return (
       <>
         <span className="font-semibold text-foreground">Act {actual}</span>
-        <span title={consensusSource(e)}> · Cons {e.estimate ?? "—"}</span>
+        <span title={consensusSource(e)}>, cons {e.estimate ?? "—"}</span>
       </>
     );
   return (
     <>
       <span title={consensusSource(e)}>Cons {e.estimate ?? (e.marketImplied ? marketText(e) : "—")}</span>
       <span title={revised(e) ? `Revised from ${e.previousBeforeRevision}` : undefined}>
-        {" · "}Prior {e.previous ?? "—"}
+        {", "}prior {e.previous ?? "—"}
         {revised(e) && "*"}
       </span>
     </>
@@ -142,7 +142,7 @@ export function ReleaseDetails({
     <div id={id} className="border-b border-row py-3">
       <div className="flex items-start gap-5">
         <div className="min-w-0 flex-1">
-          <dl className="grid grid-cols-3 gap-x-5 gap-y-2.5 xl:grid-cols-5">
+          <dl className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-5 gap-y-2.5">
             {fields.map(([k, v]) => (
               <div key={k} className="flex min-w-0 flex-col gap-0.5">
                 <dt className="text-caption text-muted-foreground">{k}</dt>

@@ -67,7 +67,7 @@ export function AboutData({ feed }: { feed: CalendarFeed }) {
         {sources.length > 0 && (
           <div className="flex flex-col gap-1">
             <p className="text-ink-2">
-              Sources · {sources.filter((s) => s.status === "ok").length} of {sources.length} connected
+              Sources: {sources.filter((s) => s.status === "ok").length} of {sources.length} connected
             </p>
             <ul className="flex flex-col">
               {sources.map((s) => {

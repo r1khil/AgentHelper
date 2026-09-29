@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/app/empty-state";
-import { PageHead } from "@/components/app/page-head";
 import { StatStrip } from "@/components/app/panel";
 import { Hero } from "@/components/app/portfolio/hero";
+import { ViewMeta } from "@/components/app/portfolio/view-meta";
 import { HowNote, signTone } from "@/components/app/portfolio/parts";
 import { BENCH_LINE, FUND_LINE, LineKey } from "@/components/app/portfolio/lines-chart";
 import type { AttributionResult, TeamAttributionResult } from "@/lib/attribution/attribution";
@@ -38,7 +38,7 @@ const chgPct = (v: number | null) => (v === null ? "—" : fmtChangePct(pct(v)))
 function periodPhrase(view: PeriodView, days: number) {
   if (view.period.key === "itd") return `since the ledger opened ${fmtDayMonth(view.inception)}`;
   const n = `${days} trading ${days === 1 ? "day" : "days"}`;
-  return `${fmtDay(view.period.start)} close through ${fmtDay(view.period.end)} · ${n}`;
+  return `${fmtDay(view.period.start)} close through ${fmtDay(view.period.end)}, ${n}`;
 }
 
 /** What the hero says when the sector benchmark can't be worked out yet: a line pointing at the weights. */
@@ -74,7 +74,7 @@ export function FundAttributionView({
   transparency: boolean;
   weightsAsOf?: string;
 }) {
-  const head = <PageHead crumbs={[{ label: "Portfolio" }]} scope asof={`Closes through ${fmtDay(view.latest)}`} />;
+  const head = <ViewMeta>Closes through {fmtDay(view.latest)}</ViewMeta>;
   const bar = <PeriodBar basePath={view.basePath} active={view.period.key} from={view.from} to={view.to} inception={view.inception} latest={view.latest} />;
 
   if (result.days === 0) {
@@ -110,13 +110,13 @@ export function FundAttributionView({
     <>
       {result.benchmarkReturn !== null && (
         <>
-          · <Tip label="Benchmark">{EXPLAIN.benchmark}</Tip> {chgPct(result.benchmarkReturn)}{" "}
+          , <Tip label="Benchmark">{EXPLAIN.benchmark}</Tip> {chgPct(result.benchmarkReturn)}
         </>
       )}
-      · <Tip label={INDEX_LABEL}>{EXPLAIN.index}</Tip> {chgPct(spx)}, for reference
+      , <Tip label={INDEX_LABEL}>{EXPLAIN.index}</Tip> {chgPct(spx)} for reference
       {active !== null && (
         <>
-          {" "}· {fmtChangeBp(bps(active))} <Tip label="vs S&P 500">{EXPLAIN.active}</Tip>
+          , {fmtChangeBp(bps(active))} <Tip label="vs S&P 500">{EXPLAIN.active}</Tip>
         </>
       )}
     </>
@@ -191,7 +191,7 @@ export function TeamAttributionView({
   transparency: boolean;
   sectorEffects: SectorEffectPoint[];
 }) {
-  const head = <PageHead crumbs={[{ label: "Portfolio" }]} scope asof={`Closes through ${fmtDay(view.latest)}`} />;
+  const head = <ViewMeta>Closes through {fmtDay(view.latest)}</ViewMeta>;
   const bar = <PeriodBar basePath={view.basePath} active={view.period.key} from={view.from} to={view.to} inception={view.inception} latest={view.latest} />;
 
   if (result.days === 0) {
@@ -220,10 +220,10 @@ export function TeamAttributionView({
     <>
       {result.benchmarkReturn !== null && (
         <>
-          · <Tip label="Benchmark">{EXPLAIN.teamBenchmark}</Tip> {chgPct(result.benchmarkReturn)} <span title={benchmarkSectors}>({benchmarkName})</span>{" "}
+          , <Tip label="Benchmark">{EXPLAIN.teamBenchmark}</Tip> {chgPct(result.benchmarkReturn)} <span title={benchmarkSectors}>({benchmarkName})</span>
         </>
       )}
-      · <Tip label="To the Fund">{EXPLAIN.fundContribution}</Tip> {fmtChangeBp(bps(result.fundContribution))}, {fmtPct(pct(result.avgFundWeight), 1)} of the Fund on average
+      , <Tip label="To the Fund">{EXPLAIN.fundContribution}</Tip> {fmtChangeBp(bps(result.fundContribution))}, {fmtPct(pct(result.avgFundWeight), 1)} of the Fund on average
     </>
   );
 

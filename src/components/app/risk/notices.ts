@@ -4,8 +4,8 @@ import type { QualityNotice } from "../attribution/data-quality-notice";
 export function riskNotices(notices: string[], opts: { canEdit: boolean }): QualityNotice[] {
   return notices.map((text) => {
     if (!opts.canEdit) return { text };
-    if (text.startsWith("No S&P 500 sector weights")) return { text, href: "/attribution/ledger?tab=benchmark", action: "Add weights" };
-    if (text.includes("Set a sector on the ledger")) return { text, href: "/attribution/ledger?tab=securities", action: "Classify" };
+    if (text.startsWith("No S&P 500 sector weights")) return { text, href: "/t/fund/activity?tab=benchmark", action: "Add weights" };
+    if (text.includes("Set a sector on the ledger")) return { text, href: "/t/fund/activity?tab=securities", action: "Classify" };
     return { text };
   });
 }

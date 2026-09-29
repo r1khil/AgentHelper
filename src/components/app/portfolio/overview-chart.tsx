@@ -13,10 +13,11 @@ type DayState = { status: "loading" } | { status: "error" } | { status: "ready";
 const noon = (iso: string) => Date.parse(`${iso}T12:00:00Z`);
 
 /**
- * The fund's value over time. The daily ranges come from the server (the ledger, with today's weights replayed before
- * it); 1D is fetched when chosen, since the first fetch of a day pulls five-minute bars for every holding.
+ * The fund's value over time, or a team's (`team`, its slug). The daily ranges come from the server (the ledger, with
+ * today's weights replayed before it); 1D is fetched when chosen, since the first fetch of a day pulls five-minute bars
+ * for every holding.
  */
-export function OverviewChart({ points, dayBase, inception, note }: { points: ChartPoint[]; dayBase: number; inception: string; note?: string | null }) {
+export function OverviewChart({ points, dayBase, inception, note, team, subject = "Fund" }: { points: ChartPoint[]; dayBase: number; inception: string; note?: string | null; team?: string; /** Whose value it is, for the chart's label: "Fund", or the team's name. */ subject?: string }) {
   const [range, setRange] = useState<OverviewRange>(DEFAULT_RANGE);
   const [day, setDay] = useState<DayState>({ status: "loading" });
   const reach = useMemo(() => rangeReach(points), [points]);
@@ -24,14 +25,14 @@ export function OverviewChart({ points, dayBase, inception, note }: { points: Ch
   useEffect(() => {
     if (range !== "1D" || day.status === "ready") return;
     let live = true;
-    fetch("/api/daily-performance/path", { cache: "no-store" })
+    fetch(`/api/daily-performance/path${team ? `?team=${encodeURIComponent(team)}` : ""}`, { cache: "no-store" })
       .then((r) => (r.ok ? (r.json() as Promise<{ points: Path }>) : Promise.reject(new Error(String(r.status)))))
       .then((d) => live && setDay({ status: "ready", points: d.points }))
       .catch(() => live && setDay({ status: "error" }));
     return () => {
       live = false;
     };
-  }, [range, day.status]);
+  }, [range, day.status, team]);
 
   const view = useMemo(() => {
     if (range === "1D") {
@@ -55,8 +56,8 @@ export function OverviewChart({ points, dayBase, inception, note }: { points: Ch
   const solid = view?.lines.at(-1)?.tone ?? "neutral";
   const label =
     range === "1D"
-      ? "Fund value so far today, in five-minute steps."
-      : `Fund value over ${range === "All" ? "its whole history" : range}. Before ${fmtDayMonth(inception)} the line is a replay of today's weights; after it, the ledger's real history.`;
+      ? `${subject} value so far today, in five-minute steps.`
+      : `${subject} value over ${range === "All" ? "its whole history" : range}. Before ${fmtDayMonth(inception)} the line is a replay of today's weights; after it, the ledger's real history.`;
 
   return (
     <div className="flex flex-col">

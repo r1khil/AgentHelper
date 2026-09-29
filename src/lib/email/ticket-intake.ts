@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import { jobRuns, type Role } from "@/db/schema";
 import { markRepeats, parseTicket, recordable, type TicketRead } from "@/lib/attribution/ticket";
 import { checkLedger, checkPrices, MAX_TICKET_BYTES, readTicketDocx, recordTickets } from "@/lib/attribution/ticket-record";
+import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import type { InboundEvent } from "./inbound";
 import { verifyFundSender } from "./verify";
 import { docxAttachments, isTicketAttempt, ticketNotAllowedBody, ticketReplyBody, ticketTextInBody, type TicketOutcome } from "./ticket-mail";
@@ -21,7 +22,7 @@ export async function downloadOpenMail(url: string | null | undefined): Promise<
 }
 
 /**
- * The trade tickets in an email: Word attachments read the same way as the Ledger page's upload (OpenMail's own
+ * The trade tickets in an email: Word attachments read the same way as the Activity view's upload (OpenMail's own
  * extracted text if the download fails), else a ticket pasted into the body. Empty when the email has none.
  */
 export async function readEmailTickets(msg: InboundEvent["message"]): Promise<TicketRead[]> {
@@ -113,7 +114,7 @@ export async function recordEmailedTickets(opts: {
       }
     }
     const appUrl = process.env.APP_URL?.replace(/\/$/, "");
-    await reply(ticketReplyBody({ name: sender.name, outcome: { reads, recorded, held }, ledgerUrl: appUrl ? `${appUrl}/attribution/ledger` : undefined }));
+    await reply(ticketReplyBody({ name: sender.name, outcome: { reads, recorded, held }, ledgerUrl: appUrl ? `${appUrl}/t/${FUND_SCOPE_SLUG}/activity` : undefined }));
     const status = recorded?.ok ? "recorded" : "not recorded";
     return finish({ ...base, tickets: summarize(checked), status, reason: recorded && !recorded.ok ? recorded.error : undefined });
   } catch (e) {

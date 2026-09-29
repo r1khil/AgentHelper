@@ -119,7 +119,7 @@ export function SecuritiesInputs({ securityRows, teams, assigned }: { securityRo
         )}
       </Panel>
       <Panel>
-        <PanelHeader title="Team sectors" aside="Defines each team's benchmark on its Attribution tab" />
+        <PanelHeader title="Team sectors" aside="Defines each team's benchmark on its Performance view" />
         <div className="p-4">
           <TeamSectorsForm teams={teams} assigned={assigned} />
         </div>

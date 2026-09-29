@@ -128,7 +128,7 @@ export function LineChart({
             <div className="font-semibold">{formatY(h.v)}</div>
             <div className="text-muted-foreground">
               {formatX(h.t)}
-              {h.line.note ? ` · ${h.line.note}` : ""}
+              {h.line.note ? `, ${h.line.note}` : ""}
             </div>
           </div>
         </>

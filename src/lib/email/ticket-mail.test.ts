@@ -50,7 +50,7 @@ describe("describeTrade", () => {
 });
 
 describe("ticketReplyBody", () => {
-  const url = "https://owlfund-workspace.vercel.app/attribution/ledger";
+  const url = "https://owlfund-workspace.vercel.app/t/fund/activity";
 
   it("lists what was recorded, what to double-check, what was skipped and what couldn't be read", () => {
     const body = ticketReplyBody({
@@ -82,7 +82,7 @@ describe("ticketReplyBody", () => {
         "",
         "Fix them and send them again. Tickets already in the ledger are skipped, so resending the whole set is safe.",
         "",
-        `If something is wrong, void the trade on the Ledger page: ${url}`,
+        `If something is wrong, void the trade on the Portfolio's Activity view: ${url}`,
         "",
         "Best,",
         "Hoot",
@@ -104,10 +104,10 @@ describe("ticketReplyBody", () => {
 });
 
 describe("ticketReplyBody with a far-off price", () => {
-  it("holds the ticket back and points to the Ledger page", () => {
+  it("holds the ticket back and points to the Activity view", () => {
     const warning = "$90 is 26.9% above that day's close of $70.94. Check it is the price the trade filled at.";
     const held = { ...SYK, warnings: [warning], priceGap: 0.269 };
-    const body = ticketReplyBody({ name: "Saad", outcome: { reads: [], held: [held], recorded: null }, ledgerUrl: "https://x.app/attribution/ledger" });
+    const body = ticketReplyBody({ name: "Saad", outcome: { reads: [], held: [held], recorded: null }, ledgerUrl: "https://x.app/t/fund/activity" });
     expect(body).toBe(
       [
         "Hi Saad,",
@@ -117,7 +117,7 @@ describe("ticketReplyBody with a far-off price", () => {
         "I held back this ticket because the price looks off:",
         `- Bought 83 SYK (Stryker Corp) at $280.13 on Sep 18, 2026: ${warning}`,
         "",
-        "If the ticket has a typo, fix it and send it again. If the price is right, upload the ticket on the Ledger page (https://x.app/attribution/ledger), where you can confirm it.",
+        "If the ticket has a typo, fix it and send it again. If the price is right, upload the ticket on the Portfolio's Activity view (https://x.app/t/fund/activity), where you can confirm it.",
         "",
         "Best,",
         "Hoot",

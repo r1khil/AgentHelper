@@ -33,7 +33,7 @@ export function HoldingsColumn({ rows, teams, label, caption }: { rows: HoldingR
             </span>
             <div role="cell" className="grid min-w-0 gap-1">
               <span className="text-caption text-muted-foreground">
-                {team?.name ?? h.name} · {fmtPct(pct(h.avgWeight), 1)}
+                {team?.name ?? h.name}, {fmtPct(pct(h.avgWeight), 1)}
               </span>
               <CenterBar value={h.contribution} max={max} className="h-1.5" />
             </div>

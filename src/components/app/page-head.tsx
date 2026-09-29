@@ -18,7 +18,7 @@ export type Crumb = { label: React.ReactNode; href?: string };
 /**
  * The page header every page opens with: where you are (a breadcrumb, the last crumb is this page), a grey note on
  * the data (as of when, what scope), the page's actions (one primary at most, filled ink), and under them the
- * section's tabs. 52px, plus a 44px tab row, over a hairline.
+ * section's tabs. 56px, plus a 44px tab row, over a hairline.
  *
  * Render it first in the page. It bleeds to the edges of the content area, and replaces the shell's default header.
  * On a full-bleed page (one that renders `data-full-bleed`), put it at the top of that wrapper.
@@ -70,11 +70,11 @@ export function NoPageHead() {
   return <span data-page-head="" hidden />;
 }
 
-/** PageHead's shape while the page loads, so the header doesn't jump when the page lands: 52px, plus the tab row. */
+/** PageHead's shape while the page loads, so the header doesn't jump when the page lands: 56px, plus the tab row. */
 export function SkeletonPageHead({ tabs = 0, className }: { tabs?: number; className?: string }) {
   return (
     <div data-page-head="" aria-hidden="true" className={cn("shrink-0 border-b bg-background", className)}>
-      <div className="flex h-[52px] items-center gap-2.5 px-10">
+      <div className="flex h-14 items-center gap-2.5 px-10">
         <span className="h-3 w-28 animate-pulse rounded-[4px] bg-muted" />
       </div>
       {tabs > 0 && (
@@ -121,7 +121,7 @@ function HeadFrame({
   }, [marker]);
   return (
     <header ref={ref} {...markerProps} className={cn("shrink-0 border-b bg-background", className)}>
-      <div className="flex h-[52px] items-center gap-2.5 px-10 text-body">
+      <div className="flex h-14 items-center gap-2.5 px-10 text-body">
         <nav aria-label="Breadcrumb" className="min-w-0">
           <ol className="flex min-w-0 items-center gap-2.5">
             {crumbs.map((c, i) => {

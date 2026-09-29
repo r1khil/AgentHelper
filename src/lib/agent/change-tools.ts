@@ -91,17 +91,17 @@ export function makeChangeTools(ctx: Ctx): ToolSet {
     }),
 
     pin_chat: tool({
-      description: "Propose pinning this conversation to a holding's research board, for the member to confirm. Only when the member asks to pin, file or move this chat to a holding's board.",
+      description: "Propose pinning this conversation to a holding (it is then listed on the holding's Threads tab and read as its research), for the member to confirm. Only when the member asks to pin, file or move this chat to a holding (or its board, as it used to be called).",
       inputSchema: z.object({ ticker: z.string().max(12) }),
       execute: async ({ ticker }): Promise<ToolResult<unknown>> => {
         try {
           if (!ctx.chat) return refuse("This conversation isn't saved, so it can't be pinned.");
-          if (ctx.chat.holdingId) return refuse("This conversation is already on a holding's research board.");
+          if (ctx.chat.holdingId) return refuse("This conversation is already pinned to a holding.");
           const rows = await openableHolding(viewer, ticker);
           if (!rows?.length) return refuse(`${ticker.toUpperCase()} isn't an active holding in a team you can open.`);
-          if (rows.length > 1) return refuse(`${rows[0].ticker} is held by more than one team (${rows.map((r) => r.teamName).join(", ")}); pin it from the chat's "Pin to research board" menu.`);
+          if (rows.length > 1) return refuse(`${rows[0].ticker} is held by more than one team (${rows.map((r) => r.teamName).join(", ")}); pin it from the thread's "Pin to a holding" menu.`);
           const h = rows[0];
-          return proposed({ kind: "pin_chat", forUserId: viewer.id, expiresAt: expiresAt(), summary: `Pin this conversation to ${h.ticker}'s research board (${h.teamName})`, chatId: ctx.chat.id, ticker: h.ticker, teamSlug: h.teamSlug, teamName: h.teamName });
+          return proposed({ kind: "pin_chat", forUserId: viewer.id, expiresAt: expiresAt(), summary: `Pin this conversation to ${h.ticker} (${h.teamName})`, chatId: ctx.chat.id, ticker: h.ticker, teamSlug: h.teamSlug, teamName: h.teamName });
         } catch (e) {
           return refuse(e instanceof Error ? e.message : String(e));
         }

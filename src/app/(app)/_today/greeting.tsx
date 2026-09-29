@@ -3,45 +3,40 @@
 import { useEffect, useState } from "react";
 import { HootFace } from "@/components/app/chat/thread-parts";
 import { marketLine } from "@/lib/today";
-import { NeedsSentence } from "./hoot-list";
 
-/** "Mon, Sep 28 · market closes in 1h 19m", kept current while the page stays open. */
+/** "Tue, Sep 29. Market open, closes in 2h 48m. Prices delayed 15 min", kept current while the page stays open. */
 function MarketClock({ initial }: { initial: string }) {
   const [line, setLine] = useState(initial);
   useEffect(() => {
     const id = window.setInterval(() => setLine(marketLine()), 30_000);
     return () => window.clearInterval(id);
   }, []);
-  // The clock leads with a capital ("Market closes"); the line reads as one lowercase run after the date.
-  return <>{line.replace(" · Market", " · market")}</>;
+  return <>{line}</>;
 }
 
-/** Home has no page header: a thin right-aligned line carries the date, the market clock and how fresh prices are. */
-export function HomeTopLine({ dateLine }: { dateLine: string }) {
+/** Home has no page header: a thin right-aligned line gives the date, what the market is doing and how fresh prices are. */
+export function HomeTopLine({ line }: { line: string }) {
   return (
-    <div className="flex h-[52px] shrink-0 items-center justify-end px-10 text-caption text-muted-foreground" data-tour="today-greeting">
+    <div className="flex h-14 shrink-0 items-center justify-end px-5 text-body text-muted-foreground" data-tour="today-greeting">
       <span suppressHydrationWarning>
-        <MarketClock initial={dateLine} /> · prices delayed 15 min
+        <MarketClock initial={line} />
       </span>
     </div>
   );
 }
 
 /**
- * Hoot's face, "Good afternoon, Rikhil." in serif and one sentence under it: how the book is doing (`lead`, which
- * streams in with the numbers) and what needs the reader. An analyst's sentence leads with the write-ups they owe.
+ * Hoot's face, "Good afternoon, Rikhil." in serif and, for readers who see a book, one sentence under it on how the
+ * book is doing (`lead`, which streams in with the numbers). What needs the reader is the bell's, not Home's.
  */
-export function HomeGreeting({ hello, name, lead, analyst }: { hello: string; name: string; lead?: React.ReactNode; analyst: boolean }) {
+export function HomeGreeting({ hello, name, lead }: { hello: string; name: string; lead?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center">
-      <HootFace className="size-[52px]" />
-      <h1 className="mt-3.5 text-center font-serif text-hero font-normal tracking-[-0.02em]">
+      <HootFace className="size-14" />
+      <h1 className="mt-[18px] text-center font-serif text-hero font-normal tracking-[-0.01em]">
         Good {hello.toLowerCase()}, {name}.
       </h1>
-      <p className="mt-2.5 text-center text-emph text-pretty text-ink-2">
-        {lead}
-        <NeedsSentence analyst={analyst} />
-      </p>
+      {lead && <p className="mt-2.5 min-h-6 text-center text-emph text-pretty text-ink-2">{lead}</p>}
     </div>
   );
 }

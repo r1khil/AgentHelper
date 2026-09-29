@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import { teams, teamSectors } from "@/db/schema";
 import type { CurrentUser } from "@/lib/auth";
 import { canManageTeam, isFundWide } from "@/lib/roles";
+import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { computeAttribution, computeTeamAttribution } from "@/lib/attribution/attribution";
 import { resolvePeriod, type PeriodKey } from "@/lib/attribution/periods";
 import type { GicsSector } from "@/lib/attribution/sectors";
@@ -108,7 +109,7 @@ async function loadPrices(ticker: string, range: DatasetRange): Promise<Omit<Dat
 }
 
 async function loadHoldings(ctx: DatasetContext): Promise<Omit<Dataset, "name" | "path">> {
-  // The Backtesting page's snapshot: the whole Fund for execs and admins, the member's team otherwise.
+  // What if's snapshot: the whole Fund for execs and admins, the member's team otherwise.
   const snap = await loadSnapshot(ctx.viewer);
   const positions = snap.positions.filter((p) => p.kind !== "cash" || p.weight > 0);
   const columns = ["ticker", "name", "weight", "kind"];
@@ -123,8 +124,8 @@ async function loadHoldings(ctx: DatasetContext): Promise<Omit<Dataset, "name" |
     content: toCsv(columns, rows),
     source: {
       id: sourceId("holdings", snap.version),
-      title: `${snap.scope} · current holdings and saved weights`,
-      url: appUrl("/backtesting"),
+      title: `${snap.scope}, current holdings and saved weights`,
+      url: appUrl(`/t/${isFundWide(ctx.viewer) ? FUND_SCOPE_SLUG : (ctx.viewer.team?.slug ?? FUND_SCOPE_SLUG)}/what-if`),
       publisher: "Owl Fund holdings (saved weights)",
       publishedAt: asOf,
       retrievedAt: new Date().toISOString(),
@@ -173,19 +174,19 @@ async function loadReturns(ctx: DatasetContext, which: "fund" | "team" | null, r
 
   const query = new URLSearchParams({ period: key });
   if (from) query.set("from", from);
-  const path = sleeve ? `/t/${sleeve.slug}/attribution?${query}` : `/attribution?${query}`;
+  const path = `/t/${sleeve?.slug ?? FUND_SCOPE_SLUG}/performance?${query}`;
   const label = sleeve ? `${sleeve.name} sleeve` : "Fund";
   return {
     columns,
     rows: rows.length,
     firstDate: rows[0][0] as string,
     lastDate: rows[rows.length - 1][0] as string,
-    note: `${label} daily returns as decimals (0.01 = 1%) from the trade ledger, as the Attribution page computes them${period.clamped ? "; the range starts at the Fund's inception" : ""}.${sleeve ? "" : " sp500_return is the S&P 500 price return."}`,
+    note: `${label} daily returns as decimals (0.01 = 1%) from the trade ledger, as the Portfolio's Performance view computes them${period.clamped ? "; the range starts at the Fund's inception" : ""}.${sleeve ? "" : " sp500_return is the S&P 500 price return."}`,
     content: toCsv(columns, rows),
     // Same id get_attribution gives this page and period.
     source: {
       id: sourceId("attr", `${path}:${period.start}:${period.end}`),
-      title: `${label} daily returns · ${period.start} to ${period.end} close`,
+      title: `${label} daily returns, ${period.start} to ${period.end} close`,
       url: appUrl(path),
       publisher: "Owl Fund attribution (trade ledger)",
       publishedAt: period.end,

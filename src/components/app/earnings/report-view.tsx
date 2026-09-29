@@ -21,7 +21,7 @@ export type ReportViewProps = {
   e: Earnings;
   h: Pick<Holding, "ticker" | "companyName">;
   team: { name: string; slug: string };
-  /** The scope in the URL (the fund or a team), for the way back to the calendar and the link to the holding. */
+  /** The scope in the URL (the fund or a team), for the breadcrumb back to the Portfolio and the holding. */
   scopeSlug: string;
   evidence: { id: string; title: string; url: string | null; publisher: string | null; publishedAt: Date | null }[];
   /** Who a newly built pack is emailed to; empty when the reader can't build one. */
@@ -53,15 +53,17 @@ export function ReportView({ e, h, team, scopeSlug, evidence, recipients, canBui
     { d: "Now", t: now, current: true },
     { d: fmtDayMonth(buildOn), t: e.prepPack ? "Prep pack built" : "Prep pack builds", current: false },
     { d: fmtDayMonth(due), t: "Expectations due", current: false },
-    { d: fmtDayMonth(e.reportDate), t: "Report · expectations lock", current: false },
-    { d: "After", t: "Results gathered · reflection due", current: false },
+    { d: fmtDayMonth(e.reportDate), t: "Report, expectations lock", current: false },
+    { d: "After", t: "Results gathered, reflection due", current: false },
   ];
 
   return (
     <>
       <PageHead
-        crumbs={[{ label: "Calendar", href: `/t/${scopeSlug}/earnings` }, { label: `${h.ticker} · ${period}` }]}
-        asof={`${team.name} · ${h.companyName ?? h.ticker}`}
+        // A report belongs to its holding: Portfolio / META / Fiscal Q3 report, the holding opening on its Earnings tab.
+        crumbs={[{ label: "Portfolio", href: `/t/${scopeSlug}` }, { label: h.ticker, href: holdingHref(scopeSlug, team.slug, h.ticker, "?tab=earnings") }, { label: `${period[0].toUpperCase()}${period.slice(1)} report` }]}
+        tabs={false}
+        asof={`${h.companyName ?? h.ticker}, ${team.name}`}
         actions={
           <Button nativeButton={false} render={<Link href={holdingHref(scopeSlug, team.slug, h.ticker)} />} variant="secondary">
             Open holding
@@ -71,12 +73,12 @@ export function ReportView({ e, h, team, scopeSlug, evidence, recipients, canBui
       <div className="flex gap-14">
         <div className="flex min-w-0 flex-1 flex-col">
           <PageHero
-            label={`Reports ${fmtDay(e.reportDate)}${hour ? `, ${hour}` : ""} · ${e.dateStatus === "estimated" ? "estimated, not confirmed by the company" : "confirmed by the company"}`}
+            label={`Reports ${fmtDay(e.reportDate)}${hour ? `, ${hour}` : ""}. ${e.dateStatus === "estimated" ? "Estimated, not confirmed by the company" : "Confirmed by the company"}`}
             value={untilReport(e.reportDate, today)}
             note={
               <>
-                {e.epsEstimate ? `Consensus EPS ${fmtCurrency(e.epsEstimate, e.epsCurrency)} · ` : ""}
-                {e.revenueEstimate ? `consensus revenue ${fmtCurrency(e.revenueEstimate, e.revenueCurrency, { scale: 1e9, suffix: "B" })} · ` : ""}
+                {e.epsEstimate ? `Consensus EPS ${fmtCurrency(e.epsEstimate, e.epsCurrency)}, ` : ""}
+                {e.revenueEstimate ? `consensus revenue ${fmtCurrency(e.revenueEstimate, e.revenueCurrency, { scale: 1e9, suffix: "B" })}, ` : ""}
                 {locked ? `expectations locked ${relativeTime(e.preLockedAt)}` : "the team's expectations lock when the report lands"}
               </>
             }
@@ -95,7 +97,7 @@ export function ReportView({ e, h, team, scopeSlug, evidence, recipients, canBui
           <section aria-labelledby="exp" className="mt-6 border-t pt-[18px]">
             <div className="flex items-baseline gap-3">
               <h2 id="exp" className="flex-1 text-title font-bold tracking-[-0.01em]">
-                1 · Before the report: your expectations
+                1. Before the report: your expectations
               </h2>
               <span className={cn("text-caption font-semibold", !locked && word.tone === "caution" ? "text-caution-foreground" : "text-muted-foreground")}>{locked ? `Locked ${relativeTime(e.preLockedAt)}` : word.text}</span>
             </div>
@@ -129,12 +131,12 @@ export function ReportView({ e, h, team, scopeSlug, evidence, recipients, canBui
           <section aria-labelledby="res" className="mt-[30px] border-t pt-[18px]">
             <div className="flex items-center gap-3">
               <h2 id="res" className="flex-1 text-title font-bold tracking-[-0.01em]">
-                2 · After the report: sourced results
+                2. After the report: sourced results
               </h2>
               <form action={gatherResults}>
                 <input type="hidden" name="id" value={e.id} />
                 <Button type="submit" size="sm" variant="secondary" disabled={!reported} title={reported ? "Pull the 8-K, press release, and reported figures" : "Available on the report date"}>
-                  {reported ? (actuals ? "Refresh results" : "Gather results") : `Gather results · from ${fmtDayMonth(e.reportDate)}`}
+                  {reported ? (actuals ? "Refresh results" : "Gather results") : `Gather results from ${fmtDayMonth(e.reportDate)}`}
                 </Button>
               </form>
             </div>
@@ -215,7 +217,7 @@ export function ReportView({ e, h, team, scopeSlug, evidence, recipients, canBui
                         )}
                         <span className="text-caption text-muted-foreground">
                           {ev.publisher}
-                          {ev.publishedAt ? ` · ${fmtDateTime(ev.publishedAt)}` : ""}
+                          {ev.publishedAt ? `, ${fmtDateTime(ev.publishedAt)}` : ""}
                         </span>
                       </li>
                     ))}
@@ -228,7 +230,7 @@ export function ReportView({ e, h, team, scopeSlug, evidence, recipients, canBui
           <section aria-labelledby="ref" className="mt-[30px] border-t pt-[18px]">
             <div className="flex items-baseline gap-3">
               <h2 id="ref" className={cn("flex-1 text-title font-bold tracking-[-0.01em]", !reported && "text-muted-foreground")}>
-                3 · Post-earnings reflection
+                3. Post-earnings reflection
               </h2>
               {reported && e.status === "reviewed" && <span className="text-caption font-semibold text-muted-foreground">Reviewed {relativeTime(e.reflectionAt)}</span>}
             </div>

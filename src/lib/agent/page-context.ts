@@ -27,7 +27,7 @@ const attribution = z.object({
   end: iso,
 });
 
-/** The Daily page: today's performance, live during market hours. */
+/** Performance for Today: today's performance, live during market hours. */
 const daily = z.object({
   kind: z.literal("daily"),
   path,
@@ -90,11 +90,11 @@ export function pageContextFromMessages(messages: { role: string; metadata?: unk
 
 /** A few words for the chip on the question and in Hoot's panel. */
 export function pageContextLabel(ctx: PageContext): string {
-  if (ctx.kind === "attribution") return `${ctx.title} · ${ctx.period === "itd" ? "All" : PERIOD_LABELS[ctx.period]}`;
-  if (ctx.kind === "daily") return `${ctx.title} · ${ctx.status === "final" ? ctx.session : ctx.status === "live" ? "live" : "closed, provisional"}`;
-  if (ctx.kind === "risk") return `${ctx.title} · ${ctx.lookback} window`;
-  if (ctx.kind === "exposure") return `${ctx.title} · ${ctx.asOf} close`;
-  if (ctx.kind === "backtesting") return `Backtesting · ${ctx.from} to ${ctx.to}${ctx.changed.length ? ` · ${ctx.changed.length} weight${ctx.changed.length === 1 ? "" : "s"} changed` : ""}`;
+  if (ctx.kind === "attribution") return `${ctx.title}, ${ctx.period === "itd" ? "All" : PERIOD_LABELS[ctx.period]}`;
+  if (ctx.kind === "daily") return `${ctx.title}, ${ctx.status === "final" ? ctx.session : ctx.status === "live" ? "live" : "closed, provisional"}`;
+  if (ctx.kind === "risk") return `${ctx.title}, ${ctx.lookback} window`;
+  if (ctx.kind === "exposure") return `${ctx.title}, ${ctx.asOf} close`;
+  if (ctx.kind === "backtesting") return `What if, ${ctx.from} to ${ctx.to}${ctx.changed.length ? `, ${ctx.changed.length} weight${ctx.changed.length === 1 ? "" : "s"} changed` : ""}`;
   return ctx.title;
 }
 

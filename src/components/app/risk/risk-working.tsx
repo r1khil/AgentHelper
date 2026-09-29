@@ -48,7 +48,7 @@ export function TeWorking({ r }: { r: RiskReport }) {
   return (
     <Working title="Tracking error working">
       <Step label="Active weights a">holdings at their weights ({rpct(r.portfolio.invested, 1)} in total), minus the benchmark&apos;s sector ETFs:</Step>
-      <div className="tnum text-muted-foreground">{r.benchmarkLegs.map((l) => `${l.etf} ${rpct(l.weight, 2)}`).join(" · ")}</div>
+      <div className="tnum text-muted-foreground">{r.benchmarkLegs.map((l) => `${l.etf} ${rpct(l.weight, 2)}`).join(", ")}</div>
       <Step label="Daily">√(aᵀΣa) = {rsci(r.portfolio.dailyTe)}</Step>
       <Step label="Annualized">{rsci(r.portfolio.dailyTe)} × √252 = <b>{rpct(r.portfolio.trackingError, 2)}</b></Step>
       <Source>benchmark weights are the saved S&amp;P 500 sector weights drifted to today; ETF returns are Select Sector SPDR total returns.</Source>

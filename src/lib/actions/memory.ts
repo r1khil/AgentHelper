@@ -26,6 +26,6 @@ export async function deleteMemory(fd: FormData) {
   await deleteMemoryRow(id);
   if (teamId && h) {
     const [team] = await db.select({ slug: teams.slug }).from(teams).where(eq(teams.id, teamId)).limit(1);
-    if (team) revalidatePath(`/t/${team.slug}/agent/h/${h.ticker}`);
+    if (team) revalidatePath(`/t/${team.slug}/h/${h.ticker}`);
   }
 }

@@ -17,17 +17,22 @@ export type MovementsScope = { slug: string; label: string };
 
 /**
  * Movements as three columns filling the window: the list on the left, the selected movement's write-up in the
- * middle, and the evidence Hoot gathered on the right. Rendered by both /movements (most relevant item selected)
- * and /movements/[id].
+ * middle, and the evidence Hoot gathered on the right. Rendered by both /movements (most relevant item selected; the
+ * breadcrumb is Portfolio / Write-ups) and /movements/[id] (Portfolio / TICKER / Write-up, as one of the holding's).
  */
-export function MovementsView({ scope, items, selected }: { scope: MovementsScope; items: MovementListItem[]; selected: MovementDetailData | null }) {
+export function MovementsView({ scope, items, selected, list }: { scope: MovementsScope; items: MovementListItem[]; selected: MovementDetailData | null; /** Rendered by /movements, the list of every write-up, rather than one write-up's own route. */ list?: boolean }) {
   const anyOverdue = items.some((i) => i.overdue) || !!selected?.overdue;
   const open = items.filter((i) => i.status !== "completed").length;
-  const asof = [scope.label, `${open} open · ${items.length - open} completed`, selected && `anyone on ${selected.teamName} can write this one`].filter(Boolean).join(" · ");
+  const asof = [`${scope.label}, ${open} open, ${items.length - open} completed`, selected && `Anyone on ${selected.teamName} can write this one`].filter(Boolean).join(". ");
   return (
     <div data-full-bleed className="flex h-dvh min-h-0 flex-col">
       <PageHead
-        crumbs={[{ label: "Movements", href: selected ? `/t/${scope.slug}/movements` : undefined }, ...(selected ? [{ label: `${selected.ticker} · ${fmtDayMonth(selected.sessionDate)}` }] : [])]}
+        crumbs={
+          // One write-up belongs to its holding (Portfolio / META / Write-up, Sep 24); the list of every one is Portfolio's.
+          selected && !list
+            ? [{ label: "Portfolio", href: `/t/${scope.slug}` }, { label: selected.ticker, href: `${selected.holdingHref}?tab=write-ups` }, { label: `Write-up, ${fmtDayMonth(selected.sessionDate)}` }]
+            : [{ label: "Portfolio", href: `/t/${scope.slug}` }, { label: "Write-ups" }]
+        }
         asof={asof}
         tabs={false}
       />
@@ -60,7 +65,7 @@ function MovementList({ items, selectedId, showTeam }: { items: MovementListItem
               <RowLink
                 href={i.href}
                 aria-current={on ? "page" : undefined}
-                title={[i.dataQuality, i.completedByName && `Completed by ${i.completedByName}`].filter(Boolean).join(" · ") || undefined}
+                title={[i.dataQuality, i.completedByName && `Completed by ${i.completedByName}`].filter(Boolean).join(". ") || undefined}
                 className={cn(
                   "-mx-2 flex flex-col gap-0.5 rounded-lg border-b border-row px-2 py-2.5 text-body transition-colors outline-none hover:bg-band focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                   on && "bg-secondary hover:bg-secondary",
@@ -73,7 +78,7 @@ function MovementList({ items, selectedId, showTeam }: { items: MovementListItem
                 <span className="flex items-baseline justify-between gap-2">
                   <Pill tone={status.tone}>{status.label}</Pill>
                   <span className="min-w-0 truncate text-caption text-muted-foreground" title={i.teamName ?? undefined}>
-                    {[showTeam && i.teamName, sessionShort(i.sessionDate)].filter(Boolean).join(" · ")}
+                    {[showTeam && i.teamName, sessionShort(i.sessionDate)].filter(Boolean).join(", ")}
                   </span>
                 </span>
               </RowLink>
@@ -89,7 +94,7 @@ function MovementList({ items, selectedId, showTeam }: { items: MovementListItem
 }
 
 function MovementDetail({ d }: { d: MovementDetailData }) {
-  const status = d.status === "completed" ? `Completed ${relativeTime(d.completedAt)}${d.completedByName ? ` by ${d.completedByName}` : ""}` : d.updateText?.trim() ? `Draft · ${wordCount(d.updateText)} words` : "Not started";
+  const status = d.status === "completed" ? `Completed ${relativeTime(d.completedAt)}${d.completedByName ? ` by ${d.completedByName}` : ""}` : d.updateText?.trim() ? `Draft, ${wordCount(d.updateText)} words` : "Not started";
   const latest = d.evidence.reduce<Date | null>((a, e) => (!a || e.retrievedAt > a ? e.retrievedAt : a), null);
   const groups = evidenceGroups(d.evidence);
   const noFilings = d.evidenceStatus === "ready" && d.evidence.length > 0 && !d.evidence.some((e) => e.kind === "filing");
@@ -121,14 +126,14 @@ function MovementHead({ d }: { d: MovementDetailData }) {
         </div>
       ) : (
         <div className="flex flex-wrap items-baseline gap-x-3.5">
-          <span className={cn("hero-figure", dirClass(bp))} title={`Relative to the S&P 500. Official closes · Yahoo Finance. Rule: relative move of ${fmtBp(MOVEMENT_THRESHOLD_PP * 100)} or more.`}>
+          <span className={cn("hero-figure", dirClass(bp))} title={`Relative to the S&P 500. Official closes from Yahoo Finance. Rule: relative move of ${fmtBp(MOVEMENT_THRESHOLD_PP * 100)} or more.`}>
             {fmtChangeBp(bp)}
           </span>
           <span className="text-emph text-muted-foreground">
             <Link href={d.holdingHref} title={d.companyName} className="text-foreground underline-offset-2 hover:underline">
               {d.ticker}
             </Link>{" "}
-            <span className={cn("font-semibold", dirClass(d.holdingReturnPct, 100))}>{fmtChangePct(d.holdingReturnPct)}</span> · S&amp;P 500 {fmtChangePct(d.spxReturnPct)} · {sessionLong(d.sessionDate)}
+            <span className={cn("font-semibold", dirClass(d.holdingReturnPct, 100))}>{fmtChangePct(d.holdingReturnPct)}</span>, S&amp;P 500 {fmtChangePct(d.spxReturnPct)}, {sessionLong(d.sessionDate)}
           </span>
         </div>
       )}
@@ -184,7 +189,7 @@ function evidenceGroups(evidence: MovementEvidence[]): EvidenceGroup[] {
       .map<EvidenceRow>((e) => ({
         ...e,
         n: ++n,
-        meta: [e.publisher, e.publishedAt ? sessionShortDateTime(e.publishedAt) : null].filter(Boolean).join(" · "),
+        meta: [e.publisher, e.publishedAt ? sessionShortDateTime(e.publishedAt) : null].filter(Boolean).join(", "),
         citation: citationFor(e, KIND_LABEL[kind] ?? kind),
       })),
   }));

@@ -81,7 +81,7 @@ export function WeightChanges({ bt, result, years, teams }: { bt: BacktestingSta
         aside={
           <>
             <span aria-live="polite" className={valid ? undefined : "font-semibold text-caution-foreground"}>
-              {valid ? `Net ${net === null ? "—" : fmtChangeBp(net)} · weights still add to 100%` : `Weights total ${Number.isFinite(sum) ? fmtPct(sum) : "—"} · must total 100%`}
+              {valid ? `Net ${net === null ? "—" : fmtChangeBp(net)}, weights still add to 100%` : `Weights total ${Number.isFinite(sum) ? fmtPct(sum) : "—"}, must total 100%`}
             </span>
             <AddHolding bt={bt} hidden={hidden} onPick={(id) => setPinned((s) => new Set(s).add(id))} />
           </>
@@ -113,7 +113,7 @@ export function WeightChanges({ bt, result, years, teams }: { bt: BacktestingSta
             <div key={p.id} role="row" className={cn(COLS, "min-h-11 items-center border-b border-row")}>
               <span role="rowheader" className="min-w-0" title={p.name}>
                 <b className="font-semibold">{p.kind === "cash" ? "Cash" : p.ticker}</b>{" "}
-                <span className="text-muted-foreground">{p.kind === "cash" ? "0% return" : p.kind === "scenario" ? `${p.name} · added to the scenario` : (teams[p.ticker] ?? p.name)}</span>
+                <span className="text-muted-foreground">{p.kind === "cash" ? "0% return" : p.kind === "scenario" ? `${p.name}, added to the scenario` : (teams[p.ticker] ?? p.name)}</span>
               </span>
               <span role="cell" className="text-right text-muted-foreground">{fmtPct(p.weight * 100)}</span>
               <span role="cell" className="text-right">
@@ -247,7 +247,7 @@ function AddHolding({ bt, hidden, onPick }: { bt: BacktestingState; hidden: Posi
                   <option value="">Choose a holding</option>
                   {hidden.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.ticker} · {fmtPct(p.weight * 100)}
+                      {p.ticker}, {fmtPct(p.weight * 100)}
                     </option>
                   ))}
                 </select>

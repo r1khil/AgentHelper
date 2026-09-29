@@ -206,8 +206,9 @@ export function makeWorkspaceTools(ctx: { viewer: CurrentUser; teamId: string | 
       execute: async ({ from, to, importance, search, limit }): Promise<ToolResult<unknown>> => {
         try {
           const range = from || to ? validateRange(from ?? to!, to ?? DateTime.fromISO(from!, { zone: NY }).plus({ days: 6 }).toISODate()!) : calendarWeek();
-          const [feed, slug] = await Promise.all([getEconomicCalendar(range), chatSlug()]);
+          const feed = await getEconomicCalendar(range);
           const t = Date.now();
+          const today = DateTime.now().setZone(NY).toISODate()!;
           const picked = pickEconomicEvents(feed.events, { importance, search, limit });
           const sources: Source[] = [];
           const events = picked.events.map((e) => {
@@ -219,8 +220,9 @@ export function makeWorkspaceTools(ctx: { viewer: CurrentUser; teamId: string | 
             const figures = [actual !== null ? `actual ${actual}` : "not released yet", e.estimate ? `consensus ${e.estimate}` : null, e.previous ? `prior ${e.previous}` : null, odds ? `market-implied ${odds}` : null].filter(Boolean).join(", ");
             const source: Source = {
               id: sourceId("econ", `${e.id}:${actual ?? ""}`),
-              title: `${name} · ${fmtDay(e.date)}`,
-              url: appUrl(`/t/${slug}/economic-calendar?day=${e.date}`),
+              title: `${name}, ${fmtDay(e.date)}`,
+              // Markets opens on the window the release is in: past releases up to its day, or the schedule from it.
+              url: appUrl(e.date < today ? `/markets?view=past&to=${e.date}` : `/markets?from=${e.date}`),
               publisher: e.source ?? feed.provider,
               publishedAt: e.timestamp ?? e.date,
               retrievedAt: feed.fetchedAt,
@@ -277,11 +279,11 @@ export function makeWorkspaceTools(ctx: { viewer: CurrentUser; teamId: string | 
       }),
       execute: async ({ ticker, from, to, kind, includeVoided, limit }): Promise<ToolResult<unknown>> => {
         try {
-          if (!isFundWide(viewer)) throw new Error("The trade ledger (Portfolio · Activity) is visible to execs and admins only.");
+          if (!isFundWide(viewer)) throw new Error("The trade ledger (the Portfolio's Activity view) is visible to execs and admins only.");
           const t = ticker?.trim().toUpperCase();
           const [rows, held] = await Promise.all([loadLedgerRows(), kind === "cash" ? Promise.resolve([]) : loadHeldTickets().catch(() => [])]);
           const f = filterLedger(rows, { ticker: t, from, to, kind, includeVoided });
-          const url = appUrl("/attribution/ledger");
+          const url = appUrl(`/t/${FUND_SCOPE_SLUG}/activity`);
           const sources: Source[] = [];
           const trades = f.trades.slice(0, limit).map((x) => {
             const value = x.shares * x.price;
