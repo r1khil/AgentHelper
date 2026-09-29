@@ -4,7 +4,7 @@ import { collectSources } from "./citations";
 import { citedIds, marketFigure, pairTurns, traceLine, turnSources } from "./board";
 import { hiddenPromptMessage } from "./hidden-prompt";
 
-// Dates this year print without the year ("Tue 22 Sep"); pin the clock so these stay 2026's.
+// Dates this year print without the year ("Tue, Sep 22"); pin the clock so these stay 2026's.
 beforeAll(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-28T12:00:00Z"));
@@ -114,7 +114,7 @@ describe("marketFigure", () => {
   });
   it("renders the latest relative move", () => {
     const row = { n: 1, cited: 0, source: src("yr-1"), data: { sessions: [{ date: "2026-09-18", holdingReturnPct: -4.81, spxReturnPct: -0.62, relativePp: -4.19, qualifies: true }] } };
-    expect(marketFigure(row)).toEqual({ big: "(419 bp)", tone: "down", sub: "(4.81%) vs (0.62%) · 400 bp rule met · Fri 18 Sep" });
+    expect(marketFigure(row)).toEqual({ big: "(419 bp)", tone: "down", sub: "(4.81%) vs (0.62%) · 400 bp rule met · Fri, Sep 18" });
   });
 });
 

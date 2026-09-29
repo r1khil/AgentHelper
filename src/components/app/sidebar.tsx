@@ -25,7 +25,6 @@ import {
   ScanEye,
   ScrollText,
   Settings,
-  Sparkles,
   Mic,
   Sun,
   SunMoon,
@@ -44,7 +43,6 @@ import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { setHootEnabled, setTransparencyMode } from "@/lib/actions/preferences";
 import { resolveScope } from "@/lib/scope";
-import { replayTour } from "./tour/tour-store";
 import { useScopeSlug } from "./shell/scope-context";
 import { markScopeIntent } from "./shell/scope-intent";
 import {
@@ -342,11 +340,24 @@ export function initials(name: string) {
 }
 
 /** Who is signed in, with the per-person preferences and sign out tucked behind it. */
-export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user: SidebarUser; fundWide: boolean; signOut: () => Promise<void>; variant?: "row" | "rail" }) {
+export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user: SidebarUser; fundWide: boolean; signOut: () => Promise<void>; variant?: "row" | "rail" | "avatar" }) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      {variant === "rail" ? (
+      {variant === "avatar" ? (
+        <PopoverTrigger
+          render={
+            <button
+              data-tour="account"
+              aria-label={`${user.fullName}: preferences and sign out`}
+              title={user.fullName}
+              className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-caption font-semibold text-primary-foreground transition-shadow hover:shadow-[0_0_0_2px_var(--border-strong)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring data-popup-open:shadow-[0_0_0_2px_var(--border-strong)]"
+            />
+          }
+        >
+          {initials(user.fullName) || "?"}
+        </PopoverTrigger>
+      ) : variant === "rail" ? (
         <PopoverTrigger
           render={
             <button
@@ -373,7 +384,7 @@ export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user
           <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
         </PopoverTrigger>
       )}
-      <PopoverContent side={variant === "rail" ? "right" : "top"} align={variant === "rail" ? "end" : "start"} className="w-64 gap-0 p-1.5">
+      <PopoverContent side={variant === "rail" ? "right" : variant === "avatar" ? "bottom" : "top"} align={variant === "rail" || variant === "avatar" ? "end" : "start"} className="w-64 gap-0 p-1.5">
         <div className="flex items-center gap-2.5 px-1.5 py-1.5">
           <Avatar name={user.fullName} />
           <span className="min-w-0 flex-1 leading-tight">
@@ -382,24 +393,10 @@ export function AccountMenu({ user, fundWide, signOut, variant = "row" }: { user
           </span>
         </div>
         <div className="-mx-1.5 my-1.5 h-px bg-border" />
-        <div className="px-1.5 pt-0.5 pb-1 text-caption font-medium tracking-wide text-muted-foreground uppercase">Preferences</div>
+        <div className="px-1.5 pt-0.5 pb-1 text-caption text-muted-foreground">Preferences</div>
         <HootToggle on={user.hootEnabled} />
         {fundWide && <TransparencyToggle on={user.transparencyMode} />}
         <ThemeToggle />
-        {/* Hoot's tour of the redesign is for execs and admins, who can see every section. */}
-        {fundWide && (
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              replayTour();
-            }}
-            className={cn(prefRow, "w-full text-left text-body hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none")}
-          >
-            <Sparkles className="size-4 shrink-0 text-muted-foreground" />
-            Replay the tour
-          </button>
-        )}
         <div className="-mx-1.5 my-1.5 h-px bg-border" />
         <button
           type="button"
@@ -427,14 +424,14 @@ function HootIcon({ className }: { className?: string }) {
 
 const prefRow = "flex items-center gap-2.5 rounded-md px-1.5 py-1.5";
 
-/** Show or hide Hoot, the companion at the bottom of the menu. Persisted on the profile. */
+/** Show or hide Hoot's corner button. Persisted on the profile. */
 function HootToggle({ on }: { on: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return (
-    <label className={cn(prefRow, "cursor-pointer hover:bg-accent")} title="Hoot at the bottom of the menu on every page: flags deadlines and takes quick questions">
-      <HootIcon className="size-4 shrink-0" />
-      <span className="min-w-0 flex-1 text-body">Hoot in the menu</span>
+    <label className={cn(prefRow, "cursor-pointer hover:bg-accent")} title="Hoot in the bottom-right corner of every page: flags deadlines and takes quick questions">
+      <HootIcon className="size-4 shrink-0 rounded-full" />
+      <span className="min-w-0 flex-1 text-body">Hoot in the corner</span>
       <Switch
         checked={on}
         disabled={pending}

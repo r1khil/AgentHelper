@@ -1,8 +1,8 @@
 // Client-safe and pure: what ⌘K lists for a query, and in what order. Enter runs the first item unless the member
 // arrowed to another, so the order is the Enter rule: a holding, page, scope or theme the query names comes first,
 // and asking Hoot comes second. ⌘/Ctrl+Enter (or Tab) always asks Hoot.
-import type { CommandHolding } from "@/lib/nav-data";
-import { fmtDay } from "@/lib/format";
+import type { CommandHolding, RecentChat } from "@/lib/nav-data";
+import { fmtDay, relativeTime } from "@/lib/format";
 import { boardHref, holdingHref } from "@/lib/scope";
 
 /** `hoot` is the name Hoot's "take me to …" command knows the page by; it counts as a name here too. */
@@ -15,6 +15,8 @@ export type CommandItem =
   /** A starting question for the page in view. Choosing it fills the box to edit; it isn't sent. */
   | { kind: "suggest"; id: string; text: string }
   | { kind: "page"; id: string; page: CommandPage }
+  /** A recent Hoot chat, reopened as it was. */
+  | { kind: "recent"; id: string; chat: RecentChat }
   | { kind: "scope"; id: string; scope: CommandScope }
   | { kind: "theme"; id: string; theme: "dark" | "light" };
 
@@ -35,7 +37,17 @@ export type CommandInput = {
   pageTeamSlug?: string | null;
   /** Starting questions for the page in view, listed while nothing is typed. */
   suggestions?: string[];
+  /**
+   * ⌘J opens in "ask" mode: with nothing typed it lists questions about the page (`pageLabel`), recent answers and a
+   * few pages. ⌘K opens in "search" mode: pages first.
+   */
+  mode?: "ask" | "search";
+  pageLabel?: string;
+  recent?: RecentChat[];
 };
+
+/** "2m ago" for a recent answer. */
+export const recentWhen = (chat: RecentChat, now = Date.now()) => relativeTime(chat.at, now);
 
 const shortDate = (iso: string) => fmtDay(iso);
 
@@ -67,10 +79,18 @@ function themeQuery(words: string[]) {
   return words.length > 0 && words.every((w) => THEME_WORDS.some((t) => t.startsWith(w)));
 }
 
-export function commandGroups({ query, holdings, pages, scopes, teamSlug, scopeSlug, dark, pageTicker = null, pageTeamSlug = null, suggestions = [] }: CommandInput): CommandGroup[] {
+export function commandGroups({ query, holdings, pages, scopes, teamSlug, scopeSlug, dark, pageTicker = null, pageTeamSlug = null, suggestions = [], mode = "search", pageLabel, recent = [] }: CommandInput): CommandGroup[] {
   const q = normalize(query);
   const words = q.split(" ").filter(Boolean);
   const matches = (text: string) => words.every((w) => normalize(text).includes(w));
+
+  if (!q && mode === "ask") {
+    return [
+      { label: pageLabel ? `Ask about ${pageLabel}` : "Ask Hoot", items: suggestions.map((text): CommandItem => ({ kind: "suggest", id: `suggest:${text}`, text })) },
+      { label: "Recent answers", items: recent.map((chat): CommandItem => ({ kind: "recent", id: `recent:${chat.href}`, chat })) },
+      { label: "Go to", items: pages.slice(0, 3).map((p): CommandItem => ({ kind: "page", id: `page:${p.href}:${p.label}`, page: p })) },
+    ].filter((g) => g.items.length);
+  }
 
   if (!q) {
     return [

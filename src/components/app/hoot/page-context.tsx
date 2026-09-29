@@ -32,3 +32,12 @@ export function pageContextFor(pathname: string): PageContext {
   const title = typeof document !== "undefined" ? document.title.replace(/\s*[·|—-]\s*The Owl.*$/i, "").slice(0, 160) : "";
   return { kind: "page", path: pathname, title: title || pathname };
 }
+
+/**
+ * What Hoot's corner and palette call the page: its title without the app's name ("AVGO", "Risk", "Healthcare"), or
+ * "" when the page has no title of its own.
+ */
+export function pageLabelFor(pathname: string): string {
+  const t = pageContextFor(pathname).title.split(/\s[·|—]\s/)[0]?.trim() ?? "";
+  return t && t.length <= 40 && !t.startsWith("/") && !/^the owl/i.test(t) ? t : "";
+}

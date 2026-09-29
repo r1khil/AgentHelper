@@ -44,8 +44,8 @@ describe("ticketTextInBody", () => {
 
 describe("describeTrade", () => {
   it("reads like a sentence", () => {
-    expect(describeTrade(SYK.ticket!)).toBe("Bought 83 SYK (Stryker Corp) at $280.13 on 18 Sep 2026");
-    expect(describeTrade(XLP.ticket!)).toBe("Sold 2,246 XLP (Consumer Staples SPDR) at $82.65 on 18 Sep 2026");
+    expect(describeTrade(SYK.ticket!)).toBe("Bought 83 SYK (Stryker Corp) at $280.13 on Sep 18, 2026");
+    expect(describeTrade(XLP.ticket!)).toBe("Sold 2,246 XLP (Consumer Staples SPDR) at $82.65 on Sep 18, 2026");
   });
 });
 
@@ -66,8 +66,8 @@ describe("ticketReplyBody", () => {
         "Hi Saad,",
         "",
         "I recorded these 2 trades in the ledger:",
-        "- Bought 83 SYK (Stryker Corp) at $280.13 on 18 Sep 2026",
-        "- Sold 2,246 XLP (Consumer Staples SPDR) at $82.65 on 18 Sep 2026",
+        "- Bought 83 SYK (Stryker Corp) at $280.13 on Sep 18, 2026",
+        "- Sold 2,246 XLP (Consumer Staples SPDR) at $82.65 on Sep 18, 2026",
         "",
         "Please double-check:",
         "- XLP: Shares × price is $185,631.90, but the ticket says $185,811.58. One of them is a typo.",
@@ -75,7 +75,7 @@ describe("ticketReplyBody", () => {
         "Cash is -$1,000.00 after this. Record the deposit or sale that funded it.",
         "",
         "Already recorded, so I left these alone:",
-        "- Bought 83 SYK (Stryker Corp) at $280.13 on 18 Sep 2026: Already in the ledger.",
+        "- Bought 83 SYK (Stryker Corp) at $280.13 on Sep 18, 2026: Already in the ledger.",
         "",
         "I couldn't read these tickets:",
         "- bad.docx: Price must be a number above zero.",
@@ -115,7 +115,7 @@ describe("ticketReplyBody with a far-off price", () => {
         "Nothing new went into the ledger from this email.",
         "",
         "I held back this ticket because the price looks off:",
-        `- Bought 83 SYK (Stryker Corp) at $280.13 on 18 Sep 2026: ${warning}`,
+        `- Bought 83 SYK (Stryker Corp) at $280.13 on Sep 18, 2026: ${warning}`,
         "",
         "If the ticket has a typo, fix it and send it again. If the price is right, upload the ticket on the Ledger page (https://x.app/attribution/ledger), where you can confirm it.",
         "",

@@ -56,7 +56,7 @@ describe("buildNudges", () => {
     expect(out.map((n) => [n.id, n.priority, n.title])).toEqual([
       ["movement:t1:team:overdue", 3, "META write-up is overdue"],
       ["movement:t3:team:overdue", 3, "UNH write-up is overdue"],
-      ["movement:t2:team:due", 5, "JPM write-up is due Wed 23 Sep, 12:00 ET"],
+      ["movement:t2:team:due", 5, "JPM write-up is due Wed, Sep 23, 12:00 PM ET"],
     ]);
     expect(out[0]).toMatchObject({ href: "/t/consumer/movements/t1", mood: "concerned", at: "2026-09-20T16:00:00.000Z" });
     expect(out[1].detail).toBe("Healthcare hasn't finished it yet. Check in with the team.");
@@ -159,10 +159,12 @@ describe("moods and routes", () => {
     expect(companionHiddenOn("/t/tech/agents-guide")).toBe(false);
     expect(companionHiddenOn("/hoot/0b7f")).toBe(true);
     expect(companionHiddenOn("/hootenanny")).toBe(false);
-    // Today's greeter and the Calendar's sleeping Hoot are the page's one Hoot.
+    // Home and a movement write-up are conversations with Hoot already; the Calendar keeps the corner button.
     expect(companionHiddenOn("/")).toBe(true);
-    expect(companionHiddenOn("/t/tech/earnings")).toBe(true);
-    expect(companionHiddenOn("/t/fund/economic-calendar")).toBe(true);
+    expect(companionHiddenOn("/t/tech/movements")).toBe(true);
+    expect(companionHiddenOn("/t/tech/movements/m1")).toBe(true);
+    expect(companionHiddenOn("/t/tech/earnings")).toBe(false);
+    expect(companionHiddenOn("/t/fund/economic-calendar")).toBe(false);
     expect(companionHiddenOn("/t/tech/earnings/e1")).toBe(false);
     expect(companionHiddenOn("/t/tech")).toBe(false);
   });

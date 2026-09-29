@@ -21,6 +21,6 @@ export async function GET(req: Request) {
     return Response.json({ price: row?.quote?.price ?? null, currency: row?.quote?.currency ?? null, changePct: row?.quote?.changePct ?? null, relativePp: row?.relativePp ?? null }, { headers });
   }
   const scope = url.searchParams.get("scope") ?? "";
-  if (!/^[\w-]{1,80}$/.test(scope)) return Response.json({ counts: {}, holdings: [] }, { headers });
+  if (!/^[\w-]{1,80}$/.test(scope)) return Response.json({ counts: {}, badges: {}, holdings: [], recent: [] }, { headers });
   return Response.json(await loadNavData(user, scope), { headers });
 }

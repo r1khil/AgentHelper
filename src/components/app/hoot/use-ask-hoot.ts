@@ -17,11 +17,12 @@ export function useAskHoot() {
   const pathname = usePathname();
   const [asking, setAsking] = useState(false);
   const ask = useCallback(
-    async (question: string, target: { teamSlug: string | null; ticker: string | null }) => {
+    async (question: string, target: { teamSlug: string | null; ticker: string | null }, opts: { withPage?: boolean } = {}) => {
       setAsking(true);
       try {
-        // Read at the moment of asking, so it reflects the period or scenario on screen right now.
-        const page = pageContextFor(pathname);
+        // Read at the moment of asking, so it reflects the period or scenario on screen right now. Left out when the
+        // member asked about the whole app instead of this page.
+        const page = opts.withPage === false ? null : pageContextFor(pathname);
         const res = await startHootChat(target);
         if ("error" in res) {
           toast.error(res.error);
