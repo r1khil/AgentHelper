@@ -1,8 +1,7 @@
 import "server-only";
-import { and, eq, gte, inArray, lte, min, or } from "drizzle-orm";
 import { cache } from "react";
 import { db } from "@/db/client";
-import { dailyCloses, securityEvents } from "@/db/schema";
+import { loadCloses, loadEvents } from "@/lib/market-data";
 import { ETF_BY_SECTOR, GICS_SECTORS } from "@/lib/attribution/sectors";
 import type { DateSeries } from "@/lib/attribution/types";
 import { putValue } from "./load";
@@ -13,23 +12,17 @@ import { runStressTests, stressInputFromReport, STRESS_WINDOWS, stressDateRanges
 async function loadWindowPrices(symbols: string[]) {
   const list = [...new Set(symbols)];
   const ranges = stressDateRanges(STRESS_WINDOWS);
-  const [closeRows, divRows, firstRows] = await Promise.all([
-    db
-      .select({ ticker: dailyCloses.ticker, date: dailyCloses.sessionDate, close: dailyCloses.close })
-      .from(dailyCloses)
-      .where(and(inArray(dailyCloses.ticker, list), or(...ranges.map((r) => and(gte(dailyCloses.sessionDate, r.from), lte(dailyCloses.sessionDate, r.to)))))),
-    db
-      .select({ ticker: securityEvents.ticker, date: securityEvents.exDate, amount: securityEvents.amount })
-      .from(securityEvents)
-      .where(and(inArray(securityEvents.ticker, list), eq(securityEvents.kind, "dividend"), or(...ranges.map((r) => and(gte(securityEvents.exDate, r.from), lte(securityEvents.exDate, r.to)))))),
-    db.select({ ticker: dailyCloses.ticker, first: min(dailyCloses.sessionDate) }).from(dailyCloses).where(inArray(dailyCloses.ticker, list)).groupBy(dailyCloses.ticker),
-  ]);
+  const inWindow = (d: string) => ranges.some((r) => d >= r.from && d <= r.to);
+  const [allCloses, eventRows] = await Promise.all([loadCloses(db, list), loadEvents(db, list)]);
+  const closeRows = allCloses.filter((r) => inWindow(r.date));
+  const divRows = eventRows.filter((e) => e.kind === "dividend" && inWindow(e.date));
+  const first = new Map<string, string>();
+  for (const r of allCloses) if (!first.has(r.ticker) || r.date < first.get(r.ticker)!) first.set(r.ticker, r.date);
   const prices: DateSeries = new Map();
   for (const r of closeRows) putValue(prices, r.ticker, r.date, Number(r.close));
   const dividends: DateSeries = new Map();
   for (const r of divRows) if (r.amount) putValue(dividends, r.ticker, r.date, Number(r.amount));
-  const firstClose = new Map(firstRows.filter((r) => r.first).map((r) => [r.ticker, r.first!]));
-  return { prices, dividends, firstClose };
+  return { prices, dividends, firstClose: first };
 }
 
 /**

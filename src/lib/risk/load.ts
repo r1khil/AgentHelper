@@ -1,9 +1,8 @@
 import "server-only";
-import { and, eq, gte, inArray } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { cache } from "react";
 import { db } from "@/db/client";
-import { dailyCloses, securityEvents } from "@/db/schema";
+import { loadCloses, loadEvents } from "@/lib/market-data";
 import { latestPositions } from "@/lib/attribution/ledger";
 import { loadAttributionSeries, loadTeamSectors } from "@/lib/attribution/load";
 import { benchmarkSymbols } from "@/lib/attribution/sectors";
@@ -26,16 +25,8 @@ export function windowStart(asOf: string, lookback: LookbackKey) {
 /** Stored closes and dividends for `symbols` since `from`. */
 export async function loadStoredPrices(symbols: string[], from: string): Promise<{ prices: DateSeries; dividends: DateSeries }> {
   const list = [...new Set(symbols)];
-  const [closeRows, divRows] = await Promise.all([
-    db
-      .select({ ticker: dailyCloses.ticker, date: dailyCloses.sessionDate, close: dailyCloses.close })
-      .from(dailyCloses)
-      .where(and(inArray(dailyCloses.ticker, list), gte(dailyCloses.sessionDate, from))),
-    db
-      .select({ ticker: securityEvents.ticker, date: securityEvents.exDate, amount: securityEvents.amount })
-      .from(securityEvents)
-      .where(and(inArray(securityEvents.ticker, list), eq(securityEvents.kind, "dividend"), gte(securityEvents.exDate, from))),
-  ]);
+  const [closeRows, eventRows] = await Promise.all([loadCloses(db, list, { from }), loadEvents(db, list)]);
+  const divRows = eventRows.filter((e) => e.kind === "dividend" && e.date >= from);
   const prices: DateSeries = new Map();
   for (const r of closeRows) putValue(prices, r.ticker, r.date, Number(r.close));
   const dividends: DateSeries = new Map();

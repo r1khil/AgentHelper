@@ -158,11 +158,15 @@ export async function runIncrementalSync(opts: { reason: string; ingest?: Ingest
         }
         throw e;
       }
+      // applyChanges only looks up the changed files and their parents, so only those rows are read, not the whole index.
+      const touched = [...new Set(listed.changes.flatMap((c) => [c.fileId ?? c.file?.id, c.file?.parents?.[0]]).filter((id): id is string => Boolean(id)))];
       const existing = new Map(
-        (
-          await db
-            .select({ id: driveFiles.id, name: driveFiles.name, parentId: driveFiles.parentId, path: driveFiles.path, isFolder: driveFiles.isFolder, holdingId: driveFiles.holdingId, ticker: driveFiles.ticker, kind: driveFiles.kind, createdByApp: driveFiles.createdByApp, uploadedBy: driveFiles.uploadedBy })
-            .from(driveFiles)
+        (touched.length
+          ? await db
+              .select({ id: driveFiles.id, name: driveFiles.name, parentId: driveFiles.parentId, path: driveFiles.path, isFolder: driveFiles.isFolder, holdingId: driveFiles.holdingId, ticker: driveFiles.ticker, kind: driveFiles.kind, createdByApp: driveFiles.createdByApp, uploadedBy: driveFiles.uploadedBy })
+              .from(driveFiles)
+              .where(inArray(driveFiles.id, touched))
+          : []
         ).map((r) => [r.id, r]),
       );
       const hs = await db.select({ id: holdings.id, ticker: holdings.ticker, companyName: holdings.companyName, teamId: holdings.teamId }).from(holdings).where(eq(holdings.status, "active"));

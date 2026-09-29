@@ -1,6 +1,7 @@
-import { and, asc, desc, eq, gte, inArray, isNull } from "drizzle-orm";
+import { asc, desc, eq, isNull } from "drizzle-orm";
 import { DateTime } from "luxon";
-import { benchmarkSectorWeights, cashFlows, dailyCloses, holdings, securities, securityEvents, trades, type Security } from "@/db/schema";
+import { benchmarkSectorWeights, cashFlows, holdings, securities, trades, type Security } from "@/db/schema";
+import { loadCloses, loadEvents } from "@/lib/market-data";
 import { getSectorProfile, lookupCompany } from "@/lib/providers/yahoo";
 import { pickCompanyName } from "@/lib/company-name";
 import type { Db } from "@/lib/prices";
@@ -71,11 +72,8 @@ export async function readSeriesInputs(db: Db, overrides?: { trades?: Trade[]; c
   const symbols = [...new Set([...tradeList.map((t) => t.ticker), ...benchmarkSymbols()])];
   const from = historyFrom(inception);
   const [closeRows, eventRows, securityRows] = await Promise.all([
-    db
-      .select({ ticker: dailyCloses.ticker, date: dailyCloses.sessionDate, close: dailyCloses.close })
-      .from(dailyCloses)
-      .where(and(inArray(dailyCloses.ticker, symbols), gte(dailyCloses.sessionDate, from))),
-    db.select().from(securityEvents).where(inArray(securityEvents.ticker, symbols)),
+    loadCloses(db, symbols, { from }),
+    loadEvents(db, symbols),
     db.select().from(securities),
   ]);
 
@@ -84,8 +82,8 @@ export async function readSeriesInputs(db: Db, overrides?: { trades?: Trade[]; c
   const dividends: DateSeries = new Map();
   const splits: Split[] = [];
   for (const e of eventRows) {
-    if (e.kind === "dividend" && e.amount) put(dividends, e.ticker, e.exDate, Number(e.amount));
-    if (e.kind === "split" && e.ratio) splits.push({ ticker: e.ticker, date: e.exDate, ratio: Number(e.ratio) });
+    if (e.kind === "dividend" && e.amount) put(dividends, e.ticker, e.date, Number(e.amount));
+    if (e.kind === "split" && e.ratio) splits.push({ ticker: e.ticker, date: e.date, ratio: Number(e.ratio) });
   }
   const meta = new Map(securityRows.map((s) => [s.ticker, { ticker: s.ticker, name: s.name, sector: s.sector, teamId: s.teamId }]));
   return { ...base, prices, dividends, splits, meta };
