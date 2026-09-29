@@ -45,7 +45,8 @@ function maxDocsDefault() {
 
 async function ingestConfig(): Promise<IngestConfig> {
   const on = embeddingConfigured();
-  return { summaryVersion: SUMMARY_VERSION, embedEnabled: on, embedModel: on ? await embeddingModelId() : null };
+  // Drive summaries are off (Rikhil, 2026-09-29): on Luna they were most of the OpenRouter spend. DRIVE_SUMMARIES=on restores them.
+  return { summaryVersion: SUMMARY_VERSION, summaryEnabled: process.env.DRIVE_SUMMARIES === "on", embedEnabled: on, embedModel: on ? await embeddingModelId() : null };
 }
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -219,7 +220,7 @@ async function ingestOne(documentId: string, cfg: IngestConfig, result: IngestRe
   }
 
   // 4. Thesis proposal (only from a fresh, non-empty Drive summary).
-  if (row.drive && summary && !isEmptySummary(summary) && row.holdingId) {
+  if (needs.summary && row.drive && summary && !isEmptySummary(summary) && row.holdingId) {
     try {
       if (await maybeProposeThesis({ id: row.id, name: row.drive.name, holdingId: row.holdingId, modifiedTime: row.publishedAt }, summary)) result.proposals += 1;
     } catch (e) {

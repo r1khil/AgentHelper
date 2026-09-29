@@ -24,7 +24,8 @@ export type IngestRow = {
   drive?: { name: string; mimeType: string; isFolder: boolean; size: number | null } | null;
 };
 
-export type IngestConfig = { summaryVersion?: number; embedModel: string | null; embedEnabled: boolean };
+/** summaryEnabled false (the default since 2026-09-29) never writes new Drive summaries; existing ones are kept. */
+export type IngestConfig = { summaryVersion?: number; summaryEnabled?: boolean; embedModel: string | null; embedEnabled: boolean };
 export type IngestNeeds = { text: boolean; summary: boolean; embed: boolean };
 
 /** Only Drive documents get the structured summary; its prompt is about theses and ratings, not filings. */
@@ -54,7 +55,7 @@ export function ingestNeeds(row: IngestRow, cfg: IngestConfig): IngestNeeds {
   const textFresh = row.textFor === row.version;
   if (textFresh && row.textError) return { text: false, summary: false, embed: false };
   const version = cfg.summaryVersion ?? SUMMARY_VERSION;
-  const summaryFresh = !summaryApplies(row.kind) || (row.summaryFor === row.version && row.summaryVersion === version && !row.summaryError && !isFailedSummary(row.summary));
+  const summaryFresh = !cfg.summaryEnabled || !summaryApplies(row.kind) || (row.summaryFor === row.version && row.summaryVersion === version && !row.summaryError && !isFailedSummary(row.summary));
   const embedFresh = !cfg.embedEnabled || (row.embedFor === row.version && row.embedModel === cfg.embedModel);
   const summary = !summaryFresh;
   const embed = !embedFresh;
