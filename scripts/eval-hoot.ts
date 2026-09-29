@@ -62,7 +62,7 @@ async function runCase(c: EvalCase, viewers: Record<EvalCase["as"], CurrentUser>
 
 function crashed(c: EvalCase, e: unknown): EvalTurn {
   const detail = e instanceof Error ? e.message : String(e);
-  return { id: c.id, pass: false, checks: [{ name: "ran", pass: false, detail }], calls: [], errors: 0, duplicates: 0, narration: 0, steps: null, uncited: null, repaired: false, writeUp: null, unanswered: true, ms: null, tokens: { input: null, output: null }, answer: "" };
+  return { id: c.id, pass: false, checks: [{ name: "ran", pass: false, detail }], calls: [], errors: 0, duplicates: 0, narration: 0, steps: null, uncited: null, repaired: false, writeUp: null, unanswered: true, ms: null, tokens: { input: null, output: null }, activeTools: null, unavailable: 0, answer: "" };
 }
 
 async function main() {
@@ -83,6 +83,8 @@ async function main() {
   console.log(`Hoot eval · ${model} · ${cases.length} case${cases.length === 1 ? "" : "s"}${skipped.length ? ` · skipped (provider not configured here): ${skipped.map((c) => c.id).join(", ")}` : ""}\n`);
 
   const results: EvalTurn[] = new Array(cases.length);
+  /** Every run, not just each case's representative one: token and routing totals over the whole run. */
+  const everyRun: EvalTurn[] = [];
   const runs: Record<string, boolean[]> = {};
   const jobs = cases.flatMap((c, i) => Array.from({ length: repeat }, (_, n) => ({ c, i, n })));
   let next = 0;
@@ -91,6 +93,7 @@ async function main() {
       for (let j = next++; j < jobs.length; j = next++) {
         const { c, i, n } = jobs[j];
         const r = await runCase(c, viewers, anyTeam.id).catch((e) => crashed(c, e));
+        everyRun.push(r);
         (runs[c.id] ??= []).push(r.pass);
         // The case's result is its first failing run, else its first run, so --compare sees any failure.
         if (!results[i] || (results[i].pass && !r.pass)) results[i] = r;
@@ -113,6 +116,9 @@ async function main() {
   console.log(
     `\n${s.passed}/${s.cases} passed · ${s.lookups} lookups (${s.failedLookups} failed, ${s.duplicates} repeated) · ${s.narration} narration parts · ${s.uncited} uncited · ${s.repaired} repaired · ${s.writeUps} write-ups · ${s.unanswered} unanswered · median ${s.medianMs ? Math.round(s.medianMs / 1000) : "?"}s · ${s.tokens.input} in / ${s.tokens.output} out tokens`,
   );
+  const all = summarize(everyRun);
+  if (repeat > 1) console.log(`every run (${all.cases}): ${all.lookups} lookups (${all.failedLookups} failed) · ${all.tokens.input} in / ${all.tokens.output} out tokens`);
+  console.log(`tools offered per step: ${all.avgActiveTools ?? "not recorded"} on average · ${all.unavailableTools} calls to a tool that wasn't offered`);
 
   const compare = arg("compare");
   if (compare) {
@@ -123,7 +129,7 @@ async function main() {
 
   mkdirSync(".artifacts/hoot-eval", { recursive: true });
   const out = `.artifacts/hoot-eval/${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
-  writeFileSync(out, JSON.stringify({ model, at: new Date().toISOString(), repeat, runs, skipped: skipped.map((c) => c.id), summary: s, results }, null, 2));
+  writeFileSync(out, JSON.stringify({ model, at: new Date().toISOString(), repeat, runs, skipped: skipped.map((c) => c.id), summary: s, allRuns: all, results }, null, 2));
   console.log(`\nsaved ${out}`);
 }
 

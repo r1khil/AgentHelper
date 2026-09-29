@@ -25,7 +25,7 @@ type Base = {
 export type TraceEvent = Base &
   (
     | { t: "run.start"; chatId: string; modelId: string; maxSteps: number }
-    | { t: "step.start"; modelId: string; provider: string; toolChoice: string; final: boolean; writeUp?: WriteUpReason }
+    | { t: "step.start"; modelId: string; provider: string; toolChoice: string; final: boolean; writeUp?: WriteUpReason; activeTools?: number; totalTools?: number }
     | { t: "step.end"; finishReason: string; rawFinishReason?: string; ms: number; usage: TraceUsage; toolCalls: number }
     | { t: "tool.start"; tool: string; args: unknown }
     | { t: "tool.end"; tool: string; ms: number; ok: boolean; error?: string; sources: number; bytes?: number }
@@ -61,6 +61,8 @@ export type AgentMetadata = {
   unanswered?: boolean;
   /** How long the turn took, question to saved answer, for "Worked for 12s". */
   ms?: number;
+  /** How many tools each research step offered the model (tool routing), in step order. */
+  activeTools?: number[];
 };
 export type AgentDataParts = { trace: TraceEvent };
 export type AgentUIMessage = UIMessage<AgentMetadata, AgentDataParts>;
