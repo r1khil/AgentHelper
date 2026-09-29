@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { chatWhen } from "@/lib/agent/board";
+import { isCallTitle, threadTitle } from "@/lib/thread-title";
 import { cn } from "@/lib/utils";
 import { HoldingLogo } from "@/components/app/holding-logo";
 
@@ -30,7 +31,7 @@ export function ThreadList({ threads }: { threads: ThreadRow[] }) {
   const [q, setQ] = useState("");
   const f = q.trim().toLowerCase();
   const shown = useMemo(
-    () => (f ? threads.filter((t) => [t.title, t.ticker, t.where, t.authorName].some((v) => v?.toLowerCase().includes(f))) : threads),
+    () => (f ? threads.filter((t) => [threadTitle(t.title, t.ticker), t.ticker, t.where, t.authorName].some((v) => v?.toLowerCase().includes(f))) : threads),
     [threads, f],
   );
   return (
@@ -54,10 +55,12 @@ export function ThreadList({ threads }: { threads: ThreadRow[] }) {
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="truncate text-body font-medium">
                     {t.ticker && <span className="mr-1.5 font-semibold">{t.ticker}</span>}
-                    {t.title === "New chat" ? "New conversation" : t.title}
+                    {t.ticker && " "}
+                    {t.title === "New chat" ? "New conversation" : threadTitle(t.title, t.ticker)}
                   </span>
                   <span className="truncate text-caption text-muted-foreground">
-                    {[t.ticker ? null : t.where, t.authorName ?? "Someone", `${t.questions} question${t.questions === 1 ? "" : "s"}`].filter(Boolean).join(", ")}
+                    {/* A call brief is Hoot's reading of the call, asked by the upload: no member question to count until one follows up. */}
+                    {[t.ticker ? null : t.where, t.authorName ?? "Someone", isCallTitle(t.title) && t.questions === 0 ? null : `${t.questions} question${t.questions === 1 ? "" : "s"}`].filter(Boolean).join(", ")}
                   </span>
                 </span>
                 <span suppressHydrationWarning className={cn("shrink-0 text-caption", t.running ? "font-semibold text-caution-foreground" : "text-muted-foreground")}>

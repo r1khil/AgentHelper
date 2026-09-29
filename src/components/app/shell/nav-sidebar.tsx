@@ -115,6 +115,7 @@ export function NavSidebar({
                 )}
               >
                 {t.ticker && <span className="mr-1.5 font-semibold text-foreground">{t.ticker}</span>}
+                {t.ticker && " "}
                 {t.title}
               </Link>
             );

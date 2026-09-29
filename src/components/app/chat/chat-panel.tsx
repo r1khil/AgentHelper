@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { UIMessage } from "ai";
 import { PageHead, type Crumb } from "@/components/app/page-head";
 import { useSourceViewer, ResearchSources } from "./research-answer";
 import { Composer, HootFace, SourceListCard, SourcesHeading } from "./thread-parts";
 import { ConversationTurns, useConversation, useRelated, type Conversation } from "./conversation";
 import { fmtDateTime, fmtDay, fmtTime } from "@/lib/format";
+import { isCallTitle, threadTitle } from "@/lib/thread-title";
 import { isMemberQuestion } from "@/lib/agent/hidden-prompt";
 import { pageContextFromMessages, pageContextLabel } from "@/lib/agent/page-context";
 import type { RunStatus } from "@/lib/chats";
@@ -53,14 +54,29 @@ function composerProps(conv: Conversation, { configured, sees }: { configured: b
   };
 }
 
-/** Follow the answer to the bottom of the scroller as it arrives. */
+/** Within this many pixels of the end, the reader is following the latest and the thread keeps up with the answer. */
+const FOLLOW_SLACK = 240;
+
+/**
+ * Follow the answer to the bottom of the scroller as it arrives, but only while the reader is at (or near) the end: someone
+ * who scrolled up to read earlier text stays where they are. Sending a question always goes to it. Put `onScroll` on
+ * the scroller.
+ */
 function useFollow(conv: Conversation) {
   const bottom = useRef<HTMLDivElement>(null);
+  const following = useRef(true);
   const { messages, status, catchingUp } = conv;
+  const onScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    following.current = el.scrollHeight - el.scrollTop - el.clientHeight < FOLLOW_SLACK;
+  }, []);
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
+    if (status === "submitted") following.current = true;
+  }, [status]);
+  useEffect(() => {
+    if (following.current) bottom.current?.scrollIntoView({ block: "end" });
   }, [messages, status, catchingUp]);
-  return bottom;
+  return { bottom, onScroll };
 }
 
 /** The sources every answer in the thread cites, in citation-number order: a short list beside a call's chat. */
@@ -90,13 +106,13 @@ function SourceList({ sources }: { sources: Conversation["allSources"] }) {
 /** A chat on its own (a sell-side call's saved chat): the thread with its sources beside it. */
 export function ChatPanel(props: ChatProps) {
   const conv = useConversation(props);
-  const bottom = useFollow(conv);
+  const { bottom, onScroll } = useFollow(conv);
   return (
     <ResearchSources sources={conv.allSources} chatId={props.chatId}>
       <div className="flex h-[calc(100vh-7rem)] min-h-[480px] gap-8">
         <section className="flex min-w-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 overflow-y-auto pr-2">
-            {conv.messages.length === 0 && <EmptyIntro suggestions={chatSuggestions(props.tickers[0])} onPick={conv.setInput} disabled={!props.configured} />}
+          <div onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto pr-2">
+            {conv.messages.length === 0 && !conv.handingOff && <EmptyIntro suggestions={chatSuggestions(props.tickers[0])} onPick={conv.setInput} disabled={!props.configured} />}
             <ConversationTurns conv={conv} variant="board" teamSlug={null} gap="gap-6" />
             <div ref={bottom} />
           </div>
@@ -120,6 +136,7 @@ export function ChatPanel(props: ChatProps) {
  */
 export function ChatWorkspace({
   title,
+  ticker = null,
   crumbs,
   teamSlug,
   author,
@@ -130,6 +147,8 @@ export function ChatWorkspace({
   ...props
 }: ChatProps & {
   title: string;
+  /** The holding a pinned thread is about (its ticker already leads the breadcrumb). */
+  ticker?: string | null;
   /** What the thread belongs to, ahead of its title in the breadcrumb: "Whole fund", a team, or the holding's ticker. */
   crumbs: Crumb[];
   /** The team the conversation is filed under, for the pages a team-scope lookup opens; null for a fund-wide one. */
@@ -144,7 +163,7 @@ export function ChatWorkspace({
   times?: Record<string, string>;
 }) {
   const conv = useConversation(props);
-  const bottom = useFollow(conv);
+  const { bottom, onScroll } = useFollow(conv);
   // The questions the page came with belong to the answers it came with; a new question gets Hoot's next ones for it.
   const [openingTurns] = useState(() => conv.turns.length);
   const last = conv.turns[conv.turns.length - 1];
@@ -153,15 +172,15 @@ export function ChatWorkspace({
   const questions = conv.messages.filter(isMemberQuestion).length;
   const first = conv.messages.find(isMemberQuestion);
   const firstText = first?.parts.map((p) => (p.type === "text" ? p.text : "")).join(" ").replace(/\s+/g, " ").trim();
-  const shown = title === "New chat" ? firstText?.slice(0, 80) || "New conversation" : title;
-  const asof = [author, `${questions} question${questions === 1 ? "" : "s"}`, updatedAt ? `updated ${fmtDay(updatedAt) === fmtDay(new Date()) ? fmtTime(updatedAt) : fmtDateTime(updatedAt)}` : null].filter(Boolean).join(", ");
+  const shown = title === "New chat" ? firstText?.slice(0, 80) || "New conversation" : threadTitle(title, ticker);
+  const asof = [author, isCallTitle(title) && questions === 0 ? null : `${questions} question${questions === 1 ? "" : "s"}`, updatedAt ? `updated ${fmtDay(updatedAt) === fmtDay(new Date()) ? fmtTime(updatedAt) : fmtDateTime(updatedAt)}` : null].filter(Boolean).join(", ");
   return (
     <div data-full-bleed className="flex h-dvh min-h-0 flex-col">
       <PageHead crumbs={[...crumbs, { label: shown }]} tabs={false} asof={asof} actions={actions} />
       <div className="relative min-h-0 flex-1">
-        <div className="h-full overflow-y-auto">
+        <div onScroll={onScroll} className="h-full overflow-y-auto">
           <article className="mx-auto flex w-full max-w-[840px] flex-col px-10 pt-[34px]">
-            {conv.messages.length === 0 && !conv.busy && <EmptyIntro suggestions={chatSuggestions(props.tickers[0])} onPick={conv.setInput} disabled={!props.configured} />}
+            {conv.messages.length === 0 && !conv.busy && !conv.handingOff && <EmptyIntro suggestions={chatSuggestions(props.tickers[0])} onPick={conv.setInput} disabled={!props.configured} />}
             <ConversationTurns conv={conv} variant="thread" teamSlug={teamSlug} related={nextQuestions} times={times} />
             {/* Room under the last answer for the floating box; following the answer scrolls to its end. */}
             <div ref={bottom} aria-hidden className="h-40 shrink-0" />

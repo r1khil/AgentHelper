@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { UIMessage } from "ai";
 import { clearHootQuestion, peekHootQuestion } from "@/components/app/hoot/handoff";
 import { collectSources } from "@/lib/agent/citations";
@@ -12,6 +12,8 @@ import { ThreadTurn } from "./thread-turn";
 import { TurnView, type TurnVariant } from "./turn-view";
 import type { PinTarget } from "./pin-to-board";
 import { useResearchChat } from "./use-research-chat";
+
+const noSubscribe = () => () => {};
 
 /** After an answer, Hoot notes his next questions a few seconds later; look for them this often, this many times. */
 const RELATED_EVERY_MS = 5000;
@@ -51,6 +53,14 @@ export function useConversation({
     return () => clearTimeout(t);
   }, [chatId, send]);
 
+  // A question handed over by Home or ⌘J and not yet sent: the page shows no "what should Hoot look into?" meanwhile.
+  // sessionStorage has no change event, so it's read on each render; the server can't see it, so it assumes one is.
+  const handingOff = useSyncExternalStore(
+    noSubscribe,
+    () => peekHootQuestion(chatId) !== null,
+    () => true,
+  );
+
   const turns = useMemo(() => pairTurns(messages), [messages]);
   const allSources = useMemo(() => collectSources(messages), [messages]);
   const perTurn = useMemo(() => new Map(turns.map((t) => [t.id, turnSources(t, allSources)])), [turns, allSources]);
@@ -63,7 +73,7 @@ export function useConversation({
     composerRef.current?.focus();
   }, []);
 
-  return { ...chat, chatId, input, setInput, submit, flag, composerRef, turns, allSources, perTurn };
+  return { ...chat, chatId, input, setInput, submit, flag, composerRef, turns, allSources, perTurn, handingOff };
 }
 
 export type Conversation = ReturnType<typeof useConversation>;

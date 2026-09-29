@@ -80,7 +80,8 @@ export function ThreadTurn(props: ThreadTurnProps) {
     <ResearchSources sources={allSources} numbers={numbers} chatId={chatId}>
       <section aria-labelledby={`${idBase}-q`} className="flex flex-col">
         <h2 id={`${idBase}-q`} className={cn("text-display font-medium tracking-[-0.015em] whitespace-pre-wrap", turn.label && "text-ink-2")}>
-          {turn.label ?? turn.question}
+          {/* A job's label ("Call brief · RSG") reads without the dot. */}
+          {turn.label ? turn.label.split(" · ").join(", ") : turn.question}
         </h2>
         {turn.page && turn.page.kind !== "page" && (
           <Link href={turn.page.path} className="mt-1.5 inline-flex items-center gap-1 self-start text-caption text-muted-foreground hover:text-foreground">

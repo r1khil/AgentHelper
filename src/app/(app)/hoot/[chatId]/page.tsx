@@ -5,20 +5,20 @@ import { eq } from "drizzle-orm";
 import { canOpenChat, isFundWide, listAccessibleTeams, requireUser, transparencyEnabled } from "@/lib/auth";
 import { getTeam, rememberedScope } from "@/lib/teams";
 import { holdingHref } from "@/lib/scope";
+import { threadTitle } from "@/lib/thread-title";
 import { effectiveRunStatus, getChat, loadMessages } from "@/lib/chats";
 import { listTeamHoldings } from "@/lib/holdings";
-import { deleteChat } from "@/lib/actions/chats";
 import { agentConfigured } from "@/lib/agent/model";
 import { chatNextQuestions } from "@/lib/agent/memory/store";
 import { chatMessages, profiles } from "@/db/schema";
 import { db } from "@/db/client";
 import { ChatWorkspace } from "@/components/app/chat/chat-panel";
 import { PinToBoard, type PinTarget } from "@/components/app/chat/pin-to-board";
+import { DeleteThread } from "@/components/app/chat/delete-thread";
 import { ShareButton } from "@/components/app/chat/share-button";
 import { TraceToggle } from "@/components/app/chat/trace-toggle";
 import { HoldingLogo } from "@/components/app/holding-logo";
 import type { Crumb } from "@/components/app/page-head";
-import { Button } from "@/components/ui/button";
 
 // One read per request, shared by the title and the page.
 const loadChat = cache(getChat);
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ chatId: s
   const { chatId } = await params;
   const [user, chat] = await Promise.all([requireUser(), loadChat(chatId)]);
   // A chat this member can't open gets no title of its own (the page 404s).
-  return { title: chat && canOpenChat(user, chat) ? chat.title : "Thread" };
+  return { title: chat && canOpenChat(user, chat) ? threadTitle(chat.title) : "Thread" };
 }
 
 /**
@@ -86,6 +86,7 @@ export default async function HootChatPage({ params }: { params: Promise<{ chatI
   return (
     <ChatWorkspace
       title={chat.title}
+      ticker={pinned?.ticker ?? null}
       crumbs={crumbs}
       teamSlug={team?.slug ?? null}
       author={author?.name ?? (chat.createdBy === user.id ? user.fullName : null)}
@@ -94,12 +95,7 @@ export default async function HootChatPage({ params }: { params: Promise<{ chatI
         <>
           {fundWide && <TraceToggle on={transparency} />}
           {pinTargets.length > 0 && <PinToBoard chatId={chat.id} targets={pinTargets} look="header" />}
-          <form action={deleteChat} className="flex">
-            <input type="hidden" name="id" value={chat.id} />
-            <Button type="submit" variant="ghost">
-              Delete
-            </Button>
-          </form>
+          <DeleteThread chatId={chat.id} />
           <ShareButton />
         </>
       }

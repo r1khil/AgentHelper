@@ -8,6 +8,7 @@ import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { todayNY } from "@/lib/providers/calendar";
 import { latestPackStatus } from "@/lib/weekly/latest";
 import { listGeneralChats, listRecentHoldingChats } from "@/lib/chats";
+import { threadTitle } from "@/lib/thread-title";
 import { PACK_STATUS_LABELS } from "@/lib/weekly/status";
 
 /** A tab's count: `hot` when it needs action (ink), `overdue` when something is late (red). */
@@ -90,9 +91,9 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
     listRecentHoldingChats(teamIds, viewer, SIDEBAR_THREADS),
   ]);
   const threads: RecentChat[] = [
-    ...general.map((g) => ({ title: g.c.title, href: `/hoot/${g.c.id}`, at: g.c.updatedAt.toISOString() })),
+    ...general.map((g) => ({ title: threadTitle(g.c.title), href: `/hoot/${g.c.id}`, at: g.c.updatedAt.toISOString() })),
     // Every thread opens as a Thread, a holding's too; its holding shows in the breadcrumb.
-    ...pinned.map((p) => ({ title: p.c.title, href: `/hoot/${p.c.id}`, at: p.c.updatedAt.toISOString(), ticker: p.ticker })),
+    ...pinned.map((p) => ({ title: threadTitle(p.c.title, p.ticker), href: `/hoot/${p.c.id}`, at: p.c.updatedAt.toISOString(), ticker: p.ticker })),
   ]
     // A thread just asked is listed at once, under "New chat" until Hoot titles it.
     .sort((a, b) => b.at.localeCompare(a.at))
