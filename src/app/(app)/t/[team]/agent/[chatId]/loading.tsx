@@ -1,6 +1,6 @@
-import { ThreadSkeleton } from "@/components/app/page-skeletons";
+import { ThreadSkeleton } from "@/app/(app)/hoot/[chatId]/thread-skeleton";
 
-/** An old chat link, on its way to the conversation: shown at once on navigation while the page streams in, shaped like it so nothing moves. */
+/** An old chat link, on its way to the thread: shaped like it so nothing moves. */
 export default function Loading() {
   return <ThreadSkeleton />;
 }

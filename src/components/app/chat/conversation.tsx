@@ -6,7 +6,9 @@ import { clearHootQuestion, peekHootQuestion } from "@/components/app/hoot/hando
 import { collectSources } from "@/lib/agent/citations";
 import { pairTurns, turnSources } from "@/lib/agent/board";
 import type { RunStatus } from "@/lib/chats";
+import { cn } from "@/lib/utils";
 import { ThinkingRow, ThreadNote } from "./thread-parts";
+import { ThreadTurn } from "./thread-turn";
 import { TurnView, type TurnVariant } from "./turn-view";
 import type { PinTarget } from "./pin-to-board";
 import { useResearchChat } from "./use-research-chat";
@@ -73,6 +75,7 @@ export function ConversationTurns({
   teamSlug,
   pin,
   related,
+  times,
   gap = "gap-9",
 }: {
   conv: Conversation;
@@ -81,10 +84,53 @@ export function ConversationTurns({
   pin?: { chatId: string; targets: PinTarget[]; onPinned?: () => void } | null;
   /** Suggested next questions, shown under the last answer. */
   related?: string[];
+  /** A thread: when each saved message was written, by id. */
+  times?: Record<string, string>;
   gap?: string;
 }) {
   const { turns, perTurn, allSources, status, streaming, catchingUp, runError, requestError, traceView, now, durations, send, flag } = conv;
   const last = turns[turns.length - 1];
+  const statusRows = (
+    <>
+      {status === "submitted" && !last?.assistant && <ThinkingRow>Reading the question…</ThinkingRow>}
+      {catchingUp && <ThinkingRow>Still working on the last question. The answer appears here when it is ready; you can leave and come back.</ThinkingRow>}
+      {runError && <ThreadNote tone="caution">{runError}</ThreadNote>}
+      {requestError && <ThreadNote tone="error">{requestError}</ThreadNote>}
+    </>
+  );
+  if (variant === "thread") {
+    // A thread's turns are separated by a hairline; what the run is doing sits in the last turn's Answer view.
+    const waiting = (status === "submitted" && !last?.assistant) || catchingUp || !!runError || !!requestError;
+    return (
+      <div className="flex flex-col">
+        {turns.map((t, i) => {
+          const isLast = t === last;
+          return (
+            <div key={t.id} className={cn(i > 0 && "mt-12 border-t pt-10")}>
+              <ThreadTurn
+                turn={t}
+                chatId={conv.chatId}
+                allSources={allSources}
+                sources={perTurn.get(t.id) ?? []}
+                live={streaming && isLast}
+                catchingUp={catchingUp}
+                trace={isLast ? traceView : null}
+                now={now}
+                elapsedMs={durations[t.id] ?? null}
+                times={times}
+                teamSlug={teamSlug}
+                onFlag={flag}
+                related={isLast ? related : undefined}
+                onAsk={(q) => void send(q)}
+                status={isLast && waiting ? statusRows : undefined}
+              />
+            </div>
+          );
+        })}
+        {turns.length === 0 && waiting && <div className="flex flex-col gap-3">{statusRows}</div>}
+      </div>
+    );
+  }
   return (
     <div className={`flex flex-col ${gap}`}>
       {turns.map((t) => {
@@ -110,10 +156,7 @@ export function ConversationTurns({
           />
         );
       })}
-      {status === "submitted" && !last?.assistant && <ThinkingRow>Reading the question…</ThinkingRow>}
-      {catchingUp && <ThinkingRow>Still working on the last question. The answer appears here when it is ready; you can leave and come back.</ThinkingRow>}
-      {runError && <ThreadNote tone="caution">{runError}</ThreadNote>}
-      {requestError && <ThreadNote tone="error">{requestError}</ThreadNote>}
+      {statusRows}
     </div>
   );
 }

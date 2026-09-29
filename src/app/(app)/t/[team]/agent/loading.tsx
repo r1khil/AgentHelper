@@ -1,6 +1,4 @@
-import { ResearchHomeSkeleton } from "@/components/app/page-skeletons";
-
-/** Research: shown at once on navigation while the page streams in, shaped like it so nothing moves. */
+/** An old Research link, on its way to Home: nothing to shape, the redirect lands at once. */
 export default function Loading() {
-  return <ResearchHomeSkeleton />;
+  return null;
 }

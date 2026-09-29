@@ -107,19 +107,21 @@ function span(minutes: number) {
 }
 
 /**
- * The mono line over the greeting: "Mon 28 Sep · Market opens in 1h 12m" before the bell, "… · Market closes in
- * 2h 5m" during the session, "… · Market closed · opens Tue 29 Sep, 9:30 ET" after it and on weekends and holidays.
+ * Home's top line, the date and the market's state in plain words: "Mon, Sep 28. Market opens in 1h 12m. Prices delayed
+ * 15 min" before the bell, "…. Market open, closes in 2h 5m. Prices delayed 15 min" during the session, "…. Market
+ * closed, opens tomorrow 9:30 AM ET" after it and on weekends and holidays (closing prices then, so nothing is delayed).
  */
 export function marketLine(now: Date = new Date()) {
   const t = DateTime.fromJSDate(now).setZone(NY);
   const iso = t.toISODate()!;
   const date = fmtDay(iso, now);
   const minutes = t.hour * 60 + t.minute;
-  if (isTradingDay(iso) && minutes < OPEN_MIN) return `${date} · Market opens in ${span(OPEN_MIN - minutes)}`;
-  if (isTradingDay(iso) && minutes < CLOSE_MIN) return `${date} · Market closes in ${span(CLOSE_MIN - minutes)}`;
+  const delayed = "Prices delayed 15 min";
+  if (isTradingDay(iso) && minutes < OPEN_MIN) return `${date}. Market opens in ${span(OPEN_MIN - minutes)}. ${delayed}`;
+  if (isTradingDay(iso) && minutes < CLOSE_MIN) return `${date}. Market open, closes in ${span(CLOSE_MIN - minutes)}. ${delayed}`;
   const next = day(nextTradingDay(iso)).set({ hour: 9, minute: 30 });
   const when = next.diff(day(iso), "days").days < 2 ? `tomorrow ${fmtTime(next.toJSDate())}` : fmtDateTime(next.toJSDate(), now);
-  return `${date} · Market closed · opens ${when}`;
+  return `${date}. Market closed, opens ${when}`;
 }
 
 const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];

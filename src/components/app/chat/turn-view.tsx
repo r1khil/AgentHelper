@@ -237,7 +237,7 @@ function SourceList({ rows, open, hover, onHover, anchor }: { rows: TurnSource[]
   );
 }
 
-function AnswerActions({
+export function AnswerActions({
   variant,
   text,
   unsourced,
@@ -251,8 +251,9 @@ function AnswerActions({
   unsourced: number;
   onFlag?: () => void;
   pin?: { chatId: string; targets: PinTarget[]; onPinned?: () => void } | null;
-  traceOpen: boolean;
-  onToggleTrace: () => void;
+  traceOpen?: boolean;
+  /** "Show trace" under the answer; a thread has a Steps tab instead. */
+  onToggleTrace?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -305,15 +306,17 @@ function AnswerActions({
         </button>
       )}
       {pin && <PinToBoard chatId={pin.chatId} targets={pin.targets} className={link} onPinned={pin.onPinned} />}
-      <button type="button" onClick={onToggleTrace} aria-pressed={traceOpen} className={link}>
-        {traceOpen ? "Hide trace" : "Show trace"}
-      </button>
+      {onToggleTrace && (
+        <button type="button" onClick={onToggleTrace} aria-pressed={traceOpen} className={link}>
+          {traceOpen ? "Hide trace" : "Show trace"}
+        </button>
+      )}
     </div>
   );
 }
 
 /** The next questions Hoot noted after answering: "Related" under a thread, "Ask next" in the panel. */
-function Related({ variant, questions, onAsk }: { variant: TurnVariant; questions: string[]; onAsk: (q: string) => void }) {
+export function Related({ variant, questions, onAsk }: { variant: TurnVariant; questions: string[]; onAsk: (q: string) => void }) {
   const panel = variant === "panel";
   const Icon = panel ? ArrowRight : Plus;
   return (
@@ -321,7 +324,7 @@ function Related({ variant, questions, onAsk }: { variant: TurnVariant; question
       {panel ? (
         <div className="mt-[18px] text-caption font-semibold text-muted-foreground">Ask next</div>
       ) : (
-        <h2 className="mt-7 border-b pb-1.5 text-body font-bold">Related</h2>
+        <h2 className="mt-[26px] border-b pb-1.5 text-emph font-semibold">Related</h2>
       )}
       {questions.map((q) => (
         <button
@@ -330,11 +333,11 @@ function Related({ variant, questions, onAsk }: { variant: TurnVariant; question
           onClick={() => onAsk(q)}
           className={cn(
             "flex w-full items-center justify-between gap-3 border-b border-row text-left transition-colors hover:bg-band focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
-            panel ? "py-[9px] text-body" : "min-h-10 py-1.5 text-emph",
+            panel ? "py-[9px] text-body" : "min-h-[46px] border-border py-2 text-emph",
           )}
         >
           <span className="min-w-0">{q}</span>
-          <Icon className="size-3 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
+          <Icon className={cn("shrink-0 text-muted-foreground", panel ? "size-3" : "size-4")} strokeWidth={2} aria-hidden />
         </button>
       ))}
     </section>

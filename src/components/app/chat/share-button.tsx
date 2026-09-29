@@ -4,13 +4,15 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
-/** "Share": copies this page's address. A thread opens for the teammates who can open the team's chats, so the link is all it takes. */
+/**
+ * "Share", the thread's one primary action: copies this page's address. A thread opens for the teammates who can open
+ * the team's chats, so the link is all it takes.
+ */
 export function ShareButton() {
   const [copied, setCopied] = useState(false);
   return (
     <Button
       type="button"
-      variant="secondary"
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(window.location.href);

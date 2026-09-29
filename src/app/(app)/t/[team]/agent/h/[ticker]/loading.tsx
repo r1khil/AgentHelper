@@ -1,6 +1,4 @@
-import { ResearchBoardSkeleton } from "@/components/app/page-skeletons";
-
-/** A holding's research board: shown at once on navigation while the page streams in, shaped like it so nothing moves. */
+/** An old research-board link, on its way to the holding's Threads tab or one thread: the redirect lands at once. */
 export default function Loading() {
-  return <ResearchBoardSkeleton />;
+  return null;
 }

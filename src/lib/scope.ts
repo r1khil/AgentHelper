@@ -46,9 +46,12 @@ const t = (ticker: string) => encodeURIComponent(ticker);
 
 /** A holding's page. */
 export const holdingHref = (current: string | null | undefined, owner: string, ticker: string, query = "") => scopedHref(current, owner, `/h/${t(ticker)}${query}`);
-/** A holding's research board, optionally with one of its chats open. */
+/**
+ * Hoot's research on a holding: one of its chats, which opens as a thread at /hoot/<id> like every other chat, or with
+ * no chat the holding page's Threads tab, where its chats are listed.
+ */
 export const boardHref = (current: string | null | undefined, owner: string, ticker: string, chatId?: string | null) =>
-  scopedHref(current, owner, `/agent/h/${t(ticker)}${chatId ? `?chat=${encodeURIComponent(chatId)}` : ""}`);
+  chatId ? `/hoot/${encodeURIComponent(chatId)}` : holdingHref(current, owner, ticker, "?tab=threads");
 /** One report's earnings page. */
 export const earningsHref = (current: string | null | undefined, owner: string, id: string) => scopedHref(current, owner, `/earnings/${id}`);
 /** One movement write-up. */
