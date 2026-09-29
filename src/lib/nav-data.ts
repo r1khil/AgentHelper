@@ -94,7 +94,7 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
     // Every thread opens as a Thread, a holding's too; its holding shows in the breadcrumb.
     ...pinned.map((p) => ({ title: p.c.title, href: `/hoot/${p.c.id}`, at: p.c.updatedAt.toISOString(), ticker: p.ticker })),
   ]
-    .filter((c) => c.title !== "New chat")
+    // A thread just asked is listed at once, under "New chat" until Hoot titles it.
     .sort((a, b) => b.at.localeCompare(a.at))
     .slice(0, SIDEBAR_THREADS);
   const recent = threads.slice(0, 3);

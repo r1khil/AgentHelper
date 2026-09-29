@@ -180,7 +180,6 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
               threads={homeSlug ? (loaded?.threads ?? null) : []}
               pathname={pathname}
               signOut={signOut}
-              onAsk={() => openPalette("ask")}
               onSearch={() => openPalette("search")}
               destinations={dests.filter((d) => d.hoot).map((d) => ({ label: d.hoot!, href: d.href }))}
               scopes={scopes}

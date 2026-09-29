@@ -15,8 +15,9 @@ import { Bell } from "./bell";
 const noSubscribe = () => () => {};
 
 /**
- * The sidebar, Perplexity-style: the owl and name with Search (⌘K) and hide, New (⌘J, ask Hoot), the two places
- * (Portfolio and Markets), then Threads, the conversations with Hoot, newest first. The footer is who you are (the
+ * The sidebar, Perplexity-style: the owl and name with Search (⌘K) and hide, New (Home's ask box; ⌘J asks from
+ * anywhere), the two places (Portfolio and Markets), then Threads, the conversations with Hoot, newest first (the
+ * label opens all of them). The footer is who you are (the
  * account menu: what's new, Admin, preferences) and the bell with what needs you. Hidden links let Hoot open any page
  * or scope by name ("take me to risk").
  */
@@ -28,7 +29,6 @@ export function NavSidebar({
   threads,
   pathname,
   signOut,
-  onAsk,
   onSearch,
   destinations,
   scopes,
@@ -43,7 +43,6 @@ export function NavSidebar({
   threads: RecentChat[] | null;
   pathname: string;
   signOut: () => Promise<void>;
-  onAsk: () => void;
   onSearch: () => void;
   destinations: { label: string; href: string }[];
   scopes: { label: string; href: string }[];
@@ -80,19 +79,22 @@ export function NavSidebar({
       </div>
 
       <div className="mt-3.5 flex shrink-0 flex-col gap-0.5 px-3">
-        <button type="button" onClick={onAsk} data-tour="ask-hoot" aria-keyshortcuts={mac ? "Meta+J" : "Control+J"} className={row(false)}>
+        {/* New goes Home, where the ask box starts a thread; ⌘J asks from wherever you are. */}
+        <Link href="/" data-tour="ask-hoot" aria-current={nav.section === "home" ? "page" : undefined} aria-keyshortcuts={mac ? "Meta+J" : "Control+J"} className={row(nav.section === "home")}>
           <span className="grid size-6 place-items-center rounded-full bg-secondary">
             <Plus className="size-3.5" strokeWidth={2.2} aria-hidden />
           </span>
-          <span className="flex-1 text-left">New</span>
+          <span className="flex-1">New</span>
           <kbd className="font-mono text-caption text-muted-foreground">{mac ? "⌘J" : "Ctrl J"}</kbd>
-        </button>
+        </Link>
         {nav.main.map((item) => (
           <SideLink key={item.key} item={item} />
         ))}
       </div>
 
-      <div className="mt-[22px] shrink-0 px-5 text-body text-muted-foreground">Threads</div>
+      <Link href="/hoot" data-hoot-destination="All threads" className="mx-3 mt-[22px] shrink-0 self-start rounded px-2 text-body text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+        Threads
+      </Link>
       <div data-tour="threads" className="mt-1.5 flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-3 pb-3">
         {threads === null ? (
           Array.from({ length: 5 }, (_, i) => <span key={i} aria-hidden="true" className="mx-2 my-[9px] h-3.5 shrink-0 animate-pulse rounded bg-sidebar-accent" style={{ width: `${80 - i * 9}%` }} />)

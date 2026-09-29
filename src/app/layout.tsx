@@ -19,13 +19,8 @@ export const metadata: Metadata = {
   description: "Research workspace for Owl Fund sector teams.",
 };
 
-// Browser chrome follows the OS setting; it can't see a theme picked in the app. Matches --background in each mode.
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#191a1a" },
-  ],
-};
+// Browser chrome can't see a theme picked in the app, so it takes the default's page colour (--background at night).
+export const viewport: Viewport = { themeColor: "#191a1a" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

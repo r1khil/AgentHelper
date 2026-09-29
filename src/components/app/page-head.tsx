@@ -74,11 +74,11 @@ export function NoPageHead() {
 export function SkeletonPageHead({ tabs = 0, className }: { tabs?: number; className?: string }) {
   return (
     <div data-page-head="" aria-hidden="true" className={cn("shrink-0 border-b bg-background", className)}>
-      <div className="flex h-14 items-center gap-2.5 px-7">
+      <div className="flex h-14 items-center gap-2.5 px-10">
         <span className="h-3 w-28 animate-pulse rounded-[4px] bg-muted" />
       </div>
       {tabs > 0 && (
-        <div className="flex h-11 items-center gap-[22px] px-7">
+        <div className="flex h-11 items-center gap-[22px] px-10">
           {Array.from({ length: tabs }, (_, i) => (
             <span key={i} className="h-3 w-16 animate-pulse rounded-[4px] bg-muted" />
           ))}
@@ -121,7 +121,7 @@ function HeadFrame({
   }, [marker]);
   return (
     <header ref={ref} {...markerProps} className={cn("shrink-0 border-b bg-background", className)}>
-      <div className="flex h-14 items-center gap-2.5 px-7 text-body">
+      <div className="flex h-14 items-center gap-2.5 px-10 text-body">
         <nav aria-label="Breadcrumb" className="min-w-0">
           <ol className="flex min-w-0 items-center gap-2.5">
             {crumbs.map((c, i) => {
@@ -163,7 +163,7 @@ function HeadFrame({
         {asof && <span className="min-w-0 shrink-[2] truncate text-caption text-muted-foreground">{asof}</span>}
         {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
       </div>
-      {items.length > 0 && <Tabs data-tour="section-tabs" label="Section" rule={false} className="h-11 items-stretch gap-[22px] px-7" items={items} />}
+      {items.length > 0 && <Tabs data-tour="section-tabs" label="Section" rule={false} className="h-11 items-stretch gap-[22px] px-10" items={items} />}
     </header>
   );
 }

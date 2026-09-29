@@ -25,7 +25,7 @@ export function HoldingLogo({ ticker, size = 20, className }: { ticker: string; 
     );
   }
   return (
-    <span aria-hidden="true" className={cn("grid shrink-0 place-items-center overflow-hidden bg-white", className)} style={{ width: size, height: size, borderRadius: radius }}>
+    <span aria-hidden="true" className={cn("grid shrink-0 place-items-center overflow-hidden bg-white ring-1 ring-border ring-inset dark:ring-0", className)} style={{ width: size, height: size, borderRadius: radius }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- a remote logo, sized by its tile; next/image would need the host allowlisted for no gain */}
       <img src={logoUrl(ticker)} alt="" width={size} height={size} loading="lazy" decoding="async" onError={() => setFailed(true)} className="size-[78%] object-contain" />
     </span>
