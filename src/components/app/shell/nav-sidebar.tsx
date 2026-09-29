@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { Search } from "lucide-react";
+import { PanelLeft, Search } from "lucide-react";
 import type { Team } from "@/db/schema";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { fmtChangePct, fmtTime } from "@/lib/format";
@@ -33,6 +33,7 @@ export function NavSidebar({
   onSearch,
   destinations,
   scopes,
+  onCollapse,
 }: {
   nav: NavModel;
   user: SidebarUser;
@@ -48,6 +49,7 @@ export function NavSidebar({
   onSearch: () => void;
   destinations: { label: string; href: string }[];
   scopes: { label: string; href: string }[];
+  onCollapse: () => void;
 }) {
   const mac = useSyncExternalStore(noSubscribe, isMac, () => true);
   const teamActive = (t: Team) => nav.section === "team" && current !== "fund" && current?.id === t.id;
@@ -62,6 +64,16 @@ export function NavSidebar({
         <Link href="/" className="flex-1 font-semibold focus-visible:underline focus-visible:outline-none">
           Owl Fund
         </Link>
+        <button
+          type="button"
+          onClick={onCollapse}
+          aria-label="Hide sidebar"
+          title={`Hide sidebar (${mac ? "⌘\\" : "Ctrl \\"})`}
+          aria-keyshortcuts={mac ? "Meta+\\" : "Control+\\"}
+          className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+        >
+          <PanelLeft className="size-[15px]" strokeWidth={1.8} aria-hidden />
+        </button>
         <AccountMenu user={user} fundWide={fundWide} signOut={signOut} variant="avatar" />
       </div>
 

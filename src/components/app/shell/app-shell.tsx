@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import type { Team } from "@/db/schema";
-import { FUND_SCOPE_SLUG } from "@/lib/constants";
-import { askShortcut } from "@/lib/hoot/shortcuts";
+import { PanelLeft } from "lucide-react";
+import { FUND_SCOPE_SLUG, SIDEBAR_COOKIE } from "@/lib/constants";
+import { askShortcut, isMac } from "@/lib/hoot/shortcuts";
 import { marketPhase } from "@/lib/providers/calendar";
 import { destinations, navModel } from "@/lib/nav";
 import type { CommandHolding, NavData, RecentChat, TabCount } from "@/lib/nav-data";
@@ -29,6 +30,8 @@ type Props = {
   backtestingLayout: BacktestingLayout;
   /** The scope remembered from the last visit (a cookie), for a page outside /t/ loaded directly. */
   initialScope: string | null;
+  /** The sidebar was hidden on the last visit (a cookie). */
+  initialCollapsed: boolean;
   children: React.ReactNode;
 };
 
@@ -45,7 +48,7 @@ type LoadedNav = { scope: string; counts: Record<string, TabCount>; badges: NavD
  * doesn't yet gets the section's default header. The classic Backtesting layout (a per-member preference) keeps the
  * previous sidebar and look on that one page.
  */
-export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initialScope, children }: Props) {
+export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initialScope, initialCollapsed, children }: Props) {
   const pathname = usePathname();
   const fundWide = user.role === "exec" || user.role === "admin";
   // Pages outside /t/ (Home, a Hoot chat) keep the scope the member was last in rather than falling back to the fund.
@@ -67,6 +70,7 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
   const nav = navModel({ pathname, scope, home, fundWide, seesBook, homeSeesBook: fundWide || lead(ownTeam) });
   const dests = destinations({ scope, fundWide, seesBook });
 
+  const [collapsed, setCollapsed] = useSidebarCollapsed(initialCollapsed);
   const [palette, setPalette] = useState<"ask" | "search" | null>(null);
   const [data, setData] = useState<LoadedNav | null>(null);
   const fetchedAt = useRef<{ scope: string; at: number } | null>(null);
@@ -169,7 +173,8 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
     <ScopeProvider value={scopeSlug}>
       <ShellProvider value={shell}>
         <div className="flex min-h-dvh flex-col md:flex-row">
-          <div className="hidden md:contents">
+          {/* Collapsed, the sidebar stays mounted (hidden) so Hoot can still find its pages by name. */}
+          <div className={collapsed ? "hidden" : "hidden md:contents"}>
             <NavSidebar
               nav={nav}
               user={user}
@@ -183,8 +188,10 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
               onSearch={() => openPalette("search")}
               destinations={dests.filter((d) => d.hoot).map((d) => ({ label: d.hoot!, href: d.href }))}
               scopes={scopes}
+              onCollapse={() => setCollapsed(true)}
             />
           </div>
+          {collapsed && <ExpandSidebar onExpand={() => setCollapsed(false)} />}
           <MobileBar user={user} teams={teams} signOut={signOut} />
           <div data-shell-main="" className="flex min-w-0 flex-1 flex-col">
             <DefaultHead />
@@ -198,6 +205,46 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
         </div>
       </ShellProvider>
     </ScopeProvider>
+  );
+}
+
+/**
+ * Whether the sidebar is hidden, remembered in a cookie so a reload (and the server's render) keeps it. ⌘\ toggles it
+ * from anywhere.
+ */
+function useSidebarCollapsed(initial: boolean) {
+  const [collapsed, setCollapsed] = useState(initial);
+  useEffect(() => {
+    document.cookie = `${SIDEBAR_COOKIE}=${collapsed ? "collapsed" : "open"}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+  }, [collapsed]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.key !== "\\" && e.code !== "Backslash") || !(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+      e.preventDefault();
+      setCollapsed((c) => !c);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  return [collapsed, setCollapsed] as const;
+}
+
+const noSubscribe = () => () => {};
+
+/** With the sidebar hidden: a small button in the header's left margin that brings it back. */
+function ExpandSidebar({ onExpand }: { onExpand: () => void }) {
+  const mac = useSyncExternalStore(noSubscribe, isMac, () => true);
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      aria-label="Show sidebar"
+      title={`Show sidebar (${mac ? "⌘\\" : "Ctrl \\"})`}
+      aria-keyshortcuts={mac ? "Meta+\\" : "Control+\\"}
+      className="fixed top-3 left-1.5 z-30 hidden size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring md:flex"
+    >
+      <PanelLeft className="size-[15px]" strokeWidth={1.8} aria-hidden />
+    </button>
   );
 }
 
