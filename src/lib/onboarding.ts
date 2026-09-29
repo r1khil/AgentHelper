@@ -4,9 +4,10 @@ import { fmtBp } from "@/lib/format";
 
 /** First-sign-in setup, in order. Shared by the page, the flow component, and tests. */
 export const ONBOARDING_STEPS = [
-  { id: "profile", label: "Profile" },
-  { id: "tour", label: "Tour" },
-  { id: "boundary", label: "The boundary" },
+  { id: "welcome", label: "Welcome" },
+  { id: "name", label: "Your name" },
+  { id: "tour", label: "How the workspace works" },
+  { id: "boundary", label: "The learning boundary" },
 ] as const;
 
 export type OnboardingStepId = (typeof ONBOARDING_STEPS)[number]["id"];
@@ -27,14 +28,16 @@ export function parseCompleteOnboarding(fd: FormData) {
  * instructions still carry it in full.
  */
 export const LEARNING_BOUNDARY =
-  "Hoot gathers evidence, explains concepts and questions your reasoning. You write the movement updates, earnings reflections and theses; Hoot never drafts them, and the workspace has no button for it.";
+  "One rule shapes every feature. Hoot gathers evidence, explains concepts and asks questions, and it cites a source for every fact. It never writes your update, your reflection, your thesis or your conclusion, and the workspace has no button for it.";
 
-/** What Hoot does under that rule. None of these restate it. */
-export const BOUNDARY_IMPLICATIONS = [
-  "Every number Hoot shows carries a source you can open and check.",
-  "Ask for evidence, explanations and counterarguments as often as you like.",
-  "After you write, ask Hoot for feedback: he flags unsupported claims, missing evidence, alternative explanations and contradictions with the thesis.",
+/** What Hoot does under that rule, and what stays yours. Neither restates it. */
+export const BOUNDARY_HOOT_DOES = [
+  "Finds filings, news, closes and team files, each with a source you can open",
+  "Explains a concept or a number, and argues the other side when you ask",
+  "Flags unsupported claims, missing evidence and contradictions with the thesis after you write",
 ] as const;
+
+export const BOUNDARY_YOU_DO = ["Write the movement update", "Write the earnings reflection", "Decide what it means for the thesis"] as const;
 
 export type TourCard = { id: string; title: string; body: string };
 
@@ -57,6 +60,6 @@ export const TOUR_CARDS: TourCard[] = [
   {
     id: "agent",
     title: "Hoot",
-    body: "Your research companion: click him at the bottom of the menu, or open Research. He works with tools for quotes, price history, EDGAR filings, XBRL facts, news, and the earnings calendar. Filings and company releases come first, news second, and every claim carries a source chip.",
+    body: "Your research companion: click him in the corner of any page, press ⌘J, or open Research. He works with tools for quotes, price history, EDGAR filings, XBRL facts, news, and the earnings calendar. Filings and company releases come first, news second, and every claim carries a source chip.",
   },
 ];

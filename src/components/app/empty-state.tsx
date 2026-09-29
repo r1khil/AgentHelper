@@ -18,12 +18,12 @@ export function EmptyState({
   hoot?: HootMood;
 }) {
   return (
-    <div className={cn("rounded-[14px] border border-dashed px-6 py-10 text-center", className)}>
+    <div className={cn("px-6 py-10 text-center", className)}>
       {/* The one Hoot on the page: the corner companion steps aside while this shows. */}
       {hoot && <HootOnPage />}
       {hoot && <HootSprite mood={hoot} size={88} track bob className="mx-auto mb-3" />}
-      <div className="text-body font-medium">{title}</div>
-      {children && <div className="mx-auto mt-1 max-w-md text-body text-muted-foreground">{children}</div>}
+      <div className="text-body font-semibold">{title}</div>
+      {children && <div className="mx-auto mt-1 max-w-md text-body text-ink-2">{children}</div>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

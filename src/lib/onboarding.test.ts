@@ -33,8 +33,8 @@ describe("completeOnboardingSchema", () => {
 });
 
 describe("onboarding copy", () => {
-  it("has three ordered steps ending with the boundary", () => {
-    expect(ONBOARDING_STEPS.map((s) => s.id)).toEqual(["profile", "tour", "boundary"]);
+  it("has four ordered steps ending with the boundary", () => {
+    expect(ONBOARDING_STEPS.map((s) => s.id)).toEqual(["welcome", "name", "tour", "boundary"]);
   });
 
   it("states the movement threshold from constants", () => {
