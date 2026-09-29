@@ -6,6 +6,8 @@ export type ModelListItem = {
   ticker: string;
   companyName: string;
   teamName: string | null;
+  /** The holding has an SEC number; without one no values can be proposed from filings. */
+  hasCik: boolean;
   model: null | {
     id: string;
     href: string;
@@ -34,6 +36,7 @@ export type ModelProposalRow = {
   periodEnd: string;
   fiscalPeriod: string | null;
   value: number | null;
+  unit: string | null;
   reportedLabel: string | null;
   derivation: string | null;
   exceptionReason: string | null;

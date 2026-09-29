@@ -248,43 +248,45 @@ export function HoldingSkeleton() {
  */
 export function MovementsSkeleton() {
   return (
-    <SkeletonPage fullBleed className="flex h-[calc(100dvh-53px)] min-h-0">
-      <aside className="flex w-[260px] shrink-0 flex-col overflow-hidden border-r pt-3.5 pr-4 pl-10">
-        <Bone className="mb-1.5 h-7 w-24 self-start rounded-lg" />
-        {range(9).map((i) => (
-          <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto] gap-y-0.5 border-b border-row py-2.5">
-            <TextBone className="text-body font-semibold" w="w-10" />
-            <TextBone className="text-body" w="w-14" />
-            <TextBone className="text-caption" w="w-16" />
+    <SkeletonPage fullBleed className="flex h-dvh min-h-0 flex-col">
+      <SkeletonPageHead />
+      <div className="flex min-h-0 flex-1">
+        <aside className="flex w-[260px] shrink-0 flex-col overflow-hidden border-r pt-3.5 pr-4 pl-10">
+          <Bone className="mb-1.5 h-7 w-24 self-start rounded-lg" />
+          {range(9).map((i) => (
+            <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto] gap-y-0.5 border-b border-row py-2.5">
+              <TextBone className="text-body font-semibold" w="w-10" />
+              <TextBone className="text-body" w="w-14" />
+              <TextBone className="text-caption" w="w-16" />
+              <TextBone className="text-caption" w="w-24" />
+            </div>
+          ))}
+        </aside>
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden px-8 pt-[26px]">
+          <div className="flex items-baseline gap-3.5">
+            <TextBone className="hero-figure" w="w-56" />
+            <TextBone className="text-emph" w="w-72" />
+          </div>
+          <div className="mt-3 flex gap-x-7 border-b pb-3.5">
+            {["w-28", "w-44", "w-40", "w-32"].map((w, i) => (
+              <TextBone key={i} className="text-body" w={w} />
+            ))}
+          </div>
+          <div className="mt-[18px] flex items-baseline">
+            <TextBone className="flex-1 text-title font-bold" w="w-28" />
             <TextBone className="text-caption" w="w-24" />
           </div>
-        ))}
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden px-8 pt-[26px]">
-        <div className="flex items-baseline gap-3.5">
-          <TextBone className="hero-figure" w="w-56" />
-          <TextBone className="text-emph" w="w-72" />
-        </div>
-        <div className="mt-3 flex gap-x-7 border-b pb-3.5">
-          {["w-28", "w-44", "w-40", "w-32"].map((w, i) => (
-            <TextBone key={i} className="text-body" w={w} />
-          ))}
-        </div>
-        <div className="mt-[18px] flex items-baseline">
-          <TextBone className="flex-1 text-title font-bold" w="w-28" />
-          <TextBone className="text-caption" w="w-24" />
-        </div>
-        <div className="mt-2 min-h-40 border-y border-row py-3">
-          {["w-full", "w-full", "w-5/6", "w-full", "w-3/4"].map((w, i) => (
-            <TextBone key={i} className="text-emph leading-6" w={w} />
-          ))}
-        </div>
-        <div className="mt-3 flex items-center gap-2">
-          <Bone className="h-[30px] w-44 rounded-lg" />
-          <Bone className="h-[30px] w-24 rounded-lg" />
-          <span className="flex-1" />
-          <Bone className="h-[30px] w-28 rounded-lg" />
-        </div>
+          <div className="mt-2 min-h-40 border-y border-row py-3">
+            {["w-full", "w-full", "w-5/6", "w-full", "w-3/4"].map((w, i) => (
+              <TextBone key={i} className="text-emph leading-6" w={w} />
+            ))}
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <Bone className="h-[30px] w-44 rounded-lg" />
+            <Bone className="h-[30px] w-24 rounded-lg" />
+            <span className="flex-1" />
+            <Bone className="h-[30px] w-28 rounded-lg" />
+          </div>
       </div>
       <aside className="flex w-80 shrink-0 flex-col overflow-hidden border-l pt-[22px] pr-10 pl-6">
         <div className="flex items-baseline">
@@ -308,6 +310,7 @@ export function MovementsSkeleton() {
           </div>
         ))}
       </aside>
+      </div>
     </SkeletonPage>
   );
 }
@@ -702,65 +705,63 @@ export function SellSideSkeleton() {
 /* ------------------------------------------------------------------------------------------------ Models */
 
 /** models/models-view.tsx GRID. */
-const MODELS_GRID = "grid grid-cols-[minmax(140px,1fr)_minmax(0,1.25fr)_96px_100px_minmax(0,150px)_68px] items-center gap-3";
+const MODELS_GRID = "grid grid-cols-[minmax(0,1fr)_104px_100px_100px_minmax(0,1.4fr)_176px] items-center gap-x-3";
 
-/** Models (models/models-view.tsx): the model list, then the selected model's proposed values. */
+/**
+ * Models (models/models-view.tsx): the page header with the model's three tabs, the model list, then the big number
+ * and the selected model's proposed values.
+ */
 export function ModelsSkeleton() {
   return (
-    <SkeletonPage className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-      <SkeletonPanel className="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6.5rem)]">
-        <div className="flex h-11 shrink-0 items-center gap-2 border-b px-3.5">
-          <TextBone className="text-emph font-semibold" w="w-16" />
-          <span className="flex-1" />
-          <SkeletonPill className="h-7 w-24" />
-        </div>
-        <div className="min-h-0 flex-1 overflow-hidden">
-          {range(9).map((i) => (
-            <div key={i} className="border-b border-row px-3.5 py-2.5">
-              <div className="flex items-center gap-2">
-                <Bone className="h-3 w-11 shrink-0 rounded-[4px]" />
-                <TextBone className="min-w-0 flex-1 text-body" w="w-32" />
-              </div>
-              <TextBone className="mt-0.5 text-caption" w="w-40" />
+    <SkeletonPage fullBleed className="flex h-dvh min-h-0 flex-col">
+      <SkeletonPageHead tabs={3} />
+      <div className="flex min-h-0 flex-1">
+        <aside className="flex w-60 shrink-0 flex-col overflow-hidden border-r pt-3.5 pr-4 pl-10">
+          <Bone className="mb-1.5 h-7 w-24 self-start rounded-lg" />
+          {range(8).map((i) => (
+            <div key={i} className="flex flex-col border-b border-row py-[9px]">
+              <TextBone className="text-body" w="w-32" />
+              <TextBone className="text-caption" w="w-36" />
             </div>
           ))}
-        </div>
-      </SkeletonPanel>
-      <div className="flex min-w-0 flex-col gap-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <TextBone className="text-title font-semibold" w="w-72" />
-            <TextBone className="mt-0.5 text-body" w="w-96 max-w-full" />
-            <TextBone className="mt-0.5 text-body" w="w-64" />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <SkeletonPill className="h-[34px] w-28" />
-            <SkeletonPill className="h-[34px] w-36" />
-          </div>
-        </div>
-        <SkeletonTabs className="-mb-1" widths={["w-28", "w-20", "w-20"]} />
-        <SkeletonPanel>
-          <SkeletonPanelHeader w="w-32" />
-          <div className="flex flex-col">
-            <div className={cn(MODELS_GRID, "h-[34px] shrink-0 border-b px-4")}>
-              <Bone className="h-2.5 w-16 rounded-[4px]" />
+        </aside>
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden pt-6 pr-10 pl-8">
+          <div className="flex items-end gap-4">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <TextBone className="text-body" w="w-96 max-w-full" />
+              <TextBone className="hero-figure" w="w-96 max-w-full" />
+              <TextBone className="text-emph" w="w-80 max-w-full" />
             </div>
-            {range(6).map((i) => (
-              <div key={i} className={cn(MODELS_GRID, "min-h-12 border-b border-row px-4 py-1.5")}>
-                <Bone className="h-3 w-32 rounded-[4px]" />
-                <Bone className="h-3 w-40 rounded-[4px]" />
-                <Bone className="h-3 w-14 rounded-[4px]" />
+            <TextBone className="pb-1 text-caption" w="w-64" />
+          </div>
+          <div className="mt-[22px]">
+            <div className={cn(MODELS_GRID, "h-8 border-b")}>
+              <Bone className="h-2.5 w-24 rounded-[4px]" />
+            </div>
+            {range(4).map((i) => (
+              <div key={i} className={cn(MODELS_GRID, "min-h-12 border-b border-row py-1.5")}>
+                <span className="flex flex-col">
+                  <TextBone className="text-body font-semibold" w="w-28" />
+                  <TextBone className="text-caption" w="w-20" />
+                </span>
+                <Bone className="h-3 w-16 rounded-[4px]" />
+                <Bone className="h-3 w-14 justify-self-end rounded-[4px]" />
                 <Bone className="h-3 w-16 justify-self-end rounded-[4px]" />
-                <Bone className="h-3 w-24 rounded-[4px]" />
-                <Bone className="h-7 w-16 justify-self-end rounded-full" />
+                <span className="flex flex-col">
+                  <TextBone className="text-caption" w="w-40" />
+                  <TextBone className="text-caption" w="w-28" />
+                </span>
+                <Bone className="h-7 w-32 justify-self-end rounded-lg" />
               </div>
             ))}
           </div>
-          <div className="flex min-h-10 shrink-0 items-center gap-3 border-t bg-band-2 px-4 py-2">
-            <TextBone className="flex-1 text-body" w="w-48" />
-            <SkeletonPill className="h-7 w-32" />
+          <div className="mt-[22px] flex items-center gap-2">
+            <Bone className="h-[30px] w-32 rounded-lg" />
+            <Bone className="h-[30px] w-24 rounded-lg" />
+            <span className="flex-1" />
+            <Bone className="h-[30px] w-64 rounded-lg" />
           </div>
-        </SkeletonPanel>
+        </div>
       </div>
     </SkeletonPage>
   );

@@ -2,10 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, X } from "lucide-react";
+import { useFormStatus } from "react-dom";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { reviewProposal } from "@/lib/actions/models";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -22,8 +22,7 @@ export function RejectAllButton({ ids }: { ids: string[] }) {
   const [pending, start] = useTransition();
   return (
     <Button
-      variant="outline"
-      size="lg"
+      variant="destructive"
       disabled={pending || !ids.length}
       onClick={() =>
         start(async () => {
@@ -42,45 +41,50 @@ export function RejectAllButton({ ids }: { ids: string[] }) {
   );
 }
 
-/** The round 28px approve / reject buttons of a proposal row. */
+/**
+ * A proposal row's decision: Approve (filled) and Reject. Once decided, the row says so in a word and offers the
+ * other choice, so a decision can be changed until the values are written.
+ */
 export function DecisionButtons({ id, status, canApprove, reviewer }: { id: string; status: "proposed" | "approved" | "rejected" | "exception"; canApprove: boolean; reviewer?: string | null }) {
   const approved = status === "approved";
   const rejected = status === "rejected";
+  const by = reviewer ? ` by ${reviewer}` : "";
   return (
-    <span className="flex justify-end gap-1.5">
-      <RoundForm id={id} decision="approved" disabled={approved || !canApprove} title={approved ? `Approved${reviewer ? ` by ${reviewer}` : ""}` : canApprove ? "Approve" : "No value to approve"} active={approved} tone="good">
-        <Check />
-      </RoundForm>
-      <RoundForm id={id} decision="rejected" disabled={rejected} title={rejected ? `Rejected${reviewer ? ` by ${reviewer}` : ""}` : "Reject"} active={rejected} tone="muted">
-        <X />
-      </RoundForm>
+    <span className="flex items-center justify-end gap-1.5">
+      {approved && (
+        <span className="mr-1 text-caption font-semibold text-muted-foreground" title={`Approved${by}`}>
+          Approved
+        </span>
+      )}
+      {rejected && (
+        <span className="mr-1 text-caption font-semibold text-muted-foreground" title={`Rejected${by}`}>
+          Rejected
+        </span>
+      )}
+      {!approved && <DecisionForm id={id} decision="approved" primary disabled={!canApprove} title={canApprove ? "Approve this value" : "No value to approve"} />}
+      {!rejected && <DecisionForm id={id} decision="rejected" title="Reject this value" />}
     </span>
   );
 }
 
-function RoundForm({ id, decision, disabled, title, active, tone, children }: { id: string; decision: "approved" | "rejected"; disabled: boolean; title: string; active: boolean; tone: "good" | "muted"; children: React.ReactNode }) {
+function DecisionForm({ id, decision, primary, disabled, title }: { id: string; decision: "approved" | "rejected"; primary?: boolean; disabled?: boolean; title: string }) {
   return (
-    <form action={reviewProposal} title={title}>
+    <form action={reviewProposal}>
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="decision" value={decision} />
-      <button
-        type="submit"
-        disabled={disabled}
-        title={title}
-        aria-label={title}
-        aria-pressed={active}
-        className={cn(
-          "grid h-7 w-[30px] place-items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&_svg]:size-3.5",
-          active
-            ? tone === "good"
-              ? "bg-up text-card"
-              : "bg-muted text-foreground"
-            : "text-muted-foreground shadow-[0_0_0_1px_var(--border)] hover:text-foreground hover:shadow-[0_0_0_1px_var(--border-strong)] disabled:opacity-40",
-        )}
-      >
-        {children}
-      </button>
+      <DecisionSubmit primary={primary} disabled={disabled} title={title}>
+        {decision === "approved" ? "Approve" : "Reject"}
+      </DecisionSubmit>
     </form>
+  );
+}
+
+function DecisionSubmit({ primary, disabled, title, children }: { primary?: boolean; disabled?: boolean; title: string; children: React.ReactNode }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" size="sm" variant={primary ? "default" : "secondary"} disabled={disabled || pending} title={title} className="text-caption font-semibold">
+      {children}
+    </Button>
   );
 }
 
@@ -89,16 +93,14 @@ export function ExceptionDecide({ id, canApprove, children }: { id: string; canA
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<button type="button" className="rounded-md px-1 text-body font-semibold whitespace-nowrap hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" />}>
-        Decide
-      </PopoverTrigger>
+      <PopoverTrigger render={<Button type="button" variant="secondary" size="sm" className="text-caption font-semibold" />}>Decide</PopoverTrigger>
       <PopoverContent align="end" className="w-96">
         {children}
         <div className="flex justify-end gap-2">
           <form action={reviewProposal} onSubmit={() => setOpen(false)}>
             <input type="hidden" name="id" value={id} />
             <input type="hidden" name="decision" value="rejected" />
-            <Button type="submit" size="sm" variant="outline">
+            <Button type="submit" size="sm" variant="secondary">
               Reject
             </Button>
           </form>
