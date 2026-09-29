@@ -5,6 +5,7 @@ import { db } from "@/db/client";
 import { chatMessages, chats, holdings, profiles, teams } from "@/db/schema";
 import { inTeams, type TeamIds } from "@/lib/team-filter";
 import { LEGACY_CALL_PROMPT } from "@/lib/agent/hidden-prompt";
+import { saveChatMessages } from "@/lib/hoot/proposal-store";
 
 /** Who is listing chats: members who aren't execs or admins never see fund-only chats (those that read the PT sheet). */
 export type ChatViewer = { fundWide: boolean };
@@ -42,18 +43,9 @@ export async function loadMessages(chatId: string): Promise<UIMessage[]> {
   return rows.map((r) => ({ id: r.id, role: r.role as UIMessage["role"], parts: r.parts as UIMessage["parts"], metadata: r.metadata ?? undefined }));
 }
 
+/** Save a chat's messages in order. A Confirm or Cancel already saved on one of Hoot's proposals is kept. */
 export async function saveMessages(chatId: string, messages: UIMessage[]) {
-  if (!messages.length) return;
-  await db.transaction(async (tx) => {
-    for (let i = 0; i < messages.length; i++) {
-      const m = messages[i];
-      await tx
-        .insert(chatMessages)
-        .values({ id: m.id, chatId, role: m.role, parts: m.parts as unknown[], metadata: (m.metadata as Record<string, unknown> | undefined) ?? null, seq: i })
-        .onConflictDoUpdate({ target: chatMessages.id, set: { parts: m.parts as unknown[], metadata: (m.metadata as Record<string, unknown> | undefined) ?? null, seq: i } });
-    }
-    await tx.update(chats).set({ updatedAt: new Date() }).where(eq(chats.id, chatId));
-  });
+  await saveChatMessages(db, chatId, messages);
 }
 
 export type RunStatus = "idle" | "running" | "error";
