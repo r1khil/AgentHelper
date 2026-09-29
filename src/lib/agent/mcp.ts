@@ -133,7 +133,7 @@ export async function listMcpServers() {
   return db.select().from(mcpServers).orderBy(mcpServers.name);
 }
 
-export type McpToolBundle = { tools: ToolSet; instructions: string[]; servers: { name: string; toolCount: number }[]; failures: { name: string; error: string }[] };
+export type McpToolBundle = { tools: ToolSet; instructions: string[]; servers: { name: string; prefix: string; toolCount: number }[]; failures: { name: string; error: string }[] };
 
 /**
  * Tools from every enabled server, prefixed and wrapped. A server that cannot be reached is skipped
@@ -154,7 +154,7 @@ export async function loadMcpTools(): Promise<McpToolBundle> {
         const c = await connect(server);
         Object.assign(out.tools, c.tools);
         if (c.instructions) out.instructions.push(`${server.name}: ${c.instructions.slice(0, 1500)}`);
-        out.servers.push({ name: server.name, toolCount: Object.keys(c.tools).length });
+        out.servers.push({ name: server.name, prefix: server.toolPrefix, toolCount: Object.keys(c.tools).length });
       } catch (e) {
         const error = e instanceof Error ? e.message : String(e);
         out.failures.push({ name: server.name, error });

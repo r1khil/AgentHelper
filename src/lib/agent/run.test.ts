@@ -82,6 +82,7 @@ function setup(responses: (ReturnType<typeof says> | Error)[]) {
     tools: { read_filing: readFiling },
     stopWhen: isStepCount(3),
     prepareStep: ({ stepNumber }) => (stepNumber >= 2 ? { toolChoice: "none" } : undefined),
+    activeToolCounts: [],
     maxRetries: 0,
     maxOutputTokens: 1000,
     repairToolCall,

@@ -57,6 +57,9 @@ function driveSource(f: Pick<DriveFileMeta, "id" | "name" | "webViewLink" | "mod
   return { ...src("drive", f.name, f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`, "Analyst Drive", f.docDate ?? undefined), documentId: f.id, sourceType: f.kind?.replaceAll("_", " ") ?? "Internal document" };
 }
 
+/** get_filings with withExhibits opens this many of the filings it returns (one EDGAR index request each). */
+const EXHIBIT_FILINGS = 3;
+
 /** Earnings press releases are EX-99 exhibits; everything else from EDGAR is a filing. */
 const filingSourceType = (form: string | null | undefined, url?: string | null) => (/ex-?99/i.test(form ?? "") || /ex-?99|exhibit.?99|xex99/i.test(url ?? "") ? "Earnings release" : "SEC filing");
 
@@ -147,6 +150,15 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
     const paywalled = looksPaywalled(page.url, page.text);
     const s: Source = { ...src("web", page.title ?? host, page.url, host), id: sourceId("web", `${page.url}:${w.offset}`), sourceType: "Web page", excerpt: w.text.trim().slice(0, 360), location: { offset: w.offset, text: w.text.trim().slice(0, 180) }, retrievedAt: page.fetchedAt };
     return { data: { url: page.url, title: page.title, reliability: tier, reliabilityNote: syndicatedFrom ? `Syndicated from ${syndicatedFrom}. ${TIER_LABEL[tier]}` : TIER_LABEL[tier], retrievedAt: page.fetchedAt, ...(paywalled ? { likelyPaywalled: true, paywallNote: "Only a subscriber teaser was readable. Cite only what this text says; for the rest, read the next established result or look for the fact in a primary source." } : {}), ...w, truncatedDownload: page.truncated, ...(page.fetchedVia === "firecrawl" ? { fetchedVia: "firecrawl" } : {}), ...(page.fallbackNote ? { fallbackNote: page.fallbackNote } : {}), sourceId: s.id }, sources: [s] };
+  }
+
+  /** The documents inside one filing (exhibits such as the EX-99.1 press release), each with its own source. */
+  async function filingDocuments(cik: string, company: string, accession: string, publishedAt?: string) {
+    const docs = await listFilingDocuments(cik, accession);
+    const filing = [...filingSources.values()].find((s) => s.url?.includes(accession.replaceAll("-", "")));
+    const sources = docs.map((d) => ({ ...src("sec", `${company} — ${d.description || d.type || d.name}`, d.url, "SEC EDGAR", publishedAt ?? filing?.publishedAt), sourceType: /EX-99/i.test(d.type ?? "") ? "Earnings release" : "SEC filing" }));
+    sources.forEach((s) => filingSources.set(s.url!, s));
+    return { documents: docs.map((d, i) => ({ ...d, sourceId: sources[i].id })), sources };
   }
 
   const tools = {
@@ -274,20 +286,33 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
     }),
 
     get_filings: tool({
-      description: "List recent SEC filings for a ticker from EDGAR. Filter by form (10-K, 10-Q, 8-K, DEF 14A, etc.).",
+      description:
+        "List recent SEC filings for a ticker from EDGAR. Filter by form (10-K, 10-Q, 8-K, DEF 14A, etc.). withExhibits also lists the documents inside the newest filings returned (exhibits such as the EX-99.1 earnings press release in an 8-K), each with a URL for read_filing.",
       inputSchema: z.object({
         ticker: tickerArg,
         forms: z.array(z.string()).optional().describe("Form types to include, e.g. ['8-K','10-Q']. Omit for all."),
         limit: z.number().int().min(1).max(40).default(10),
         since: z.string().optional().describe("ISO date; only filings on or after this date"),
+        withExhibits: z.boolean().default(false).describe(`List the documents inside the first ${EXHIBIT_FILINGS} filings returned; narrow with forms, since or limit to reach the one you want`),
       }),
-      execute: async ({ ticker, forms, limit, since }): Promise<ToolResult<unknown>> => {
+      execute: async ({ ticker, forms, limit, since, withExhibits }): Promise<ToolResult<unknown>> => {
         try {
           const { cik, name } = await cikFor(ticker);
           const filings = await listFilings(cik, { forms, limit, since });
           const sources = filings.map((f) => src("sec", `${name} ${f.form} filed ${f.filedAt}${f.description ? ` — ${f.description}` : ""}`, f.url, "SEC EDGAR", f.filedAt));
           sources.forEach((s) => filingSources.set(s.url!, s));
-          return { data: { cik, company: name, filings: filings.map((f, i) => ({ ...f, sourceId: sources[i].id })) }, sources };
+          const rows: Record<string, unknown>[] = filings.map((f, i) => ({ ...f, sourceId: sources[i].id }));
+          if (withExhibits) {
+            const inside = await Promise.all(filings.slice(0, EXHIBIT_FILINGS).map((f) => filingDocuments(cik, name, f.accession, f.filedAt).catch((e: unknown) => (e instanceof Error ? e : new Error(String(e))))));
+            inside.forEach((r, i) => {
+              if (r instanceof Error) rows[i].documentsError = r.message;
+              else {
+                rows[i].documents = r.documents;
+                sources.push(...r.sources);
+              }
+            });
+          }
+          return { data: { cik, company: name, filings: rows }, sources };
         } catch (e) {
           return fail(e, null);
         }
@@ -296,7 +321,7 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
 
     read_filing: tool({
       description:
-        "Read the text of an SEC filing document by URL (from get_filings; any other link is read as a web page instead). Pass `item` to jump to one section. Item numbers differ by form: 10-Q — Item 1 financial statements, Item 2 MD&A (results, margins, outlook), Item 3 market risk; 10-K — Item 1 business, Item 1A risk factors, Item 7 MD&A, Item 8 financial statements; 8-K — Item 2.02 results of operations (the earnings press release is usually exhibit EX-99.1, see list_filing_documents). Returns a window of `maxChars` starting at `offset`; use `offset` to page when `hasMore` is true.",
+        "Read the text of an SEC filing document by URL (from get_filings; any other link is read as a web page instead). Pass `item` to jump to one section. Item numbers differ by form: 10-Q — Item 1 financial statements, Item 2 MD&A (results, margins, outlook), Item 3 market risk; 10-K — Item 1 business, Item 1A risk factors, Item 7 MD&A, Item 8 financial statements; 8-K — Item 2.02 results of operations (the earnings press release is usually exhibit EX-99.1: get_filings with withExhibits lists it). Returns a window of `maxChars` starting at `offset`; use `offset` to page when `hasMore` is true.",
       inputSchema: z.object({
         url: z.string().url(),
         item: z.string().optional().describe("Section to extract, e.g. '2' for 10-Q MD&A, '7' for 10-K MD&A, '1A' for risk factors"),
@@ -337,17 +362,15 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
       },
     }),
 
+    // Retired (RETIRED in ./tool-routing): never offered to the model in a chat, kept so chats that used them still work.
     list_filing_documents: tool({
-      description: "List all documents inside one SEC filing (to find exhibits such as EX-99.1 press releases). Needs the accession number from get_filings.",
+      description: "List all documents inside one SEC filing (to find exhibits such as EX-99.1 press releases). Needs the accession number from get_filings. Prefer get_filings with withExhibits.",
       inputSchema: z.object({ ticker: tickerArg, accession: z.string() }),
       execute: async ({ ticker, accession }): Promise<ToolResult<unknown>> => {
         try {
           const { cik, name } = await cikFor(ticker);
-          const docs = await listFilingDocuments(cik, accession);
-          const filing = [...filingSources.values()].find((s) => s.url?.includes(accession.replaceAll("-", "")));
-          const sources = docs.map((d) => ({ ...src("sec", `${name} — ${d.description || d.type || d.name}`, d.url, "SEC EDGAR", filing?.publishedAt), sourceType: /EX-99/i.test(d.type ?? "") ? "Earnings release" : "SEC filing" }));
-          sources.forEach((s) => filingSources.set(s.url!, s));
-          return { data: { accession, documents: docs.map((d, i) => ({ ...d, sourceId: sources[i].id })) }, sources };
+          const { documents, sources } = await filingDocuments(cik, name, accession);
+          return { data: { accession, documents }, sources };
         } catch (e) {
           return fail(e, null);
         }
@@ -355,7 +378,7 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
     }),
 
     search_financial_concepts: tool({
-      description: "Search the XBRL concepts a company has reported (e.g. 'revenue', 'operating income', 'shares') to find the exact concept name to pass to get_financials. For the standard income statement lines prefer get_key_financials, which resolves the names for you.",
+      description: "Search the XBRL concepts a company has reported (e.g. 'revenue', 'operating income', 'shares') to find the exact concept name to pass to get_financials. Prefer get_financials with a plain-language concept, which lists the closest names itself.",
       inputSchema: z.object({ ticker: tickerArg, query: z.string().min(2) }),
       execute: async ({ ticker, query }): Promise<ToolResult<unknown>> => {
         try {
@@ -409,10 +432,11 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
     }),
 
     get_financials: tool({
-      description: "Reported values for one XBRL concept (e.g. 'Revenues', 'NetIncomeLoss', 'EarningsPerShareDiluted') from SEC company facts, with period, form, and filing link. Use search_financial_concepts first if unsure of the name.",
+      description:
+        "Reported values for one XBRL concept (e.g. 'Revenues', 'NetIncomeLoss', 'PaymentsForRepurchaseOfCommonStock') from SEC company facts, with period, form, and filing link. Not sure of the name? Pass a plain-language description ('share repurchases', 'operating lease liabilities'): when it is not a concept the company reports, the result lists the closest reported concepts (conceptFound false) to call it again with. For the standard income statement use get_key_financials.",
       inputSchema: z.object({
         ticker: tickerArg,
-        concept: z.string(),
+        concept: z.string().min(2).describe("Exact XBRL concept name, or a plain-language description to look one up"),
         unit: z.string().default("USD").describe("USD, USD/shares, shares, pure"),
         limit: z.number().int().min(1).max(40).default(12),
         periodKind: z.enum(["any", "quarter", "annual", "ytd", "instant"]).default("any"),
@@ -423,10 +447,13 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
           const facts = await getCompanyFacts(cik);
           const meta = facts.facts["us-gaap"]?.[concept] ?? facts.facts["ifrs-full"]?.[concept];
           if (!meta) {
-            const close = searchConcepts(facts, concept.replace(/([a-z])([A-Z])/g, "$1 $2"), 5);
-            throw new Error(
-              `Concept ${concept} is not reported by ${name}. ${close.length ? `Closest reported concepts: ${close.map((c) => `${c.concept} ("${c.label}", latest ${c.latestEnd})`).join("; ")}. Call get_financials again with one of these exact names.` : "Use get_key_financials for standard lines or search_financial_concepts to find the name."}`,
-            );
+            // Not a reported concept name: search for it instead (what search_financial_concepts did), not an error.
+            const close = searchConcepts(facts, concept.replace(/([a-z])([A-Z])/g, "$1 $2"), 12);
+            if (!close.length) throw new Error(`${name} reports no XBRL concept matching "${concept}". Use get_key_financials for the standard lines, or describe the line item in other words.`);
+            return {
+              data: { company: name, concept, conceptFound: false, closestConcepts: close, note: `"${concept}" is not a concept ${name} reports. Call get_financials again with the exact name of the one whose label and latest period fit the question.` },
+              sources: [],
+            };
           }
           const taxonomy = facts.facts["us-gaap"]?.[concept] ? "us-gaap" : "ifrs-full";
           const units = Object.keys(meta.units);

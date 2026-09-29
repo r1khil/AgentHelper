@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UIMessage } from "ai";
-import { EVAL_CASES, type EvalCase } from "./cases";
+import { CLAIMS_DONE, EVAL_CASES, type EvalCase } from "./cases";
 import { compareRuns, scoreTurn, summarize } from "./score";
 import { parsePageContext } from "../page-context";
 
@@ -85,5 +85,21 @@ describe("EVAL_CASES", () => {
   it("have unique ids and page contexts the server would accept", () => {
     expect(new Set(EVAL_CASES.map((c) => c.id)).size).toBe(EVAL_CASES.length);
     for (const c of EVAL_CASES) if (c.page) expect(parsePageContext(c.page), c.id).not.toBeNull();
+  });
+});
+
+describe("CLAIMS_DONE", () => {
+  it("catches an answer claiming the change already happened", () => {
+    for (const s of ["I've added the note to AXP.", "The trade was recorded in the ledger.", "It has been pinned to META's board.", "The nudge was successfully dismissed."]) expect(CLAIMS_DONE.test(s), s).toBe(true);
+  });
+
+  it("ignores a sentence that says it didn't happen", () => {
+    for (const s of [
+      "That SYK buy was skipped because the ledger already contains it: 83 shares at $280.13 on September 18, 2026. No new trade was recorded.",
+      "Nothing was saved yet: confirm the card to add the note.",
+      "The trade was not recorded.",
+      "It wasn't recorded, and none of the trades were recorded twice.",
+    ])
+      expect(CLAIMS_DONE.test(s), s).toBe(false);
   });
 });
