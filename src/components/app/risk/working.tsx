@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils";
  */
 export function Working({ title = "Show working", children, className }: { title?: string; children: React.ReactNode; className?: string }) {
   return (
-    <details className={cn("group rounded-md border border-dashed bg-muted/20 text-body", className)}>
-      <summary className="cursor-pointer px-2.5 py-1.5 font-medium text-muted-foreground select-none hover:text-foreground">{title}</summary>
-      <div className="grid gap-1.5 border-t border-dashed px-2.5 py-2 leading-relaxed">{children}</div>
+    <details className={cn("group border-t text-body", className)}>
+      <summary className="cursor-pointer py-2 font-semibold text-muted-foreground select-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">{title}</summary>
+      <div className="grid gap-1.5 border-t border-row bg-band px-3 py-2.5 leading-relaxed">{children}</div>
     </details>
   );
 }

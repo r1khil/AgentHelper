@@ -34,7 +34,7 @@ export function CorrelationHeatmap({ tickers, matrix }: { tickers: string[]; mat
                   const c = matrix[i][j];
                   const label = `${row} / ${col}: ${rnum(c)}`;
                   return (
-                    <td key={col} title={label} aria-label={label} className="tnum size-8 rounded-sm text-center" style={{ background: i === j ? "var(--muted)" : shade(c), color: Math.abs(c) > 0.55 && i !== j ? "white" : undefined }}>
+                    <td key={col} title={label} aria-label={label} className="tnum size-8 rounded-sm text-center" style={{ background: i === j ? "var(--muted)" : shade(c), color: c > 0.55 && i !== j ? "var(--background)" : undefined }}>
                       {i === j ? "" : rnum(c, 1)}
                     </td>
                   );

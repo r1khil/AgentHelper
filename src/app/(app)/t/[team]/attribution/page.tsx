@@ -4,16 +4,19 @@ import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/app/empty-state";
 import { TeamAttributionView } from "@/components/app/attribution/attribution-views";
 import type { TeamLookup } from "@/components/app/attribution/contributors-table";
+import { TODAY_KEY } from "@/components/app/attribution/period-selector";
+import { TodayView } from "@/components/app/daily/today-view";
 import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { computeTeamAttribution } from "@/lib/attribution/attribution";
 import { loadAttributionSeries, loadTeamSectors } from "@/lib/attribution/load";
+import { loadLiveSnapshot } from "@/lib/attribution/live-load";
 import { ETF_BY_SECTOR, SECTOR_LABELS } from "@/lib/attribution/sectors";
 import { periodFromQuery, qualityNotices, sectorEffectPoints } from "@/lib/attribution/view";
 import { canManageTeam, isFundWide, transparencyEnabled } from "@/lib/auth";
 import { loadTeam } from "@/lib/teams";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 
-export const metadata: Metadata = { title: "Attribution" };
+export const metadata: Metadata = { title: "Performance" };
 
 export default async function TeamAttributionPage({ params, searchParams }: PageProps<"/t/[team]/attribution">) {
   const slug = (await params).team;
@@ -28,6 +31,7 @@ export default async function TeamAttributionPage({ params, searchParams }: Page
   const canEdit = isFundWide(user);
   const sectors = sectorMap.get(team.id) ?? [];
   const benchmarkName = sectors.length ? sectors.map((s) => ETF_BY_SECTOR[s]).join(" + ") : "no sectors assigned";
+  const benchmarkSectors = sectors.length ? sectors.map((s) => SECTOR_LABELS[s]).join(", ") : "—";
 
   if (!loaded.inception || !loaded.latest) {
     return (
@@ -36,6 +40,31 @@ export default async function TeamAttributionPage({ params, searchParams }: Page
           {loaded.inception ? "Closing prices load after each ledger change and every weeknight." : canEdit ? <Link href="/attribution/ledger" className="underline underline-offset-2">Open the ledger</Link> : "An exec records the Fund's trades in the ledger."}
         </EmptyState>
       </div>
+    );
+  }
+
+  // Today: the team's live session, the old Daily page. Same page, same period buttons.
+  const asked = Array.isArray(query.period) ? query.period[0] : query.period;
+  if (asked === TODAY_KEY) {
+    const snapshot = await loadLiveSnapshot({ team: { id: team.id, name: team.name, slug: team.slug, sectors } });
+    if (!snapshot) {
+      return (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <EmptyState title="Nothing to show yet">Today&apos;s performance starts once the ledger has positions and their closing prices have loaded.</EmptyState>
+        </div>
+      );
+    }
+    const closed = periodFromQuery({ period: "1d" }, { inception: loaded.inception, latest: loaded.latest });
+    const notices = qualityNotices(loaded, closed.period, { canEdit }).filter((n) => n.word === "Stale" || n.text.startsWith("No S&P 500 sector weights"));
+    if (!sectors.length) notices.unshift({ text: "No GICS sectors are assigned to this team, so it has no benchmark.", href: canEdit ? "/attribution/ledger?tab=securities" : undefined, action: "Assign sectors" });
+    return (
+      <TodayView
+        initial={snapshot}
+        scope={{ kind: "team", slug: team.slug, name: team.name, benchmarkName, benchmarkSectors }}
+        teams={[[team.id, { name: team.name, slug: team.slug }]]}
+        period={{ basePath: base, inception: loaded.inception, latest: loaded.latest }}
+        notices={notices}
+      />
     );
   }
 
@@ -54,7 +83,7 @@ export default async function TeamAttributionPage({ params, searchParams }: Page
         teamName={team.name}
         teamSlug={team.slug}
         benchmarkName={benchmarkName}
-        benchmarkSectors={sectors.length ? sectors.map((s) => SECTOR_LABELS[s]).join(", ") : "—"}
+        benchmarkSectors={benchmarkSectors}
         result={result}
         teams={teams}
         notices={notices}

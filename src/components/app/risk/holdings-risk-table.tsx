@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { HoldingRisk } from "@/lib/risk/model";
-import { MagnitudeBar } from "../attribution/bars";
-import { Explained } from "../attribution/info-tip";
+import { PairBars } from "@/components/app/portfolio/parts";
+import { Tip } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "./explainers";
 import { rnum, rpct } from "./format";
 import { tickerName } from "@/components/app/read-as";
@@ -11,24 +10,26 @@ import { RowLink } from "@/components/app/row-link";
 
 export type TeamNames = Map<string, { name: string; slug: string }>;
 
-/** Holdings ranked by their share of portfolio risk, beside their share of its value. */
+const head = "text-caption first:pl-0 last:pr-0";
+
+/** Holdings ranked by their share of portfolio risk, beside their share of its value, with a trim what-if on each. */
 export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: HoldingRisk[]; teams: TeamNames; totals: { weight: number; vol: number; riskRows: number }; showActive: boolean }) {
   const maxShare = Math.max(...rows.flatMap((h) => [Math.abs(h.riskShare), h.weight]), 0);
   return (
-    <Card className="overflow-x-auto p-0">
+    <div className="overflow-x-auto">
       <Table aria-label="Holdings by share of risk">
         <TableHeader>
           <TableRow>
-            <TableHead>Holding</TableHead>
-            <TableHead>
-              <Explained label="Weight vs share of risk">{RISK_EXPLAIN.riskShare}</Explained>
+            <TableHead className={head}>Holding</TableHead>
+            <TableHead className={head}>
+              <Tip label="Weight vs share of risk" side="bottom">{RISK_EXPLAIN.riskShare}</Tip>
             </TableHead>
-            <TableHead className="text-right"><Explained align="right" label="Contribution">{RISK_EXPLAIN.contribution}</Explained></TableHead>
-            <TableHead className="text-right"><Explained align="right" label="Volatility">{RISK_EXPLAIN.holdingVol}</Explained></TableHead>
-            <TableHead className="text-right"><Explained align="right" label="Beta">{RISK_EXPLAIN.holdingBeta}</Explained></TableHead>
-            <TableHead className="text-right"><Explained align="right" label="Corr. to Fund">{RISK_EXPLAIN.corr}</Explained></TableHead>
-            {showActive && <TableHead className="text-right"><Explained align="right" label="Active risk">{RISK_EXPLAIN.activeRiskShare}</Explained></TableHead>}
-            <TableHead className="text-right"><Explained align="right" label="What if">Opens Backtesting with this holding trimmed by 2 percentage points into cash, so you can see how performance and risk would change. Adjust the trade there before running.</Explained></TableHead>
+            <TableHead className={`${head} text-right`}><Tip label="Contribution" side="bottom">{RISK_EXPLAIN.contribution}</Tip></TableHead>
+            <TableHead className={`${head} text-right`}><Tip label="Volatility" side="bottom">{RISK_EXPLAIN.holdingVol}</Tip></TableHead>
+            <TableHead className={`${head} text-right`}><Tip label="Beta" side="bottom">{RISK_EXPLAIN.holdingBeta}</Tip></TableHead>
+            <TableHead className={`${head} text-right`}><Tip label="Corr. to Fund" side="bottom">{RISK_EXPLAIN.corr}</Tip></TableHead>
+            {showActive && <TableHead className={`${head} text-right`}><Tip label="Active risk" side="bottom">{RISK_EXPLAIN.activeRiskShare}</Tip></TableHead>}
+            <TableHead className={`${head} text-right`}><Tip label="What if" side="bottom">Opens Backtesting with this holding trimmed by 2 percentage points into cash, so you can see how performance and risk would change. Adjust the trade there before running.</Tip></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -36,10 +37,10 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
             const team = h.teamId ? teams.get(h.teamId) : undefined;
             return (
               <TableRow key={h.ticker}>
-                <TableCell>
-                  {team ? <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} aria-label={tickerName(h.ticker, h.name)} className="font-mono font-semibold hover:underline">{h.ticker}</RowLink> : <span className="font-mono font-semibold">{h.ticker}</span>}
+                <TableCell className="first:pl-0">
+                  {team ? <RowLink cover="cell" owner={team.slug} path={`/h/${encodeURIComponent(h.ticker)}`} aria-label={tickerName(h.ticker, h.name)} className="font-semibold hover:underline">{h.ticker}</RowLink> : <span className="font-semibold">{h.ticker}</span>}
                   {h.source !== "own" && (
-                    <span className="ml-1.5 rounded border px-1 py-px text-caption text-muted-foreground" title={h.source === "proxy" ? `Too little price history; modeled with ${h.proxy}` : "No price history or sector; treated as riskless"}>
+                    <span className="ml-1.5 text-caption font-semibold text-caution-foreground" title={h.source === "proxy" ? `Too little price history; modeled with ${h.proxy}` : "No price history or sector; treated as riskless"}>
                       {h.source === "proxy" ? `via ${h.proxy}` : "not modeled"}
                       <span className="sr-only">: {h.source === "proxy" ? `too little price history; modeled with ${h.proxy}` : "no price history or sector; treated as riskless"}</span>
                     </span>
@@ -47,23 +48,20 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
                   <div className="max-w-44 text-caption whitespace-normal text-muted-foreground">{team?.name ?? h.name}</div>
                 </TableCell>
                 <TableCell>
-                  <div className="grid gap-1">
-                    <div className="flex items-center gap-2" title="Share of value">
-                      <MagnitudeBar value={h.weight} max={maxShare} color="var(--muted-foreground)" className="h-1.5 w-24" />
-                      <span className="w-12 font-mono text-body text-muted-foreground">{rpct(h.weight)}</span>
-                    </div>
-                    <div className="flex items-center gap-2" title="Share of risk">
-                      <MagnitudeBar value={h.riskShare} max={maxShare} color={h.riskShare < 0 ? "var(--down)" : "var(--series-1)"} className="h-1.5 w-24" />
-                      <span className="w-12 font-mono text-body font-medium">{rpct(h.riskShare)}</span>
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <PairBars a={h.weight} b={Math.abs(h.riskShare)} max={maxShare} className="w-24" />
+                    <span className="grid text-body leading-4">
+                      <span className="text-muted-foreground" title="Share of value">{rpct(h.weight)}</span>
+                      <span className="font-semibold" title="Share of risk">{rpct(h.riskShare)}</span>
+                    </span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right font-mono text-body">{rpct(h.contribution, 2)}</TableCell>
-                <TableCell className="text-right font-mono text-body">{rpct(h.vol)}</TableCell>
-                <TableCell className="text-right font-mono text-body">{rnum(h.beta)}</TableCell>
-                <TableCell className="text-right font-mono text-body">{rnum(h.corrToPortfolio)}</TableCell>
-                {showActive && <TableCell className="text-right font-mono text-body">{rpct(h.activeRiskShare)}</TableCell>}
-                <TableCell className="text-right">
+                <TableCell className="text-right">{rpct(h.contribution, 2)}</TableCell>
+                <TableCell className="text-right">{rpct(h.vol)}</TableCell>
+                <TableCell className="text-right">{rnum(h.beta)}</TableCell>
+                <TableCell className="text-right">{rnum(h.corrToPortfolio)}</TableCell>
+                {showActive && <TableCell className="text-right">{rpct(h.activeRiskShare)}</TableCell>}
+                <TableCell className="text-right last:pr-0">
                   <Link href={`/backtesting?trade=${encodeURIComponent(`${h.ticker}:-2:cash`)}`} aria-label={`Trim ${h.ticker} by 2 percentage points`} className="text-body whitespace-nowrap text-muted-foreground hover:text-foreground hover:underline">
                     Trim 2 pp →
                   </Link>
@@ -73,16 +71,16 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
           })}
         </TableBody>
         {rows.length === totals.riskRows && (
-          <TableFooter>
+          <TableFooter className="bg-transparent">
             <TableRow>
-              <TableCell className="font-medium">All holdings</TableCell>
-              <TableCell className="font-mono text-body">{rpct(totals.weight)} of value · 100.0% of risk</TableCell>
-              <TableCell className="text-right font-mono text-body font-medium">{rpct(totals.vol, 2)}</TableCell>
+              <TableCell className="font-semibold first:pl-0">All holdings</TableCell>
+              <TableCell>{rpct(totals.weight)} of value · 100.0% of risk</TableCell>
+              <TableCell className="text-right font-semibold">{rpct(totals.vol, 2)}</TableCell>
               <TableCell colSpan={showActive ? 5 : 4} />
             </TableRow>
           </TableFooter>
         )}
       </Table>
-    </Card>
+    </div>
   );
 }

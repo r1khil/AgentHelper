@@ -39,20 +39,12 @@ export function InfoTip({ label, children, className }: { label: string; childre
   );
 }
 
-/** A label followed by its explainer, for table headers and section titles. `readAs` spells out an abbreviated label for screen readers. */
-export function Explained({ label, readAs, children, align = "left" }: { label: string; readAs?: string; children: React.ReactNode; align?: "left" | "right" }) {
-  return (
-    <span className={cn("inline-flex items-center gap-1", align === "right" && "flex-row-reverse")}>
-      {readAs ? (
-        <span>
-          <ReadAs text={readAs}>{label}</ReadAs>
-        </span>
-      ) : (
-        label
-      )}
-      <InfoTip label={readAs ?? label}>{children}</InfoTip>
-    </span>
-  );
+/**
+ * A label that is its own explainer, for table headers and section titles (the same look as `Tip`: no icon, a dotted
+ * underline on hover). `readAs` spells out an abbreviated label for screen readers.
+ */
+export function Explained({ label, readAs, children }: { label: string; readAs?: string; children: React.ReactNode; align?: "left" | "right" }) {
+  return <Tip label={readAs ? <ReadAs text={readAs}>{label}</ReadAs> : label}>{children}</Tip>;
 }
 
 /**

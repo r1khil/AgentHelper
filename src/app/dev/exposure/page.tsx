@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { ExposureView, fundExposureContext } from "@/components/app/exposure/exposure-view";
-import { SectorViewToggle, parseThroughEtfs, sectorViewQuery } from "@/components/app/exposure/lookthrough";
+import { parseThroughEtfs, sectorViewQuery } from "@/components/app/exposure/lookthrough";
 import type { LookthroughState } from "@/lib/risk/lookthrough-report";
 import { parseLookback } from "@/lib/risk/model";
 import { PREVIEW_ETFS, previewEnabled, previewLookthrough, previewReport } from "@/lib/risk/preview";
@@ -36,7 +36,6 @@ export default async function Preview({ searchParams }: PageProps<"/dev/exposure
         lookthrough={lookthrough}
         throughEtfs={throughEtfs}
         query={`${sectorViewQuery(throughEtfs)}${team ? "&scope=team" : ""}`}
-        controls={<SectorViewToggle basePath="/dev/exposure" lookback={lookback} throughEtfs={throughEtfs} available={lookthrough.state === "ok"} extra={team ? "&scope=team" : ""} />}
         context={team ? "Tech & media holdings as their own portfolio (scaled to 100%, no cash) against the team's own sectors" : fundExposureContext("2026-09-01", throughEtfs)}
         teams={new Map()}
         factorBenchmarkLabel={team ? "XLK + XLC" : "the S&P 500 sector benchmark"}

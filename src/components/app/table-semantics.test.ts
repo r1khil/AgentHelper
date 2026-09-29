@@ -6,11 +6,11 @@ import { describe, expect, it } from "vitest";
 import { TeamsPanel as TodayTeams } from "@/app/(app)/_today/teams-panel";
 import { JobRunsLive } from "./admin/job-runs-live";
 import { ResearchBoards } from "./agent/research-boards";
-import { TeamsPanel as AttributionTeams } from "./attribution/attribution-panels";
+import { TeamBars as AttributionTeams } from "./attribution/attribution-panels";
 import { HoldingsColumn } from "./attribution/holdings-columns";
 import { DayTable } from "./attribution/sector-breakdown";
 import { SectorsPanel } from "./attribution/sectors-panel";
-import { ActiveBetsPanel, SectorWeightsPanel } from "./exposure/exposure-panels";
+import { ActiveBetsPanel, SectorTilts } from "./exposure/exposure-panels";
 import { HoldingsTable } from "./holdings/holdings-table";
 import { PositionsTable } from "./portfolio/positions-table";
 import { EarningsTab } from "./holdings/tab-panels";
@@ -194,6 +194,7 @@ describe("div grids read as tables", () => {
           ],
           teams,
           cashContribution: 0,
+          portfolioReturn: 0.012,
           query: "?period=ytd",
         }),
       ),
@@ -209,7 +210,8 @@ describe("div grids read as tables", () => {
     checkTables(html);
     expect(html).toContain('aria-label="NVDA, NVIDIA Corporation"');
     const sector = { key: "information_technology" as const, avgPortfolioWeight: 0.3, avgBenchmarkWeight: 0.28, portfolioReturn: 0.02, benchmarkReturn: 0.01, contribution: 0.006, total: 0.001, allocation: 0, selection: 0.001, interaction: 0 };
-    for (const hasBench of [true, false]) checkTables(render(h(SectorsPanel, { rows: [sector], hasBench })));
+    const totals = { portfolioReturn: 0.02, benchmarkReturn: 0.01, effects: { allocation: 0, selection: 0.001, interaction: 0 }, activeReturn: 0.001 };
+    for (const hasBench of [true, false]) checkTables(render(h(SectorsPanel, { rows: [sector], hasBench, totals })));
   });
 
   it("Exposure: sector weights and largest active bets have column headers", () => {
@@ -219,14 +221,14 @@ describe("div grids read as tables", () => {
     ];
     const x = { throughEtfs: false, hasBenchmark: true, sectors } as unknown as Exposure;
     // The weights are visible figures in their own cells, not screen-reader text inside the bars.
-    const weights = checkTables(render(h(SectorWeightsPanel, { x, benchShort: "S&P 500" })));
+    const weights = checkTables(render(h(SectorTilts, { x, benchShort: "S&P 500" })));
     const cellText = (n: Node) => all(n).map((c) => c.text).join("").trim();
-    expect(weights.filter((n) => role(n) === "columnheader").map(cellText).slice(0, 3)).toEqual(["Sector", "Fund", "S&amp;P 500"]);
-    expect(weights.filter((n) => role(n) === "cell").map(cellText).slice(0, 3)).toEqual(["30.0%", "28.0%", "200"]);
+    expect(weights.filter((n) => role(n) === "columnheader").map(cellText)).toEqual(["Sector", "Fund", "Benchmark", "TiltTilt, active weight in basis pointsPortfolio weight minus benchmark weight. Positive is an overweight."]);
+    expect(weights.filter((n) => role(n) === "cell").map(cellText).slice(0, 3)).toEqual(["30.0%", "28.0%", "+200 bp"]);
     expect(weights.some((n) => (n.attrs.class ?? "").split(" ").includes("sr-only") && /%/.test(cellText(n)))).toBe(false);
     const bets = render(h(ActiveBetsPanel, { report: { holdings: [] } as unknown as RiskReport, x, lookthrough: null, teams: new Map(), benchShort: "S&P 500" }));
     const nodes = checkTables(bets);
-    expect(nodes.filter((n) => role(n) === "columnheader").map((n) => all(n).map((c) => c.text).join("").trim())).toEqual(["ETF", "Sector", "Fund", "S&amp;P 500", "ActiveActive weight, basis points"]);
+    expect(nodes.filter((n) => role(n) === "columnheader").map((n) => all(n).map((c) => c.text).join("").trim())).toEqual(["ETF", "Sector", "Fund", "S&amp;P 500", "Active, bpActive weight, basis points"]);
   });
 
   it("Stress tests, research boards and a holding's earnings", () => {
@@ -286,9 +288,9 @@ describe("expandable rows open from the keyboard", () => {
 
 describe("definitions are text, not only tooltips", () => {
   it("a Tip label's definition is its description, hidden from view and from the header's name", () => {
-    const nodes = all(parse(render(h(AttributionTeams, { rows: [], teams: new Map(), cashContribution: 0, query: "" }))));
+    const nodes = all(parse(render(h(AttributionTeams, { rows: [], teams: new Map(), cashContribution: 0, portfolioReturn: 0, query: "" }))));
     const tips = nodes.filter((n) => n.attrs["aria-describedby"]);
-    expect(tips.length).toBe(4);
+    expect(tips.length).toBe(2);
     for (const t of tips) {
       const def = nodes.find((n) => n.attrs.id === t.attrs["aria-describedby"])!;
       expect("hidden" in def.attrs).toBe(true);
