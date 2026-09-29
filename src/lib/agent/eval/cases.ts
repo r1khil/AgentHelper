@@ -106,6 +106,14 @@ export const EVAL_CASES: EvalCase[] = [
     note: "2026-09-28 Nemotron test: correct tools, but citation repair gutted the answer.",
   },
   {
+    id: "daily-ahead-of-benchmark",
+    question: "Why are we ahead of the benchmark today?",
+    as: "exec",
+    tags: ["portfolio"],
+    expect: { calls: ["get_daily_performance"], notCalls: ["run_backtest"], maxToolCalls: 8, answerNot: [/can(?:'|’)?t (?:retrieve|verify|access)/i] },
+    note: "2026-09-29 prod: asked from a general thread, the router offered no book tools and Hoot said it couldn't retrieve daily attribution.",
+  },
+  {
     id: "risk-explain-page",
     question: "i dont understand what this page is saying",
     as: "exec",

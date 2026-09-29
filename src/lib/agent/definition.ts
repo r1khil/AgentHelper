@@ -25,6 +25,7 @@ import { makePtSheetTools, ptSheetToolAllowed, type PtSheetState } from "./pt-sh
 import { PT_SHEET_MODEL_ID, sheetSafeModel } from "./pt-sheet-guard";
 import type { PageContext } from "./page-context";
 import { activeToolsFor, RETIRED } from "./tool-routing";
+import { makeFindTools } from "./find-tools";
 import { isFundWide } from "@/lib/roles";
 import type { CurrentUser } from "@/lib/auth";
 
@@ -158,6 +159,9 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
   // Admin-registered MCP servers add tools under their prefix; a native name always wins.
   const mcp = await loadMcpTools();
   const merged: ToolSet = { ...mcp.tools, ...native };
+  // Tools the model turned on through find_tools this turn; the step router offers them from then on.
+  const requested = new Set<string>();
+  if ((ctx.purpose ?? "chat") === "chat") Object.assign(merged, makeFindTools({ available: Object.keys(merged), requested }));
   const tools = ctx.sink ? instrumentTools(merged, ctx.sink) : merged;
   const instructions = await buildInstructions(ctx.teamId, {
     holdingId: ctx.holdingId,
@@ -186,6 +190,7 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
           availableTools: available,
           stepNumber,
           usedTools,
+          requestedTools: [...requested],
           mcpServers: mcp.servers,
         })
     : undefined;

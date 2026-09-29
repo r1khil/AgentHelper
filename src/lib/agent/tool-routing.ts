@@ -27,6 +27,7 @@ export const CORE = [
   "navigate",
   "set_theme",
   "explain_app",
+  "find_tools",
 ] as const;
 
 /** Tool groups unlocked together. Every native tool is in CORE, exactly one tier, WRITE or RETIRED (a test enforces it). */
@@ -48,6 +49,20 @@ export const TIERS = {
 } as const satisfies Record<string, readonly string[]>;
 
 export type Tier = keyof typeof TIERS;
+
+/** What each tier is for, in find_tools' catalog. */
+export const TIER_LABELS: Record<Tier, string> = {
+  book: "the Fund's or a team's own numbers: today's performance vs the benchmark, attribution over a period, risk, backtests",
+  workspace: "the app's pages: movements and write-ups, upcoming earnings, the economic calendar, the trade ledger, to-dos, what's new",
+  macro: "macro data (FRED series) and prediction-market odds",
+  ownership: "insiders, institutional holders, analyst estimates, peer comparisons, the rest of the book's moves",
+  web: "web search and reading any URL",
+  filingDetail: "any XBRL line item beyond the standard income statement",
+  compute: "Python for statistics",
+  sheet: "the PT sheet",
+  transcripts: "earnings and sell-side call transcripts",
+  background: "company background (Wikipedia)",
+};
 
 /**
  * Merged into another tool and never offered again, but still registered so chats that used them keep working
@@ -85,6 +100,8 @@ const WORDS: Record<Tier, RegExp> = {
       /\b(?:risk(?! factor)|volatil\w*|beta|tracking error|value at risk|var|drawdown|stress(?:ed)? test\w*|stress|crisis|concentrat\w*|exposure|exposed|active share|weight\w*|overweight\w*|underweight\w*|sector bets?|factor (?:exposures?|sensitivit\w*|betas?|tilts?|loadings?)|diversif\w*)\b/,
       /\b(?:backtest\w*|back-test\w*|scenario|what[- ]if|hypothetical\w*|if (?:we|the fund) (?:had )?(?:held|bought|sold|added|trimmed))\b/,
       /\b(?:our (?:fund|portfolio|book|performance|returns?|sleeve)|(?:the|our) (?:fund|portfolio|book)(?:'s)? (?:up|down|doing|did|return\w*|perform\w*))\b/,
+      // Relative to the benchmark: "why are we ahead of the benchmark", "behind the S&P", "trailing the index".
+      /\b(?:benchmarks?|active return|excess return|alpha|relative return|(?:ahead of|behind|trail\w*|lagg?\w*|beat\w*|outpac\w*|under-?perform\w*|out-?perform\w*) (?:the )?(?:s&p(?: 500)?|spx|spy|index|market|dow))\b/,
     ]
       .map((r) => r.source)
       .join("|"),
@@ -150,6 +167,8 @@ export type RoutingInput = {
   usedTools?: readonly string[];
   /** Tools the previous answer in this chat used, so a short follow-up ("and for tech?") keeps them. */
   priorTools?: readonly string[];
+  /** Tools the model asked for this turn through find_tools, when the router didn't offer them. */
+  requestedTools?: readonly string[];
   mcpServers?: readonly McpServerRef[];
 };
 
@@ -170,7 +189,7 @@ export function tiersFor(input: Pick<RoutingInput, "question" | "page" | "seesBo
     if (WORDS[tier].test(text)) tiers.add(tier);
   }
   // A lead, exec or admin asking how "we" did means the book even without a performance word.
-  if (input.seesBook && /\b(?:we|we're|us|our)\b/.test(q) && /\b(?:up|down|do|doing|lose|lost|losing|gain\w*|make money|made money|beat|lag\w*|perform\w*|return\w*)\b/.test(q)) tiers.add("book");
+  if (input.seesBook && /\b(?:we|we're|us|our)\b/.test(q) && /\b(?:up|down|do|doing|did|lose|lost|losing|gain\w*|make money|made money|beat\w*|lag\w*|trail\w*|ahead|behind|leading|winning|outpac\w*|perform\w*|return\w*|green|red|p&l|pnl)\b/.test(q)) tiers.add("book");
   const page = input.page;
   if (page && page.kind !== "page") for (const t of KIND_TIERS[page.kind]) tiers.add(t);
   const key = page ? pageForPath(page.path.split("?")[0])?.entry.key : undefined;
@@ -209,6 +228,7 @@ export function activeToolsFor(input: RoutingInput): string[] {
   for (const t of input.priorTools ?? []) if (!(RETIRED as readonly string[]).includes(t) && !(WRITE as readonly string[]).includes(t)) on.add(t);
   for (const t of mcpToolsFor(input.question, input.availableTools, input.mcpServers ?? [])) on.add(t);
   for (const t of proposalToolsFor(input.question)) on.add(t);
+  for (const t of input.requestedTools ?? []) if (requestable(t)) on.add(t);
   if (input.stepNumber > 0) {
     for (const t of input.usedTools ?? []) {
       on.add(t);
@@ -216,6 +236,45 @@ export function activeToolsFor(input: RoutingInput): string[] {
     }
   }
   return input.availableTools.filter((t) => on.has(t) && available.has(t));
+}
+
+/** find_tools can turn on anything registered except a retired tool or a change tool (those follow the member's own words). */
+const requestable = (name: string) => !(RETIRED as readonly string[]).includes(name) && !(WRITE as readonly string[]).includes(name);
+
+/**
+ * The tools find_tools can turn on: every registered tool outside CORE, by tier, then any admin-registered (MCP) ones.
+ * A tier name stands for all of its tools.
+ */
+export function toolCatalog(available: readonly string[]): { lines: string[]; resolve: (names: readonly string[]) => { enabled: string[]; unknown: string[] } } {
+  const has = new Set(available);
+  const core = new Set<string>(CORE);
+  const lines: string[] = [];
+  const byTier: Partial<Record<Tier, string[]>> = {};
+  for (const tier of Object.keys(TIERS) as Tier[]) {
+    const tools = TIERS[tier].filter((t) => has.has(t));
+    if (!tools.length) continue;
+    byTier[tier] = tools;
+    lines.push(`${tier} (${TIER_LABELS[tier]}): ${tools.join(", ")}`);
+  }
+  const external = available.filter((n) => !native.has(n));
+  if (external.length) lines.push(`external (admin-registered): ${external.join(", ")}`);
+  const resolve = (names: readonly string[]) => {
+    const enabled: string[] = [];
+    const unknown: string[] = [];
+    for (const raw of names) {
+      const name = raw.trim();
+      const group = byTier[name as Tier] ?? (name === "external" ? external : undefined);
+      const hits = group ?? (has.has(name) && !core.has(name) && requestable(name) ? [name] : []);
+      if (!hits.length) {
+        // Asking for a tool that is already on is harmless; only a name nothing has is worth reporting.
+        if (!core.has(name)) unknown.push(name);
+        continue;
+      }
+      for (const h of hits) if (!enabled.includes(h)) enabled.push(h);
+    }
+    return { enabled, unknown };
+  };
+  return { lines, resolve };
 }
 
 /** The member's latest question and the tools the previous answer used, from the chat's UI messages. */
