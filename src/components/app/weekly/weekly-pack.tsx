@@ -20,6 +20,7 @@ import type { PackStatus } from "@/lib/weekly/status";
 import { weekRangeLabel } from "@/lib/weekly/weeks";
 import { fmtChangeBp, fmtChangePct, fmtDateTime, fmtDay, fmtDayMonth, ppToBp } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { OwlMark } from "@/components/app/owl-mark";
 import type { EmailView, WeeklyPackProps } from "./types";
 import { whenBuilt } from "./when";
 
@@ -140,11 +141,15 @@ function Banner({ tone = "info", children }: { tone?: "info" | "caution"; childr
 /* ---------- Summary ---------- */
 
 /** A section of the summary: a 13px bold title, what it is on the right, then its rows. */
-function Section({ title, aside, copy, children, className }: { title: string; aside?: React.ReactNode; copy?: string; children: React.ReactNode; className?: string }) {
+/** `hoot` marks a section Hoot wrote with his face, the way anything Hoot found is marked. */
+function Section({ title, aside, copy, hoot, children, className }: { title: string; aside?: React.ReactNode; copy?: string; hoot?: boolean; children: React.ReactNode; className?: string }) {
   return (
     <section aria-label={title} className={cn("min-w-0", className)}>
       <div className="flex items-center gap-2">
-        <h2 className="flex-1 text-body font-bold">{title}</h2>
+        <h2 className="flex flex-1 items-center gap-2 text-body font-bold">
+          {hoot && <OwlMark className="size-[18px] rounded-full" />}
+          {title}
+        </h2>
         {aside && <span className="text-caption text-muted-foreground">{aside}</span>}
         {copy && <CopyIcon text={copy} label={`Copy ${title}`} />}
       </div>
@@ -180,7 +185,7 @@ function SummaryGrid(props: WeeklyPackProps & { highlights: string[]; onPreview:
 
       {notes.length > 0 && (
         // Hoot wrote these from the week's headlines, so each one cites its headline.
-        <Section title="Why they moved" aside="Hoot's read of the news, not for the slide">
+        <Section title="Why they moved" hoot aside="Hoot's read of the news, not for the slide">
           {notes.map((w) => (
             <Row key={w.ticker} className="items-baseline">
               <span className="min-w-0 flex-1">

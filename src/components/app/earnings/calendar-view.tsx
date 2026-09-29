@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { DateTime } from "luxon";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
 import {
   CALENDAR_KINDS,
@@ -217,14 +217,30 @@ export function CalendarView(props: CalendarViewProps) {
         )}
         <Segmented label="Layout" segments={CALENDAR_LAYOUTS.map((l) => ({ key: l, label: LAYOUT_LABELS[l], href: href({ layout: l }), active: query.layout === l }))} />
         <Divider />
-        <span className="mr-1 text-caption text-muted-foreground">Show</span>
-        <FilterChips label="Show">
-          {SHOW.map((s) => (
-            <FilterChip key={s.kind} active={show.has(s.kind)} href={href({ show: toggleKind(query.show, s.kind) })} count={loaded[s.kind] ? counts[s.kind] : undefined} title={`${show.has(s.kind) ? "Hide" : "Show"} ${s.label.toLowerCase()}`}>
-              {s.label}
-            </FilterChip>
-          ))}
-        </FilterChips>
+        {/* What the calendar lists: a quiet row of on/off words, not a second set of filled controls. */}
+        <div role="group" aria-label="Show" className="flex items-center gap-3 text-caption">
+          <span className="text-muted-foreground">Show:</span>
+          {SHOW.map((s) => {
+            const on = show.has(s.kind);
+            return (
+              <Link
+                key={s.kind}
+                href={href({ show: toggleKind(query.show, s.kind) })}
+                scroll={false}
+                role="switch"
+                aria-checked={on}
+                title={`${on ? "Hide" : "Show"} ${s.label.toLowerCase()}`}
+                className={cn("flex items-center gap-1.5 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring", on ? "font-semibold text-foreground" : "text-muted-foreground")}
+              >
+                <span aria-hidden="true" className={cn("grid size-3 place-items-center rounded-[3px] border", on ? "border-foreground bg-foreground text-background" : "border-border-strong")}>
+                  {on && <Check className="size-2.5" strokeWidth={3} />}
+                </span>
+                {s.label}
+                {loaded[s.kind] && <span className="font-normal text-muted-foreground tabular-nums">{counts[s.kind]}</span>}
+              </Link>
+            );
+          })}
+        </div>
         {show.has("economic") && (
           <>
             <Divider />
