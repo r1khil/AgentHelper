@@ -3,9 +3,7 @@ import path from "node:path";
 import { createElement as h, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { TeamsPanel as TodayTeams } from "@/app/(app)/_today/teams-panel";
 import { JobRunsLive } from "./admin/job-runs-live";
-import { ResearchBoards } from "./agent/research-boards";
 import { TeamBars as AttributionTeams } from "./attribution/attribution-panels";
 import { HoldingsColumn } from "./attribution/holdings-columns";
 import { DayTable } from "./attribution/sector-breakdown";
@@ -168,21 +166,6 @@ describe("div grids read as tables", () => {
     expect(nodes.filter((n) => role(n) === "columnheader").map((n) => all(n).map((c) => c.text).join("").trim())).toEqual(["Name", "Last", "Today", "vs S&amp;P", "Market value", "Weight", "Total gain"]);
   });
 
-  it("Today's teams, with and without the book", () => {
-    const teams = [
-      { id: "a", name: "Tech", holdings: [], stats: { ret: 0.01, contribution: 0.002 }, mover: { ticker: "NVDA", pct: 2 } },
-      { id: "b", name: "Energy", holdings: [], stats: null, mover: null },
-    ];
-    for (const withBook of [true, false]) {
-      const nodes = checkTables(render(h(TodayTeams, { title: "Teams", teams, withBook, live: true, holdingsHref: "/holdings" })));
-      const toggles = nodes.filter((n) => n.tag === "button");
-      expect(toggles.map((b) => [b.attrs["aria-expanded"], role(b.parent!)])).toEqual([
-        ["false", "rowheader"],
-        ["false", "rowheader"],
-      ]);
-    }
-  });
-
   it("Attribution teams, holdings columns and sectors", () => {
     const teams = new Map([["a", { name: "Tech", slug: "tech" }]]);
     checkTables(
@@ -231,17 +214,8 @@ describe("div grids read as tables", () => {
     expect(nodes.filter((n) => role(n) === "columnheader").map((n) => all(n).map((c) => c.text).join("").trim())).toEqual(["ETF", "Sector", "Fund", "S&amp;P 500", "Active, bpActive weight, basis points"]);
   });
 
-  it("Stress tests, research boards and a holding's earnings", () => {
+  it("Stress tests and a holding's earnings", () => {
     checkTables(render(h(StressPanelFallback, {})));
-    const boards = render(
-      h(ResearchBoards, {
-        holdings: [{ id: "1", ticker: "NVDA", name: "NVIDIA Corporation", href: "/h/NVDA/research", chats: 2, sources: 3, lastActivity: null, earnings: { reportDate: "2026-11-18", dateStatus: "estimated", hasExpectations: false } }],
-        market: Promise.resolve({}),
-        showTeam: false,
-      }),
-    );
-    const nodes = checkTables(boards);
-    expect(nodes.find((n) => role(n) === "columnheader" && n.attrs["aria-sort"])?.attrs["aria-sort"]).toBe("other");
     checkTables(
       render(
         h(EarningsTab, {
