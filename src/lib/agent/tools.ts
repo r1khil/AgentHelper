@@ -33,6 +33,7 @@ import { MARKET_FACT_TTL_DAYS, rememberMemory, searchMemories } from "@/lib/agen
 import { newestEvidenceDate } from "@/lib/agent/memory/distill";
 import { isPtSheetSource } from "@/lib/agent/pt-sheet-guard";
 import { EARNINGS_DOC_TYPES, effectiveDate, passageCoverage, type EarningsDocType } from "@/lib/agent/doc-recency";
+import { coherentDocFilters } from "@/lib/agent/doc-filters";
 
 export type ToolResult<T> = { data: T; sources: Source[]; error?: string };
 
@@ -116,11 +117,37 @@ async function keyFinancialsFor(ticker: string, periodKind: "quarter" | "annual"
 }
 
 /** `memoryBlocked` turns true once the PT sheet is in the conversation: nothing from such a chat is saved. */
-export function makeTools(ctx: { teamId: string | null; holdingId?: string | null; userId: string; sources?: Source[]; memoryBlocked?: () => boolean }) {
+export function makeTools(ctx: { teamId: string | null; holdingId?: string | null; userId: string; sources?: Source[]; memoryBlocked?: () => boolean; memoryOff?: boolean }) {
   const filingSources = new Map<string, Source>((ctx.sources ?? []).filter((s) => s.id.startsWith("sec-") && s.url?.startsWith("https://www.sec.gov/Archives/")).map((s) => [s.url!, s]));
   /** Every source any tool returned in this conversation, so `remember` can attach real Source objects to a fact. */
   const seen = new Map<string, Source>((ctx.sources ?? []).map((s) => [s.id, s]));
   const tickerArg = z.string().describe("Ticker symbol, e.g. NVDA");
+
+  /** A public web page as plain text, windowed; shared by read_url and read_filing's hand-off for non-SEC links. */
+  async function readWebPage(url: string, offset: number, maxChars: number): Promise<ToolResult<unknown>> {
+    const appHost = process.env.APP_URL ? new URL(process.env.APP_URL).hostname : null;
+    const check = safeWebUrl(url, appHost);
+    if (!check.ok) throw new Error(check.reason);
+    const target = check.url;
+    // Tavily when configured, else the app's own bounded fetch (public http(s) only, private networks refused).
+    // Firecrawl, when configured, retries bot-blocked, JavaScript-only and PDF pages after the guard above.
+    const page = await readWithFirecrawlFallback(
+      target,
+      tavilyConfigured()
+        ? () => extractPage(target.href)
+        : async () => {
+            const p = await fetchWebPage(target);
+            return { url: p.finalUrl, title: p.title, text: p.text, fetchedAt: now(), truncated: p.truncated };
+          },
+      tavilyConfigured() ? "tavily" : "direct",
+    );
+    const w = windowText(page.text, offset, maxChars);
+    const host = new URL(page.url).hostname.replace(/^www\./, "");
+    const { tier, syndicatedFrom } = pageTier({ url: page.url, title: page.title, text: page.text });
+    const paywalled = looksPaywalled(page.url, page.text);
+    const s: Source = { ...src("web", page.title ?? host, page.url, host), id: sourceId("web", `${page.url}:${w.offset}`), sourceType: "Web page", excerpt: w.text.trim().slice(0, 360), location: { offset: w.offset, text: w.text.trim().slice(0, 180) }, retrievedAt: page.fetchedAt };
+    return { data: { url: page.url, title: page.title, reliability: tier, reliabilityNote: syndicatedFrom ? `Syndicated from ${syndicatedFrom}. ${TIER_LABEL[tier]}` : TIER_LABEL[tier], retrievedAt: page.fetchedAt, ...(paywalled ? { likelyPaywalled: true, paywallNote: "Only a subscriber teaser was readable. Cite only what this text says; for the rest, read the next established result or look for the fact in a primary source." } : {}), ...w, truncatedDownload: page.truncated, ...(page.fetchedVia === "firecrawl" ? { fetchedVia: "firecrawl" } : {}), ...(page.fallbackNote ? { fallbackNote: page.fallbackNote } : {}), sourceId: s.id }, sources: [s] };
+  }
 
   const tools = {
     remember: tool({
@@ -135,6 +162,8 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
       }),
       execute: async ({ kind, scope, body, sourceIds, expiresInDays }): Promise<ToolResult<unknown>> => {
         try {
+          // Evaluation runs look like a normal save to the model but write nothing.
+          if (ctx.memoryOff) return { data: { saved: false, note: "Not saved: this is an evaluation run." }, sources: [] };
           if (ctx.memoryBlocked?.()) throw new Error("This conversation used the price target sheet, so nothing from it is saved to memory.");
           const cited = sourceIds.map((id) => seen.get(id)).filter((s): s is Source => !!s);
           if (cited.some(isPtSheetSource)) throw new Error("Figures from the price target sheet are never saved to memory.");
@@ -267,7 +296,7 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
 
     read_filing: tool({
       description:
-        "Read the text of an SEC filing document by URL (from get_filings). Pass `item` to jump to one section. Item numbers differ by form: 10-Q — Item 1 financial statements, Item 2 MD&A (results, margins, outlook), Item 3 market risk; 10-K — Item 1 business, Item 1A risk factors, Item 7 MD&A, Item 8 financial statements; 8-K — Item 2.02 results of operations (the earnings press release is usually exhibit EX-99.1, see list_filing_documents). Returns a window of `maxChars` starting at `offset`; use `offset` to page when `hasMore` is true.",
+        "Read the text of an SEC filing document by URL (from get_filings; any other link is read as a web page instead). Pass `item` to jump to one section. Item numbers differ by form: 10-Q — Item 1 financial statements, Item 2 MD&A (results, margins, outlook), Item 3 market risk; 10-K — Item 1 business, Item 1A risk factors, Item 7 MD&A, Item 8 financial statements; 8-K — Item 2.02 results of operations (the earnings press release is usually exhibit EX-99.1, see list_filing_documents). Returns a window of `maxChars` starting at `offset`; use `offset` to page when `hasMore` is true.",
       inputSchema: z.object({
         url: z.string().url(),
         item: z.string().optional().describe("Section to extract, e.g. '2' for 10-Q MD&A, '7' for 10-K MD&A, '1A' for risk factors"),
@@ -276,7 +305,12 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
       }),
       execute: async ({ url, item, offset, maxChars }): Promise<ToolResult<unknown>> => {
         try {
-          if (!/^https:\/\/www\.sec\.gov\/Archives\//.test(url)) throw new Error("Only SEC EDGAR archive URLs (https://www.sec.gov/Archives/...) can be read. Use get_filings to find the document URL; news links cannot be read.");
+          if (!/^https:\/\/www\.sec\.gov\/Archives\//.test(url)) {
+            // A news or company page passed here by mistake: read it as a web page rather than spend a step failing.
+            if (/^https?:\/\/(?:[^/]+\.)?sec\.gov\//i.test(url)) throw new Error("Only SEC EDGAR archive URLs (https://www.sec.gov/Archives/...) can be read. Use get_filings to find the document URL.");
+            const page = await readWebPage(url, offset, Math.min(maxChars, 20_000));
+            return page.error ? page : { ...page, data: { ...(page.data as object), note: "Not an SEC filing: read as a web page (read_url rules apply; it is not a filing and ranks below one)." } };
+          }
           const text = await getFilingText(url);
           let body = text;
           if (item) {
@@ -527,7 +561,8 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
         form: z.string().optional().describe("Filings only: 10-K, 10-Q, 8-K, EX-99.1"),
         limit: z.number().int().min(1).max(25).default(10),
       }),
-      execute: async ({ ticker, query, kind, driveKind, form, limit }): Promise<ToolResult<unknown>> => {
+      execute: async (args): Promise<ToolResult<unknown>> => {
+        const { ticker, query, kind, driveKind, form, limit } = coherentDocFilters(args);
         try {
           const wantDrive = kind !== "filing";
           const wantFilings = kind !== "drive" && !driveKind;
@@ -598,7 +633,8 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
         since: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Only documents dated on or after this day (yyyy-mm-dd)"),
         limit: z.number().int().min(1).max(12).default(6),
       }),
-      execute: async ({ query, ticker, kind, driveKind, form, latest, documentType, since, limit }): Promise<ToolResult<unknown>> => {
+      execute: async (args): Promise<ToolResult<unknown>> => {
+        const { query, ticker, kind, driveKind, form, latest, documentType, since, limit } = coherentDocFilters(args);
         try {
           // A document type is a kind of Drive earnings file.
           const dk = documentType ? "earnings_update" : driveKind;
@@ -658,28 +694,7 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
       inputSchema: z.object({ url: z.string().min(8), offset: z.number().int().min(0).default(0), maxChars: z.number().int().min(500).max(20000).default(8000) }),
       execute: async ({ url, offset, maxChars }): Promise<ToolResult<unknown>> => {
         try {
-          const appHost = process.env.APP_URL ? new URL(process.env.APP_URL).hostname : null;
-          const check = safeWebUrl(url, appHost);
-          if (!check.ok) throw new Error(check.reason);
-          const target = check.url;
-          // Tavily when configured, else the app's own bounded fetch (public http(s) only, private networks refused).
-          // Firecrawl, when configured, retries bot-blocked, JavaScript-only and PDF pages after the guard above.
-          const page = await readWithFirecrawlFallback(
-            target,
-            tavilyConfigured()
-              ? () => extractPage(target.href)
-              : async () => {
-                  const p = await fetchWebPage(target);
-                  return { url: p.finalUrl, title: p.title, text: p.text, fetchedAt: now(), truncated: p.truncated };
-                },
-            tavilyConfigured() ? "tavily" : "direct",
-          );
-          const w = windowText(page.text, offset, maxChars);
-          const host = new URL(page.url).hostname.replace(/^www\./, "");
-          const { tier, syndicatedFrom } = pageTier({ url: page.url, title: page.title, text: page.text });
-          const paywalled = looksPaywalled(page.url, page.text);
-          const s: Source = { ...src("web", page.title ?? host, page.url, host), id: sourceId("web", `${page.url}:${w.offset}`), sourceType: "Web page", excerpt: w.text.trim().slice(0, 360), location: { offset: w.offset, text: w.text.trim().slice(0, 180) }, retrievedAt: page.fetchedAt };
-          return { data: { url: page.url, title: page.title, reliability: tier, reliabilityNote: syndicatedFrom ? `Syndicated from ${syndicatedFrom}. ${TIER_LABEL[tier]}` : TIER_LABEL[tier], retrievedAt: page.fetchedAt, ...(paywalled ? { likelyPaywalled: true, paywallNote: "Only a subscriber teaser was readable. Cite only what this text says; for the rest, read the next established result or look for the fact in a primary source." } : {}), ...w, truncatedDownload: page.truncated, ...(page.fetchedVia === "firecrawl" ? { fetchedVia: "firecrawl" } : {}), ...(page.fallbackNote ? { fallbackNote: page.fallbackNote } : {}), sourceId: s.id }, sources: [s] };
+          return await readWebPage(url, offset, maxChars);
         } catch (e) {
           return fail(e, null);
         }

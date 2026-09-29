@@ -158,6 +158,9 @@ export async function listFilingDocuments(cik: string, accession: string): Promi
 
 const ITEM_HEADING_RE = /(^|\n|\t)\s*item\s+(\d+[a-c]?(?:\.\d+)?)[\s.:\-–—]/gi;
 
+/** Shorter than this, a match is a table-of-contents line, not the section. */
+const MIN_SECTION_CHARS = 120;
+
 /**
  * Extract a whole section by "Item X" heading from 10-K/10-Q text.
  * Headings may sit inside a table cell (tab-separated after htmlToText), so tabs count as line starts.
@@ -173,9 +176,12 @@ export function extractItem(text: string, item: string, maxChars?: number) {
     const rest = text.slice(m.index ?? 0);
     const nextItem = rest.slice(20).search(/(\n|\t)\s*item\s+\d+[a-c]?(?:\.\d+)?[\s.:\-–—]/i);
     const chunk = nextItem > 0 ? rest.slice(0, nextItem + 20) : rest;
-    if (chunk.length > 500 && (!best || chunk.length > best.length)) best = chunk;
+    if (!best || chunk.length > best.length) best = chunk;
   }
-  return best && maxChars ? best.slice(0, maxChars) : best;
+  // The longest match is the section itself; table-of-contents lines are a few dozen characters. Some real sections
+  // are short (a 10-K's Item 2 Properties, Item 4 Mine Safety), so anything past a contents line counts.
+  if (!best || best.trim().length < MIN_SECTION_CHARS) return null;
+  return maxChars ? best.slice(0, maxChars) : best;
 }
 
 /** Distinct "Item X" headings present in a filing, in document order (table of contents included). */

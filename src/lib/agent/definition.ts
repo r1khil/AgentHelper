@@ -9,6 +9,7 @@ import { makeTools } from "./tools";
 import { instrumentTools } from "./trace";
 import { withModelFallback } from "./fallback";
 import { compactForStep } from "./turn";
+import { repairToolCall } from "./tool-repair";
 import { loadMcpTools } from "./mcp";
 import { makePortfolioTools } from "./portfolio-tools";
 import { makeFredTools } from "./fred-tools";
@@ -46,6 +47,8 @@ export type AgentContext = {
   chatId?: string | null;
   /** The conversation already holds PT sheet data, so every model call stays on the sheet-safe model. */
   sheetInHistory?: boolean;
+  /** Nothing is written to the research log (evaluation runs): `remember` refuses. */
+  memoryOff?: boolean;
 };
 
 export type AgentDefinition = {
@@ -60,6 +63,8 @@ export type AgentDefinition = {
   prepareStep: (o: { stepNumber: number; messages: ModelMessage[] }) => { toolChoice?: ToolChoice<ToolSet>; instructions?: string; messages?: ModelMessage[] } | undefined;
   maxRetries: number;
   maxOutputTokens: number;
+  /** Fixes tool arguments written as broken JSON before they fail a step. */
+  repairToolCall: typeof repairToolCall;
 };
 
 /** Primary first, then the rest of the admin list, so a rate-limited free model hands off to another. */
@@ -100,7 +105,7 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
   const model: LanguageModel =
     sheetTool || sheet.read ? sheetSafeModel(chain as unknown as LanguageModelV4, () => (safe ??= chatModel(PT_SHEET_MODEL_ID) as unknown as LanguageModelV4), () => sheet.read) : chain;
   const native = {
-    ...makeTools({ teamId: ctx.teamId, holdingId: ctx.holdingId, userId: ctx.user.id, sources: ctx.sources, memoryBlocked: () => sheet.read }),
+    ...makeTools({ teamId: ctx.teamId, holdingId: ctx.holdingId, userId: ctx.user.id, sources: ctx.sources, memoryBlocked: () => sheet.read, memoryOff: ctx.memoryOff }),
     ...(ctx.viewer ? makePortfolioTools({ viewer: ctx.viewer, teamId: ctx.teamId }) : {}),
     ...(fredConfigured() ? makeFredTools() : {}),
     ...makeWikipediaTools(),
@@ -133,5 +138,6 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
     maxRetries: 2,
     // Reasoning models spend part of this before writing; 4000 cut long answers off mid-table.
     maxOutputTokens: 10_000,
+    repairToolCall,
   };
 }
