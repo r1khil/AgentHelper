@@ -51,12 +51,6 @@ function NoWeights() {
   );
 }
 
-const ledgerLink = (
-  <Link href={LEDGER_HREF} className="font-semibold text-foreground underline underline-offset-2">
-    Open the ledger
-  </Link>
-);
-
 export function FundAttributionView({
   view,
   result,

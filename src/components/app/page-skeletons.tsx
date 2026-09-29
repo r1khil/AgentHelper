@@ -1,8 +1,8 @@
 import { LastSessionSkeleton } from "@/app/(app)/_today/last-session";
+import { SkeletonPageHead } from "@/components/app/page-head";
 import { StressPanelFallback } from "@/components/app/risk/stress-panel";
 import { cn } from "@/lib/utils";
-import { SkeletonPageHead } from "./page-head";
-import { Bone, ReplaySkeleton, SkeletonChart, SkeletonPage, SkeletonPanel, SkeletonPanelHeader, SkeletonPill, SkeletonRows, SkeletonStatStrip, SkeletonTabs, TextBone } from "./skeletons";
+import { Bone, SkeletonChart, SkeletonPage, SkeletonPanel, SkeletonPanelHeader, SkeletonPill, SkeletonRows, SkeletonStatStrip, SkeletonTabs, TextBone } from "./skeletons";
 
 // One loading skeleton per page, used by the route's loading.tsx. Each copies its page's outer layout classes
 // (grids, column widths, gaps, panel and row heights) from the component named above it, so the page streams in
@@ -800,117 +800,118 @@ export function ModelsSkeleton() {
   );
 }
 
-/* ------------------------------------------------------------------------------------------------ Attribution */
+/* ------------------------------------------------------------------------------------------------ Portfolio analytics */
 
-const ATTRIBUTION_GRID = "grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]";
-
-/** An attribution table (sectors, teams): a 36px column header, fixed 40px rows, a 40px footer band. */
-function AttributionTable({ rows }: { rows: number }) {
+/** The Portfolio analytics pages' opening block (portfolio/hero.tsx): the label, the 44px figure, the line under it, and a note at the right. */
+function AnalyticsHero({ note = true }: { note?: boolean }) {
   return (
-    <SkeletonPanel>
-      <div className="flex h-9 shrink-0 items-center border-b px-4">
-        <Bone className="h-2.5 w-14 rounded-[4px]" />
+    <div className="flex items-end gap-10">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <TextBone className="text-body" w="w-72" />
+        <div className="hero-figure flex items-center">
+          <Bone className="h-9 w-52 rounded-[6px]" />
+        </div>
+        <TextBone className="text-emph" w="w-[520px] max-w-full" />
+      </div>
+      {note && (
+        <div className="mb-1 flex w-[360px] shrink-0 flex-col gap-1.5">
+          <TextBone className="text-body" w="w-full" />
+          <TextBone className="text-body" w="w-2/3" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A section's heading (17px bold) and its grey line under it, as portfolio/parts.tsx SectionHead. */
+function AnalyticsSectionHead({ w = "w-40", sub = "w-80" }: { w?: string; sub?: string | false }) {
+  return (
+    <div>
+      <TextBone className="text-title font-bold" w={w} />
+      {sub && <TextBone className="mt-1 text-caption" w={sub} />}
+    </div>
+  );
+}
+
+/** A div-grid table: a 34px header row and 36-40px rows on row dividers. */
+function AnalyticsTable({ rows, cols, cells, rowHeight = "min-h-9" }: { rows: number; cols: string; cells: string[]; rowHeight?: string }) {
+  return (
+    <div className="mt-2">
+      <div className={cn(cols, "min-h-[34px] items-center gap-x-3 border-b")}>
+        {cells.map((_, i) => (
+          <Bone key={i} className={cn("h-2.5 w-12 rounded-[4px]", i > 0 && "justify-self-end")} />
+        ))}
       </div>
       {range(rows).map((i) => (
-        <div key={i} className="flex h-10 items-center gap-2.5 border-b border-row px-4">
-          <Bone className="h-3 w-36 rounded-[4px]" />
-          <span className="flex-1" />
-          <Bone className="h-3 w-12 rounded-[4px]" />
-          <Bone className="h-3 w-14 rounded-[4px]" />
+        <div key={i} className={cn(cols, rowHeight, "items-center gap-x-3 border-b border-row")}>
+          {cells.map((w, j) => (
+            <Bone key={j} className={cn("h-3 rounded-[4px]", w, j > 0 && "justify-self-end")} />
+          ))}
         </div>
       ))}
-      <div className="flex min-h-10 shrink-0 items-center bg-band-2 px-4">
-        <Bone className="h-3 w-56 rounded-[4px]" />
+    </div>
+  );
+}
+
+/** The chart, and the range buttons under it on a hairline. */
+function AnalyticsChart({ buttons = 9, height = "h-[200px]" }: { buttons?: number; height?: string }) {
+  return (
+    <>
+      <SkeletonChart className={cn("mt-[22px]", height)} />
+      <div className="mt-3.5 flex items-center gap-1 border-b pb-3.5">
+        {range(buttons).map((i) => (
+          <Bone key={i} className="h-7 w-14 rounded-lg" />
+        ))}
+        <span className="flex-1" />
+        <TextBone className="text-caption" w="w-40" />
       </div>
-    </SkeletonPanel>
+    </>
   );
 }
 
 /**
- * Fund and team attribution (attribution/attribution-views.tsx): the period toolbar, the headline strip, the
- * cumulative chart beside where it came from, then two columns of tables and sections at their own height.
+ * Performance, fund and team (attribution/attribution-views.tsx): the gap to the benchmark and what it is made of, the
+ * chart with the period buttons under it, the effects that add up to the gap, the sector table beside contribution by
+ * team, holdings by contribution and the footnote. `tabs` is the number of tabs the header shows (six for the fund,
+ * four for a team).
  */
-export function AttributionSkeleton() {
+export function AttributionSkeleton({ tabs = 6 }: { tabs?: number }) {
   return (
-    <SkeletonPage className="flex min-h-0 flex-1 flex-col gap-5">
-      <div className="flex flex-col gap-4">
-        <div className="flex shrink-0 flex-wrap items-center gap-x-2.5 gap-y-2">
-          <SkeletonPill className="w-[460px]" />
-          <TextBone className="text-body" w="w-72" />
-        </div>
-        <SkeletonStatStrip cells={4} />
-        <div className={cn(ATTRIBUTION_GRID, "lg:min-h-[252px]")}>
-          <section className="panel-plain flex min-w-0 flex-col px-4 pt-2 pb-3">
-            <div className="flex min-h-7 shrink-0 items-center gap-3.5">
-              <TextBone className="text-emph font-semibold" w="w-32" />
-              <TextBone className="text-body" w="w-20" />
-              <TextBone className="text-body" w="w-24" />
-            </div>
-            <div className="mt-2.5 flex min-h-0 flex-1 flex-col">
-              <SkeletonChart className="h-full min-h-44" />
-            </div>
+    <>
+      <SkeletonPageHead tabs={tabs} />
+      <SkeletonPage className="flex flex-col">
+        <AnalyticsHero />
+        <AnalyticsChart />
+        <SkeletonStatStrip cells={3} className="border-t-0" />
+        <div className="mt-[26px] grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-14">
+          <section>
+            <AnalyticsSectionHead w="w-24" sub={false} />
+            <AnalyticsTable rows={12} cols="grid grid-cols-[minmax(0,1fr)_54px_58px_62px_62px_58px_58px_62px] xl:grid-cols-[minmax(0,1fr)_60px_64px_64px_68px_64px_64px_64px]" cells={["w-36", "w-10", "w-10", "w-12", "w-12", "w-9", "w-9", "w-10"]} />
           </section>
-          <section className="panel-plain flex min-w-0 flex-col px-4 pt-2 pb-3.5">
-            <div className="flex min-h-7 shrink-0 items-center gap-3.5">
-              <TextBone className="text-emph font-semibold" w="w-36" />
-            </div>
-            <div className="mt-3.5 mb-3 flex flex-1 flex-col gap-3.5">
-              {range(4).map((i) => (
-                <div key={i} className="grid grid-cols-[92px_minmax(0,1fr)_48px] items-center gap-2.5 text-body">
-                  <TextBone w="w-20" />
-                  <Bone className="h-[18px] rounded-[6px]" />
-                  <Bone className="h-3 w-10 justify-self-end rounded-[4px]" />
+          <section>
+            <AnalyticsSectionHead w="w-24" sub="w-full" />
+            <AnalyticsTable rows={7} cols="grid grid-cols-[minmax(0,1fr)_90px_56px]" cells={["w-32", "w-16", "w-10"]} rowHeight="min-h-11" />
+          </section>
+        </div>
+        <section className="mt-8">
+          <AnalyticsSectionHead w="w-52" sub="w-64" />
+          <div className="mt-2 grid grid-cols-2 gap-x-14">
+            {range(2).map((c) => (
+              <div key={c}>
+                <div className="flex min-h-8 items-center border-b">
+                  <Bone className="h-2.5 w-28 rounded-[4px]" />
                 </div>
-              ))}
-            </div>
-            <TextBone className="text-body leading-normal" w="w-4/5" />
-          </section>
-        </div>
-        {/* Two columns at their own height: sectors over holdings, teams over the effect chart and the method. */}
-        <div className={cn(ATTRIBUTION_GRID, "lg:items-start")}>
-          <div className="flex min-w-0 flex-col gap-5">
-            <AttributionTable rows={12} />
-            <SkeletonPanel>
-              <SkeletonPanelHeader w="w-44" aside="w-40" />
-              <div className="grid gap-6 px-4 py-3 sm:grid-cols-2">
-                {range(2).map((c) => (
-                  <div key={c} className="grid content-start">
-                    <div className="flex h-8 items-center border-b">
-                      <Bone className="h-2.5 w-28 rounded-[4px]" />
-                    </div>
-                    <SkeletonRows count={5} row="flex min-h-10 gap-3 px-0" cells={["w-11", "h-2 flex-1 rounded-[2px]", "w-8"]} />
-                  </div>
-                ))}
+                <SkeletonRows count={5} row="grid min-h-11 grid-cols-[3.5rem_1fr_3.5rem] gap-2.5 px-0" cells={["w-11", "h-1.5 w-full rounded-[2px]", "w-8 justify-self-end"]} />
               </div>
-            </SkeletonPanel>
+            ))}
           </div>
-          <div className="flex min-w-0 flex-col gap-5">
-            <AttributionTable rows={6} />
-            <SkeletonPanel variant="plain">
-              <SkeletonPanelHeader w="w-36" aside="w-32" />
-              <div className="grid gap-2 px-4 py-3">
-                {range(12).map((i) => (
-                  <div key={i} className="grid grid-cols-[minmax(0,10rem)_1fr_3rem] items-center gap-2.5 text-body">
-                    <TextBone w="w-28" />
-                    <Bone className="ml-auto h-2.5 w-1/3 rounded-[2px]" />
-                    <Bone className="h-3 w-6 justify-self-end rounded-[4px]" />
-                  </div>
-                ))}
-              </div>
-            </SkeletonPanel>
-            <SkeletonPanel variant="plain">
-              <SkeletonPanelHeader w="w-40" />
-              <div className="px-4 py-3">
-                {/* Five lines in a wide window, seven in a narrow one. */}
-                {["w-full", "w-full", "w-full", "w-full", "w-full", "w-full", "w-2/3"].map((w, i) => (
-                  <TextBone key={i} className={cn("text-body leading-relaxed", i >= 4 && i < 6 && "xl:hidden")} w={w} />
-                ))}
-              </div>
-            </SkeletonPanel>
-          </div>
+        </section>
+        <div className="mt-[22px] max-w-[760px]">
+          <TextBone className="text-caption" w="w-full" />
+          <TextBone className="text-caption" w="w-2/3" />
         </div>
-      </div>
-    </SkeletonPage>
+      </SkeletonPage>
+    </>
   );
 }
 
@@ -947,147 +948,127 @@ export function LedgerSkeleton() {
 
 /* ------------------------------------------------------------------------------------------------ Risk and exposure */
 
-/** risk/risk-view.tsx and exposure/exposure-view.tsx FIRST_SCREEN: the panels take their content's height. */
-const FIRST_SCREEN = "flex flex-col gap-4";
-
-/** Risk (risk/risk-view.tsx): lookback and context, the five headline numbers, where the risk comes from and the stress tests. */
-export function RiskSkeleton() {
+/** Risk (risk/risk-view.tsx): volatility and what it is made of, the drawdown, the window buttons, four numbers, where the risk comes from beside its split by team, and the stress tests. */
+export function RiskSkeleton({ tabs = 6 }: { tabs?: number }) {
   return (
-    <SkeletonPage className={FIRST_SCREEN}>
-      <div className="flex min-w-0 shrink-0 items-center gap-2.5">
-        <SkeletonPill className="w-[132px]" />
-        <TextBone className="min-w-0 text-body" w="w-96 max-w-full" />
-        <span className="flex-1" />
-        <SkeletonPill className="w-[118px]" />
-      </div>
-      <SkeletonStatStrip cells={5} />
-      <div className="grid items-start gap-5 lg:grid-cols-2">
-        {/* Where the risk comes from: a plain section, ten 40px rows. */}
-        <SkeletonPanel variant="plain">
-          <SkeletonPanelHeader w="w-48" aside="w-32" />
-          <div className="flex h-8 shrink-0 items-center px-4">
-            <Bone className="h-2.5 w-14 rounded-[4px]" />
-          </div>
-          {range(10).map((i) => (
-            <div key={i} className="flex h-10 items-center gap-3 border-t border-row px-4">
-              <Bone className="h-3 w-12 rounded-[4px]" />
-              <span className="flex-1" />
-              <Bone className="h-3 w-10 rounded-[4px]" />
-              <Bone className="h-2.5 w-24 rounded-[3px]" />
-              <Bone className="h-3 w-12 rounded-[4px]" />
-            </div>
+    <>
+      <SkeletonPageHead tabs={tabs} />
+      <SkeletonPage className="flex flex-col">
+        <AnalyticsHero />
+        <TextBone className="mt-[22px] text-caption" w="w-48" />
+        <SkeletonChart className="mt-1.5 h-[150px]" />
+        <div className="mt-3.5 flex items-center gap-1 border-b pb-3.5">
+          {range(3).map((i) => (
+            <Bone key={i} className="h-7 w-12 rounded-lg" />
           ))}
-        </SkeletonPanel>
-        <StressPanelFallback />
-      </div>
-    </SkeletonPage>
+          <span className="flex-1" />
+          <TextBone className="text-caption" w="w-80" />
+        </div>
+        <SkeletonStatStrip cells={4} className="border-t-0" />
+        <div className="mt-[26px] grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-14">
+          <section>
+            <AnalyticsSectionHead w="w-56" sub="w-full" />
+            <AnalyticsTable rows={10} cols="grid grid-cols-[minmax(0,1fr)_64px_84px_112px_minmax(0,120px)] xl:grid-cols-[minmax(0,1fr)_70px_96px_140px_150px]" cells={["w-28", "w-10", "w-10", "h-1 w-full", "w-16"]} />
+          </section>
+          <section>
+            <AnalyticsSectionHead w="w-20" sub="w-44" />
+            <AnalyticsTable rows={6} cols="grid grid-cols-[minmax(0,1fr)_90px_44px]" cells={["w-32", "h-1.5 w-full", "w-8"]} />
+          </section>
+        </div>
+        <StressPanelFallback className="mt-[34px]" />
+      </SkeletonPage>
+    </>
   );
 }
 
-/** Exposure (exposure/exposure-view.tsx): sector view and lookback, four headline numbers, sectors beside active bets and factor tilts. */
-export function ExposureSkeleton() {
+/** Exposure (exposure/exposure-view.tsx): active share and the sectors behind it with the look-through switch, sector weights beside factor tilts and concentration, then the largest positions. */
+export function ExposureSkeleton({ tabs = 6 }: { tabs?: number }) {
   return (
-    <SkeletonPage className={FIRST_SCREEN}>
-      <div className="flex min-w-0 shrink-0 items-center gap-2.5">
-        <SkeletonPill className="w-[236px]" />
-        <TextBone className="min-w-0 text-body" w="w-80 max-w-full" />
-        <span className="flex-1" />
-        <SkeletonPill className="w-[132px]" />
-      </div>
-      <SkeletonStatStrip cells={4} />
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <SkeletonPanel>
-          <SkeletonPanelHeader w="w-32" aside="w-28" />
-          <div className="flex h-[30px] shrink-0 items-center px-4">
-            <Bone className="h-2.5 w-14 rounded-[4px]" />
-          </div>
-          {range(11).map((i) => (
-            <div key={i} className="flex min-h-9 items-center gap-3 border-t border-row px-4">
-              <Bone className="h-3 w-40 rounded-[4px]" />
-              <Bone className="h-2 flex-1 rounded-[2px]" />
-              <Bone className="h-3 w-12 rounded-[4px]" />
+    <>
+      <SkeletonPageHead tabs={tabs} />
+      <SkeletonPage className="flex flex-col">
+        <div className="flex items-end gap-10">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <TextBone className="text-body" w="w-96 max-w-full" />
+            <div className="hero-figure flex items-center">
+              <Bone className="h-9 w-44 rounded-[6px]" />
             </div>
-          ))}
-        </SkeletonPanel>
-        <div className="flex flex-col gap-5">
-          <SkeletonPanel>
-            <SkeletonPanelHeader w="w-36" aside="w-24" />
-            <SkeletonRows count={6} row="flex min-h-10 gap-3" cells={["w-12", "w-32", "ml-auto w-10", "w-10", "w-12"]} />
-          </SkeletonPanel>
-          {/* Factor tilts: a plain section */}
-          <SkeletonPanel variant="plain" className="shrink-0">
-            <SkeletonPanelHeader w="w-24" aside="w-36" />
-            <SkeletonRows count={7} row="grid h-9 shrink-0 grid-cols-[110px_minmax(0,1fr)_52px] gap-3" cells={["w-20", "h-2.5 w-full rounded-[3px]", "w-10 justify-self-end"]} />
-          </SkeletonPanel>
+            <TextBone className="text-emph" w="w-[560px] max-w-full" />
+          </div>
+          <Bone className="mb-1 h-9 w-56 shrink-0 rounded-lg" />
         </div>
-      </div>
-    </SkeletonPage>
+        <div className="mt-[30px] grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-14 border-t pt-[22px]">
+          <section>
+            <AnalyticsSectionHead w="w-72" sub="w-80" />
+            <AnalyticsTable rows={11} cols="grid grid-cols-[minmax(0,1fr)_56px_72px_minmax(90px,1.1fr)_76px] xl:grid-cols-[minmax(0,1fr)_64px_84px_minmax(120px,200px)_84px]" cells={["w-40", "w-10", "w-10", "h-2.5 w-full", "w-14"]} rowHeight="min-h-[38px]" />
+          </section>
+          <div className="flex flex-col gap-[30px]">
+            <section>
+              <AnalyticsSectionHead w="w-24" sub="w-full" />
+              <SkeletonRows className="mt-2" count={7} row="grid min-h-[34px] grid-cols-[80px_minmax(0,1fr)_48px] gap-x-2.5 px-0" cells={["w-16", "h-2 w-full", "w-8 justify-self-end"]} />
+            </section>
+            <section>
+              <AnalyticsSectionHead w="w-28" sub={false} />
+              <SkeletonRows className="mt-2" count={3} row="flex min-h-9 justify-between px-0" cells={["w-32", "w-16"]} />
+            </section>
+          </div>
+        </div>
+        <section className="mt-[34px]">
+          <AnalyticsSectionHead w="w-72" sub="w-96" />
+          <div className="mt-2 grid grid-cols-2 gap-x-14">
+            {range(2).map((c) => (
+              <SkeletonRows key={c} count={6} row="grid min-h-10 grid-cols-[70px_minmax(0,1fr)_80px] gap-3 px-0" cells={["w-11", "w-3/4", "w-12 justify-self-end"]} />
+            ))}
+          </div>
+        </section>
+      </SkeletonPage>
+    </>
   );
 }
 
 /* ------------------------------------------------------------------------------------------------ Backtesting */
 
-/** backtesting/redesign/backtesting-redesign.tsx: the weights table on the left; the strip, replay and saved scenarios. */
-export function BacktestingSkeleton() {
+/** backtesting/redesign/backtesting-redesign.tsx: the result in one number, the settings row, the replay, then the weight changes beside the saved scenarios. */
+export function BacktestingSkeleton({ tabs = 6 }: { tabs?: number }) {
   return (
-    <SkeletonPage className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[480px_minmax(0,1fr)]">
-      <div className="flex min-h-0 flex-col max-lg:h-[720px] lg:sticky lg:top-20 lg:h-[calc(100dvh-6.5rem)] lg:self-start">
-        <div className="panel flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex shrink-0 flex-col gap-3 px-4 pt-4 pb-3">
-            <div className="flex items-center gap-2.5">
-              <TextBone className="flex-1 text-title font-semibold" w="w-72" />
-              <SkeletonPill className="h-7 w-32" />
-            </div>
-            <div className="grid grid-cols-[1fr_1fr_110px] gap-2">
-              {range(3).map((i) => (
-                <Bone key={i} className="h-[34px] rounded-lg" />
-              ))}
-            </div>
-            <div className="flex h-7 items-center gap-1">
-              <Bone className="h-3 w-64 rounded-[4px]" />
-              <span className="flex-1" />
-              <SkeletonPill className="h-7 w-16" />
-            </div>
-          </div>
-          <div className="flex h-[34px] shrink-0 items-center border-y px-4">
-            <Bone className="h-2.5 w-16 rounded-[4px]" />
-          </div>
-          <div className="min-h-0 flex-1 overflow-hidden">
-            <SkeletonRows
-              count={16}
-              row="grid h-11 grid-cols-[minmax(0,1fr)_72px_92px_70px] gap-2.5 last:border-b"
-              cells={["w-24", "w-10 justify-self-end", "h-[26px] w-[66px] rounded-[8px]", "w-10 justify-self-end"]}
-            />
-          </div>
-          <div className="flex shrink-0 items-center gap-2 border-t bg-band-2 px-4 py-3">
-            <Bone className="h-3 w-40 rounded-[4px]" />
-            <span className="flex-1" />
-            <SkeletonPill className="size-9" />
-            <SkeletonPill className="h-[34px] w-28" />
-            <SkeletonPill className="h-[34px] w-20" />
-          </div>
+    <>
+      <SkeletonPageHead tabs={tabs} />
+      <SkeletonPage className="flex flex-col">
+        <AnalyticsHero note={false} />
+        <div className="mt-[18px] flex items-center gap-2">
+          {["w-44", "w-72", "w-40", "w-60"].map((w, i) => (
+            <Bone key={i} className={cn("h-[30px] rounded-md", w)} />
+          ))}
+          <span className="flex-1" />
+          <Bone className="h-[30px] w-20 rounded-md" />
+          <Bone className="h-[30px] w-28 rounded-md" />
+          <Bone className="h-[30px] w-24 rounded-md" />
         </div>
-      </div>
-      <div className="flex min-w-0 flex-col gap-5">
-        <SkeletonStatStrip cells={4} wrap />
-        <SkeletonPanel className="flex-1 px-4 pt-3.5 pb-4">
-          <div className="flex shrink-0 flex-wrap items-center gap-x-3.5 gap-y-1">
-            <TextBone className="text-emph font-semibold" w="w-44" />
-            <TextBone className="text-body" w="w-16" />
-            <TextBone className="text-body" w="w-24" />
-          </div>
-          {/* A plain open replays today's weights as the page loads, so the panel is chart-shaped from the start. */}
-          <ReplaySkeleton />
-        </SkeletonPanel>
-        <SkeletonPanel className="shrink-0">
-          <SkeletonPanelHeader w="w-36" aside="w-40" />
-          <SkeletonRows count={2} row="flex h-10 gap-2.5" cells={["w-48", "ml-auto w-24", "w-[74px]"]} />
-        </SkeletonPanel>
-        <div className="flex h-11 shrink-0 items-center rounded-[14px] bg-band-2 px-4 shadow-[0_0_0_1px_var(--border)]">
-          <TextBone className="text-body font-medium" w="w-36" />
+        {/* A plain open replays today's weights as the page loads, so the chart is there from the start. */}
+        <SkeletonChart className="mt-[18px] h-[220px]" />
+        <div className="mt-2.5 flex items-center gap-4 border-b pb-3.5">
+          <TextBone className="text-caption" w="w-24" />
+          <TextBone className="text-caption" w="w-28" />
+          <TextBone className="text-caption" w="w-16" />
+          <span className="flex-1" />
+          <TextBone className="text-caption" w="w-52" />
         </div>
-      </div>
-    </SkeletonPage>
+        <div className="mt-[26px] grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-14">
+          <section>
+            <AnalyticsSectionHead w="w-40" sub={false} />
+            <AnalyticsTable rows={4} cols="grid grid-cols-[minmax(0,1fr)_70px_80px_90px_120px_30px]" cells={["w-32", "w-10", "w-14", "w-12", "w-12", "w-4"]} rowHeight="min-h-11" />
+          </section>
+          <section>
+            <AnalyticsSectionHead w="w-40" sub={false} />
+            <SkeletonRows className="mt-1" count={3} row="flex min-h-[52px] flex-col items-start justify-center gap-1.5 px-0" cells={["w-44", "w-28"]} />
+          </section>
+        </div>
+        <section className="mt-[30px]">
+          <AnalyticsSectionHead w="w-32" sub={false} />
+          <AnalyticsTable rows={5} cols="grid grid-cols-[minmax(0,1fr)_140px_120px_160px_120px]" cells={["w-32", "w-12", "w-12", "w-24", "w-12"]} rowHeight="min-h-10" />
+        </section>
+      </SkeletonPage>
+    </>
   );
 }
 
