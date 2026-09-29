@@ -7,6 +7,7 @@ import { holdings, teams } from "@/db/schema";
 import { isFundWide } from "@/lib/roles";
 import { PERIOD_KEYS } from "@/lib/attribution/periods";
 import { APP_PAGES, resolveNavigation, type AppPage, type HootAction } from "@/lib/hoot/app-actions";
+import { explainApp } from "@/lib/hoot/app-map";
 import type { CurrentUser } from "@/lib/auth";
 import type { PageContext } from "./page-context";
 import type { ToolResult } from "./tools";
@@ -27,7 +28,7 @@ export function makeAppTools(ctx: { viewer: CurrentUser; page?: PageContext | nu
   return {
     navigate: tool({
       description:
-        "Open a page of the app for the member, now, without asking first: when they ask to go to, open, pull up or switch to a page, a team (sector), a holding, or a view (a period, a lookback, a trade to replay). Not for a question about a figure: answer that in the chat. Pages: home, portfolio (the Fund's overview), team (a team's page; team 'fund' is the Fund's), research, movements, models, sell_side, earnings, economic_calendar, performance (attribution; period 1d/7d/1m/6m/ytd/1y/itd, or custom with from/to), performance_today, risk and exposure (lookback 6m/1y/2y), backtesting (trade: replay one trade), activity (trade ledger), weekly, changelog, admin, holding (with ticker). Team is a slug, name or abbreviation (fig, tech, Healthcare, C&CS) or 'fund'; leave it out to stay in the scope the member is in. The member only gets pages they can already open; an error says why not. After it succeeds, say in one short sentence what you opened; don't research unless they also asked a question.",
+        "Open a page of the app for the member, now, without asking first: when they ask to go to, open, pull up or switch to a page, a team (sector), a holding, or a view (a period, a lookback, a trade to replay). Not for a question about a figure: answer that in the chat. The pages are those listed under THE APP in your instructions (team 'fund' is the Fund's own page; holding needs a ticker). View settings: performance takes a period (1d/7d/1m/6m/ytd/1y/itd, or custom with from/to), risk and exposure a lookback (6m/1y/2y), backtesting one trade to replay. Team is a slug, name or abbreviation (fig, tech, Healthcare, C&CS) or 'fund'; leave it out to stay in the scope the member is in. The member only gets pages they can already open; an error says why not. After it succeeds, say in one short sentence what you opened; don't research unless they also asked a question.",
       inputSchema: z.object({
         page: z.enum(PAGES),
         team: z.string().max(60).optional(),
@@ -57,6 +58,16 @@ export function makeAppTools(ctx: { viewer: CurrentUser; page?: PageContext | nu
         } catch (e) {
           return { data: null, sources: [], error: e instanceof Error ? e.message : String(e) };
         }
+      },
+    }),
+
+    explain_app: tool({
+      description:
+        "How the Owl's Nest app works, from its own map: what a page shows and how to read it, who can open it, what a member can do there, where to find something, and what a term on a page means (active share, tracking error, allocation vs selection, the 400 bp rule, provisional…). Pass a page (a name like 'Exposure', a key like 'economic_calendar', or a path like '/t/fig/movements') and/or a term; with neither, it lists every page. Use it for questions about the app itself, not about markets or the Fund's numbers. App facts need no citation token; say they come from the app.",
+      inputSchema: z.object({ page: z.string().max(120).optional(), term: z.string().max(80).optional() }),
+      execute: async ({ page, term }): Promise<ToolResult<unknown>> => {
+        const r = explainApp({ page, term, role: viewer.role });
+        return r.error ? { data: null, sources: [], error: r.error } : { data: r, sources: [] };
       },
     }),
 
