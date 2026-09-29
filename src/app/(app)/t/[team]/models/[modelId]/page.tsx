@@ -13,6 +13,6 @@ export default async function ModelPage({
 }) {
   const { team: slug, modelId } = await params;
   const { ok, error, tab } = await searchParams;
-  const { items, uploadTargets, selected, selectedHoldingId } = await loadModelsView({ slug, modelId, tab, ok, error });
-  return <ModelsView items={items} uploadTargets={uploadTargets} selected={selected} selectedHoldingId={selectedHoldingId} />;
+  const { scope, items, uploadTargets, selected, selectedHoldingId } = await loadModelsView({ slug, modelId, tab, ok, error });
+  return <ModelsView scope={{ slug: scope.slug, label: scope.team?.name ?? "Whole fund" }} items={items} uploadTargets={uploadTargets} selected={selected} selectedHoldingId={selectedHoldingId} />;
 }

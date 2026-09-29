@@ -27,7 +27,7 @@ for (const file of [
   "0005_chat_runs.sql",
   "0011_sell_side.sql",
   "0014_sell_side_other_company.sql",
-  "0014_sell_side_other_company.sql",
+  "0022_chat_fund_only.sql",
 ])
   await pg.exec(await readFile(resolve(root, "drizzle", file), "utf8"));
 await pg.query("INSERT INTO auth.users(id) VALUES ($1)", [userId]);
@@ -43,11 +43,11 @@ const serverModules = {
   "next/server": "export const after = fn => globalThis.__sellSideAfter.push(fn);",
   "@/db/client": "export const db = globalThis.__sellSideDb;",
   "@/lib/settings": "export const getSetting = async () => null;",
-  "@/lib/auth": `export const getCurrentUser = async () => ({ id: '${userId}', teamId: '${teamId}', fullName: 'Analyst', role: 'admin' }); export const canAccessTeam = (u,t) => u.teamId === t; export const transparencyEnabled = () => false;`,
+  "@/lib/auth": `export const getCurrentUser = async () => ({ id: '${userId}', teamId: '${teamId}', fullName: 'Analyst', role: 'admin' }); export const canAccessTeam = (u,t) => u.teamId === t; export const transparencyEnabled = () => false; export const canOpenChat = () => true;`,
   "@/lib/storage":
     "export const signModelUpload=async(path)=>({path,token:'fixture'}); export const downloadModelFile=async(path)=>globalThis.__sellSideAudio.get(path);",
   "@/lib/agent/tools": `export const makeTools=()=>({find_documents:{execute:async()=>({data:{documents:[{documentId:'model-fixture'}]},sources:[]})},search_documents:{execute:async()=>({data:{text:'FY26 revenue: $2.8 billion.'},sources:[globalThis.__sellSideInternal]})},read_document:{execute:async()=>({data:{text:'FY26 revenue: $2.8 billion.'},sources:[globalThis.__sellSideInternal]})}});`,
-  "@/lib/agent/definition": `import {agentModel} from '@/lib/agent/model'; import {stepCountIs} from 'ai'; export const MAX_STEPS=2, FINAL_STEP=1; export const buildAgentDefinition=async()=>({model:await agentModel(),modelId:'fixture',instructions:'Answer from saved transcript evidence with citations.',tools:{},stopWhen:stepCountIs(2),maxRetries:0,maxOutputTokens:4000});`,
+  "@/lib/agent/definition": `import {agentModel} from '@/lib/agent/model'; import {stepCountIs} from 'ai'; export const MAX_STEPS=2, FINAL_STEP=1; export const buildAgentDefinition=async()=>({model:await agentModel(),modelId:'fixture',answeredBy:()=>'fixture',instructions:'Answer from saved transcript evidence with citations.',tools:{},stopWhen:stepCountIs(2),maxRetries:0,maxOutputTokens:4000});`,
   "@/lib/agent/memory/distill": "export const distillTurn=async()=>null;",
   "@/lib/jobs/drive": "export const ensureDriveIndexFresh=async()=>{};",
   "@/lib/jobs/ingest": "export const ensureIngested=async()=>{};",
@@ -85,6 +85,9 @@ await build({
   define: { "process.env.NODE_ENV": '"development"' },
   plugins: [
     boundaries({
+      // Tabs' link tabs and RowLink use next/link, which needs the Next runtime; a plain anchor is enough here.
+      "next/link":
+        "import React from 'react'; export default function Link({ href, scroll, prefetch, replace, children, ...rest }) { return React.createElement('a', { href: typeof href === 'string' ? href : String(href), ...rest }, children); } export const useLinkStatus = () => ({ pending: false });",
       "next/navigation":
         "const navigate=()=>window.dispatchEvent(new Event('navigate')); const router={refresh:navigate,push:url=>{history.pushState({},'',url);navigate();}}; export const useRouter=()=>router;",
       "@/lib/supabase/browser":

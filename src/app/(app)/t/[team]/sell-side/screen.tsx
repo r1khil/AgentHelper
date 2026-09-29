@@ -10,13 +10,13 @@ import { canOpenChat, transparencyEnabled, type CurrentUser } from "@/lib/auth";
 import type { TeamIds } from "@/lib/team-filter";
 import { sellSideHref } from "@/lib/scope";
 import { HootMoodFor } from "@/components/app/hoot/presence";
-import { NewCall } from "@/components/app/sell-side/new-call";
+import { RecordACall, type CallTeam } from "@/components/app/sell-side/new-call";
 import { CallWorkspace } from "@/components/app/sell-side/call-workspace";
 import { AnalysisBrief } from "@/components/app/sell-side/analysis-brief";
 import { CallDiscussion } from "@/components/app/sell-side/call-discussion";
-import { PickACall, PickATeam, SellSideLayout, type SavedCallRow } from "@/components/app/sell-side/sell-side-layout";
+import { PickACall, SellSideLayout, type SavedCallRow } from "@/components/app/sell-side/sell-side-layout";
 import { listStatus, minutesLabel } from "@/components/app/sell-side/timeline";
-import { fmtDay } from "@/lib/format";
+import { fmtDay, fmtDayMonth } from "@/lib/format";
 
 type Call = Awaited<ReturnType<typeof listCalls>>[number];
 export type SellSideScope = { slug: string; team: Team | null; teamIds: TeamIds; teamById: Map<string, Team>; user: CurrentUser };
@@ -59,7 +59,7 @@ async function callFacts(calls: Call[]) {
  */
 export async function SellSideScreen({ scope, call }: { scope: SellSideScope; call?: Call }) {
   const { team, teamIds, teamById, user } = scope;
-  const [calls, holdings] = await Promise.all([listCalls(teamIds), team ? listTeamHoldings(team.id) : []]);
+  const [calls, holdings] = await Promise.all([listCalls(teamIds), listTeamHoldings(teamIds)]);
   const selected = call ?? calls[0] ?? null;
   const facts = await callFacts(selected && !calls.some((c) => c.id === selected.id) ? [...calls, selected] : calls);
   const rows: SavedCallRow[] = calls.map((c) => {
@@ -69,35 +69,32 @@ export async function SellSideScreen({ scope, call }: { scope: SellSideScope; ca
       href: sellSideHref(scope.slug, teamById.get(c.teamId)?.slug ?? scope.slug, c.id),
       ticker: c.ticker,
       title: c.title,
-      meta: [facts.name(c), fmtDay(c.createdAt), counts.seconds > 0 ? minutesLabel(counts.seconds) : null, !team ? teamById.get(c.teamId)?.name : null]
-        .filter(Boolean)
-        .join(" · "),
+      when: fmtDayMonth(c.createdAt),
       status: listStatus(c, counts),
+      detail: [facts.name(c), fmtDay(c.createdAt), counts.seconds > 0 ? minutesLabel(counts.seconds) : null, !team ? teamById.get(c.teamId)?.name : null].filter(Boolean).join(" · "),
     };
   });
+  // Who a new call can be for: the team in view, or any team in the fund's view.
+  const callTeams: CallTeam[] = [...teamById.values()].map((t) => ({
+    id: t.id,
+    slug: t.slug,
+    name: t.name,
+    holdings: holdings.filter(({ h }) => h.teamId === t.id).map(({ h }) => ({ id: h.id, ticker: h.ticker, companyName: h.companyName })),
+  }));
   return (
     <SellSideLayout
-      record={
-        team ? (
-          <NewCall team={team.slug} teamId={team.id} holdings={holdings.map(({ h }) => ({ id: h.id, ticker: h.ticker, companyName: h.companyName }))} />
-        ) : (
-          <PickATeam />
-        )
-      }
+      scopeSlug={scope.slug}
+      record={team ? <RecordACall team={team.slug} teamId={team.id} holdings={callTeams[0]?.holdings ?? []} /> : <RecordACall teams={callTeams} scope={scope.slug} />}
       calls={rows}
       selectedId={selected?.id ?? null}
-      aside={
-        <>
-          {team ? team.name : "Whole fund"} · <span className="font-mono">{calls.length}</span>
-        </>
-      }
+      heading={`${team ? team.name : "Whole fund"} · ${calls.length} call${calls.length === 1 ? "" : "s"}`}
       empty={`${team ? "Your team’s" : "Every team’s"} calls, summaries, transcripts, and follow-up chats will appear here.`}
     >
       {selected ? (
         <CallPane
           call={selected}
           user={user}
-          byline={[facts.name(selected), fmtDay(selected.createdAt)].filter(Boolean).join(" · ")}
+          by={facts.name(selected)}
           sector={teamById.get(selected.teamId)?.name}
           spoken={facts.counts(selected.id).spoken > 0}
         />
@@ -108,7 +105,7 @@ export async function SellSideScreen({ scope, call }: { scope: SellSideScope; ca
   );
 }
 
-async function CallPane({ call, user, byline, sector, spoken }: { call: Call; user: CurrentUser; byline: string; sector?: string; spoken: boolean }) {
+async function CallPane({ call, user, by, sector, spoken }: { call: Call; user: CurrentUser; by?: string; sector?: string; spoken: boolean }) {
   const [chat, messages] = await Promise.all([getChat(call.chatId), loadMessages(call.chatId)]);
   if (!chat) return <PickACall>This call’s saved discussion could not be found.</PickACall>;
   // Once an exec's follow-up read the price target sheet, the discussion is for execs and admins only.
@@ -122,7 +119,7 @@ async function CallPane({ call, user, byline, sector, spoken }: { call: Call; us
         key={call.id}
         callId={call.id}
         configured={configured}
-        header={{ ticker: call.ticker, title: call.title, byline, sector }}
+        header={{ ticker: call.ticker, title: call.title, sector, when: fmtDay(call.createdAt), by }}
         expect={{ timeline: spoken, recorder: !ready || !!call.error }}
         chat={
           ready && !hidden ? (

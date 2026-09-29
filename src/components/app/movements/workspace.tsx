@@ -1,12 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { ExternalLink, RefreshCw } from "lucide-react";
+import { useFormStatus } from "react-dom";
 import { completeMovement, reopenMovement, requestMovementFeedback, rerunEvidence, saveMovementUpdate } from "@/lib/actions/movements";
 import { cn } from "@/lib/utils";
-import { Panel, PanelFooter, PanelHeader } from "@/components/app/panel";
-import { Tabs, tabPanelProps } from "@/components/app/tabs";
+import { OwlMark } from "@/components/app/owl-mark";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { insertAt } from "./cite";
@@ -14,33 +13,49 @@ import type { MovementDetailData, MovementEvidence } from "./types";
 
 /** A gathered source as the side list shows it; the dates are formatted on the server so hydration matches. */
 export type EvidenceRow = MovementEvidence & { n: number; meta: string; citation: string };
+export type EvidenceGroup = { kind: string; label: string; items: EvidenceRow[] };
 
 /**
- * A movement's working area: the team's update as the main column, tall and always in view, and beside it the
- * evidence Hoot gathered (and his feedback, once asked), which scrolls on its own. Cite drops a reference to a
- * source into the update at the cursor. The update belongs to the whole team: anyone on it can write and complete it.
+ * A movement's working area: the middle column (the big number, the team's update, Hoot's feedback once asked) and
+ * the evidence Hoot gathered beside it. Each scrolls on its own. Cite drops a reference to a source into the update
+ * at the cursor. The update belongs to the whole team: anyone on it can write and complete it.
  */
 export function MovementWorkspace({
   d,
+  head,
   status,
-  evidence,
+  groups,
   gathered,
+  filings,
   feedback,
 }: {
   d: MovementDetailData;
-  /** The update header's right side: "Draft · 120 words", "Completed 2 hours ago by Jane Doe", … */
+  /** The big number and the facts row, rendered on the server. */
+  head: React.ReactNode;
+  /** The update header's right side: "Draft · 120 words", "Completed 2h ago by Jane Doe", … */
   status: string;
-  /** The evidence in display order. */
-  evidence: EvidenceRow[];
-  /** When Hoot last gathered, e.g. "6:04 pm Tue". */
+  /** The evidence in display order, by kind. */
+  groups: EvidenceGroup[];
+  /** When Hoot last gathered, e.g. "Tue, Sep 22, 6:04 PM ET". */
   gathered: string | null;
-  /** Hoot's feedback panel, when he has been asked. */
+  /** What the filings lookup found, as a sentence to follow "SEC filings:"; null when it found rows or hasn't run. */
+  filings: string | null;
+  /** Hoot's feedback section, when he has been asked. */
   feedback: React.ReactNode;
 }) {
   const editor = useRef<HTMLTextAreaElement>(null);
+  const feedbackRef = useRef<HTMLDivElement>(null);
   // Until the writer has been in the box its caret is meaningless, so citations go at the end.
   const visited = useRef(false);
   const completed = d.status === "completed";
+
+  // A new round of feedback lands below the update; bring it into view (not on first load).
+  const round = useRef(d.feedback?.at);
+  useEffect(() => {
+    if (round.current === d.feedback?.at) return;
+    round.current = d.feedback?.at;
+    feedbackRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [d.feedback?.at]);
 
   function cite(e: EvidenceRow) {
     const el = editor.current;
@@ -55,168 +70,150 @@ export function MovementWorkspace({
   }
 
   return (
-    <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[minmax(0,1fr)] 2xl:grid-cols-[minmax(0,1fr)_420px]">
-      <Panel className="focus-within:shadow-[0_0_0_1px_var(--border-strong)]">
-        <PanelHeader title="Team update" aside={status} />
+    <>
+      <div data-tour="movement-detail" className="flex min-w-0 flex-1 flex-col overflow-y-auto px-8 pt-[26px] pb-10">
+        {head}
+        <div className="mt-[18px] flex items-baseline">
+          <h2 className="flex-1 text-title font-bold tracking-[-0.01em]">Team update</h2>
+          <span className="text-caption text-muted-foreground">{status}</span>
+        </div>
         {completed ? (
           <>
-            <p className="min-h-0 flex-1 overflow-y-auto px-4 py-3.5 text-emph leading-[1.6] whitespace-pre-wrap">{d.updateText}</p>
-            <PanelFooter>
-              <form action={reopenMovement}>
-                <input type="hidden" name="id" value={d.id} />
-                <Button type="submit" variant="outline">
-                  Reopen
-                </Button>
-              </form>
-            </PanelFooter>
+            <p className="mt-2 border-y border-row py-3 text-emph whitespace-pre-wrap text-foreground">{d.updateText}</p>
+            <form action={reopenMovement} className="mt-3">
+              <input type="hidden" name="id" value={d.id} />
+              <Button type="submit" variant="secondary">
+                Reopen
+              </Button>
+            </form>
           </>
         ) : (
-          <form className="flex min-h-0 flex-1 flex-col">
+          <form>
             <input type="hidden" name="id" value={d.id} />
             <Textarea
               ref={editor}
               name="updateText"
               defaultValue={d.updateText ?? ""}
-              rows={20}
+              rows={8}
               onFocus={() => (visited.current = true)}
-              aria-label="Your update"
+              aria-label="Team update"
               placeholder={"What happened, what the evidence supports, what remains unexplained, and what it means for the thesis.\n\nCite the sources you relied on."}
-              className="min-h-40 flex-1 resize-none rounded-none border-0 bg-transparent px-4 py-3 text-emph leading-[1.6] field-sizing-fixed focus-visible:ring-0 md:text-emph"
+              className="mt-2 min-h-40 resize-none rounded-none border-0 border-y border-t-row border-b-foreground bg-transparent px-0 py-3 text-emph leading-6 field-sizing-fixed focus-visible:border-b-foreground focus-visible:shadow-[0_1px_0_var(--foreground)] focus-visible:ring-0 md:text-emph"
             />
-            <PanelFooter className="flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               {d.agentConfigured && (
-                <Button
-                  type="submit"
-                  formAction={requestMovementFeedback}
-                  variant="outline"
-                  title="Hoot flags unsupported claims, missing evidence, alternatives, and thesis contradictions."
-                >
+                <FormButton formAction={requestMovementFeedback} pendingLabel="Asking Hoot…" title="Hoot flags unsupported claims, missing evidence, alternatives, and thesis contradictions. It never suggests wording.">
+                  <OwlMark className="size-[18px] rounded-full" />
                   Ask Hoot for feedback
-                </Button>
+                </FormButton>
               )}
-              <Button type="submit" formAction={saveMovementUpdate} variant="outline">
+              <FormButton formAction={saveMovementUpdate} pendingLabel="Saving…">
                 Save draft
-              </Button>
-              <Button type="submit" formAction={completeMovement}>
+              </FormButton>
+              <span className="flex-1" />
+              <span className="text-caption text-muted-foreground">Completing records your name and the time. Email the Fund separately; this keeps the record.</span>
+              <FormButton formAction={completeMovement} pendingLabel="Completing…" primary>
                 Mark complete
-              </Button>
-              <span className="min-w-0 flex-1 basis-64 text-body">Completing records your name and time. Email the Fund separately; this keeps the record.</span>
-            </PanelFooter>
+              </FormButton>
+            </div>
           </form>
         )}
-      </Panel>
-      {/* A new round of feedback remounts the side, so it opens on what Hoot just said. */}
-      <SidePane key={d.feedback?.at ?? "none"} d={d} evidence={evidence} gathered={gathered} feedback={feedback} onCite={completed ? undefined : cite} />
-    </div>
-  );
-}
-
-type Side = { d: MovementDetailData; evidence: EvidenceRow[]; gathered: string | null; onCite?: (e: EvidenceRow) => void };
-
-function SidePane({ feedback, ...side }: Side & { feedback: React.ReactNode }) {
-  const { d } = side;
-  const fb = d.feedback;
-  const fresh = !!fb && (d.updateText ?? "").trim() === (fb.onText ?? "").trim();
-  const [tab, setTab] = useState<"evidence" | "feedback">(fresh ? "feedback" : "evidence");
-  const flags = fb ? fb.unsupported.length + fb.missing.length + fb.alternatives.length + fb.contradictions.length + fb.questions.length : 0;
-  return (
-    <div className="flex min-h-0 min-w-0 flex-col gap-3">
-      {fb && (
-        <Tabs
-          label="Beside the update"
-          idBase="movement-side"
-          onSelect={(k) => setTab(k as "evidence" | "feedback")}
-          items={[
-            { key: "evidence", label: "Evidence", count: d.evidence.length, active: tab === "evidence" },
-            { key: "feedback", label: "Hoot's feedback", count: flags, hot: flags > 0, active: tab === "feedback" },
-          ]}
-        />
-      )}
-      <div {...(fb ? tabPanelProps("movement-side", "evidence") : {})} className={cn("flex min-h-0 flex-1 flex-col", tab !== "evidence" && "hidden")}>
-        <EvidencePanel {...side} className="min-h-0 flex-1" />
+        {feedback && <div ref={feedbackRef} className="scroll-mt-4">{feedback}</div>}
       </div>
-      {fb && (
-        <div {...tabPanelProps("movement-side", "feedback")} className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto p-px", tab !== "feedback" && "hidden")}>
-          {feedback}
+      <aside aria-label="Evidence Hoot gathered" className="flex w-80 shrink-0 flex-col overflow-y-auto border-l pt-[22px] pr-10 pb-10 pl-6">
+        <div className="flex items-baseline">
+          <h2 className="flex flex-1 items-center gap-2 text-body font-bold">
+            <OwlMark className="size-[18px] rounded-full" />
+            Evidence Hoot gathered
+          </h2>
+          <form action={rerunEvidence}>
+            <input type="hidden" name="id" value={d.id} />
+            <RegatherButton />
+          </form>
         </div>
-      )}
-    </div>
+        <p className="mt-1 text-caption text-muted-foreground">
+          These are possible catalysts, not the explanation.
+          {gathered && <> Gathered {gathered}.</>}
+        </p>
+        {d.evidenceStatus === "pending" && d.evidence.length === 0 ? (
+          <p className="mt-3 text-body text-muted-foreground">Evidence is still being gathered. Refresh in a moment.</p>
+        ) : d.evidence.length === 0 ? (
+          <p className="mt-3 text-body text-muted-foreground">Nothing found in the window. That is a finding too: say so in the update.</p>
+        ) : (
+          groups.map((g) => (
+            <section key={g.kind} aria-label={g.label}>
+              <h3 className="pt-3 pb-0.5 text-caption font-semibold text-muted-foreground">{g.label}</h3>
+              <ul>
+                {g.items.map((e) => (
+                  <li key={e.id} className="grid grid-cols-[18px_minmax(0,1fr)] gap-1.5 border-b border-row py-[7px] text-caption">
+                    <b className="font-semibold">{e.n}</b>
+                    <span className="flex min-w-0 flex-col gap-[3px]">
+                      <span className="text-body break-words">{e.title}</span>
+                      {(e.meta || e.failed) && (
+                        <span className="text-muted-foreground">
+                          {e.meta}
+                          {e.failed && <span className={cn("font-semibold text-caution-foreground", e.meta && "ml-1.5")}>lookup failed</span>}
+                        </span>
+                      )}
+                      <span className="flex gap-2.5">
+                        {!completed && (
+                          <button
+                            type="button"
+                            onClick={() => cite(e)}
+                            title={`Insert ${e.citation} at the cursor`}
+                            aria-label={`Cite ${e.title}`}
+                            className="rounded-sm font-semibold underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            Cite
+                          </button>
+                        )}
+                        {e.url && (
+                          <a href={e.url} target="_blank" rel="noreferrer" aria-label={`Open ${e.title}`} className="rounded-sm text-ink-2 underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            Open
+                          </a>
+                        )}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        )}
+        {filings && (
+          <p className="mt-2.5 text-caption text-ink-2">
+            <b className="font-semibold">SEC filings:</b> {filings}
+          </p>
+        )}
+        <Link href={d.askHootHref} className="mt-4 self-start text-caption font-semibold underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          Ask Hoot about {d.ticker}
+        </Link>
+      </aside>
+    </>
   );
 }
 
-function EvidencePanel({ d, evidence, gathered, onCite, className }: Side & { className?: string }) {
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
-  const toggle = (id: string) =>
-    setExpanded((s) => {
-      const next = new Set(s);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
+/** A button inside the update form: greys out while any of its actions runs, and says what its own is doing. */
+function FormButton({ formAction, pendingLabel, primary, title, children }: { formAction: (fd: FormData) => Promise<void>; pendingLabel: string; primary?: boolean; title?: string; children: React.ReactNode }) {
+  // `action` is the submitting button's formAction, so only the button that was pressed changes its words.
+  const { pending, action } = useFormStatus();
   return (
-    <Panel className={className}>
-      <PanelHeader
-        title="Evidence Hoot gathered"
-        count={evidence.length}
-        aside={
-          <>
-            {gathered && <span title={`${evidence.length} source${evidence.length === 1 ? "" : "s"}, gathered ${gathered}`}>{gathered}</span>}
-            <form action={rerunEvidence}>
-              <input type="hidden" name="id" value={d.id} />
-              <Button type="submit" size="icon-xs" variant="ghost" title="Re-gather news, filings, and peer moves" aria-label="Re-gather evidence">
-                <RefreshCw />
-              </Button>
-            </form>
-          </>
-        }
-      />
-      {d.evidenceStatus === "pending" && evidence.length === 0 ? (
-        <p className="flex-1 px-4 py-3 text-body text-muted-foreground">Evidence is still being gathered. Refresh in a moment.</p>
-      ) : evidence.length === 0 ? (
-        <p className="flex-1 px-4 py-3 text-body text-muted-foreground">Nothing found in the window. That is a finding too: say so in the update.</p>
-      ) : (
-        <ol className="min-h-0 flex-1 overflow-y-auto">
-          {evidence.map((e) => {
-            const open = expanded.has(e.id);
-            return (
-              <li key={e.id} className="flex gap-2.5 border-b border-row py-2 pr-2 pl-4">
-                <span className="mt-px grid h-[18px] min-w-[22px] shrink-0 place-items-center rounded-full bg-hoot px-1 font-mono text-caption font-medium text-hoot-foreground">{e.n}</span>
-                <div className="min-w-0 flex-1">
-                  <button
-                    type="button"
-                    onClick={() => toggle(e.id)}
-                    aria-expanded={open}
-                    title={open ? "Show less" : e.title}
-                    className={cn("block w-full rounded-sm pr-2 text-left text-body leading-[1.45] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none", !open && "truncate")}
-                  >
-                    {e.title}
-                  </button>
-                  <div className="flex min-h-6 items-center gap-1 text-body text-muted-foreground">
-                    <span className={cn("min-w-0", !open && "truncate")}>{e.meta}</span>
-                    {e.failed && <span className="shrink-0 text-down">lookup failed</span>}
-                    <span className="flex-1" />
-                    {e.url && (
-                      <Button nativeButton={false} render={<a href={e.url} target="_blank" rel="noreferrer" />} size="icon-xs" variant="ghost" title="Open the source" aria-label={`Open ${e.title}`}>
-                        <ExternalLink />
-                      </Button>
-                    )}
-                    {onCite && (
-                      <Button type="button" size="xs" variant="ghost" onClick={() => onCite(e)} title={`Insert ${e.citation} at the cursor`}>
-                        Cite
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-      <PanelFooter className="flex-wrap text-ink-2">
-        <span className="min-w-0 flex-1 basis-40">These are possible catalysts, not the explanation.</span>
-        <Button nativeButton={false} render={<Link href={d.askHootHref} />} size="sm" variant="outline">
-          Ask Hoot about {d.ticker}
-        </Button>
-      </PanelFooter>
-    </Panel>
+    <Button type="submit" formAction={formAction} variant={primary ? "default" : "secondary"} disabled={pending} title={title}>
+      {pending && action === formAction ? pendingLabel : children}
+    </Button>
+  );
+}
+
+function RegatherButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      title="Re-gather news, filings, and peer moves"
+      className="rounded-sm text-caption font-semibold underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:text-muted-foreground"
+    >
+      {pending ? "Re-gathering…" : "Re-gather"}
+    </button>
   );
 }

@@ -1,195 +1,191 @@
 import Link from "next/link";
-import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
-import { fmtBp, ppToBp, relativeTime } from "@/lib/format";
+import { FUND_SCOPE_SLUG, MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
+import { fmtBp, fmtChangeBp, fmtChangePct, fmtDateTime, fmtDayMonth, ppToBp, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Panel, Pill } from "@/components/app/panel";
-import { Move } from "@/components/app/move";
+import { PageHead, ScopeMenu } from "@/components/app/page-head";
+import { Pill } from "@/components/app/panel";
 import { FeedbackPanel } from "@/components/app/feedback-panel";
 import { HootMoodFor } from "@/components/app/hoot/presence";
-import { MovementListPopover } from "./list-popover";
-import { MovementWorkspace, type EvidenceRow } from "./workspace";
-import { citationFor } from "./cite";
-import { KIND_LABEL, dueLabel, gatheredAt, movementPill, overdueLabel, sessionLong, sessionShort, sessionShortDateTime, wordCount } from "./format";
-import type { MovementDetailData, MovementEvidence, MovementListItem } from "./types";
 import { RowLink } from "@/components/app/row-link";
+import { MovementWorkspace, type EvidenceGroup, type EvidenceRow } from "./workspace";
+import { citationFor } from "./cite";
+import { GROUP_LABEL, GROUP_ORDER, KIND_LABEL, dirClass, dueLabel, gatheredAt, movementPill, overdueLabel, sessionLong, sessionShort, sessionShortDateTime, wordCount } from "./format";
+import type { MovementDetailData, MovementEvidence, MovementListItem } from "./types";
+
+/** The scope the page is in: its URL slug and what to call it in the header ("Whole fund" or the team's name). */
+export type MovementsScope = { slug: string; label: string };
 
 /**
- * Movements as master–detail, filling the window: the list on the left, the selected movement on the right with
- * its write-up as the main column. Below xl the list folds into a button so the write-up keeps its width. Rendered
- * by both /movements (most relevant item selected) and /movements/[id].
+ * Movements as three columns filling the window: the list on the left, the selected movement's write-up in the
+ * middle, and the evidence Hoot gathered on the right. Rendered by both /movements (most relevant item selected)
+ * and /movements/[id].
  */
-export function MovementsView({ items, selected }: { items: MovementListItem[]; selected: MovementDetailData | null }) {
+export function MovementsView({ scope, items, selected }: { scope: MovementsScope; items: MovementListItem[]; selected: MovementDetailData | null }) {
   const anyOverdue = items.some((i) => i.overdue) || !!selected?.overdue;
-  const list = (className?: string) => <MovementList items={items} selectedId={selected?.id ?? null} className={className} />;
+  const open = items.filter((i) => i.status !== "completed").length;
+  const asof = [scope.label, `${open} open · ${items.length - open} completed`, selected && `anyone on ${selected.teamName} can write this one`].filter(Boolean).join(" · ");
   return (
-    <div
-      className={cn(
-        "grid min-h-0 flex-1 gap-5 lg:h-[calc(100dvh-6.5rem)] lg:flex-none lg:grid-rows-[minmax(0,1fr)]",
-        selected ? "xl:grid-cols-[320px_minmax(0,1fr)]" : "lg:grid-cols-[320px_minmax(0,1fr)]",
-      )}
-    >
+    <div data-full-bleed className="flex h-dvh min-h-0 flex-col">
+      <PageHead
+        crumbs={[{ label: "Movements", href: selected ? `/t/${scope.slug}/movements` : undefined }, ...(selected ? [{ label: `${selected.ticker} · ${fmtDayMonth(selected.sessionDate)}` }] : [])]}
+        asof={asof}
+        tabs={false}
+      />
       {anyOverdue && <HootMoodFor mood="concerned" />}
-      {list(selected ? "hidden xl:flex" : undefined)}
-      {selected ? (
-        <MovementDetail d={selected} list={list("rounded-none shadow-none max-h-[min(70dvh,640px)]")} items={items} />
-      ) : (
-        <div className="flex min-h-64 items-center justify-center rounded-[14px] border border-dashed text-body text-muted-foreground">Select a movement to see its evidence and write-up.</div>
-      )}
+      <div className="flex min-h-0 flex-1">
+        <MovementList items={items} selectedId={selected?.id ?? null} showTeam={scope.slug === FUND_SCOPE_SLUG} />
+        {selected ? (
+          <MovementDetail d={selected} />
+        ) : (
+          <div className="flex min-w-0 flex-1 items-start px-8 pt-[26px] text-body text-muted-foreground">Select a movement to see its evidence and write-up.</div>
+        )}
+      </div>
     </div>
   );
 }
 
-function MovementList({ items, selectedId, className }: { items: MovementListItem[]; selectedId: string | null; className?: string }) {
-  const open = items.filter((i) => i.status !== "completed").length;
+function MovementList({ items, selectedId, showTeam }: { items: MovementListItem[]; selectedId: string | null; showTeam: boolean }) {
   return (
-    <Panel data-tour="movements-list" className={className}>
-      <div className="shrink-0 border-b px-4 py-3.5">
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-emph font-semibold">Movements</h2>
-          <span className="flex-1" />
-          <span className="font-mono text-caption text-muted-foreground">
-            {open} open · {items.length - open} completed
-          </span>
-        </div>
-        <p className="mt-0.5 text-body leading-[1.45] text-muted-foreground">
-          Opened when a holding&apos;s daily return differs from the S&amp;P 500&apos;s by {fmtBp(MOVEMENT_THRESHOLD_PP * 100)} or more. Due noon the next trading day. Checked nightly after the close.
-        </p>
+    <aside aria-label="Movements" data-tour="movements-list" className="flex w-[260px] shrink-0 flex-col overflow-y-auto border-r pt-3.5 pr-4 pb-10 pl-10">
+      <div className="mb-1.5 self-start">
+        <ScopeMenu label="All teams" />
       </div>
-      <ul className="min-h-0 flex-1 overflow-y-auto">
+      <ul>
         {items.map((i) => {
-          const pill = movementPill(i.status, i.overdue);
+          const status = i.dataQuality && i.status !== "completed" ? { tone: "caution" as const, label: "Data problem" } : movementPill(i.status, i.overdue);
+          const bp = ppToBp(i.relativePp);
           const on = i.id === selectedId;
           return (
             <li key={i.id}>
               <RowLink
                 href={i.href}
                 aria-current={on ? "page" : undefined}
+                title={[i.dataQuality, i.completedByName && `Completed by ${i.completedByName}`].filter(Boolean).join(" · ") || undefined}
                 className={cn(
-                  "block border-b border-row px-4 py-2.5 transition-colors hover:bg-band focus-visible:bg-band focus-visible:outline-none",
-                  on && "bg-band shadow-[inset_3px_0_0_var(--foreground)]",
+                  "-mx-2 flex flex-col gap-0.5 rounded-lg border-b border-row px-2 py-2.5 text-body transition-colors outline-none hover:bg-band focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                  on && "bg-secondary hover:bg-secondary",
                 )}
               >
-                <div className="flex items-center gap-2">
-                  <span className="w-11 shrink-0 font-mono text-body font-semibold">{i.ticker}</span>
-                  {i.dataQuality ? (
-                    <span className="truncate text-body text-caution-foreground" title={i.dataQuality}>
-                      Data problem
-                    </span>
-                  ) : (
-                    <Move value={ppToBp(i.relativePp)} unit=" bp" digits={0} className="text-body" />
-                  )}
-                  <span className="flex-1" />
-                  <Pill tone={pill.tone}>{pill.label}</Pill>
-                </div>
-                <div className="mt-[3px] truncate text-caption text-muted-foreground">
-                  {sessionShort(i.sessionDate)}
-                  {i.teamName && ` · ${i.teamName}`}
-                  {i.completedByName && ` · by ${i.completedByName}`}
-                </div>
+                <span className="flex items-baseline justify-between gap-2">
+                  <b className={cn(on ? "font-bold" : "font-semibold")}>{i.ticker}</b>
+                  <span className={i.dataQuality ? "text-muted-foreground" : dirClass(bp)}>{i.dataQuality ? "—" : fmtChangeBp(bp)}</span>
+                </span>
+                <span className="flex items-baseline justify-between gap-2">
+                  <Pill tone={status.tone}>{status.label}</Pill>
+                  <span className="min-w-0 truncate text-caption text-muted-foreground" title={i.teamName ?? undefined}>
+                    {[showTeam && i.teamName, sessionShort(i.sessionDate)].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
               </RowLink>
             </li>
           );
         })}
       </ul>
-    </Panel>
+      <p className="mt-3.5 text-caption text-muted-foreground">
+        Opened when a holding&apos;s daily return differs from the S&amp;P 500&apos;s by {fmtBp(MOVEMENT_THRESHOLD_PP * 100)} or more, on official closes. Due noon the next trading day. Checked nightly after the close.
+      </p>
+    </aside>
   );
 }
 
-function MovementDetail({ d, list, items }: { d: MovementDetailData; list: React.ReactNode; items: MovementListItem[] }) {
-  const open = items.filter((i) => i.status !== "completed").length;
+function MovementDetail({ d }: { d: MovementDetailData }) {
   const status = d.status === "completed" ? `Completed ${relativeTime(d.completedAt)}${d.completedByName ? ` by ${d.completedByName}` : ""}` : d.updateText?.trim() ? `Draft · ${wordCount(d.updateText)} words` : "Not started";
   const latest = d.evidence.reduce<Date | null>((a, e) => (!a || e.retrievedAt > a ? e.retrievedAt : a), null);
+  const groups = evidenceGroups(d.evidence);
+  const noFilings = d.evidenceStatus === "ready" && d.evidence.length > 0 && !d.evidence.some((e) => e.kind === "filing");
+  const filings = noFilings ? (d.hasCik ? "nothing in the window. That is a finding too." : "not searched, this holding has no SEC number on file.") : null;
   return (
-    <div data-tour="movement-detail" className="flex min-h-0 min-w-0 flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <div className="flex min-w-0 flex-1 basis-[22rem] items-center gap-4">
-          <div className="shrink-0 xl:hidden">
-            <MovementListPopover open={open} total={items.length}>
-              {list}
-            </MovementListPopover>
-          </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <Link href={d.holdingHref} className="font-mono text-display font-semibold hover:underline">
-                {d.ticker}
-              </Link>
-              <span className="text-emph text-ink-2">
-                {sessionLong(d.sessionDate)}
-                <span className="text-muted-foreground"> · {d.companyName}</span>
-              </span>
-              {!d.dataQuality && (
-                <span className="flex flex-wrap gap-x-4 gap-y-1 text-body text-ink-2" title={`Official closes · Yahoo Finance. Rule: relative move of ${fmtBp(MOVEMENT_THRESHOLD_PP * 100)} or more.`}>
-                  <span>
-                    {d.ticker} <Move value={d.holdingReturnPct} unit="%" digits={2} />
-                  </span>
-                  <span>
-                    S&amp;P 500 <Move value={d.spxReturnPct} unit="%" digits={2} />
-                  </span>
-                  <span>
-                    Relative <Move value={ppToBp(d.relativePp)} unit=" bp" digits={0} className="font-semibold" />
-                  </span>
-                </span>
-              )}
-            </div>
-            {d.dataQuality && (
-              <p className="mt-1 text-body text-caution-foreground">
-                Data quality problem: {d.dataQuality}. No calculation was made; resolve the data issue and re-run the close check.
-              </p>
-            )}
-          </div>
+    <MovementWorkspace
+      d={d}
+      head={<MovementHead d={d} />}
+      status={status}
+      groups={groups}
+      gathered={latest && gatheredAt(latest)}
+      filings={filings}
+      feedback={d.feedback && <FeedbackPanel feedback={d.feedback} currentText={d.updateText} className="mt-[26px]" />}
+    />
+  );
+}
+
+/** The big number and the line under it, then the facts row: team, leads, due, status. */
+function MovementHead({ d }: { d: MovementDetailData }) {
+  const bp = ppToBp(d.relativePp);
+  return (
+    <>
+      {d.dataQuality ? (
+        <div className="flex items-baseline gap-3.5">
+          <span className="hero-figure text-muted-foreground">—</span>
+          <span className="text-emph text-caution-foreground">
+            Data problem: {d.dataQuality}. No calculation was made; resolve the data issue and re-run the close check.
+          </span>
         </div>
-        <MetaStrip d={d} />
-      </div>
-      <MovementWorkspace
-        d={d}
-        status={status}
-        evidence={evidenceRows(d.evidence)}
-        gathered={latest && gatheredAt(latest)}
-        feedback={d.feedback && <FeedbackPanel feedback={d.feedback} currentText={d.updateText} className="shrink-0" />}
-      />
-    </div>
+      ) : (
+        <div className="flex flex-wrap items-baseline gap-x-3.5">
+          <span className={cn("hero-figure", dirClass(bp))} title={`Relative to the S&P 500. Official closes · Yahoo Finance. Rule: relative move of ${fmtBp(MOVEMENT_THRESHOLD_PP * 100)} or more.`}>
+            {fmtChangeBp(bp)}
+          </span>
+          <span className="text-emph text-muted-foreground">
+            <Link href={d.holdingHref} title={d.companyName} className="text-foreground underline-offset-2 hover:underline">
+              {d.ticker}
+            </Link>{" "}
+            <span className={cn("font-semibold", dirClass(d.holdingReturnPct, 100))}>{fmtChangePct(d.holdingReturnPct)}</span> · S&amp;P 500 {fmtChangePct(d.spxReturnPct)} · {sessionLong(d.sessionDate)}
+          </span>
+        </div>
+      )}
+      <FactsRow d={d} />
+    </>
   );
 }
 
-/** The evidence grouped by kind (news, filings, peers, …) in the order each kind first appears, then numbered. */
-function evidenceRows(evidence: MovementEvidence[]): EvidenceRow[] {
-  const groups = new Map<string, MovementEvidence[]>();
-  for (const e of evidence) groups.set(e.kind, [...(groups.get(e.kind) ?? []), e]);
-  return [...groups.values()].flat().map((e, i) => {
-    const kind = KIND_LABEL[e.kind] ?? e.kind;
-    return {
-      ...e,
-      n: i + 1,
-      meta: [kind, e.publisher, e.publishedAt ? sessionShortDateTime(e.publishedAt) : null].filter(Boolean).join(" · "),
-      citation: citationFor(e, kind),
-    };
-  });
-}
-
-function MetaStrip({ d }: { d: MovementDetailData }) {
-  const status = d.overdue ? (
-    <span className="text-hoot-foreground">{overdueLabel(d.dueAt)}</span>
-  ) : d.status === "completed" ? (
-    <span className="text-good-foreground">Completed</span>
-  ) : d.status === "in_progress" ? (
-    <span className="text-caution-foreground">In progress</span>
+function FactsRow({ d }: { d: MovementDetailData }) {
+  const status = d.dataQuality && d.status !== "completed" ? (
+    <b className="font-semibold text-caution-foreground">Data problem</b>
+  ) : d.overdue ? (
+    <b className="font-semibold text-down">{overdueLabel(d.dueAt)}</b>
   ) : (
-    "Open"
+    <b className="font-semibold">{d.status === "completed" ? "Completed" : d.status === "in_progress" ? "In progress" : "Open"}</b>
   );
-  const cells: { k: string; v: React.ReactNode }[] = [
-    { k: "Team", v: d.teamName },
-    { k: d.leadNames.length > 1 ? "Leads" : "Lead", v: d.leadNames.length ? d.leadNames.join(", ") : <span className="text-muted-foreground">—</span> },
-    { k: "Due", v: dueLabel(d.dueAt) },
+  const leads = d.leadNames.length ? d.leadNames.join(", ") : "—";
+  const emailed = d.alertSentAt ? `emailed ${fmtDateTime(d.alertSentAt)}` : d.alertRecipients > 0 ? "email not sent yet" : null;
+  const facts: { k: string; v: React.ReactNode }[] = [
+    { k: "Team", v: <b className="font-semibold">{d.teamName}</b> },
+    {
+      k: d.leadNames.length > 1 ? "Leads" : "Lead",
+      v: (
+        <b className="font-semibold">
+          {leads}
+          {emailed && <span className={cn("font-normal", d.alertSentAt ? "text-muted-foreground" : "text-caution-foreground")}>, {emailed}</span>}
+        </b>
+      ),
+    },
+    { k: "Due", v: <b className="font-semibold">{dueLabel(d.dueAt)}</b> },
     { k: "Status", v: status },
   ];
   return (
-    <div className="panel flex shrink-0 overflow-visible">
-      {cells.map((c, i) => (
-        <div key={c.k} className={cn("px-4 py-2", i > 0 && "shadow-[inset_1px_0_0_var(--border)]")}>
-          <div className="text-caption text-muted-foreground">{c.k}</div>
-          <div className="text-body font-semibold whitespace-nowrap">{c.v}</div>
+    <dl className="mt-3 flex flex-wrap gap-x-7 gap-y-1 border-b pb-3.5 text-body">
+      {facts.map((f) => (
+        <div key={f.k}>
+          <dt className="inline text-muted-foreground">{f.k}</dt> <dd className="inline">{f.v}</dd>
         </div>
       ))}
-    </div>
+    </dl>
   );
+}
+
+/** The evidence grouped by kind in the order the groups run (prices, news, filings, peers…), numbered straight through. */
+function evidenceGroups(evidence: MovementEvidence[]): EvidenceGroup[] {
+  const kinds = [...GROUP_ORDER, ...new Set(evidence.map((e) => e.kind))].filter((k, i, all) => all.indexOf(k) === i && evidence.some((e) => e.kind === k));
+  let n = 0;
+  return kinds.map((kind) => ({
+    kind,
+    label: GROUP_LABEL[kind] ?? KIND_LABEL[kind] ?? kind,
+    items: evidence
+      .filter((e) => e.kind === kind)
+      .map<EvidenceRow>((e) => ({
+        ...e,
+        n: ++n,
+        meta: [e.publisher, e.publishedAt ? sessionShortDateTime(e.publishedAt) : null].filter(Boolean).join(" · "),
+        citation: citationFor(e, KIND_LABEL[kind] ?? kind),
+      })),
+  }));
 }

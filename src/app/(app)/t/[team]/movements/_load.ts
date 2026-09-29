@@ -2,7 +2,7 @@ import "server-only";
 import { notFound } from "next/navigation";
 import { loadScope } from "@/lib/teams";
 import { boardHref, holdingHref } from "@/lib/scope";
-import { getMovement, listEvidence, listTeamMovements } from "@/lib/movements";
+import { getMovement, getMovementAlert, listEvidence, listTeamMovements } from "@/lib/movements";
 import { listTeamMembers } from "@/lib/holdings";
 import { agentConfigured } from "@/lib/agent/model";
 import { isOverdue } from "@/components/app/movements/format";
@@ -42,7 +42,7 @@ export async function loadMovementsView(slug: string, selectedId: string | null)
   if (!row || !scope.teamById.has(row.h.teamId)) notFound();
   const { m, h, completedByName } = row;
   const team = scope.teamById.get(h.teamId)!;
-  const [evidence, members] = await Promise.all([listEvidence(m.id), listTeamMembers(h.teamId)]);
+  const [evidence, members, alert] = await Promise.all([listEvidence(m.id), listTeamMembers(h.teamId), getMovementAlert(m.id)]);
 
   const selected: MovementDetailData = {
     id: m.id,
@@ -62,6 +62,9 @@ export async function loadMovementsView(slug: string, selectedId: string | null)
     completedByName: m.status === "completed" ? completedByName : null,
     teamName: team.name,
     leadNames: members.filter((p) => p.role === "lead_analyst").map((p) => p.fullName),
+    alertSentAt: alert.sentAt,
+    alertRecipients: alert.recipients,
+    hasCik: !!h.cik,
     updateText: m.updateText,
     feedback: m.feedback,
     evidenceStatus: m.evidenceStatus,

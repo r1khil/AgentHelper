@@ -1,4 +1,5 @@
 import { sourceId } from "@/lib/providers/types";
+import { ANALYSIS_ERROR } from "@/lib/sell-side/status";
 import type { Segment } from "@/lib/sell-side/types";
 
 // Pure helpers for the sell-side screen: timestamps, the call timeline strip and list statuses.
@@ -83,24 +84,28 @@ export function waveform(segments: Segment[], total: number, bars = 96): number[
   return rate.map((r, i) => (r <= 0 ? 0.12 : Math.min(1, 0.22 + 0.78 * (r / max) * (0.35 + 0.65 * jitter(i)))));
 }
 
-export type ListStatus = { label: string; tone: "good" | "caution" | "down" | "muted" };
+export type ListStatus = { label: string; tone: "caution" | "muted" };
 
-/** The short status on a saved-call row. `parts`/`transcribed`/`summarized` count the saved audio sections. */
-export function listStatus(call: { status: string; expectedParts: number | null }, counts: { parts: number; transcribed: number; summarized: number }): ListStatus {
+/**
+ * The short status on a saved-call row, in words: "brief ready", "transcribing 64%", "transcription failed · retry".
+ * Amber while something is running or needs a retry, grey otherwise. `parts`/`transcribed`/`summarized` count the
+ * saved audio sections; `error` tells a failed analysis from a failed transcription.
+ */
+export function listStatus(call: { status: string; expectedParts: number | null; error?: string | null }, counts: { parts: number; transcribed: number; summarized: number }): ListStatus {
   const total = call.expectedParts ?? counts.parts;
   const pct = (n: number) => (total ? Math.min(100, Math.round((n / total) * 100)) : 0);
   switch (call.status) {
     case "ready":
-      return { label: "Brief ready", tone: "good" };
+      return { label: "brief ready", tone: "muted" };
     case "error":
-      return { label: "Needs retry", tone: "down" };
+      return { label: call.error === ANALYSIS_ERROR ? "analysis failed · retry" : "transcription failed · retry", tone: "caution" };
     case "transcribing":
-      return { label: `Transcribing ${pct(counts.transcribed)}%`, tone: "caution" };
+      return { label: `transcribing ${pct(counts.transcribed)}%`, tone: "caution" };
     case "summarizing":
-      return { label: `Key points ${pct(counts.summarized)}%`, tone: "caution" };
+      return { label: `key points ${pct(counts.summarized)}%`, tone: "caution" };
     case "analyzing":
-      return { label: "Checking files", tone: "caution" };
+      return { label: "checking files", tone: "caution" };
     default:
-      return { label: counts.parts ? "Audio saved" : "Ready to record", tone: "muted" };
+      return { label: counts.parts ? "audio saved" : "ready to record", tone: "muted" };
   }
 }

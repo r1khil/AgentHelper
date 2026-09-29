@@ -36,6 +36,7 @@ export async function loadModelsView({ slug, modelId, tab, ok, error }: { slug: 
     ticker: h.ticker,
     companyName: h.companyName,
     teamName: scope.kind === "fund" ? (scope.teamById.get(h.teamId)?.name ?? null) : null,
+    hasCik: !!h.cik,
     model: latest
       ? {
           id: latest.m.id,
@@ -106,6 +107,7 @@ export async function loadModelsView({ slug, modelId, tab, ok, error }: { slug: 
       periodEnd: p.periodEnd,
       fiscalPeriod: p.fiscalPeriod,
       value: p.value === null ? null : Number(p.value),
+      unit: p.unit,
       reportedLabel: p.reportedLabel,
       derivation: p.derivation,
       exceptionReason: p.exceptionReason,

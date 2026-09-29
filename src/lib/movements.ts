@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { evidenceItems, holdings, movements, profiles } from "@/db/schema";
+import { evidenceItems, holdings, movements, notifications, profiles } from "@/db/schema";
 import { inTeams, type TeamIds } from "@/lib/team-filter";
 
 export async function listTeamMovements(teamId: TeamIds) {
@@ -40,4 +40,14 @@ export async function getOpenMovement(holdingId: string) {
     .orderBy(desc(movements.sessionDate))
     .limit(1);
   return row ?? null;
+}
+
+/** The close check's email about a movement: how many people it went to and when the first one left (null while unsent). */
+export async function getMovementAlert(movementId: string) {
+  const rows = await db
+    .select({ sentAt: notifications.sentAt })
+    .from(notifications)
+    .where(and(eq(notifications.kind, "movement_alert"), eq(notifications.refId, movementId)));
+  const sent = rows.flatMap((r) => (r.sentAt ? [r.sentAt] : []));
+  return { recipients: rows.length, sentAt: sent.length ? new Date(Math.min(...sent.map((d) => d.getTime()))) : null };
 }

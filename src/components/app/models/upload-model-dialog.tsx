@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -9,31 +8,31 @@ import { NativeSelect } from "@/components/app/native-select";
 import { UploadModelForm } from "./upload-model-form";
 import type { UploadTarget } from "./types";
 
-/** "Upload .xlsx": pick the holding, then the workbook. A holding that already has a model gets a new version. */
+/**
+ * "Upload a model": pick the holding, then the workbook. A holding that already has a model gets a new version.
+ * The trigger is a secondary button (`header`, for the page header), a small text link (`link`, in a list row), or
+ * a compact secondary button (the default).
+ */
 export function UploadModelDialog({
   targets,
   defaultHoldingId,
   label = "Upload .xlsx",
-  link,
+  trigger = "button",
 }: {
   targets: UploadTarget[];
   defaultHoldingId?: string | null;
   label?: string;
-  /** Render the trigger as an inline text link instead of a button. */
-  link?: boolean;
+  trigger?: "button" | "header" | "link";
 }) {
   const [holdingId, setHoldingId] = useState(defaultHoldingId ?? targets[0]?.id ?? "");
   const target = targets.find((t) => t.id === holdingId);
   if (!targets.length) return null;
   return (
     <Dialog>
-      {link ? (
-        <DialogTrigger render={<button type="button" className="rounded-sm hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" />}>{label}</DialogTrigger>
+      {trigger === "link" ? (
+        <DialogTrigger render={<button type="button" className="rounded-sm text-caption font-semibold underline underline-offset-2 outline-none focus-visible:ring-2 focus-visible:ring-ring" />}>{label}</DialogTrigger>
       ) : (
-        <DialogTrigger render={<Button size="sm" variant="outline" />}>
-          <Upload />
-          {label}
-        </DialogTrigger>
+        <DialogTrigger render={<Button variant="secondary" size={trigger === "header" ? "default" : "sm"} />}>{label}</DialogTrigger>
       )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>

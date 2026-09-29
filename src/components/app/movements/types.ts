@@ -52,6 +52,12 @@ export type MovementDetailData = {
   /** The team that holds the stock and owes the write-up. */
   teamName: string;
   leadNames: string[];
+  /** When the close check's email about this movement first went out; null while unsent. */
+  alertSentAt: Date | null;
+  /** How many people the close check emailed; 0 for an older movement with no record. */
+  alertRecipients: number;
+  /** The holding has an SEC number, so the filings lookup runs for it. */
+  hasCik: boolean;
   updateText: string | null;
   feedback: Feedback | null;
   evidenceStatus: string;
