@@ -63,7 +63,7 @@ export function makeAppTools(ctx: { viewer: CurrentUser; page?: PageContext | nu
 
     explain_app: tool({
       description:
-        "How the Owl's Nest app works, from its own map: what a page shows and how to read it, who can open it, what a member can do there, where to find something, and what a term on a page means (active share, tracking error, allocation vs selection, the 400 bp rule, provisional…). Pass a page (a name like 'Exposure', a key like 'economic_calendar', or a path like '/t/fig/movements') and/or a term; with neither, it lists every page. Use it for questions about the app itself, not about markets or the Fund's numbers. App facts need no citation token; say they come from the app.",
+        "How the Owl's Nest app works, from its own map: what a page shows and how to read it (except on a page whose own numbers WHAT THE MEMBER IS LOOKING AT says how to fetch: there, fetch them with that tool and explain those), who can open it, what a member can do there, where to find something, and what a term on a page means (active share, tracking error, allocation vs selection, the 400 bp rule, provisional…). Pass a page (a name like 'Exposure', a key like 'economic_calendar', or a path like '/t/fig/movements') and/or a term; with neither, it lists every page. Use it for questions about the app itself, not about markets or the Fund's numbers. App facts need no citation token; say they come from the app.",
       inputSchema: z.object({ page: z.string().max(120).optional(), term: z.string().max(80).optional() }),
       execute: async ({ page, term }): Promise<ToolResult<unknown>> => {
         const r = explainApp({ page, term, role: viewer.role });

@@ -134,7 +134,10 @@ export function StepDivider({ n, view }: { n: number; view: TraceView }) {
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-0.5 pt-1 text-caption text-muted-foreground">
       <span className="font-medium text-foreground">{s.start.writeUp ? "Write-up" : `Step ${n + 1}`}</span>
-      <span>tools: {s.start.toolChoice}</span>
+      <span>
+        tools: {s.start.toolChoice}
+        {s.start.activeTools !== undefined && s.start.totalTools !== undefined && s.start.activeTools < s.start.totalTools ? ` · ${s.start.activeTools} of ${s.start.totalTools} offered` : ""}
+      </span>
       {s.start.writeUp ? (
         <span className="text-warning-foreground">from the evidence, {WRITE_UP_REASONS[s.start.writeUp]}</span>
       ) : (

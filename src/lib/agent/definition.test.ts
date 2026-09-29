@@ -67,3 +67,39 @@ describe("the PT sheet tool in an agent definition", () => {
     expect(fresh.answeredBy()).toBe("b");
   });
 });
+
+describe("tool routing in prepareAgentStep", () => {
+  const route = vi.fn(({ stepNumber, usedTools }: { stepNumber: number; usedTools: string[] }) => ["get_news", ...(stepNumber > 0 ? usedTools : [])]);
+  const step = prepareAgentStep("SYS", FINAL_STEP_NUDGE, route);
+  const q: ModelMessage[] = [{ role: "user", content: "q" }];
+
+  it("offers the routed tools, passing the tools the turn already called", () => {
+    expect(step({ stepNumber: 0, messages: q, steps: [] })).toEqual({ activeTools: ["get_news"] });
+    expect(step({ stepNumber: 1, messages: q, steps: [{ toolCalls: [{ toolName: "get_quote" }, { toolName: "get_quote" }] }] })).toEqual({ activeTools: ["get_news", "get_quote"] });
+    expect(route).toHaveBeenLastCalledWith({ stepNumber: 1, usedTools: ["get_quote"] });
+  });
+
+  it("leaves the final step as it was: every tool, prose forced", () => {
+    expect(step({ stepNumber: FINAL_STEP, messages: q, steps: [] })).toEqual({ toolChoice: "none", instructions: `SYS\n\n${FINAL_STEP_NUDGE}`, messages: undefined });
+  });
+});
+
+describe("tool routing in an agent definition", () => {
+  const base = { teamId: "t1", holdingId: null, user: { id: "u1", fullName: "U", role: "exec" } };
+  const exec = { id: "u1", role: "exec", teamId: null, fullName: "U", transparencyMode: false } as never;
+
+  it("routes a chat turn and records how many tools each step offered", async () => {
+    const def = await buildAgentDefinition({ ...base, viewer: exec, chatId: "c1", purpose: "chat", routing: { question: "what changed in the app this week?", priorTools: [] } });
+    const r = def.prepareStep({ stepNumber: 0, messages: [{ role: "user", content: "q" }], steps: [] });
+    expect(r?.activeTools).toContain("get_whats_new");
+    expect(r?.activeTools).not.toContain("run_backtest");
+    expect(r!.activeTools!.length).toBeLessThan(Object.keys(def.tools).length);
+    expect(def.activeToolCounts).toEqual([r!.activeTools!.length]);
+  });
+
+  it("offers every tool to a job, which has no routing", async () => {
+    const def = await buildAgentDefinition({ ...base, purpose: "prep" });
+    expect(def.prepareStep({ stepNumber: 0, messages: [{ role: "user", content: "q" }], steps: [] })).toBeUndefined();
+    expect(def.activeToolCounts).toEqual([Object.keys(def.tools).length]);
+  });
+});

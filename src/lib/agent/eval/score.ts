@@ -27,8 +27,15 @@ export type EvalTurn = {
   unanswered: boolean;
   ms: number | null;
   tokens: { input: number | null; output: number | null };
+  /** Tools offered on each research step (tool routing); null when the turn didn't record it. */
+  activeTools: number[] | null;
+  /** Calls to a tool the step didn't offer ("unavailable tool"): routing left out something the model needed. */
+  unavailable: number;
   answer: string;
 };
+
+/** The SDK's error for a call to a tool that wasn't offered, as saved on the part. */
+const UNAVAILABLE = /unavailable tool|no tool named|NoSuchToolError/i;
 
 /** "a|b" passes when either tool was called. */
 const calledAny = (names: Set<string>, alternatives: string) => alternatives.split("|").some((n) => names.has(n));
@@ -90,6 +97,8 @@ export function scoreTurn(c: EvalCase, message: UIMessage): EvalTurn {
     unanswered: Boolean(meta.unanswered),
     ms: meta.ms ?? null,
     tokens: { input: meta.usage?.input ?? null, output: meta.usage?.output ?? null },
+    activeTools: meta.activeTools ?? null,
+    unavailable: calls.filter((x) => !x.ok && UNAVAILABLE.test(x.error ?? "")).length,
     answer: text,
   };
 }
@@ -107,6 +116,9 @@ export type EvalSummary = {
   unanswered: number;
   medianMs: number | null;
   tokens: { input: number; output: number };
+  /** Mean tools offered per research step, over every step that recorded it. */
+  avgActiveTools: number | null;
+  unavailableTools: number;
 };
 
 export function summarize(turns: EvalTurn[]): EvalSummary {
@@ -125,8 +137,12 @@ export function summarize(turns: EvalTurn[]): EvalSummary {
     unanswered: sum((t) => (t.unanswered ? 1 : 0)),
     medianMs: ms.length ? ms[Math.floor(ms.length / 2)] : null,
     tokens: { input: sum((t) => t.tokens.input ?? 0), output: sum((t) => t.tokens.output ?? 0) },
+    avgActiveTools: mean(turns.flatMap((t) => t.activeTools ?? [])),
+    unavailableTools: sum((t) => t.unavailable),
   };
 }
+
+const mean = (xs: number[]) => (xs.length ? +(xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(1) : null);
 
 /** Per-case changes between two runs: newly failing cases first, since those are regressions. */
 export type RunChange = { id: string; change: "regressed" | "fixed" | "same"; lookups: [number, number] };

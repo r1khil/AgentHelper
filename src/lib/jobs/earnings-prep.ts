@@ -35,7 +35,7 @@ function prepPrompt(h: { ticker: string; companyName: string }, e: { reportDate:
   return `Build the pre-earnings evidence pack for ${h.ticker} (${h.companyName}), which reports ${e.fiscalPeriod ? `${e.fiscalPeriod} ` : ""}results on ${e.reportDate}${e.reportHour ? ` (${e.reportHour.toUpperCase()})` : ""}.
 Gather, with as few steps as possible and independent lookups in the same step:
 1. last_quarter: get_key_financials (quarter, 4 periods) for the reported figures and their trend.
-2. prior_guidance: what management said about the outlook in the most recent earnings release (get_filings forms ["8-K"], list_filing_documents for EX-99.1, read_filing) and the latest 10-Q MD&A (read_filing item 2). Quote the guidance language with its source.
+2. prior_guidance: what management said about the outlook in the most recent earnings release (get_filings forms ["8-K"] with withExhibits true for the EX-99.1, then read_filing) and the latest 10-Q MD&A (read_filing item 2). Quote the guidance language with its source.
 3. consensus: get_earnings_calendar and get_analyst_estimates, labeled as consensus.
 4. team_questions: recall, get_team_context, and search_documents for the team's key questions, catalysts and thesis-change criteria in the initiating report and past earnings updates.
 5. watch_items: recent 8-Ks, get_news for the last 30 days, get_insider_transactions, and anything the filings flag as pending (segment changes, one-offs, regulatory items), phrased as what to watch for.
