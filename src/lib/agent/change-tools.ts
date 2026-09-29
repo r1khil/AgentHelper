@@ -10,6 +10,7 @@ import { ticketsInText } from "@/lib/attribution/ticket";
 import { checkPastedTickets } from "@/lib/attribution/ticket-record";
 import { pastedTicketsSummary, proposedTrades } from "@/lib/attribution/pasted-tickets";
 import { loadHootFeedFor } from "@/lib/hoot/feed";
+import { auditProposal } from "@/lib/hoot/proposal-audit";
 import { cleanNoteBody, matchNudges, PROPOSAL_TTL_MS, type HootProposal, type ProposalData, type ProposalKind } from "@/lib/hoot/proposals";
 import type { CurrentUser } from "@/lib/auth";
 import type { ToolResult } from "./tools";
@@ -25,6 +26,8 @@ type Ctx = {
   memberTexts: string[];
   /** The changes the member's latest message asks for (proposalToolsFor); only these tools are offered. */
   allowed: ProposalKind[];
+  /** Record each proposal in hoot_proposals as it's made (off for evaluation runs). */
+  audit?: boolean;
 };
 
 function proposed(p: HootProposal): ToolResult<ProposalData> {
@@ -148,5 +151,20 @@ export function makeChangeTools(ctx: Ctx): ToolSet {
       },
     }),
   };
-  return Object.fromEntries(ctx.allowed.map((k) => [k, all[k]]));
+  // Every proposal Hoot makes goes on the audit trail as it's made (hoot_proposals); the member's decision follows.
+  return Object.fromEntries(ctx.allowed.map((k) => [k, ctx.audit === false ? all[k] : audited(all[k], ctx.chat?.id ?? null)]));
+}
+
+function audited<T extends { execute?: unknown }>(t: T, chatId: string | null): T {
+  const execute = t.execute as ((input: unknown, opts: { toolCallId: string }) => Promise<ToolResult<unknown>>) | undefined;
+  if (!execute) return t;
+  return {
+    ...t,
+    execute: async (input: unknown, opts: { toolCallId: string }) => {
+      const r = await execute(input, opts);
+      const proposal = (r.data as ProposalData | null)?.proposal;
+      if (proposal && opts?.toolCallId) await auditProposal(db, { chatId, toolCallId: opts.toolCallId, proposal });
+      return r;
+    },
+  };
 }

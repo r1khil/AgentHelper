@@ -380,6 +380,32 @@ export const chatMessages = pgTable(
   (t) => [uniqueIndex("chat_messages_chat_seq").on(t.chatId, t.seq)],
 );
 
+/**
+ * Audit trail for the changes Hoot proposes (migration 0026): one row per proposal, updated as the member decides and
+ * as the change succeeds or fails, every step kept in `history`. The live state stays on the proposal in the chat.
+ */
+export const hootProposals = pgTable(
+  "hoot_proposals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    chatId: uuid("chat_id").references(() => chats.id, { onDelete: "set null" }),
+    toolCallId: text("tool_call_id").notNull(),
+    kind: text("kind").notNull(),
+    summary: text("summary").notNull(),
+    proposal: jsonb("proposal").$type<Record<string, unknown>>().notNull(),
+    proposedBy: uuid("proposed_by").references(() => profiles.id, { onDelete: "set null" }),
+    proposedAt: timestamp("proposed_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    status: text("status").notNull().default("proposed"),
+    decidedBy: uuid("decided_by").references(() => profiles.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    result: jsonb("result").$type<Record<string, unknown>>(),
+    history: jsonb("history").$type<Record<string, unknown>[]>().notNull().default([]),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("hoot_proposals_chat_call").on(t.chatId, t.toolCallId)],
+);
+
 export const models = pgTable(
   "models",
   {

@@ -128,6 +128,8 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
           chat: ctx.chatId ? { id: ctx.chatId, holdingId: ctx.holdingId } : null,
           memberTexts: ctx.memberTexts ?? [],
           allowed: proposalToolsFor(ctx.memberTexts?.[0] ?? ""),
+          // Evaluation runs save nothing, the audit trail included.
+          audit: !ctx.memoryOff,
         })
       : {}),
   };
