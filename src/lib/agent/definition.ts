@@ -26,6 +26,7 @@ import { PT_SHEET_MODEL_ID, sheetSafeModel } from "./pt-sheet-guard";
 import type { PageContext } from "./page-context";
 import { activeToolsFor, RETIRED } from "./tool-routing";
 import { makeFindTools } from "./find-tools";
+import { quickTurnFor, quickTurnNote } from "./quick-turn";
 import { isFundWide } from "@/lib/roles";
 import type { CurrentUser } from "@/lib/auth";
 
@@ -195,6 +196,9 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
         })
     : undefined;
   const prepare = prepareAgentStep(instructions, FINAL_STEP_NUDGE, route);
+  // A request Hoot always declines, or a question with nothing to do with the Fund: one written reply, no tools
+  // (./quick-turn). The reply ends the turn, since a step without tool calls is the last.
+  const quick = routing ? quickTurnFor(routing.question) : null;
   return {
     modelId: primary,
     answeredBy: () => (sheet.read ? PT_SHEET_MODEL_ID : primary),
@@ -203,6 +207,10 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
     tools,
     stopWhen: isStepCount(MAX_STEPS),
     prepareStep: (o) => {
+      if (quick && o.stepNumber === 0) {
+        activeToolCounts[0] = 0;
+        return { toolChoice: "none", activeTools: [], instructions: `${instructions}\n\n${quickTurnNote(quick)}` };
+      }
       const r = prepare(o);
       activeToolCounts[o.stepNumber] = r?.activeTools?.length ?? available.length;
       return r;
