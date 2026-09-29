@@ -8,6 +8,7 @@ import { pageContextLabel } from "@/lib/agent/page-context";
 import { openAnswerPanel } from "./answer-panel-store";
 import { leaveHootQuestion } from "./handoff";
 import { pageContextFor } from "./page-context";
+import { useHootCommand } from "./use-hoot-command";
 
 /** Pages that are Hoot's own conversations: Home, Research and its threads. A question asked there opens the thread. */
 export const onConversationPage = (pathname: string) => pathname === "/" || /^\/hoot(\/|$)/.test(pathname) || /^\/t\/[^/]+\/agent(\/|$)/.test(pathname);
@@ -23,8 +24,11 @@ export function useAskHoot() {
   const router = useRouter();
   const pathname = usePathname();
   const [asking, setAsking] = useState(false);
+  const runCommand = useHootCommand();
   const ask = useCallback(
     async (question: string, target: { teamSlug: string | null; ticker: string | null }, opts: { withPage?: boolean } = {}) => {
+      // A plain "go to …" or "dark mode" is done at once, without a chat; anything else Hoot handles, tools included.
+      if (runCommand(question)) return true;
       setAsking(true);
       try {
         // Read at the moment of asking, so it reflects the period or scenario on screen right now. Left out when the
@@ -54,7 +58,7 @@ export function useAskHoot() {
         setAsking(false);
       }
     },
-    [pathname, router],
+    [pathname, router, runCommand],
   );
   return { asking, ask };
 }

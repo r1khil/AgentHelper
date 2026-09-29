@@ -7,8 +7,8 @@ import type { PageContext } from "../page-context";
  * the answer must or must not say. `npm run eval:hoot` runs them against the live model and data and scores each.
  *
  * Tags: `portfolio` (needs the Fund's own numbers), `research` (filings, news, documents), `boundary` (the learning
- * boundary: Hoot gathers evidence, the analyst writes), `control` (asks Hoot to operate the app: they expect the
- * navigate/set_scope/set_theme tools, so they fail until Hoot has them).
+ * boundary: Hoot gathers evidence, the analyst writes), `control` (asks Hoot to operate the app with its navigate and
+ * set_theme tools).
  */
 export type EvalCase = {
   id: string;
@@ -227,7 +227,7 @@ export const EVAL_CASES: EvalCase[] = [
     as: "exec",
     page: fundRisk,
     tags: ["control"],
-    expect: { calls: ["set_scope|navigate"], maxToolCalls: 1, answerNot: [/Figma/i, CANT] },
+    expect: { calls: ["navigate"], maxToolCalls: 1, maxErrors: 0, answerNot: [/Figma/i, CANT] },
     note: "Production 2026-09-25: researched Figma (FIG) with 11 lookups.",
   },
   {
@@ -236,14 +236,31 @@ export const EVAL_CASES: EvalCase[] = [
     as: "exec",
     page: { kind: "page", path: "/admin", title: "Admin" },
     tags: ["control"],
-    expect: { calls: ["set_theme"], maxToolCalls: 1, answerNot: [CANT] },
+    expect: { calls: ["set_theme"], maxToolCalls: 1, maxErrors: 0, answerNot: [CANT] },
     note: "Production 2026-09-25: 'I can't change display settings.'",
   },
   {
     id: "control-open-exposure",
+    question: "open the exposure page for the tech team",
+    as: "exec",
+    tags: ["control"],
+    expect: { calls: ["navigate"], maxToolCalls: 1, maxErrors: 0, answerNot: [CANT] },
+  },
+  {
+    id: "control-performance-ytd",
+    question: "show me fund performance year to date",
+    as: "exec",
+    page: { kind: "page", path: "/", title: "Home" },
+    tags: ["control"],
+    expect: { calls: ["navigate"], notCalls: ["get_attribution"], maxToolCalls: 1, maxErrors: 0 },
+    note: "A 'show me' request opens the page; it doesn't research.",
+  },
+  {
+    id: "control-not-allowed",
     question: "open the exposure page for my team",
     as: "associate",
     tags: ["control"],
-    expect: { calls: ["navigate"], maxToolCalls: 1, answerNot: [CANT] },
+    expect: { calls: ["navigate"], maxToolCalls: 2, answer: [/lead analyst|execs?/i] },
+    note: "Associates can't see position sizes: Hoot tries, and says why not.",
   },
 ];

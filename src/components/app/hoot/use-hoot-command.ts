@@ -5,7 +5,31 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { commandHref, parseHootCommand, scopeHref } from "@/lib/hoot/commands";
+import type { HootAction } from "@/lib/hoot/app-actions";
 import { markScopeIntent } from "@/components/app/shell/scope-intent";
+
+/**
+ * Apply what Hoot did in a live answer (its navigate or set_theme tools): open the page, or change the theme. The
+ * server already checked the page is one this member can open; this only runs for actions that stream in live.
+ */
+export function useApplyHootAction() {
+  const router = useRouter();
+  const { setTheme } = useTheme();
+  return useCallback(
+    (action: HootAction) => {
+      if (action.kind === "theme") {
+        setTheme(action.theme);
+        toast.success(action.theme === "system" ? "Hoot: Following your device's theme." : `Hoot: ${action.theme === "light" ? "Light" : "Dark"} mode is on.`);
+        return;
+      }
+      // Asked for, so a scope change needs no "Switched to" notice.
+      if (action.href.startsWith("/t/")) markScopeIntent();
+      router.push(action.href);
+      toast.success(`Hoot: Opening ${action.label}.`);
+    },
+    [router, setTheme],
+  );
+}
 
 /** Run only on a fresh submission, never by replaying saved chat messages. */
 export function useHootCommand() {

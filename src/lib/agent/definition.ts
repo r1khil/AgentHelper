@@ -17,6 +17,7 @@ import { fredConfigured } from "@/lib/providers/fred";
 import { makeWikipediaTools } from "./wikipedia-tools";
 import { makePredictionMarketTools } from "./prediction-markets-tools";
 import { makeSandboxTools } from "./sandbox-tools";
+import { makeAppTools } from "./app-tools";
 import { makePtSheetTools, ptSheetToolAllowed, type PtSheetState } from "./pt-sheet-tools";
 import { PT_SHEET_MODEL_ID, sheetSafeModel } from "./pt-sheet-guard";
 import type { PageContext } from "./page-context";
@@ -111,6 +112,8 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
     ...makePredictionMarketTools(),
     ...(ctx.viewer ? makeSandboxTools({ viewer: ctx.viewer, teamId: ctx.teamId }) : {}),
     ...(sheetTool && ctx.chatId ? makePtSheetTools({ chatId: ctx.chatId, state: sheet }) : {}),
+    // Operating the app is for a member in a chat, never a background job.
+    ...(ctx.viewer && (ctx.purpose ?? "chat") === "chat" ? makeAppTools({ viewer: ctx.viewer, page: ctx.page }) : {}),
   };
   // Admin-registered MCP servers add tools under their prefix; a native name always wins.
   const mcp = await loadMcpTools();
