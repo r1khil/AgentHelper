@@ -349,155 +349,84 @@ export function MovementsSkeleton() {
 /* ------------------------------------------------------------------------------------------------ Calendars */
 
 /**
- * The earnings and economic calendars (earnings/calendar-view.tsx, week layout): the month, Show and Expectations
- * down the side, the week's days on the right.
+ * The earnings and economic calendars (earnings/calendar-view.tsx, economic-calendar/economic-view.tsx): the header with
+ * its two tabs, the hero, the controls under a hairline and a table of 40px rows. Both routes share it.
  */
 export function CalendarSkeleton() {
   return (
-    <SkeletonPage className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-      <div className="flex min-h-0 flex-col gap-5">
-        {/* Month */}
-        <SkeletonPanel className="shrink-0 px-3.5 pt-3.5 pb-2.5">
-          <div className="flex h-6 items-center gap-1">
-            <TextBone className="flex-1 text-emph font-semibold" w="w-32" />
-            <Bone className="size-6 rounded-full" />
-            <Bone className="size-6 rounded-full" />
-          </div>
-          <div className="mt-2.5 grid grid-cols-7 gap-y-0.5 text-center font-mono text-caption">
-            {range(7).map((i) => (
-              <span key={i} className="pb-1.5">
-                <span className="inline-block h-[0.7em] w-2 rounded-[3px] bg-muted align-middle" />
-              </span>
-            ))}
-            {range(35).map((i) => (
-              <span key={i} className="flex h-[34px] items-center justify-center">
-                <Bone className="h-2.5 w-3.5 rounded-[3px]" />
-              </span>
-            ))}
-          </div>
-        </SkeletonPanel>
-        {/* Show */}
-        <SkeletonPanel className="shrink-0 px-3.5 pt-3.5 pb-3.5">
-          <TextBone className="text-emph font-semibold" w="w-12" />
-          <div className="mt-2.5 flex flex-col gap-2.5 text-body">
-            {["w-28", "w-24"].map((w, i) => (
-              <div key={i} className="flex items-center gap-2.5">
-                <Bone className="size-4 rounded-[5px]" />
-                <TextBone className="flex-1" w={w} />
-              </div>
-            ))}
-            <div>
-              <div className="flex items-center gap-2.5">
-                <Bone className="size-4 rounded-[5px]" />
-                <TextBone className="flex-1" w="w-36" />
-              </div>
-              <div className="mt-2.5 flex flex-col gap-2 pl-[26px]">
-                <SkeletonPill className="w-44" />
-                <Bone className="h-8 w-full rounded-lg" />
-              </div>
-            </div>
-          </div>
-        </SkeletonPanel>
-        {/* Expectations this week */}
-        <SkeletonPanel className="min-h-[220px] flex-1 px-3.5 pt-3.5 pb-3.5">
-          <TextBone className="text-emph font-semibold" w="w-44" />
-          <TextBone className="mt-0.5 text-body" w="w-52" />
-          <div className="mt-2.5 flex flex-col">
-            {range(3).map((i) => (
-              <div key={i} className="border-t border-row">
-                <div className="flex h-10 items-center gap-2.5">
-                  <Bone className="h-3 w-11 rounded-[4px]" />
-                  <Bone className="h-3 flex-1 rounded-[4px]" />
-                  <Bone className="h-[22px] w-16 rounded-full" />
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex-1" />
-          <div className="mt-3 flex flex-col gap-1">
-            <div>
-              {["w-full", "w-full", "w-1/2"].map((w, i) => (
-                <TextBone key={i} className="text-body leading-[18px]" w={w} />
-              ))}
-            </div>
-            <TextBone className="text-body leading-5" w="w-40" />
-          </div>
-        </SkeletonPanel>
-      </div>
-      {/* The week */}
-      <SkeletonPanel className="min-h-[520px]">
-        <div className="flex h-14 shrink-0 items-center gap-3 border-b px-5">
-          <TextBone className="text-title font-semibold" w="w-48" />
-          <TextBone className="text-body" w="w-56" />
-          <span className="flex-1" />
-          <SkeletonPill className="w-44" />
+    <>
+      <SkeletonPageHead tabs={2} />
+      <SkeletonPage className="flex min-h-0 flex-1 flex-col">
+        <TextBone className="text-body" w="w-72" />
+        <TextBone className="hero-figure" w="w-64" />
+        <TextBone className="text-emph" w="w-2/3" />
+        <div className="mt-[18px] flex items-center gap-2 border-b pb-3.5">
+          <SkeletonPill className="h-7 w-44" />
+          <SkeletonPill className="h-7 w-40" />
+          <SkeletonPill className="h-7 w-72" />
         </div>
-        <div className="flex flex-1 flex-col">
-          {[2, 1, 2, 1, 2].map((rows, d) => (
-            <div key={d} className="flex flex-1 flex-col border-b pb-2 last:border-b-0">
-              <div className="px-5 pt-2.5 pb-1">
-                <TextBone className="font-mono text-body font-semibold" w="w-20" />
-              </div>
+        <div className="mt-1">
+          <div className="grid h-[34px] grid-cols-[110px_minmax(0,1.3fr)_minmax(0,1.1fr)_140px_80px_120px_120px] items-center gap-3 border-b">
+            <Bone className="h-2.5 w-10 rounded-[4px]" />
+          </div>
+          {range(8).map((i) => (
+            <div key={i} className="grid h-10 grid-cols-[110px_minmax(0,1.3fr)_minmax(0,1.1fr)_140px_80px_120px_120px] items-center gap-3 border-b border-row">
+              <Bone className="h-3 w-20 rounded-[4px]" />
+              <Bone className="h-3 w-36 rounded-[4px]" />
+              <Bone className="h-3 w-28 rounded-[4px]" />
+              <Bone className="h-3 w-24 rounded-[4px]" />
+              <Bone className="ml-auto h-3 w-10 rounded-[4px]" />
+              <Bone className="h-3 w-16 rounded-[4px]" />
+              <Bone className="h-3 w-16 rounded-[4px]" />
+            </div>
+          ))}
+        </div>
+      </SkeletonPage>
+    </>
+  );
+}
+
+/** One earnings report (`earnings/[id]/page.tsx`): the hero, the three sections in order, the prep pack and timeline beside them. */
+export function EarningsReportSkeleton() {
+  return (
+    <>
+      <SkeletonPageHead />
+      <SkeletonPage className="flex gap-14">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <TextBone className="text-body" w="w-96 max-w-full" />
+          <TextBone className="hero-figure" w="w-56" />
+          <TextBone className="text-emph" w="w-2/3" />
+          {[3, 2, 2].map((rows, s) => (
+            <div key={s} className="mt-6 border-t pt-[18px]">
+              <TextBone className="text-title font-bold" w="w-80 max-w-full" />
               {range(rows).map((i) => (
-                <div key={i} className="grid h-9 grid-cols-[52px_110px_minmax(0,1fr)_220px_180px] items-center gap-3 px-5">
-                  <Bone className="h-3 w-10 rounded-[4px]" />
-                  <Bone className="h-3 w-20 rounded-[4px]" />
-                  <Bone className="h-3 w-2/5 rounded-[4px]" />
-                  <Bone className="h-3 w-32 rounded-[4px]" />
-                  <Bone className="h-3 w-20 rounded-[4px]" />
+                <div key={i} className="mt-3.5">
+                  <TextBone className="text-body font-semibold" w="w-28" />
+                  <div className="mt-1 border-b border-border-strong py-1.5">
+                    <TextBone className="text-emph" w="w-full" />
+                  </div>
                 </div>
               ))}
             </div>
           ))}
         </div>
-      </SkeletonPanel>
-    </SkeletonPage>
-  );
-}
-
-/** One earnings report (`earnings/[id]/page.tsx`): the title block, the prep-pack strip, expectations beside results. */
-export function EarningsReportSkeleton() {
-  const header = (
-    <div className="flex min-h-11 shrink-0 items-center gap-2 border-b px-4 py-1.5">
-      <TextBone className="text-emph font-semibold" w="w-64" />
-      <span className="flex-1" />
-      <Bone className="h-[22px] w-20 rounded-full" />
-    </div>
-  );
-  return (
-    <SkeletonPage className="flex min-h-0 flex-1 flex-col gap-5">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <TextBone className="font-mono text-display leading-none" w="w-20" />
-          <TextBone className="text-emph" w="w-40" />
-          <TextBone className="font-mono text-body" w="w-36" />
-          <Bone className="h-[22px] w-20 rounded-full" />
-        </div>
-        <TextBone className="text-body" w="w-80" />
-      </div>
-      <SkeletonPanel className="flex-row items-center gap-3 px-4 py-3">
-        <TextBone className="flex-1 text-body" w="w-96" />
-      </SkeletonPanel>
-      <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-2">
-        <SkeletonPanel>
-          {header}
-          <div className="grid gap-3 p-4">
-            {range(3).map((i) => (
-              <div key={i} className="grid gap-1.5">
-                <TextBone className="text-body" w="w-40" />
-                <Bone className="h-[76px] w-full rounded-lg" />
-              </div>
+        <aside className="flex w-[300px] shrink-0 flex-col">
+          <TextBone className="text-body font-bold" w="w-24" />
+          <div className="mt-1.5">
+            {["w-full", "w-full", "w-2/3"].map((w, i) => (
+              <TextBone key={i} className="text-body" w={w} />
             ))}
           </div>
-        </SkeletonPanel>
-        <SkeletonPanel>
-          {header}
-          <div className="p-4">
-            <TextBone className="text-body" w="w-3/4" />
-          </div>
-        </SkeletonPanel>
-      </div>
-    </SkeletonPage>
+          <TextBone className="mt-7 mb-1 text-body font-bold" w="w-20" />
+          {range(5).map((i) => (
+            <div key={i} className="grid grid-cols-[56px_minmax(0,1fr)] gap-2.5 border-b border-row py-2">
+              <Bone className="h-3 w-10 rounded-[4px]" />
+              <Bone className="h-3 w-32 rounded-[4px]" />
+            </div>
+          ))}
+        </aside>
+      </SkeletonPage>
+    </>
   );
 }
 
@@ -1093,70 +1022,59 @@ export function BacktestingSkeleton() {
 
 /* ------------------------------------------------------------------------------------------------ Weekly */
 
-/** The weekly update (weekly/weekly-view.tsx, Summary tab): the packs, then the pack's head, strip, tabs and four panels. */
+/** The weekly update (weekly/weekly-view.tsx, Summary tab): the packs beside the pack's hero, tabs, performers and sections. */
 export function WeeklySkeleton() {
   return (
-    <SkeletonPage className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      {/* The packs: a plain, sticky list with no dividers. */}
-      <SkeletonPanel variant="plain" className="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-104px)]">
-        <SkeletonPanelHeader className="px-3.5" w="w-12" aside="w-28" />
-        <div className="min-h-0 flex-1 overflow-hidden">
-          {range(3).map((i) => (
-            <div key={i} className="flex items-center gap-2 px-3.5 py-2.5">
-              <div className="min-w-0 flex-1">
-                <TextBone className="text-body font-medium" w="w-36" />
-                <TextBone className="mt-px text-caption" w="w-24" />
-              </div>
-              <Bone className="h-[22px] w-12 rounded-full" />
+    <SkeletonPage fullBleed className="flex min-h-0 flex-1 flex-col">
+      <SkeletonPageHead />
+      <div className="flex min-h-0 flex-1">
+        <aside className="w-60 shrink-0 border-r pt-[18px] pr-4 pl-10">
+          {range(4).map((i) => (
+            <div key={i} className="flex flex-col border-b border-row py-[9px]">
+              <TextBone className="text-body" w="w-28" />
+              <TextBone className="text-caption" w="w-32" />
             </div>
           ))}
-        </div>
-      </SkeletonPanel>
-      <div className="flex min-h-0 min-w-0 flex-col gap-5">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-5">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="min-w-0 flex-1">
-              <TextBone className="text-title font-semibold" w="w-80 max-w-full" />
-              <TextBone className="mt-0.5 text-body" w="w-64" />
-              {/* Beside the actions the built-and-sent line wraps once in a narrow window. */}
-              <TextBone className="text-body xl:hidden" w="w-12" />
-            </div>
-            <SkeletonPill className="h-[34px] w-24" />
-            <SkeletonPill className="h-[34px] w-32" />
-            <SkeletonPill className="size-9" />
-          </div>
-          <SkeletonStatStrip cells={4} notes={false} />
-          <SkeletonTabs className="-mt-1" widths={["w-16", "w-16", "w-14", "w-16", "w-14"]} />
-          {/* Summary: four plain sections of 40px rows, no dividers, each as tall as its rows. */}
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            {[3, 3, 5, 5].map((rows, p) => (
-              <SkeletonPanel key={p} variant="plain">
-                <SkeletonPanelHeader w="w-36" aside="w-16" />
-                <div className="flex flex-col">
-                  {range(rows).map((i) => (
-                    <div key={i} className="flex min-h-10 items-center gap-2.5 px-4">
-                      <Bone className="h-3 w-16 rounded-[4px]" />
-                      <Bone className="h-3 w-2/5 rounded-[4px]" />
-                      <span className="flex-1" />
-                      <Bone className="h-3 w-12 rounded-[4px]" />
-                    </div>
-                  ))}
-                </div>
-              </SkeletonPanel>
+        </aside>
+        <div className="flex min-w-0 flex-1 flex-col px-8 pt-6 pb-24">
+          <TextBone className="text-body" w="w-96 max-w-full" />
+          <TextBone className="hero-figure" w="w-40" />
+          <TextBone className="text-emph" w="w-2/3" />
+          <SkeletonTabs className="mt-5" widths={["w-16", "w-12", "w-16", "w-14", "w-14"]} />
+          <div className="mt-5 grid grid-cols-2 gap-10 border-t pt-4">
+            {range(2).map((c) => (
+              <div key={c}>
+                <TextBone className="text-body font-bold" w="w-28" />
+                {range(3).map((i) => (
+                  <div key={i} className="flex min-h-[34px] items-center justify-between gap-3 border-b border-row py-1">
+                    <Bone className="h-3 w-24 rounded-[4px]" />
+                    <Bone className="h-3 w-12 rounded-[4px]" />
+                  </div>
+                ))}
+              </div>
             ))}
           </div>
-          {/* Why they moved: Hoot's one line per mover. */}
-          <SkeletonPanel variant="plain">
-            <SkeletonPanelHeader w="w-28" aside="w-48" />
-            <div className="flex flex-col">
-              {range(4).map((i) => (
-                <div key={i} className="flex h-[37px] items-center gap-4 px-4 text-body">
-                  <TextBone className="w-14 shrink-0" w="w-11" />
-                  <TextBone className="min-w-0 flex-1" w="w-3/5" />
-                </div>
-              ))}
-            </div>
-          </SkeletonPanel>
+          <div className="mt-5">
+            <TextBone className="text-body font-bold" w="w-20" />
+            {range(3).map((i) => (
+              <div key={i} className="flex min-h-[34px] items-center border-b border-row py-1">
+                <Bone className="h-3 w-44 rounded-[4px]" />
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 grid grid-cols-3 gap-10">
+            {range(3).map((c) => (
+              <div key={c}>
+                <TextBone className="text-body font-bold" w="w-28" />
+                {range(3).map((i) => (
+                  <div key={i} className="flex min-h-[34px] items-center justify-between gap-3 border-b border-row py-1">
+                    <Bone className="h-3 w-24 rounded-[4px]" />
+                    <Bone className="h-3 w-8 rounded-[4px]" />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </SkeletonPage>
@@ -1165,176 +1083,109 @@ export function WeeklySkeleton() {
 
 /* ------------------------------------------------------------------------------------------------ Changelog */
 
-/** The changelog (changelog/changelog-view.tsx): every merged change, beside this month's counts and how it's written. */
+/** The changelog (changelog/changelog-view.tsx): the count, then the changes grouped by day. */
 export function ChangelogSkeleton() {
   return (
-    <SkeletonPage className="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <SkeletonPanel>
-        <div className="flex h-12 shrink-0 items-center gap-2.5 border-b px-5">
-          <TextBone className="flex-1 text-emph font-semibold" w="w-80 max-w-full" />
-          <TextBone className="text-body" w="w-32" />
-          <SkeletonPill className="h-[30px] w-24" />
-        </div>
-        <div className="flex flex-1 flex-col">
-          {range(8).map((i) => (
-            <div key={i} className="grid grid-cols-[96px_minmax(0,1fr)_auto] items-start gap-4 border-b border-row px-5 py-3.5 last:border-b-0">
-              <div className="min-w-0">
-                <TextBone className="font-mono text-body" w="w-12" />
-                <TextBone className="mt-0.5 text-caption" w="w-16" />
-              </div>
-              <div className="min-w-0">
-                <TextBone className="text-emph font-semibold" w="w-72 max-w-full" />
-                <TextBone className="mt-0.5 text-body leading-[1.45]" w="w-full" />
-                <TextBone className="text-body leading-[1.45]" w="w-full" />
-                {i % 2 === 0 && <TextBone className="text-body leading-[1.45]" w="w-1/2" />}
-              </div>
-              <Bone className="h-3 w-10 rounded-[4px]" />
+    <>
+      <SkeletonPageHead />
+      <SkeletonPage className="flex max-w-[900px] flex-col">
+        <TextBone className="text-body" w="w-40" />
+        <TextBone className="hero-figure" w="w-64" />
+        <TextBone className="text-emph" w="w-full" />
+        {range(2).map((g) => (
+          <div key={g}>
+            <div className="border-b pt-[22px] pb-1.5">
+              <TextBone className="text-caption font-semibold" w="w-24" />
             </div>
-          ))}
-        </div>
-      </SkeletonPanel>
-      <div className="flex flex-col gap-5 lg:sticky lg:top-20 lg:h-[calc(100dvh-104px)] lg:self-start">
-        <div className="shrink-0 rounded-[14px] bg-rail px-[18px] py-4">
-          <div className="label-mono">
-            <span className="inline-block h-[0.7em] w-20 rounded-[3px] bg-rail-2 align-middle" />
-          </div>
-          <div className="mt-2.5 grid grid-cols-2 gap-3.5">
-            {range(2).map((i) => (
-              <div key={i}>
-                <div className="figure text-display">
-                  <span className="inline-block h-[0.7em] w-10 rounded-[4px] bg-rail-2 align-middle" />
+            {range(g === 0 ? 4 : 3).map((i) => (
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 border-b border-row py-3">
+                <div className="flex min-w-0 flex-col gap-[3px]">
+                  <TextBone className="text-emph font-semibold" w="w-96 max-w-full" />
+                  <TextBone className="text-body" w="w-full" />
+                  <TextBone className="text-caption" w="w-28" />
                 </div>
-                <div className="text-body">
-                  <span className="inline-block h-[0.7em] w-24 rounded-[3px] bg-rail-2 align-middle" />
-                </div>
+                <Bone className="h-3 w-10 rounded-[4px]" />
               </div>
             ))}
           </div>
-        </div>
-        <SkeletonPanel className="min-h-0 flex-1 gap-3 px-[18px] py-4">
-          <TextBone className="text-emph font-semibold" w="w-44" />
-          <div>
-            {["w-full", "w-full", "w-11/12", "w-2/3"].map((w, i) => (
-              <TextBone key={i} className="text-body leading-[1.55]" w={w} />
-            ))}
-          </div>
-          <div className="flex flex-col border-t border-row">
-            {range(3).map((i) => (
-              <div key={i} className="flex h-9 items-center justify-between gap-3 border-b border-row">
-                <Bone className="h-3 w-20 rounded-[4px]" />
-                <Bone className="h-3 w-24 rounded-[4px]" />
-              </div>
-            ))}
-          </div>
-        </SkeletonPanel>
-      </div>
-    </SkeletonPage>
+        ))}
+      </SkeletonPage>
+    </>
   );
 }
 
 /* ------------------------------------------------------------------------------------------------ Admin */
 
 /** admin/members-panel.tsx GRID. */
-const MEMBERS_GRID = "grid grid-cols-[minmax(0,1fr)_minmax(0,200px)_130px_120px_28px] items-center gap-3";
+const MEMBERS_GRID = "grid grid-cols-[minmax(0,1.3fr)_170px_minmax(0,1fr)_90px_140px_150px] items-center gap-3";
 
 /**
- * Admin (admin/admin-view.tsx): members beside connections and scheduled jobs, each as tall as its rows. Execs see
- * it view only, under a one-line banner.
+ * Admin (admin/admin-view.tsx), on its Members tab, which /admin opens on: the hero, the search and filters, and a 46px
+ * row per member. The Jobs and connections tab (`?tab=jobs`) shares the route's loading state and the head and hero.
  */
 export function AdminSkeleton() {
   return (
-    <SkeletonPage className="flex min-h-0 flex-1 flex-col gap-6">
-      <div className="hidden in-data-[role=exec]:flex">
-        <Bone className="h-[35.5px] w-full rounded-[10px]" />
-      </div>
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_440px]">
-        {/* Members: a 44px row per member, as tall as the list. */}
-        <SkeletonPanel>
-          <div className="flex h-12 shrink-0 items-center gap-2.5 border-b px-4">
-            <TextBone className="text-emph font-semibold" w="w-20" />
-            <span className="flex-1" />
-            <SkeletonPill className="w-[220px]" />
-          </div>
-          <div className={cn(MEMBERS_GRID, "h-[34px] shrink-0 border-b px-4")}>
+    <>
+      <SkeletonPageHead tabs={3} />
+      <SkeletonPage className="flex min-h-0 flex-1 flex-col">
+        <TextBone className="text-body" w="w-72" />
+        <TextBone className="hero-figure" w="w-56" />
+        <TextBone className="text-emph" w="w-2/3" />
+        <div className="mt-5 flex items-center gap-2">
+          <Bone className="h-8 w-[280px] rounded-none" />
+          <span className="flex-1" />
+          <SkeletonPill className="h-7 w-72" />
+        </div>
+        <div className="mt-3">
+          <div className={cn(MEMBERS_GRID, "h-8 border-b")}>
             <Bone className="h-2.5 w-12 rounded-[4px]" />
           </div>
-          <div className="flex flex-col">
-            {range(8).map((i) => (
-              <div key={i} className={cn(MEMBERS_GRID, "min-h-11 border-b border-row px-4")}>
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <Bone className="size-[26px] shrink-0 rounded-full" />
-                  <Bone className="h-3 w-32 rounded-[4px]" />
-                </div>
-                <Bone className="h-3 w-24 rounded-[4px]" />
-                <Bone className="h-[22px] w-20 rounded-full" />
-                <Bone className="h-3 w-16 rounded-[4px]" />
-                <span />
+          {range(8).map((i) => (
+            <div key={i} className={cn(MEMBERS_GRID, "h-[46px] border-b border-row")}>
+              <div className="flex min-w-0 flex-col gap-1">
+                <Bone className="h-3 w-32 rounded-[4px]" />
+                <Bone className="h-2.5 w-24 rounded-[4px]" />
               </div>
-            ))}
-          </div>
-        </SkeletonPanel>
-        <div className="flex flex-col gap-5">
-          {/* Connections: a plain section, no dividers, the services line under it. */}
-          <SkeletonPanel variant="plain" className="shrink-0">
-            <SkeletonPanelHeader w="w-28" />
-            <SkeletonRows count={5} divided={false} row="flex h-[52px] gap-3" cells={["size-2 rounded-full", "w-40", "ml-auto w-16"]} />
-            <div className="flex min-h-10 shrink-0 items-center gap-3 px-4 py-2">
-              <Bone className="h-3 w-56 rounded-[4px]" />
+              <Bone className="h-7 w-28 rounded-lg" />
+              <Bone className="h-3 w-24 rounded-[4px]" />
+              <Bone className="h-3 w-14 rounded-[4px]" />
+              <Bone className="h-3 w-16 rounded-[4px]" />
+              <span />
             </div>
-          </SkeletonPanel>
-          {/* Scheduled jobs: every job shown, no inner scroll. */}
-          <SkeletonPanel>
-            <SkeletonPanelHeader w="w-32" aside="w-24" />
-            <div className="flex flex-col">
-              {range(7).map((i) => (
-                <div key={i} className="flex min-h-14 items-center gap-3 border-b border-row px-4 py-2 last:border-b-0">
-                  <div className="min-w-0 flex-1">
-                    <TextBone className="text-body font-semibold" w="w-40" />
-                    <TextBone className="text-body" w="w-56 max-w-full" />
-                    <TextBone className="text-body" w="w-32" />
-                  </div>
-                  <Bone className="h-3 w-20 rounded-[4px]" />
-                  <Bone className="h-7 w-[74px] rounded-full" />
-                </div>
-              ))}
-            </div>
-          </SkeletonPanel>
+          ))}
         </div>
-      </div>
-    </SkeletonPage>
+      </SkeletonPage>
+    </>
   );
 }
 
-/** The PT sheet read test (admin/pt-sheet-view.tsx): the head, the sheet's details, the first tab's table. */
+/** The PT sheet read test (admin/pt-sheet-view.tsx): the head, the hero, the sheet's details, the first tab's table. */
 export function PtSheetSkeleton() {
   return (
-    <SkeletonPage className="flex min-h-0 flex-1 flex-col gap-5">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <div className="min-w-0 flex-1">
-          <TextBone className="text-title font-semibold" w="w-52" />
-          <TextBone className="mt-0.5 text-body" w="w-96 max-w-full" />
+    <>
+      <SkeletonPageHead tabs={3} />
+      <SkeletonPage className="flex min-h-0 flex-1 flex-col">
+        <TextBone className="text-body" w="w-72" />
+        <TextBone className="hero-figure" w="w-64" />
+        <TextBone className="text-emph" w="w-2/3" />
+        <div className="mt-6 flex flex-col gap-6">
+          <SkeletonPanel variant="plain" className="shrink-0">
+            <SkeletonPanelHeader w="w-14" aside="w-36" />
+            <SkeletonRows count={4} row="flex h-[40.25px] gap-6 border-t px-0" cells={["w-20", "w-64"]} divided />
+          </SkeletonPanel>
+          <SkeletonPanel variant="plain" className="shrink-0">
+            <SkeletonPanelHeader w="w-28" aside="w-28" />
+            <TextBone className="border-t border-row py-2 text-body" w="w-96 max-w-full" />
+            {/* The table scrolls inside 480px; a full tab fills it. */}
+            <div className="h-[480px] overflow-hidden">
+              <div className="flex h-[30px] items-center border-b bg-band px-3">
+                <Bone className="h-2.5 w-40 rounded-[4px]" />
+              </div>
+              <SkeletonRows count={15} row="flex h-[33px] gap-6" cells={["w-6", "w-24", "w-16", "w-20", "w-16"]} />
+            </div>
+          </SkeletonPanel>
         </div>
-        <SkeletonPill className="h-[34px] w-32" />
-        <SkeletonPill className="h-[34px] w-28" />
-      </div>
-      <SkeletonPanel className="shrink-0">
-        <SkeletonPanelHeader w="w-14" aside="w-36" />
-        <SkeletonRows count={4} row="flex h-[40.25px] gap-6" cells={["w-20", "w-64"]} />
-      </SkeletonPanel>
-      <SkeletonPanel className="shrink-0">
-        <SkeletonPanelHeader w="w-28" aside="w-28" />
-        <TextBone className="border-b border-row px-4 py-2 text-body" w="w-96 max-w-full" />
-        {/* The table scrolls inside 480px; a full tab fills it. */}
-        <div className="h-[480px] overflow-hidden">
-          <div className="flex h-[30px] items-center border-b bg-band px-3">
-            <Bone className="h-2.5 w-40 rounded-[4px]" />
-          </div>
-          <SkeletonRows count={15} row="flex h-[33px] gap-6" cells={["w-6", "w-24", "w-16", "w-20", "w-16"]} />
-        </div>
-        <div className="flex h-9 items-center border-t bg-band-2 px-4">
-          <Bone className="h-3 w-56 rounded-[4px]" />
-        </div>
-      </SkeletonPanel>
-    </SkeletonPage>
+      </SkeletonPage>
+    </>
   );
 }

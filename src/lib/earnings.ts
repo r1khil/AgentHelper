@@ -1,9 +1,10 @@
 import "server-only";
 import { and, asc, desc, eq, gte, inArray, isNotNull, lte, or } from "drizzle-orm";
 import { db } from "@/db/client";
-import { earnings, evidenceItems, holdings, sectorBellwethers, securities, teams } from "@/db/schema";
+import { earnings, evidenceItems, holdings, profiles, sectorBellwethers, securities, teams } from "@/db/schema";
 import type { GicsSector } from "@/lib/attribution/sectors";
 import type { HoldingEventRow } from "@/lib/earnings-calendar";
+import { teamRecipients } from "@/lib/jobs/recipients";
 import { inTeams, type TeamIds } from "@/lib/team-filter";
 
 export async function listTeamEarnings(teamId: TeamIds) {
@@ -50,6 +51,15 @@ export async function getEarnings(id: string) {
 
 export async function listEarningsEvidence(earningsId: string) {
   return db.select().from(evidenceItems).where(eq(evidenceItems.earningsId, earningsId)).orderBy(desc(evidenceItems.publishedAt));
+}
+
+/** Who a newly built prep pack is emailed to: the team's leads (its members when it has none), by name. */
+export async function prepPackRecipients(teamId: string): Promise<{ name: string; email: string }[]> {
+  const to = await teamRecipients(teamId);
+  if (!to.length) return [];
+  const rows = await db.select({ id: profiles.id, fullName: profiles.fullName }).from(profiles).where(inArray(profiles.id, to.map((r) => r.id)));
+  const names = new Map(rows.map((r) => [r.id, r.fullName.trim()]));
+  return to.map((r) => ({ name: names.get(r.id) || r.email, email: r.email }));
 }
 
 export type ActualsRow = { metric: string; actual: string | null; priorYear: string | null; priorGuidance: string | null; estimate: string | null; sourceId: string | null; note?: string };
