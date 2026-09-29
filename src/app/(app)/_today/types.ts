@@ -61,4 +61,5 @@ export type TeamRowData = {
   mover: { ticker: string; pct: number } | null;
 };
 
-export type AgendaItem = { date: string; text: string };
+/** A "This week" line; `when` is the time of day for an economic release, `sort` orders lines within a day. */
+export type AgendaItem = { date: string; text: string; when?: string; sort: string };

@@ -20,7 +20,8 @@ import { greetingWord, marketLine, monthDay, nextReportByTicker, nextSunday, plu
 import { EmptyState } from "@/components/app/empty-state";
 import { AskComposer, PromptChips, type AskScope } from "@/components/app/agent/ask-composer";
 import { NoPageHead } from "@/components/app/page-head";
-import { ComingUp } from "./coming-up";
+import { loadReleases } from "@/lib/portfolio/week";
+import { ComingUp, ComingUpWithReleases } from "./coming-up";
 import { HomeGreeting, HomeTopLine } from "./greeting";
 import { NeedsYou, TodayFeed } from "./hoot-list";
 import { EveningBrief, LastSessionCard, LastSessionSkeleton } from "./last-session";
@@ -119,6 +120,8 @@ export async function TodayView({ user, myTeams }: { user: CurrentUser; myTeams:
     .sort((a, b) => b.at - a.at)
     .slice(0, 3);
   const week = weekAgenda(upcoming, today, fundWide);
+  // The economic calendar is a slower outside feed: the earnings show at once and the releases stream in beside them.
+  const releases = loadReleases(today, plusDays(today, WEEK_DAYS));
 
   return (
     <TodayFeed initial={feed.nudges} loadedAt={now.toISOString()}>
@@ -167,7 +170,9 @@ export async function TodayView({ user, myTeams }: { user: CurrentUser; myTeams:
         <Suspense fallback={<MoversSkeleton />}>
           <MoversColumn live={live} market={market} holdingLink={holdingLink} portfolioHref={fundWide ? `/t/${FUND_SCOPE_SLUG}` : `/t/${scopeSlug}`} />
         </Suspense>
-        <ComingUp {...week} today={today} calendarHref={`/t/${scopeSlug}/earnings`} />
+        <Suspense fallback={<ComingUp {...week} today={today} calendarHref={`/t/${scopeSlug}/earnings`} />}>
+          <ComingUpWithReleases {...week} releases={releases} today={today} calendarHref={`/t/${scopeSlug}/earnings`} />
+        </Suspense>
       </div>
 
       {book && (
@@ -325,7 +330,10 @@ function teamRows({ teams: teamList, rows, upcoming, scope }: TeamInput, market?
 
 /* ----------------------------------------------------------------------------------------------- This week */
 
-/** The next seven days of earnings (and the Sunday weekly pack for execs and admins); the reports beyond them are counted. */
+/**
+ * The next seven days of earnings (and the Sunday weekly pack for execs and admins); the reports beyond them are counted.
+ * Within a day the reports come first, then the economic releases by time, then the pack.
+ */
 function weekAgenda(upcoming: UpcomingReport[], today: string, weekly: boolean) {
   const { shown } = reportDays(upcoming, Number.MAX_SAFE_INTEGER);
   const end = plusDays(today, WEEK_DAYS);
@@ -334,12 +342,12 @@ function weekAgenda(upcoming: UpcomingReport[], today: string, weekly: boolean) 
   const items: AgendaItem[] = inWeek.map((d) => {
     const line = reportsLine(d.reports);
     // "JPM before the open" reads as earnings; a bare ticker list does not.
-    return { date: d.date, text: d.reports.some((r) => r.reportHour === "amc" || r.reportHour === "bmo") ? line : `Earnings: ${line}` };
+    return { date: d.date, text: d.reports.some((r) => r.reportHour === "amc" || r.reportHour === "bmo") ? line : `Earnings: ${line}`, sort: `${d.date}|0` };
   });
   // The Sunday run builds the weekly pack and emails it out.
   const sunday = nextSunday(today);
-  if (weekly && sunday <= end) items.push({ date: sunday, text: "Weekly update pack goes out" });
-  items.sort((a, b) => a.date.localeCompare(b.date));
+  if (weekly && sunday <= end) items.push({ date: sunday, text: "Weekly update pack goes out", sort: `${sunday}|~` });
+  items.sort((a, b) => a.sort.localeCompare(b.sort));
   const moreCount = later.flatMap((d) => d.reports).length;
   return { items, moreCount, lastDate: later.length ? later[later.length - 1].date : null };
 }
