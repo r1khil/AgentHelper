@@ -69,9 +69,10 @@ export function ThreadTurn(props: ThreadTurnProps) {
   const numbers = useMemo(() => new Map(sources.map((r) => [r.source.id, r.n])), [sources]);
   const proposals = useMemo(() => proposalsOf((turn.assistant?.parts ?? []) as Part[]), [turn.assistant]);
   const summary = summarizeActivity(turn.activity);
-  const elapsed = props.elapsedMs ?? savedTurnMs(turn);
+  // The saved time is the whole run on the server; this page's own clock only stands in until the answer is saved.
+  const elapsed = savedTurnMs(turn) ?? props.elapsedMs ?? null;
   const idBase = `turn-${turn.id}`;
-  const meta = (turn.assistant?.metadata ?? {}) as { uncited?: number };
+  const meta = (turn.assistant?.metadata ?? {}) as { uncited?: number; stopped?: boolean };
   const pages = live ? [] : turnPageLinks(turn.activity, teamSlug);
   // Catching up on a run this page isn't attached to: the status row under the tabs says so instead.
   const answered = live || (!!turn.assistant && (!!turn.answerText || !catchingUp));
@@ -105,9 +106,14 @@ export function ThreadTurn(props: ThreadTurnProps) {
               {answered && <AnsweredLine live={live} label={live ? capitalize(activityLabel(turn.activity, true, trace, elapsed)) : null} at={answeredAt(turn, props.times, seenAt, elapsed)} />}
               {status && <div className={cn("flex flex-col gap-3", answered && "mt-3")}>{status}</div>}
               {turn.answerText ? (
-                <ResearchAnswer text={turn.answerText} className={cn("mt-2.5 leading-7 [&_p+p]:mt-3.5", CITE_CHIPS)} />
+                <>
+                  <ResearchAnswer text={turn.answerText} className={cn("mt-2.5 leading-7 [&_p+p]:mt-3.5", CITE_CHIPS)} />
+                  {meta.stopped && <p className="mt-2 text-caption text-muted-foreground">You stopped Hoot here, so this answer may be incomplete.</p>}
+                </>
               ) : turn.assistant && !live && !catchingUp ? (
-                <div className="mt-2.5 text-body font-medium text-caution-foreground">Hoot stopped before writing an answer. Ask again to get a written answer.</div>
+                <div className="mt-2.5 text-body font-medium text-caution-foreground">
+                  {meta.stopped ? "You stopped Hoot before he wrote an answer." : "Hoot stopped before writing an answer. Ask again to get a written answer."}
+                </div>
               ) : null}
               {proposals.map((p) => (
                 <ProposalCard key={p.toolCallId} chatId={chatId} toolCallId={p.toolCallId} proposal={p.proposal} outcome={p.outcome} />

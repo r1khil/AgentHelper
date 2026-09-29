@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { startHootChat } from "@/lib/actions/chats";
@@ -24,11 +24,15 @@ export function useAskHoot() {
   const router = useRouter();
   const pathname = usePathname();
   const [asking, setAsking] = useState(false);
+  // Guards a second press before `asking` re-renders, which would open a second chat with the same question.
+  const busy = useRef(false);
   const runCommand = useHootCommand();
   const ask = useCallback(
     async (question: string, target: { teamSlug: string | null; ticker: string | null }, opts: { withPage?: boolean } = {}) => {
       // A plain "go to …" or "dark mode" is done at once, without a chat; anything else Hoot handles, tools included.
       if (runCommand(question)) return true;
+      if (busy.current) return false;
+      busy.current = true;
       setAsking(true);
       try {
         // Read at the moment of asking, so it reflects the period or scenario on screen right now. Left out when the
@@ -55,6 +59,7 @@ export function useAskHoot() {
         toast.error("Couldn't open a chat just now. Try again in a moment.");
         return false;
       } finally {
+        busy.current = false;
         setAsking(false);
       }
     },

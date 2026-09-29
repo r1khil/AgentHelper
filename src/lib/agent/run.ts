@@ -1,6 +1,6 @@
 import "server-only";
 import { convertToModelMessages, createIdGenerator, createUIMessageStream, readUIMessageStream, streamText, toUIMessageStream, type LanguageModelUsage, type UIMessage, type UIMessageChunk } from "ai";
-import { saveMessages, setRunStatus } from "@/lib/chats";
+import { saveMessages, setRunStatus, stopRequested } from "@/lib/chats";
 import { buildAgentDefinition, FINAL_STEP, MAX_STEPS } from "@/lib/agent/definition";
 import { collectSources, fixMessageCitationTypos, needsCitationRepair, uncitedFactCount } from "@/lib/agent/citations";
 import { applyAnswerText, repairCitations } from "@/lib/agent/repair";
@@ -32,6 +32,8 @@ export function memberTexts(messages: UIMessage[]): string[] {
 
 /** The write-up runs after the research, inside the route's 300 s limit. */
 const WRITE_UP_BUDGET_MS = 60_000;
+/** How often a run checks whether the member pressed Stop. */
+const STOP_POLL_MS = 2_000;
 
 /** A call's usage, or undefined when it failed or never ran. */
 const settledUsage = (p: PromiseLike<LanguageModelUsage> | undefined) => (p ? Promise.resolve(p).catch(() => undefined) : undefined);
@@ -81,6 +83,16 @@ export async function runAgentTurn(opts: {
     routing: routingFromMessages(messages),
   });
   const t0 = Date.now();
+  // Stop: the member's Stop sets the chat to "stopping"; this notices and cancels the model call and any lookup in flight.
+  const stop = new AbortController();
+  const watch = setInterval(() => {
+    stopRequested(chat.id)
+      .then((yes) => {
+        if (yes) stop.abort();
+      })
+      .catch(() => {});
+  }, STOP_POLL_MS);
+  stop.signal.addEventListener("abort", () => clearInterval(watch));
   sink?.emit({ t: "run.start", chatId: chat.id, modelId: def.modelId, maxSteps: MAX_STEPS });
 
   const result = streamText({
@@ -94,6 +106,7 @@ export async function runAgentTurn(opts: {
     maxRetries: def.maxRetries,
     maxOutputTokens: def.maxOutputTokens,
     repairToolCall: def.repairToolCall,
+    abortSignal: stop.signal,
     onError: ({ error }) => console.error("[agent]", error),
     ...(sink
       ? {
@@ -129,6 +142,8 @@ export async function runAgentTurn(opts: {
   let finishing: Promise<TurnFinish> | undefined;
   const finishTurn = () => (finishing ??= planTurnFinish());
   async function planTurnFinish(): Promise<TurnFinish> {
+    // A stopped turn keeps what it had: no write-up, no fallback notice.
+    if (stop.signal.aborted) return { plan: null };
     const steps = await result.steps;
     const plan = planFinish(steps);
     let ending: Promise<void> | undefined;
@@ -179,7 +194,10 @@ export async function runAgentTurn(opts: {
           await saveMessages(chat.id, [...messages, snapshot]).catch((e) => console.error("[agent] partial save failed", e));
         }
       }
+      clearInterval(watch);
+      const stopped = stop.signal.aborted;
       if (streamError) throw streamError;
+      if (!last && stopped) last = { id: assistantId, role: "assistant", parts: [] };
       if (!last) throw new Error("the model produced no message");
 
       // The stream already swapped a failed last step for the write-up; this catches leaked calls anywhere else,
@@ -187,8 +205,8 @@ export async function runAgentTurn(opts: {
       let response: UIMessage = { ...last, parts: withoutToolCallText(last.parts) };
       const finished = await finishTurn().catch(() => null);
       const answerText = splitAssistantParts(response.parts).answer.map((p) => p.text).join("\n\n").trim();
-      if (!answerText) response = applyAnswerText(response, UNANSWERED_TEXT);
-      const unanswered = !answerText || answerText === UNANSWERED_TEXT;
+      if (!answerText && !stopped) response = applyAnswerText(response, UNANSWERED_TEXT);
+      const unanswered = !stopped && (!answerText || answerText === UNANSWERED_TEXT);
       // Map near-miss ids ("web-1jo7h8" for "web-1jo7h58") to what was retrieved, so they don't render as [?].
       response = fixMessageCitationTypos(response, new Set(collectSources([...messages, response]).keys()));
       const turnSources = [...collectSources([response]).values()];
@@ -198,7 +216,7 @@ export async function runAgentTurn(opts: {
       });
       let repaired = false;
       let repairUsage: AgentMetadata["repairUsage"];
-      if (!unanswered && needsCitationRepair(response, turnSources.length)) {
+      if (!unanswered && !stopped && needsCitationRepair(response, turnSources.length)) {
         const fixed = await repairCitations({ model: def.model, message: response, sources: turnSources, onUsage: (u) => (repairUsage = traceUsage(u)) }).catch((e) => {
           console.error("[agent] citation repair failed", e);
           return null;
@@ -217,17 +235,19 @@ export async function runAgentTurn(opts: {
       if (writeUpUsage) metadata.writeUpUsage = traceUsage(writeUpUsage);
       if (def.activeToolCounts.length) metadata.activeTools = [...def.activeToolCounts];
       if (unanswered) metadata.unanswered = true;
+      if (stopped) metadata.stopped = true;
       metadata.ms = Date.now() - t0;
       response = { ...response, metadata };
       const all = [...messages, response];
       await saveMessages(chat.id, all);
       await setRunStatus(chat.id, "idle");
       try {
-        await opts.onComplete?.({ messages: all, response });
+        if (!stopped) await opts.onComplete?.({ messages: all, response });
       } catch (e) {
         console.error("[agent] onComplete failed", e);
       }
     } catch (e) {
+      clearInterval(watch);
       console.error("[agent] stream failed", e);
       await setRunStatus(chat.id, "error").catch(() => {});
     }

@@ -5,6 +5,7 @@ import { db } from "@/db/client";
 import { chatMessages, chats, holdings, profiles, teams } from "@/db/schema";
 import { inTeams, type TeamIds } from "@/lib/team-filter";
 import { LEGACY_CALL_PROMPT } from "@/lib/agent/hidden-prompt";
+import { clipTitle } from "@/lib/thread-title";
 import { saveChatMessages } from "@/lib/hoot/proposal-store";
 
 /** Who is listing chats: members who aren't execs or admins never see fund-only chats (those that read the PT sheet). */
@@ -54,7 +55,8 @@ export type RunStatus = "idle" | "running" | "error";
 export const RUN_STALE_MS = 300_000;
 
 export function effectiveRunStatus(chat: { runStatus: string; runStartedAt: Date | null }, now = Date.now()): RunStatus {
-  if (chat.runStatus === "running") {
+  // "stopping": the member pressed Stop and the run is winding down; it still holds the chat until it saves.
+  if (chat.runStatus === "running" || chat.runStatus === "stopping") {
     const started = chat.runStartedAt?.getTime() ?? 0;
     return now - started < RUN_STALE_MS ? "running" : "error";
   }
@@ -68,8 +70,24 @@ export async function setRunStatus(chatId: string, status: RunStatus) {
     .where(eq(chats.id, chatId));
 }
 
+/** Stop: ask the chat's run to end. The run notices within a couple of seconds, saves what it has and goes idle. */
+export async function requestStop(chatId: string): Promise<boolean> {
+  const rows = await db
+    .update(chats)
+    .set({ runStatus: "stopping" })
+    .where(and(eq(chats.id, chatId), eq(chats.runStatus, "running")))
+    .returning({ id: chats.id });
+  return rows.length > 0;
+}
+
+/** Whether the member pressed Stop on this chat's run. */
+export async function stopRequested(chatId: string): Promise<boolean> {
+  const [row] = await db.select({ runStatus: chats.runStatus }).from(chats).where(eq(chats.id, chatId)).limit(1);
+  return row?.runStatus === "stopping";
+}
+
 export async function maybeTitleChat(chatId: string, firstUserText: string) {
-  const title = firstUserText.replace(/\s+/g, " ").trim().slice(0, 80);
+  const title = clipTitle(firstUserText);
   if (!title) return;
   await db.update(chats).set({ title }).where(sql`${chats.id} = ${chatId} and ${chats.title} = 'New chat'`);
 }

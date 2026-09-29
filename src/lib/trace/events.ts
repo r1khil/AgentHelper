@@ -59,6 +59,8 @@ export type AgentMetadata = {
   writeUpUsage?: TraceUsage;
   /** The saved answer is the notice that none could be written. */
   unanswered?: boolean;
+  /** The member pressed Stop: the answer is whatever was written before then, maybe nothing. */
+  stopped?: boolean;
   /** How long the turn took, question to saved answer, for "Worked for 12s". */
   ms?: number;
   /** How many tools each research step offered the model (tool routing), in step order. */

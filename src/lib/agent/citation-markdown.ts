@@ -1,6 +1,7 @@
 import { CITATION_RE } from "./citations";
 
 type Node = { type: string; value?: string; url?: string; children?: Node[]; data?: { hName: string; hProperties: Record<string, string> } };
+const EMPTY_CITATION = /\s*\[src:\s*\]/g;
 const citation = (id: string): Node => ({ type: "link", url: "", children: [{ type: "text", value: "" }], data: { hName: "cite", hProperties: { "data-source-id": id } } });
 
 /** Parse citations as structured nodes, BEFORE URL sanitization. No custom URL scheme is needed. */
@@ -17,7 +18,9 @@ export function remarkCitations() {
           visit(node);
           return [node];
         }
-        const text = node.value ?? "";
+        // An empty marker ("[src: ]", written when a lookup returned no id) has nothing to open: drop it.
+        const text = (node.value ?? "").replace(EMPTY_CITATION, "");
+        if (text !== node.value) node = { ...node, value: text };
         const parts: Node[] = [];
         let start = 0;
         for (const match of text.matchAll(new RegExp(CITATION_RE))) {

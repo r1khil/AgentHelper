@@ -98,12 +98,14 @@ export function ConversationTurns({
   times?: Record<string, string>;
   gap?: string;
 }) {
-  const { turns, perTurn, allSources, status, streaming, catchingUp, runError, requestError, traceView, now, durations, send, flag } = conv;
+  const { turns, perTurn, allSources, status, streaming, catchingUp, stopping, runError, requestError, traceView, now, durations, send, flag } = conv;
   const last = turns[turns.length - 1];
   const statusRows = (
     <>
       {status === "submitted" && !last?.assistant && <ThinkingRow>Reading the question…</ThinkingRow>}
-      {catchingUp && <ThinkingRow>Still working on the last question. The answer appears here when it is ready; you can leave and come back.</ThinkingRow>}
+      {catchingUp && (
+        <ThinkingRow>{stopping ? "Stopping. Hoot keeps what he has so far." : "Still working on the last question. The answer appears here when it is ready; you can leave and come back."}</ThinkingRow>
+      )}
       {runError && <ThreadNote tone="caution">{runError}</ThreadNote>}
       {requestError && <ThreadNote tone="error">{requestError}</ThreadNote>}
     </>
