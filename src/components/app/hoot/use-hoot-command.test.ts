@@ -35,16 +35,16 @@ describe("Hoot command execution", () => {
     expect(useHootCommand()("switch me to financials sector")).toBe(true);
     expect(mocks.push).toHaveBeenCalledWith("/t/financials/earnings");
   });
-  it("does not invent a route for an unavailable sector", () => {
+  it("hands a sector it can't see on screen to Hoot instead of inventing a route", () => {
     vi.stubGlobal("document", { querySelectorAll: () => [] });
-    expect(useHootCommand()("bring me to technology sector")).toBe(true);
-    expect(mocks.error).toHaveBeenCalled();
+    expect(useHootCommand()("bring me to technology sector")).toBe(false);
+    expect(mocks.error).not.toHaveBeenCalled();
     expect(mocks.push).not.toHaveBeenCalled();
   });
-  it("reports an unavailable page without starting research or navigating", () => {
+  it("hands a page it can't see on screen to Hoot, which says why it isn't available", () => {
     vi.stubGlobal("document", { querySelectorAll: () => [] });
-    expect(useHootCommand()("open admin")).toBe(true);
-    expect(mocks.error).toHaveBeenCalled();
+    expect(useHootCommand()("open admin")).toBe(false);
+    expect(mocks.error).not.toHaveBeenCalled();
     expect(mocks.push).not.toHaveBeenCalled();
   });
   it("returns research questions to the caller with no UI effects", () => {

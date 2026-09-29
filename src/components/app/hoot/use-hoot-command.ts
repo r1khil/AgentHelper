@@ -31,7 +31,11 @@ export function useApplyHootAction() {
   );
 }
 
-/** Run only on a fresh submission, never by replaying saved chat messages. */
+/**
+ * The instant path for a plain "go to …" or "dark mode": done at once when the page or sector is on screen. Returns
+ * false otherwise, so the request goes to Hoot, whose navigate tool resolves nicknames and typos and says why a page
+ * isn't available. Run only on a fresh submission, never by replaying saved chat messages.
+ */
 export function useHootCommand() {
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
@@ -47,24 +51,19 @@ export function useHootCommand() {
         label: item.dataset.hootScope ?? "", href: item.dataset.hootHref ?? "",
       }));
       const href = scopeHref(command.scope, links);
-      if (href) {
-        markScopeIntent();
-        router.push(href);
-        toast.success(`Hoot: Viewing ${links.find((link) => link.href === href)?.label ?? command.scope}.`);
-      } else {
-        toast.error(`Hoot: ${command.scope} isn't an available sector for your account.`);
-      }
+      // No exact match on screen: let Hoot resolve it (nicknames, typos) or say why it isn't available.
+      if (!href) return false;
+      markScopeIntent();
+      router.push(href);
+      toast.success(`Hoot: Viewing ${links.find((link) => link.href === href)?.label ?? command.scope}.`);
     } else {
       const links = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[data-hoot-destination]"), (link) => ({
         label: link.dataset.hootDestination ?? "", href: link.getAttribute("href") ?? "",
       }));
       const href = commandHref(command.destination, links);
-      if (href) {
-        router.push(href);
-        toast.success(`Hoot: Opening ${command.destination}.`);
-      } else {
-        toast.error(`Hoot: ${command.destination} isn't available in your current scope. Choose an available page in the sidebar.`);
-      }
+      if (!href) return false;
+      router.push(href);
+      toast.success(`Hoot: Opening ${command.destination}.`);
     }
     return true;
   }, [resolvedTheme, setTheme, router]);
