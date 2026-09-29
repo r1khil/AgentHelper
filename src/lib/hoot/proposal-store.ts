@@ -4,6 +4,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { chatMessages, chats } from "@/db/schema";
 import type { Db } from "@/lib/prices";
+import { auditProposal } from "./proposal-audit";
 import { canDecide, carryOutcomes, outcomesOf, proposalsOf, withOutcome, type HootProposal, type ProposalOutcome } from "./proposals";
 
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
@@ -57,6 +58,7 @@ export async function claimProposal(db: Db, input: { chatId: string; toolCallId:
         ? { status: "cancelled", message: "Cancelled. Nothing was changed.", at: now.toISOString(), by: input.userId }
         : { status: "pending", message: "Making the change…", at: now.toISOString(), by: input.userId };
     await tx.update(chatMessages).set({ parts: withOutcome(found.row.parts as never[], input.toolCallId, outcome)! }).where(eq(chatMessages.id, found.row.id));
+    await auditProposal(tx, { chatId: input.chatId, toolCallId: input.toolCallId, proposal: found.proposal, outcome });
     return { ok: true, proposal: found.proposal, outcome };
   });
 }
@@ -94,5 +96,6 @@ export async function settleProposal(db: Db, input: { chatId: string; toolCallId
     const found = await findProposal(tx, input.chatId, input.toolCallId);
     if (!found) return;
     await tx.update(chatMessages).set({ parts: withOutcome(found.row.parts as never[], input.toolCallId, input.outcome)! }).where(eq(chatMessages.id, found.row.id));
+    await auditProposal(tx, { chatId: input.chatId, toolCallId: input.toolCallId, proposal: found.proposal, outcome: input.outcome });
   });
 }
