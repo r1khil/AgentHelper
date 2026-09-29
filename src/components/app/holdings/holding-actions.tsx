@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-/** Title-row actions: Upload to Drive · Ask Hoot about T (primary) · ⋯ for the rest. */
+/** The page header's secondary actions: Upload to Drive · Ask Hoot about T · ⋯ for the rest. The page adds its one primary (Record trade) after them. */
 export function HoldingActions({
   ticker,
   holdingId,
@@ -32,7 +32,7 @@ export function HoldingActions({
     <>
       {canUpload && (
         <Dialog>
-          <DialogTrigger render={<Button variant="outline" size="lg" />}>
+          <DialogTrigger render={<Button variant="secondary" />}>
             <Upload className="size-3.5" />
             Upload to Drive
           </DialogTrigger>
@@ -45,12 +45,12 @@ export function HoldingActions({
           </DialogContent>
         </Dialog>
       )}
-      <Button size="lg" nativeButton={false} render={<Link href={boardHref} />}>
+      <Button variant="secondary" nativeButton={false} render={<Link href={boardHref} />}>
         <MessageSquareText className="size-3.5" />
         Ask Hoot about {ticker}
       </Button>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="outline" size="icon-lg" aria-label="More actions" />}>
+        <DropdownMenuTrigger render={<Button variant="secondary" size="icon" aria-label="More actions" />}>
           <Ellipsis className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
@@ -80,7 +80,7 @@ export function HoldingActions({
             </DialogHeader>
             <form action={exitHolding} className="flex justify-end gap-2">
               <input type="hidden" name="holdingId" value={holdingId} />
-              <Button type="button" variant="outline" onClick={() => setExitOpen(false)}>
+              <Button type="button" variant="secondary" onClick={() => setExitOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit">Mark exited</Button>

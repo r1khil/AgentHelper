@@ -20,7 +20,7 @@ function initials(name: string | null) {
 
 function NoteRow({ n }: { n: NoteItem }) {
   return (
-    <li className="group flex gap-3 px-4 py-2.5">
+    <li className="group flex gap-3 border-b border-row py-2.5">
       <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-muted text-caption font-semibold">{initials(n.authorName)}</span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-body text-muted-foreground">
@@ -46,15 +46,15 @@ function NoteRow({ n }: { n: NoteItem }) {
 /** Overview's "Team notes": a one-line composer in the header and the notes, newest first. A plain section. */
 export function NotesPanel({ holdingId, notes, className }: { holdingId: string; notes: NoteItem[]; className?: string }) {
   return (
-    <section className={cn("panel-plain flex flex-col", className)}>
-      <div className="flex h-10 shrink-0 items-center gap-2 px-4">
-        <h2 className="text-emph font-semibold">Team notes</h2>
+    <section aria-labelledby="notes-h" className={cn("flex min-w-0 flex-col", className)}>
+      <div className="flex h-10 shrink-0 items-center gap-2">
+        <h2 id="notes-h" className="text-title font-bold tracking-[-0.01em]">Team notes</h2>
         {notes.length > 0 && <CountChip>{notes.length}</CountChip>}
         <span className="flex-1" />
         <QuickNote holdingId={holdingId} />
       </div>
       {notes.length === 0 ? (
-        <p className="px-4 py-1 text-body text-muted-foreground">No notes yet. Anything the team should know about this holding goes here.</p>
+        <p className="py-1 text-body text-muted-foreground">No notes yet. Anything the team should know about this holding goes here.</p>
       ) : (
         <ul>
           {notes.map((n) => (

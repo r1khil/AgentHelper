@@ -13,9 +13,9 @@ export function ThesisPanel({ holdingId, thesis, meta, flash, proposal }: { hold
   const [editing, setEditing] = useState(false);
   const text = thesis?.trim() ?? "";
   return (
-    <section className="panel-plain shrink-0 px-4 py-2">
+    <section id="thesis" aria-labelledby="thesis-h" className="min-w-0 shrink-0 scroll-mt-6">
       <div className="flex items-baseline gap-2">
-        <h2 className="text-emph font-semibold">Thesis</h2>
+        <h2 id="thesis-h" className="text-title font-bold tracking-[-0.01em]">Thesis</h2>
         {meta && <span className="text-body whitespace-nowrap text-muted-foreground">{meta}</span>}
         <span className="flex-1" />
         {!editing && (
@@ -46,7 +46,7 @@ export function ThesisPanel({ holdingId, thesis, meta, flash, proposal }: { hold
           </div>
         </form>
       ) : text ? (
-        <p className="mt-2 text-emph leading-[1.55] text-pretty whitespace-pre-wrap">{text}</p>
+        <p className="mt-2 text-emph text-pretty whitespace-pre-wrap">{text}</p>
       ) : (
         <p className="mt-2 text-body text-muted-foreground">No thesis written yet. Write why the team owns it; Hoot checks movement updates and earnings reflections against it.</p>
       )}
