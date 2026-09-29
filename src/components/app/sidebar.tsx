@@ -152,7 +152,7 @@ function SidebarBody({ user, teams, signOut, dock }: Props & { dock?: React.Reac
   const portfolio: NavLink[] = seesBook
     ? [
         { href: `${base}/performance`, label: "Performance", icon: ChartColumn },
-        { href: `${base}/performance?period=today`, label: "Today", icon: Gauge },
+        { href: `${base}/performance?period=today`, label: "Today's performance", icon: Gauge },
         { href: `${base}/risk`, label: "Risk", icon: ShieldAlert },
         { href: `${base}/exposure`, label: "Exposure", icon: ChartPie },
       ]
