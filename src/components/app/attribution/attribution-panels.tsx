@@ -1,23 +1,17 @@
-import Link from "next/link";
-import { BookOpenText } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Panel, PanelHeader, Segmented } from "@/components/app/panel";
-import type { HoldingRow, TeamRow } from "@/lib/attribution/attribution";
-import type { PeriodKey } from "@/lib/attribution/periods";
+import { CenterBar, HowNote, SectionHead, signTone, toneClass } from "@/components/app/portfolio/parts";
+import { Segmented } from "@/components/app/panel";
+import { RowLink } from "@/components/app/row-link";
+import type { AttributionResult, HoldingRow, TeamRow } from "@/lib/attribution/attribution";
+import { bucketLabel } from "@/lib/attribution/sectors";
+import { fmtAccounting, fmtChangeBp, fmtChangePct, fmtDay, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { PeriodSelector, type ViewPeriodKey } from "./period-selector";
 import { ContributorsTable, type TeamLookup } from "./contributors-table";
-import { CompactCumulativeChart, CumulativeDetails, type CumulativeChartPoint } from "./cumulative-active-chart";
-import { DataNoticesButton, type QualityNotice } from "./data-quality-notice";
 import { EXPLAIN } from "./explainers";
-import { fmtAccounting, fmtBp, fmtDay, fmtPct } from "@/lib/format";
 import { bps, pct } from "./format";
 import { HoldingsColumn } from "./holdings-columns";
 import { Tip } from "./info-tip";
-import { INTERACTION_CLASS } from "./interaction-toggle";
-import { PeriodSelector } from "./period-selector";
 import { SectorEffectsList, type SectorEffectPoint } from "./sector-effects-list";
-import { ReadAs } from "@/components/app/read-as";
-import { RowLink } from "@/components/app/row-link";
 
 export function rangeText(start: string, end: string, days: number) {
   return `${fmtDay(start)} close through ${fmtDay(end)} · ${days} trading ${days === 1 ? "day" : "days"}`;
@@ -25,177 +19,123 @@ export function rangeText(start: string, end: string, days: number) {
 
 export const LEDGER_HREF = "/attribution/ledger";
 
-export function LedgerButton() {
+/** The period buttons with, on the right, whatever the caller puts there (the chart's key, the Details button). */
+export function PeriodBar({ basePath, active, from, to, inception, latest, children }: { basePath: string; active: ViewPeriodKey; from?: string; to?: string; inception: string; latest: string; children?: React.ReactNode }) {
   return (
-    <Button nativeButton={false} variant="outline" render={<Link href={LEDGER_HREF} />}>
-      <BookOpenText />
-      Ledger
-    </Button>
-  );
-}
-
-/** Period control, range text, and on the right the data notices and (fund only) the ledger. */
-export function AttributionToolbar({
-  basePath,
-  period,
-  from,
-  to,
-  inception,
-  latest,
-  days,
-  notices,
-  ledger,
-}: {
-  basePath: string;
-  period: { key: PeriodKey; start: string; end: string };
-  from?: string;
-  to?: string;
-  inception: string;
-  latest: string;
-  days: number;
-  notices: QualityNotice[];
-  ledger?: boolean;
-}) {
-  return (
-    <div className="flex shrink-0 flex-wrap items-center gap-x-2.5 gap-y-2">
-      <PeriodSelector basePath={basePath} active={period.key} from={from} to={to} inception={inception} latest={latest} />
-      <span className="text-body whitespace-nowrap text-muted-foreground">{rangeText(period.start, period.end, days)}</span>
+    <div className="mt-3.5 flex items-center gap-1 border-b pb-3.5">
+      <PeriodSelector basePath={basePath} active={active} from={from} to={to} inception={inception} latest={latest} />
       <span className="flex-1" />
-      <DataNoticesButton notices={notices} />
-      {ledger && <LedgerButton />}
-    </div>
-  );
-}
-
-/** Title row used by the two top panels (padded, no divider, as in the design). */
-function PanelTitle({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
-  return (
-    <div className="flex min-h-7 shrink-0 items-center gap-3.5">
       {children}
-      <span className="flex-1" />
-      {aside && <div className="flex items-center gap-2.5 text-body whitespace-nowrap text-muted-foreground">{aside}</div>}
     </div>
   );
 }
 
-function LegendDot({ color, children }: { color: string; children: React.ReactNode }) {
+
+/** One decimal of bp with a plus when up, no unit: for lists whose heading says "bp". */
+const bp1 = (v: number) => {
+  const t = fmtAccounting(bps(v), 1);
+  return bps(v) > 0 && /[1-9]/.test(t) ? `+${t}` : t;
+};
+
+export type Effect = { label: string; tip: string; value: number; note: React.ReactNode };
+
+/**
+ * "The gap, and where it came from": the effects that add up to the gap to the benchmark, as figures with a line each.
+ * Weights (allocation) and picks (selection with its overlap), then the total.
+ */
+export function effectCells(effects: Effect[]) {
+  return effects.map((e) => {
+    const shown = Math.round(bps(e.value));
+    return {
+      label: <Tip label={e.label} side="bottom">{e.tip}</Tip>,
+      value: `${bp1(e.value)} bp`,
+      tone: shown > 0 ? ("up" as const) : shown < 0 ? ("down" as const) : null,
+      note: e.note,
+    };
+  });
+}
+
+/**
+ * The three figures under the chart: sector weights (allocation), picks (selection with its overlap) and the total gap
+ * they add up to. Null while there is no sector benchmark to measure against.
+ */
+export function bridgeCells(r: AttributionResult, fund: boolean) {
+  if (!r.effects) return null;
+  const cashRow = r.sectors.find((s) => s.key === "cash");
+  const leader = [...r.sectors].filter((s) => s.key !== "cash").sort((a, b) => b.selection + b.interaction - (a.selection + a.interaction))[0];
+  const picks = r.effects.selection + r.effects.interaction;
+  const leaderPicks = leader ? leader.selection + leader.interaction : 0;
+  return effectCells([
+    {
+      label: "Sector weights (allocation)",
+      tip: fund ? EXPLAIN.allocation : `${EXPLAIN.teamAllocation} Mix across team sectors.`,
+      value: r.effects.allocation,
+      note: cashRow
+        ? fund
+          ? `${cashRow.allocation < 0 ? "Cash drag" : "Cash"} ${fmtChangeBp(bps(cashRow.allocation))}; sector bets ${fmtChangeBp(bps(r.effects.allocation - cashRow.allocation))}`
+          : `Cash ${fmtChangeBp(bps(cashRow.allocation))}`
+        : fund
+          ? "Sector bets against the benchmark"
+          : "Mix across the team's sectors",
+    },
+    {
+      label: "Picks within sectors (selection)",
+      tip: `${fund ? EXPLAIN.selection : EXPLAIN.teamSelection} Includes the overlap of weights and picks.`,
+      value: picks,
+      note: leader && leaderPicks > 0 ? `Led by ${bucketLabel(leader.key)}, ${fmtChangeBp(bps(leaderPicks))}` : `Includes ${fmtChangeBp(bps(r.effects.interaction))} of overlap`,
+    },
+    { label: "Total gap", tip: `${fund ? EXPLAIN.benchmark : EXPLAIN.teamBenchmark} Brinson-Fachler, daily, Carino-linked.`, value: r.activeReturn ?? 0, note: "The two add up to the number above" },
+  ]);
+}
+
+/** The legend under the chart: a swatch drawn like the line, and its name. */
+export function LegendItem({ children, swatch }: { children: React.ReactNode; swatch: React.ReactNode }) {
   return (
-    <span className="flex items-center gap-[5px] text-body text-ink-2">
-      <span className="size-2 rounded-full" style={{ background: color }} aria-hidden />
+    <span className="flex items-center gap-1.5">
+      {swatch}
       {children}
     </span>
   );
 }
 
-export function CumulativePanel({ data, portfolioLabel, benchmarkLabel, asOf, className }: { data: CumulativeChartPoint[]; portfolioLabel: string; benchmarkLabel: string; asOf: string; className?: string }) {
+// The team name keeps what the numbers leave and wraps rather than cutting off.
+const TEAM_COLS = "grid-cols-[minmax(0,1fr)_90px_56px]";
+
+/**
+ * "By team": each team's share of the return in bp, drawn either side of zero, the Fund's total under them. Each team
+ * links to its own Performance page, and its average weight and return sit under its name. Cash, fees and interest
+ * close the list. A table for screen readers: the team name is the row header and its link stretches over the row.
+ */
+export function TeamBars({ rows, teams, cashContribution, cashWeight, portfolioReturn, query }: { rows: TeamRow[]; teams: TeamLookup; cashContribution: number; cashWeight?: number; portfolioReturn: number; query: string }) {
+  const showCash = Math.abs(cashContribution) > 1e-9 || cashWeight !== undefined;
+  const max = Math.max(1e-9, ...rows.map((t) => Math.abs(t.contribution)), Math.abs(cashContribution));
+  const cell = (v: number) => cn("text-right font-semibold", toneClass(signTone(bps(v), 1)) ?? "text-muted-foreground");
   return (
-    <section className={cn("panel-plain flex min-w-0 flex-col px-4 pt-2 pb-3", className)} aria-label="Cumulative return">
-      <PanelTitle
-        aside={
+    <section aria-labelledby="perf-teams">
+      <SectionHead
+        id="perf-teams"
+        title="By team"
+        sub={
           <>
-            <span className="font-mono text-caption uppercase">Prices as of <span className="normal-case">{fmtDay(asOf)}</span> close</span>
-            {data.length >= 2 && <CumulativeDetails data={data} portfolioLabel={portfolioLabel} benchmarkLabel={benchmarkLabel} explain={EXPLAIN.cumulativeChart} />}
+            Contribution to the Fund&apos;s <span className="font-medium text-ink-3">{fmtChangePct(pct(portfolioReturn))}</span>, in bp. This is each team&apos;s share of the return, not its gap to the benchmark.
           </>
         }
-      >
-        <h2 className="text-emph font-semibold whitespace-nowrap"><Tip label="Cumulative return">{EXPLAIN.cumulativeChart}</Tip></h2>
-        <LegendDot color="var(--series-1)">{portfolioLabel}</LegendDot>
-        <LegendDot color="var(--series-neutral)">{benchmarkLabel}</LegendDot>
-      </PanelTitle>
-      <div className="mt-2.5 flex min-h-0 flex-1 flex-col">
-        <CompactCumulativeChart data={data} portfolioLabel={portfolioLabel} benchmarkLabel={benchmarkLabel} />
-      </div>
-    </section>
-  );
-}
-
-export type EffectBar = { label: string; value: number; explain: string; interaction?: boolean };
-
-/**
- * "Where it came from": each effect as a horizontal bar from a zero axis at 30% of the track, in bp, the total in
- * ink, then a one-line explanation. Bars share one scale so their lengths compare.
- */
-export function EffectsPanel({ items, total, aside, note, empty, className }: { items: EffectBar[]; total: EffectBar | null; aside: React.ReactNode; note?: React.ReactNode; empty?: React.ReactNode; className?: string }) {
-  const all = total ? [...items, total] : items;
-  const bps = all.map((e) => e.value * 10_000);
-  const maxPos = Math.max(0, ...bps);
-  const maxNeg = Math.max(0, ...bps.map((v) => -v));
-  // % of the track per bp: the biggest gain reaches ~57% of the track, the biggest loss at most the 27% left of zero.
-  const unit = Math.min(maxPos > 0 ? 57 / maxPos : Infinity, maxNeg > 0 ? 27 / maxNeg : Infinity);
-  const scale = Number.isFinite(unit) ? unit : 0;
-
-  return (
-    <section className={cn("panel-plain flex min-w-0 flex-col px-4 pt-2 pb-3.5", className)} aria-label="Where it came from">
-      <PanelTitle aside={aside}>
-        <h2 className="text-emph font-semibold whitespace-nowrap">Where it came from</h2>
-      </PanelTitle>
-      {total === null ? (
-        <div className="flex flex-1 items-center text-body text-muted-foreground">{empty}</div>
-      ) : (
-        <>
-          <div className="mt-3.5 mb-3 flex flex-1 flex-col gap-3.5">
-            {all.map((e, i) => {
-              const isTotal = total !== null && i === all.length - 1;
-              const v = e.value * 10_000;
-              const shown = Math.round(v);
-              const width = Math.max(Math.abs(v) * scale, shown === 0 ? 0 : 0.8);
-              return (
-                <div key={e.label} className={cn("grid grid-cols-[92px_minmax(0,1fr)_48px] items-center gap-2.5 text-body", e.interaction && INTERACTION_CLASS)}>
-                  <span className={cn("truncate", isTotal && "font-semibold")}><Tip label={e.label}>{e.explain}</Tip></span>
-                  <div className="relative h-[18px] rounded-[6px] bg-muted" aria-hidden>
-                    <span className="absolute -top-[3px] -bottom-[3px] left-[30%] w-px bg-muted-foreground/45" />
-                    <span
-                      className={cn("absolute top-[3px] bottom-[3px] rounded-[4px]", isTotal ? "bg-primary" : v < 0 ? "bg-down/75" : "bg-up/75")}
-                      style={{ left: v < 0 ? `${30 - width}%` : "30%", width: `${width}%` }}
-                    />
-                  </div>
-                  <span className={cn("text-right font-mono text-body", isTotal ? "font-semibold text-foreground" : shown > 0 ? "text-up" : shown < 0 ? "text-down" : "text-muted-foreground")}>
-                    {fmtAccounting(v, 0)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          {note && <p className="text-body leading-normal text-ink-2">{note}</p>}
-        </>
-      )}
-    </section>
-  );
-}
-
-// The team name keeps what the numbers leave and wraps (a 1,045 px window gives it ~100 px) rather than cutting off.
-const TEAM_COLS = "grid-cols-[minmax(0,1fr)_56px_70px_88px]";
-
-/**
- * Teams ranked by contribution to the Fund, each linking to that team's attribution; cash in the footer. A table for
- * screen readers: the team name is the row header and its link stretches over the row.
- */
-export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, className }: { rows: TeamRow[]; teams: TeamLookup; cashContribution: number; cashWeight?: number; query: string; className?: string }) {
-  const num = "text-right font-mono text-body";
-  const tone = (v: number, scale: number) => (Math.round(v * scale) > 0 ? "text-up" : Math.round(v * scale) < 0 ? "text-down" : "text-muted-foreground");
-  const showCash = Math.abs(cashContribution) > 1e-9 || cashWeight !== undefined;
-  return (
-    <section className={cn("panel flex min-w-0 flex-col overflow-hidden", className)} aria-label="Teams">
-      <div role="table" aria-label="Teams" className="flex flex-col">
-        <div role="row" className={cn("grid h-9 shrink-0 items-center gap-2.5 border-b px-4 text-body text-muted-foreground", TEAM_COLS)}>
+      />
+      <div role="table" aria-label="Contribution by team" className="mt-2 text-body">
+        <div role="row" className={cn("grid min-h-8 items-center gap-x-2.5 border-b text-caption text-muted-foreground", TEAM_COLS)}>
           <span role="columnheader"><Tip label="Team" side="bottom">{EXPLAIN.teams}</Tip></span>
-          <span role="columnheader" className="text-right"><Tip label={<ReadAs text="Average weight">Avg wt</ReadAs>} side="bottom">{EXPLAIN.teamWeight}</Tip></span>
-          <span role="columnheader" className="text-right"><Tip label="Return" side="bottom">{EXPLAIN.teamReturn}</Tip></span>
-          <span role="columnheader" className="text-right"><Tip label={<ReadAs text="Contribution to the Fund, basis points">To the Fund</ReadAs>} side="bottom">{EXPLAIN.fundContribution}</Tip></span>
+          <span role="columnheader" className="sr-only">Contribution, drawn</span>
+          <span role="columnheader" className="text-right"><Tip label="bp" side="bottom">{EXPLAIN.fundContribution}</Tip></span>
         </div>
         {rows.length === 0 && (
           <div role="row">
-            <div role="cell" aria-colspan={4} className="px-4 py-3 text-body text-muted-foreground">No team holdings in this period.</div>
+            <div role="cell" aria-colspan={3} className="py-3 text-muted-foreground">No team holdings in this period.</div>
           </div>
         )}
         {rows.map((t) => {
           const team = t.teamId ? teams.get(t.teamId) : undefined;
           return (
-            <div
-              key={t.teamId ?? "none"}
-              role="row"
-              className={cn("relative grid min-h-10 items-center gap-2.5 border-b border-row px-4 py-1 text-body", TEAM_COLS, team && "transition-colors hover:bg-band has-[a:focus-visible]:bg-band")}
-            >
+            <div key={t.teamId ?? "none"} role="row" className={cn("relative grid min-h-11 items-center gap-x-2.5 border-b border-row py-1 transition-colors", TEAM_COLS, team && "hover:bg-band has-[a:focus-visible]:bg-band")}>
               <span role="rowheader" className="min-w-0 leading-4">
                 {team ? (
                   <RowLink cover="stretch" href={`/t/${team.slug}/attribution${query}`} className="focus-visible:after:ring-0">
@@ -204,28 +144,37 @@ export function TeamsPanel({ rows, teams, cashContribution, cashWeight, query, c
                 ) : (
                   "No team"
                 )}
+                <span className="block text-caption text-muted-foreground">
+                  {fmtPct(pct(t.avgWeight), 1)} of the Fund · {fmtChangePct(pct(t.ret))}
+                </span>
               </span>
-              <span role="cell" className={cn(num, "text-muted-foreground")}>{fmtPct(pct(t.avgWeight), 1)}</span>
-              <span role="cell" className={cn(num, tone(t.ret, 10_000))}>{fmtPct(pct(t.ret))}</span>
-              <span role="cell" className={cn(num, "font-semibold", tone(t.contribution, 10_000))}>{fmtBp(bps(t.contribution))}</span>
+              <span role="cell"><CenterBar value={t.contribution} max={max} /></span>
+              <span role="cell" className={cell(t.contribution)}>{bp1(t.contribution)}</span>
             </div>
           );
         })}
-      </div>
-      {showCash && (
-        <div className="mt-auto flex min-h-10 shrink-0 items-center bg-band-2 px-4 py-2 text-body text-muted-foreground">
-          <span className="min-w-0 text-pretty">
-            Cash, fees and interest{cashWeight !== undefined && ` · ${fmtPct(pct(cashWeight), 1)} average weight`} ·{" "}
-            <span className={cn("font-mono", tone(cashContribution, 10_000))}>{fmtBp(bps(cashContribution))}</span>
-          </span>
+        {showCash && (
+          <div role="row" className={cn("grid min-h-11 items-center gap-x-2.5 border-b border-row py-1", TEAM_COLS)}>
+            <span role="rowheader" className="min-w-0 leading-4">
+              Cash, fees and interest
+              {cashWeight !== undefined && <span className="block text-caption text-muted-foreground">{fmtPct(pct(cashWeight), 1)} average weight</span>}
+            </span>
+            <span role="cell"><CenterBar value={cashContribution} max={max} /></span>
+            <span role="cell" className={cell(cashContribution)}>{bp1(cashContribution)}</span>
+          </div>
+        )}
+        <div role="row" className={cn("grid min-h-9 items-center gap-x-2.5 font-semibold", TEAM_COLS)}>
+          <span role="rowheader">Fund</span>
+          <span role="cell" />
+          <span role="cell" className={cell(portfolioReturn)}>{bp1(portfolioReturn)}</span>
         </div>
-      )}
+      </div>
     </section>
   );
 }
 
 /** Holdings ranked by contribution: top and bottom five side by side, or every holding as a table (`?all=1`). */
-export function HoldingsPanel({
+export function HoldingsSection({
   holdings,
   teams,
   basePath,
@@ -233,7 +182,6 @@ export function HoldingsPanel({
   showAll,
   showTeam = true,
   toggle = true,
-  className,
 }: {
   holdings: HoldingRow[];
   teams: TeamLookup;
@@ -243,57 +191,51 @@ export function HoldingsPanel({
   showTeam?: boolean;
   /** Offer the "Top & bottom 5 · All" switch (`?all=1`). */
   toggle?: boolean;
-  className?: string;
 }) {
   const top = holdings.slice(0, 5);
   const bottom = holdings.slice(-5).reverse().filter((h) => !top.includes(h));
   return (
-    <Panel className={className} aria-label="Holdings by contribution">
-      <PanelHeader
+    <section aria-labelledby="perf-holdings" className="mt-8">
+      <SectionHead
+        id="perf-holdings"
         title={<Tip label="Holdings by contribution">{EXPLAIN.contributors}</Tip>}
-        count={holdings.length}
+        sub={`${holdings.length} ${holdings.length === 1 ? "holding" : "holdings"} · contribution in bp of the return`}
         aside={
           toggle && (
-          <Segmented
-            label="Holdings view"
-            segments={[
-              { key: "tb", label: "Top & bottom 5", href: `${basePath}${queryString}`, active: !showAll },
-              { key: "all", label: `All ${holdings.length}`, href: `${basePath}${queryString}&all=1`, active: showAll },
-            ]}
-          />
+            <Segmented
+              label="Holdings view"
+              segments={[
+                { key: "tb", label: "Top & bottom 5", href: `${basePath}${queryString}`, active: !showAll },
+                { key: "all", label: `All ${holdings.length}`, href: `${basePath}${queryString}&all=1`, active: showAll },
+              ]}
+            />
           )
         }
       />
       {holdings.length === 0 ? (
-        <div className="p-6 text-center text-body text-muted-foreground">No holdings in this period.</div>
+        <p className="mt-3 text-body text-muted-foreground">No holdings in this period.</p>
       ) : showAll ? (
-        <ContributorsTable rows={holdings} teams={teams} showTeam={showTeam} />
+        <div className="mt-2">
+          <ContributorsTable rows={holdings} teams={teams} showTeam={showTeam} />
+        </div>
       ) : (
-        // Side by side, except where the page's two columns leave this panel narrow (lg to xl): there Hurt most goes under
-        // Helped most, so each keeps the width for its team names.
-        <div className="grid gap-6 px-4 py-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+        <div className="mt-2 grid grid-cols-2 gap-x-14">
           <HoldingsColumn rows={top} teams={teams} label="Helped most" caption={showTeam ? "Helped most · team, avg weight" : "Helped most · avg weight"} />
           <HoldingsColumn rows={bottom} teams={teams} label="Hurt most" caption={showTeam ? "Hurt most · team, avg weight" : "Hurt most · avg weight"} />
         </div>
       )}
-    </Panel>
+    </section>
   );
 }
 
-export function SectorEffectsPanel({ data, empty, className }: { data: SectorEffectPoint[] | null; empty: React.ReactNode; className?: string }) {
+/** "By sector effect": total effect per sector as bars either side of zero, for a team (which has no team list beside it). */
+export function SectorEffectsSection({ data, empty }: { data: SectorEffectPoint[] | null; empty: React.ReactNode }) {
   return (
-    <Panel variant="plain" className={className} aria-label="Total effect by sector">
-      <PanelHeader title={<Tip label="Total effect by sector">{EXPLAIN.effectsChart}</Tip>} aside="bp, most helpful first" />
-      <div className="px-4 py-3">{data ? <SectorEffectsList data={data} /> : <div className="text-body text-muted-foreground">{empty}</div>}</div>
-    </Panel>
+    <section aria-labelledby="perf-effects">
+      <SectionHead id="perf-effects" title={<Tip label="Total effect by sector">{EXPLAIN.effectsChart}</Tip>} sub="In bp, most helpful first" />
+      <div className="mt-3">{data ? <SectorEffectsList data={data} /> : <p className="text-body text-muted-foreground">{empty}</p>}</div>
+    </section>
   );
 }
 
-export function MethodPanel({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <Panel variant="plain" className={className} aria-label="How this is calculated">
-      <PanelHeader title="How this is calculated" />
-      <div className="px-4 py-3 text-body leading-relaxed text-ink-2">{children}</div>
-    </Panel>
-  );
-}
+export { HowNote };

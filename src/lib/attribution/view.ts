@@ -24,7 +24,7 @@ export function periodFromQuery(query: PageQuery, loaded: { inception: string; l
 
 /** Plain-language data problems, each pointing at where to fix it. */
 export function qualityNotices(loaded: LoadedSeries, period: ResolvedPeriod, opts: { canEdit: boolean }) {
-  const out: { text: string; href?: string; action?: string }[] = [];
+  const out: { text: string; href?: string; action?: string; word?: "Stale" | "Missing" | "Check" | "Partial" }[] = [];
   const ledger = opts.canEdit ? "/attribution/ledger" : undefined;
   if (period.clamped) out.push({ text: `The ledger starts on ${fmtDate(loaded.inception)}, so this period is measured from that date.` });
 
@@ -43,7 +43,7 @@ export function qualityNotices(loaded: LoadedSeries, period: ResolvedPeriod, opt
       out.push({ text: `Benchmark weights start ${fmtDate(loaded.weightSets[0].asOf)}; earlier days use that first set.` });
     }
     const age = Math.floor(DateTime.fromISO(period.end).diff(DateTime.fromISO(lastSet.asOf), "days").days);
-    if (age > 100) out.push({ text: `Benchmark sector weights are ${age} days old (as of ${fmtDate(lastSet.asOf)}).`, href: ledger ? `${ledger}?tab=benchmark` : undefined, action: "Update" });
+    if (age > 100) out.push({ text: `Benchmark weights were saved ${fmtDate(lastSet.asOf)}, ${age} days ago. These numbers use them until an exec saves a new set.`, href: ledger ? `${ledger}?tab=benchmark` : undefined, action: "Update weights", word: "Stale" });
   }
 
   const held = new Set(loaded.series.portfolio.filter((d) => d.date > period.start && d.date <= period.end).flatMap((d) => d.positions.map((p) => p.ticker)));

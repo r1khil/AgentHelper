@@ -1,17 +1,20 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/app/empty-state";
-import { StatStrip, type StatCell } from "@/components/app/panel";
+import { PageHead } from "@/components/app/page-head";
+import { StatStrip } from "@/components/app/panel";
+import { HowNote, Hero, Strong, signTone } from "@/components/app/portfolio/parts";
+import { BENCH_LINE, FUND_LINE, LineKey } from "@/components/app/portfolio/lines-chart";
 import type { AttributionResult, TeamAttributionResult } from "@/lib/attribution/attribution";
 import type { PeriodKey } from "@/lib/attribution/periods";
-import { bucketLabel, INDEX_LABEL } from "@/lib/attribution/sectors";
-import { fmtBp, fmtDate, fmtPct } from "@/lib/format";
-import { AttributionToolbar, CumulativePanel, EffectsPanel, HoldingsPanel, LEDGER_HREF, MethodPanel, SectorEffectsPanel, TeamsPanel, type EffectBar } from "./attribution-panels";
+import { INDEX_LABEL } from "@/lib/attribution/sectors";
+import { fmtChangeBp, fmtChangePct, fmtDate, fmtDay, fmtDayMonth, fmtPct } from "@/lib/format";
+import { bridgeCells, HoldingsSection, LegendItem, LEDGER_HREF, PeriodBar, SectorEffectsSection, TeamBars } from "./attribution-panels";
 import type { TeamLookup } from "./contributors-table";
-import type { QualityNotice } from "./data-quality-notice";
+import { CumulativeDetails, CumulativeLines, type CumulativeChartPoint } from "./cumulative-active-chart";
+import { HeroNotes, type QualityNotice } from "./data-quality-notice";
 import { EXPLAIN } from "./explainers";
-import { bps, pct, toneOf } from "./format";
+import { bps, pct } from "./format";
 import { Tip } from "./info-tip";
-import { InteractionScope } from "./interaction-toggle";
 import type { BreakdownQuery } from "./sector-breakdown";
 import type { SectorEffectPoint } from "./sector-effects-list";
 import { SectorsPanel } from "./sectors-panel";
@@ -28,27 +31,30 @@ export type PeriodView = {
   latest: string;
 };
 
-/** The page: the toolbar, the headline figures, the chart and effects, then two columns of tables and sections at their own height. */
-const FOLD = "flex flex-col gap-4";
-const GRID = "grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]";
+const chgPct = (v: number | null) => (v === null ? "—" : fmtChangePct(pct(v)));
 
-const pctOrDash = (v: number | null) => fmtPct(pct(v));
+/** "since the ledger opened Sep 17", or the closes the period runs between and how many sessions it holds. */
+function periodPhrase(view: PeriodView, days: number) {
+  if (view.period.key === "itd") return `since the ledger opened ${fmtDayMonth(view.inception)}`;
+  const n = `${days} trading ${days === 1 ? "day" : "days"}`;
+  return `${fmtDay(view.period.start)} close through ${fmtDay(view.period.end)} · ${n}`;
+}
 
-function Toolbar({ view, days, notices, ledger }: { view: PeriodView; days: number; notices: QualityNotice[]; ledger?: boolean }) {
+/** What the hero says when the sector benchmark can't be worked out yet: a line pointing at the weights. */
+function NoWeights() {
   return (
-    <AttributionToolbar
-      basePath={view.basePath}
-      period={view.period}
-      from={view.from}
-      to={view.to}
-      inception={view.inception}
-      latest={view.latest}
-      days={days}
-      notices={notices}
-      ledger={ledger}
-    />
+    <p className="border-b py-4 text-body text-muted-foreground">
+      Add S&amp;P 500 sector weights to see allocation and selection.{" "}
+      <Link href={`${LEDGER_HREF}?tab=benchmark`} className="font-semibold text-foreground underline underline-offset-2">Add weights</Link>
+    </p>
   );
 }
+
+const ledgerLink = (
+  <Link href={LEDGER_HREF} className="font-semibold text-foreground underline underline-offset-2">
+    Open the ledger
+  </Link>
+);
 
 export function FundAttributionView({
   view,
@@ -59,7 +65,6 @@ export function FundAttributionView({
   notices,
   showAll,
   transparency,
-  sectorEffects,
   weightsAsOf,
 }: {
   view: PeriodView;
@@ -72,95 +77,94 @@ export function FundAttributionView({
   notices: QualityNotice[];
   showAll: boolean;
   transparency: boolean;
-  sectorEffects: SectorEffectPoint[];
   weightsAsOf?: string;
 }) {
+  const head = <PageHead crumbs={[{ label: "Portfolio" }]} scope asof={`Closes through ${fmtDay(view.latest)}`} />;
+  const bar = <PeriodBar basePath={view.basePath} active={view.period.key} from={view.from} to={view.to} inception={view.inception} latest={view.latest} />;
+
   if (result.days === 0) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <Toolbar view={view} days={0} notices={notices} ledger />
-        <EmptyState title="No completed trading days in this period">
+      <>
+        {head}
+        {bar}
+        <EmptyState className="mt-6" title="No completed trading days in this period">
           The ledger opens at the {fmtDate(view.inception)} close. Results appear after the next session&apos;s closing prices load.
         </EmptyState>
-      </div>
+      </>
     );
   }
 
   const active = spx === null ? null : result.portfolioReturn - spx;
   const cashRow = result.sectors.find((s) => s.key === "cash");
-  const leader = result.effects ? [...result.sectors].filter((s) => s.key !== "cash").sort((a, b) => b.selection - a.selection)[0] : undefined;
   const breakdownQuery: BreakdownQuery | undefined = transparency ? { basePath: view.basePath, period: view.period.key, from: view.from, to: view.to } : undefined;
+  const gap = result.activeReturn;
 
-  const cells: StatCell[] = [
-    { label: <Tip label="Owl Fund" side="bottom">{EXPLAIN.portfolio}</Tip>, value: fmtPct(pct(result.portfolioReturn)), tone: toneOf(result.portfolioReturn), note: "Total return" },
-    { label: <Tip label={INDEX_LABEL} side="bottom">{EXPLAIN.index}</Tip>, value: pctOrDash(spx), note: "Index, price return" },
-    { label: <Tip label={`Active vs ${INDEX_LABEL}`} side="bottom">{EXPLAIN.active}</Tip>, value: fmtBp(bps(active)), tone: toneOf(active), note: "Fund minus index" },
-    {
-      label: <Tip label="vs sector benchmark" side="bottom">{EXPLAIN.benchmark}</Tip>,
-      value: fmtBp(bps(result.activeReturn)),
-      tone: toneOf(result.activeReturn),
-      note: result.benchmarkReturn === null ? "Needs sector weights" : `Benchmark ${fmtPct(pct(result.benchmarkReturn))}`,
-    },
-  ];
+  const chart: CumulativeChartPoint[] = result.cumulative.map((c, i) => ({
+    date: c.date,
+    portfolio: c.portfolio * 100,
+    benchmark: c.benchmark === null ? null : c.benchmark * 100,
+    index: spxSeries[i] == null ? null : spxSeries[i]! * 100,
+  }));
 
-  const effects: EffectBar[] = result.effects
-    ? [
-        { label: "Allocation", value: result.effects.allocation, explain: EXPLAIN.allocation },
-        { label: "Selection", value: result.effects.selection, explain: EXPLAIN.selection },
-        { label: "Interaction", value: result.effects.interaction, explain: `${EXPLAIN.interaction} Weight × pick.`, interaction: true },
-      ]
-    : [];
-  const total: EffectBar | null = result.effects && result.activeReturn !== null ? { label: "Total", value: result.activeReturn, explain: `${EXPLAIN.benchmark} Brinson-Fachler, daily, Carino-linked.` } : null;
-  const note = (
+  const line = (
     <>
-      {leader && leader.selection > 0 && <>Selection led by {bucketLabel(leader.key)}, {fmtBp(bps(leader.selection))}. </>}
-      {cashRow && result.effects && (
+      <Strong>
+        <Tip label="Fund">{EXPLAIN.portfolio}</Tip> {chgPct(result.portfolioReturn)}
+      </Strong>
+      {result.benchmarkReturn !== null && (
         <>
-          {cashRow.allocation < 0 ? "Cash drag is" : "Cash accounts for"} {fmtBp(bps(cashRow.allocation))} of the allocation effect; sector bets {fmtBp(bps(result.effects.allocation - cashRow.allocation))}.
+          {" "}· <Tip label="Benchmark">{EXPLAIN.benchmark}</Tip> {chgPct(result.benchmarkReturn)}
+        </>
+      )}
+      {" "}· <Tip label={INDEX_LABEL}>{EXPLAIN.index}</Tip> {chgPct(spx)}, for reference
+      {active !== null && (
+        <>
+          {" "}· {fmtChangeBp(bps(active))} <Tip label="vs S&P 500">{EXPLAIN.active}</Tip>
         </>
       )}
     </>
   );
-  const noWeights = (
-    <>
-      Add S&amp;P 500 sector weights to see allocation and selection.{" "}
-      <Link href={`${LEDGER_HREF}?tab=benchmark`} className="font-medium text-foreground underline underline-offset-2">Add weights</Link>
-    </>
-  );
+
+  const cells = bridgeCells(result, true);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5">
-      <InteractionScope className={FOLD}>
-        <Toolbar view={view} days={result.days} notices={notices} ledger />
-        <StatStrip data-tour="attribution-strip" cells={cells} />
-        <div className={`${GRID} lg:min-h-[252px]`}>
-          <CumulativePanel
-            portfolioLabel="Owl Fund"
-            benchmarkLabel={INDEX_LABEL}
-            asOf={view.latest}
-            data={result.cumulative.map((c, i) => ({ date: c.date, portfolio: c.portfolio * 100, benchmark: spxSeries[i] == null ? null : spxSeries[i]! * 100 }))}
-          />
-          <EffectsPanel items={effects} total={total} aside="vs sector benchmark, bp" note={note} empty={noWeights} />
-        </div>
-        {/* Two columns that each run at their own height, so a short panel never waits for its neighbour's row. */}
-        <div className={`${GRID} lg:items-start`}>
-          <div className="flex min-w-0 flex-col gap-5">
-            <SectorsPanel rows={result.sectors} hasBench={result.effects !== null} own="Fund" breakdownQuery={breakdownQuery} />
-            <HoldingsPanel holdings={result.holdings} teams={teams} basePath={view.basePath} queryString={view.queryString} showAll={showAll} />
+    <>
+      {head}
+      <Hero
+        label={result.benchmarkReturn === null ? `Fund return, ${periodPhrase(view, result.days)}` : `Against the sector benchmark, ${periodPhrase(view, result.days)}`}
+        value={gap === null ? chgPct(result.portfolioReturn) : fmtChangeBp(bps(gap))}
+        tone={signTone(gap ?? result.portfolioReturn, 10_000)}
+        line={line}
+        aside={<HeroNotes notices={notices} />}
+      />
+      <div className="mt-[22px]">
+        <CumulativeLines data={chart} portfolioLabel="Fund" benchmarkLabel="Benchmark" />
+      </div>
+      <PeriodBar basePath={view.basePath} active={view.period.key} from={view.from} to={view.to} inception={view.inception} latest={view.latest}>
+        <span className="flex items-center gap-3.5 text-caption text-muted-foreground">
+          <LegendItem swatch={<LineKey line={FUND_LINE} />}>Fund</LegendItem>
+          <LegendItem swatch={<LineKey line={BENCH_LINE} />}>Benchmark</LegendItem>
+          <CumulativeDetails data={chart} portfolioLabel="Fund" benchmarkLabel="Sector benchmark" indexLabel={INDEX_LABEL} explain={EXPLAIN.cumulativeChart} />
+        </span>
+      </PeriodBar>
+      {cells ? <StatStrip className="border-t-0" cells={cells} data-tour="attribution-strip" /> : <NoWeights />}
+      <div className="mt-[26px] grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-14">
+        <section aria-labelledby="perf-sectors">
+          <h2 id="perf-sectors" className="text-title font-bold tracking-[-0.01em]">By sector</h2>
+          <div className="mt-2">
+            <SectorsPanel rows={result.sectors} hasBench={result.effects !== null} own="Fund" breakdownQuery={breakdownQuery} totals={result} />
           </div>
-          <div className="flex min-w-0 flex-col gap-5">
-            <TeamsPanel rows={result.teams} teams={teams} cashContribution={result.cashContribution} cashWeight={cashRow?.avgPortfolioWeight} query={view.queryString} />
-            <SectorEffectsPanel data={result.effects ? sectorEffects : null} empty="Add S&P 500 sector weights to see allocation and selection." />
-            <MethodPanel>
-              Headline comparison is against the S&amp;P 500 index on a price-return basis, the same as the major-movement rule. Allocation and selection are Brinson-Fachler by
-              GICS sector, daily, Carino-linked, against a sector benchmark of saved S&amp;P 500 sector weights applied to Select Sector SPDR total returns
-              {weightsAsOf ? ` (weights as of ${fmtDate(weightsAsOf)})` : ""}. Fund dividends reinvest on the ex-date.
-              {transparency && " Transparency mode is on: select a sector row to see the daily working and the stored rows behind it."}
-            </MethodPanel>
-          </div>
-        </div>
-      </InteractionScope>
-    </div>
+        </section>
+        <TeamBars rows={result.teams} teams={teams} cashContribution={result.cashContribution} cashWeight={cashRow?.avgPortfolioWeight} portfolioReturn={result.portfolioReturn} query={view.queryString} />
+      </div>
+      <HoldingsSection holdings={result.holdings} teams={teams} basePath={view.basePath} queryString={view.queryString} showAll={showAll} />
+      <HowNote>
+        The headline comparison is against the S&amp;P 500 index on a price-return basis, the same as the major-movement rule. Allocation and selection are Brinson-Fachler by GICS sector, daily, linked day to day with Carino so the
+        effects add up to the gap. &quot;Weights&quot; is allocation; &quot;Picks&quot; is selection including the overlap of the two. The benchmark is the saved S&amp;P 500 sector weights applied to Select Sector SPDR total
+        returns{weightsAsOf ? ` (weights as of ${fmtDate(weightsAsOf)})` : ""}. Fund dividends reinvest on the ex-date.
+        {transparency && " Transparency mode is on: select a sector row to see the daily working and the stored rows behind it."}
+      </HowNote>
+    </>
   );
 }
 
@@ -189,74 +193,78 @@ export function TeamAttributionView({
   transparency: boolean;
   sectorEffects: SectorEffectPoint[];
 }) {
+  const head = <PageHead crumbs={[{ label: "Portfolio" }]} scope asof={`Closes through ${fmtDay(view.latest)}`} />;
+  const bar = <PeriodBar basePath={view.basePath} active={view.period.key} from={view.from} to={view.to} inception={view.inception} latest={view.latest} />;
+
   if (result.days === 0) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <Toolbar view={view} days={0} notices={notices} />
-        <EmptyState title={result.holdings.length || view.period.start === view.period.end ? "No completed trading days in this period" : "No positions in this period"}>
+      <>
+        {head}
+        {bar}
+        <EmptyState className="mt-6" title={result.holdings.length || view.period.start === view.period.end ? "No completed trading days in this period" : "No positions in this period"}>
           Results cover sessions after the {fmtDate(view.period.start)} close in which the team held a position.
         </EmptyState>
-      </div>
+      </>
     );
   }
 
-  const selection = result.effects ? result.effects.selection + result.effects.interaction : null;
-  const leader = result.effects ? [...result.sectors].sort((a, b) => b.selection + b.interaction - (a.selection + a.interaction))[0] : undefined;
   const breakdownQuery: BreakdownQuery | undefined = transparency ? { basePath: view.basePath, team: teamSlug, period: view.period.key, from: view.from, to: view.to } : undefined;
+  const gap = result.activeReturn;
 
-  const cells: StatCell[] = [
-    { label: <Tip label={teamName} side="bottom">{EXPLAIN.teamReturn}</Tip>, value: fmtPct(pct(result.portfolioReturn)), tone: toneOf(result.portfolioReturn), note: "Team return, own capital" },
-    { label: <Tip label="Sector benchmark" side="bottom">{EXPLAIN.teamBenchmark}</Tip>, value: pctOrDash(result.benchmarkReturn), note: <span title={benchmarkSectors}>{benchmarkName}</span> },
-    { label: <Tip label="Active vs benchmark" side="bottom">{EXPLAIN.teamActive}</Tip>, value: fmtBp(bps(result.activeReturn)), tone: toneOf(result.activeReturn), note: "Team minus benchmark" },
-    { label: <Tip label="To the Fund" side="bottom">{EXPLAIN.fundContribution}</Tip>, value: fmtBp(bps(result.fundContribution)), tone: toneOf(result.fundContribution), note: `${fmtPct(pct(result.avgFundWeight), 1)} of the Fund on average` },
-  ];
+  const chart: CumulativeChartPoint[] = result.cumulative.map((c) => ({ date: c.date, portfolio: c.portfolio * 100, benchmark: c.benchmark === null ? null : c.benchmark * 100 }));
 
-  const effects: EffectBar[] =
-    result.effects && selection !== null
-      ? [
-          { label: "Selection", value: selection, explain: EXPLAIN.teamSelection },
-          { label: "Allocation", value: result.effects.allocation, explain: `${EXPLAIN.teamAllocation} Mix across team sectors.` },
-        ]
-      : [];
-  const total: EffectBar | null = result.effects && result.activeReturn !== null ? { label: "Total", value: result.activeReturn, explain: `${EXPLAIN.teamBenchmark} Brinson-Fachler, daily, Carino-linked.` } : null;
-  const leaderSel = leader ? leader.selection + leader.interaction : 0;
-  const note = (
+  const line = (
     <>
-      {leader && leaderSel > 0 ? <>Selection led by {bucketLabel(leader.key)}, {fmtBp(bps(leaderSel))}. </> : <>Selection is the team&apos;s picks against their sector ETFs, interaction included. </>}
-      Benchmark: {benchmarkSectors} ({benchmarkName}).
+      <Strong>
+        <Tip label={teamName}>{EXPLAIN.teamReturn}</Tip> {chgPct(result.portfolioReturn)}
+      </Strong>
+      {result.benchmarkReturn !== null && (
+        <>
+          {" "}· <Tip label="Benchmark">{EXPLAIN.teamBenchmark}</Tip> {chgPct(result.benchmarkReturn)} <span title={benchmarkSectors}>({benchmarkName})</span>
+        </>
+      )}
+      {" "}· <Tip label="To the Fund">{EXPLAIN.fundContribution}</Tip> {fmtChangeBp(bps(result.fundContribution))}, {fmtPct(pct(result.avgFundWeight), 1)} of the Fund on average
     </>
   );
 
+  const cells = bridgeCells(result, false);
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5">
-      <InteractionScope className={FOLD}>
-        <Toolbar view={view} days={result.days} notices={notices} />
-        <StatStrip data-tour="attribution-strip" cells={cells} />
-        <div className={`${GRID} lg:min-h-[252px]`}>
-          <CumulativePanel
-            portfolioLabel={teamName}
-            benchmarkLabel="Sector benchmark"
-            asOf={view.latest}
-            data={result.cumulative.map((c) => ({ date: c.date, portfolio: c.portfolio * 100, benchmark: c.benchmark === null ? null : c.benchmark * 100 }))}
-          />
-          <EffectsPanel items={effects} total={total} aside={`vs ${benchmarkName}, bp`} note={note} empty="No benchmark for this period." />
-        </div>
-        {/* Two columns that each run at their own height, so a short panel never waits for its neighbour's row. */}
-        <div className={`${GRID} lg:items-start`}>
-          <div className="flex min-w-0 flex-col gap-5">
-            <SectorsPanel rows={result.sectors} hasBench={result.effects !== null} own="Team" breakdownQuery={breakdownQuery} />
-            <SectorEffectsPanel data={result.effects ? sectorEffects : null} empty="No benchmark for this period." />
+    <>
+      {head}
+      <Hero
+        label={result.benchmarkReturn === null ? `${teamName} return, ${periodPhrase(view, result.days)}` : `Against its sector benchmark, ${periodPhrase(view, result.days)}`}
+        value={gap === null ? chgPct(result.portfolioReturn) : fmtChangeBp(bps(gap))}
+        tone={signTone(gap ?? result.portfolioReturn, 10_000)}
+        line={line}
+        aside={<HeroNotes notices={notices} />}
+      />
+      <div className="mt-[22px]">
+        <CumulativeLines data={chart} portfolioLabel={teamName} benchmarkLabel="Sector benchmark" />
+      </div>
+      <PeriodBar basePath={view.basePath} active={view.period.key} from={view.from} to={view.to} inception={view.inception} latest={view.latest}>
+        <span className="flex items-center gap-3.5 text-caption text-muted-foreground">
+          <LegendItem swatch={<LineKey line={FUND_LINE} />}>{teamName}</LegendItem>
+          <LegendItem swatch={<LineKey line={BENCH_LINE} />}>Sector benchmark</LegendItem>
+          <CumulativeDetails data={chart} portfolioLabel={teamName} benchmarkLabel="Sector benchmark" explain={EXPLAIN.cumulativeChart} />
+        </span>
+      </PeriodBar>
+      {cells ? <StatStrip className="border-t-0" cells={cells} data-tour="attribution-strip" /> : <p className="border-b py-4 text-body text-muted-foreground">No benchmark for this period.</p>}
+      <div className="mt-[26px] grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-14">
+        <section aria-labelledby="perf-sectors">
+          <h2 id="perf-sectors" className="text-title font-bold tracking-[-0.01em]">By sector</h2>
+          <div className="mt-2">
+            <SectorsPanel rows={result.sectors} hasBench={result.effects !== null} own="Team" breakdownQuery={breakdownQuery} totals={result} />
           </div>
-          <div className="flex min-w-0 flex-col gap-5">
-            <HoldingsPanel holdings={result.holdings} teams={teams} basePath={view.basePath} queryString={view.queryString} showAll showTeam={false} toggle={false} />
-            <MethodPanel>
-              The team&apos;s holdings are scaled to 100% and compared with the S&amp;P 500 weights of its sectors, using Select Sector SPDR total returns. Weights and
-              contributions here are shares of the team&apos;s capital; To the Fund is in points of the whole Fund&apos;s return.
-              {transparency && " Transparency mode is on: select a sector row to see the daily working and the stored rows behind it."}
-            </MethodPanel>
-          </div>
-        </div>
-      </InteractionScope>
-    </div>
+        </section>
+        <SectorEffectsSection data={result.effects ? sectorEffects : null} empty="No benchmark for this period." />
+      </div>
+      <HoldingsSection holdings={result.holdings} teams={teams} basePath={view.basePath} queryString={view.queryString} showAll showTeam={false} toggle={false} />
+      <HowNote>
+        The team&apos;s holdings are scaled to 100% and compared with the S&amp;P 500 weights of its sectors, using Select Sector SPDR total returns. Weights and contributions here are shares of the team&apos;s capital; To the
+        Fund is in points of the whole Fund&apos;s return. Allocation and selection are Brinson-Fachler by GICS sector, daily, Carino-linked; &quot;Picks&quot; includes the overlap of weights and picks.
+        {transparency && " Transparency mode is on: select a sector row to see the daily working and the stored rows behind it."}
+      </HowNote>
+    </>
   );
 }

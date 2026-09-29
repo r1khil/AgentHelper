@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { TeamsPanel as TodayTeams } from "@/app/(app)/_today/teams-panel";
 import { JobRunsLive } from "./admin/job-runs-live";
 import { ResearchBoards } from "./agent/research-boards";
-import { TeamsPanel as AttributionTeams } from "./attribution/attribution-panels";
+import { TeamBars as AttributionTeams } from "./attribution/attribution-panels";
 import { HoldingsColumn } from "./attribution/holdings-columns";
 import { DayTable } from "./attribution/sector-breakdown";
 import { SectorsPanel } from "./attribution/sectors-panel";
@@ -169,6 +169,7 @@ describe("div grids read as tables", () => {
           ],
           teams,
           cashContribution: 0,
+          portfolioReturn: 0.012,
           query: "?period=ytd",
         }),
       ),
@@ -184,7 +185,8 @@ describe("div grids read as tables", () => {
     checkTables(html);
     expect(html).toContain('aria-label="NVDA, NVIDIA Corporation"');
     const sector = { key: "information_technology" as const, avgPortfolioWeight: 0.3, avgBenchmarkWeight: 0.28, portfolioReturn: 0.02, benchmarkReturn: 0.01, contribution: 0.006, total: 0.001, allocation: 0, selection: 0.001, interaction: 0 };
-    for (const hasBench of [true, false]) checkTables(render(h(SectorsPanel, { rows: [sector], hasBench })));
+    const totals = { portfolioReturn: 0.02, benchmarkReturn: 0.01, effects: { allocation: 0, selection: 0.001, interaction: 0 }, activeReturn: 0.001 };
+    for (const hasBench of [true, false]) checkTables(render(h(SectorsPanel, { rows: [sector], hasBench, totals })));
   });
 
   it("Exposure: sector weights and largest active bets have column headers", () => {
@@ -261,9 +263,9 @@ describe("expandable rows open from the keyboard", () => {
 
 describe("definitions are text, not only tooltips", () => {
   it("a Tip label's definition is its description, hidden from view and from the header's name", () => {
-    const nodes = all(parse(render(h(AttributionTeams, { rows: [], teams: new Map(), cashContribution: 0, query: "" }))));
+    const nodes = all(parse(render(h(AttributionTeams, { rows: [], teams: new Map(), cashContribution: 0, portfolioReturn: 0, query: "" }))));
     const tips = nodes.filter((n) => n.attrs["aria-describedby"]);
-    expect(tips.length).toBe(4);
+    expect(tips.length).toBe(2);
     for (const t of tips) {
       const def = nodes.find((n) => n.attrs.id === t.attrs["aria-describedby"])!;
       expect("hidden" in def.attrs).toBe(true);

@@ -2,23 +2,25 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/app/empty-state";
-import { LedgerButton, LEDGER_HREF } from "@/components/app/attribution/attribution-panels";
+import { LEDGER_HREF } from "@/components/app/attribution/attribution-panels";
 import { FundAttributionView } from "@/components/app/attribution/attribution-views";
 import type { TeamLookup } from "@/components/app/attribution/contributors-table";
+import { TODAY_KEY } from "@/components/app/attribution/period-selector";
+import { TodayView } from "@/components/app/daily/today-view";
 import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { computeAttribution } from "@/lib/attribution/attribution";
 import { loadAttributionSeries } from "@/lib/attribution/load";
+import { loadLiveSnapshot } from "@/lib/attribution/live-load";
 import { INDEX_LABEL } from "@/lib/attribution/sectors";
-import { indexCumulative, indexReturn, periodFromQuery, qualityNotices, sectorEffectPoints } from "@/lib/attribution/view";
+import { indexCumulative, indexReturn, periodFromQuery, qualityNotices } from "@/lib/attribution/view";
 import { listAccessibleTeams, requireRole, transparencyEnabled } from "@/lib/auth";
 
-export const metadata: Metadata = { title: "Fund attribution" };
+export const metadata: Metadata = { title: "Performance" };
 
-/** Before there is anything to attribute: the Ledger stays one click away. */
+/** Before there is anything to attribute: the empty state, and the Ledger one click away. */
 function NotYet({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="flex justify-end"><LedgerButton /></div>
       <EmptyState title={title} action={action}>{children}</EmptyState>
     </div>
   );
@@ -32,7 +34,7 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
   if (!loaded.inception) {
     return (
       <NotYet title="No trades recorded" action={<Button nativeButton={false} size="sm" render={<Link href={LEDGER_HREF} />}>Open ledger</Button>}>
-        Attribution is calculated from the trade ledger. Record the Fund&apos;s positions and cash to begin.
+        Performance is calculated from the trade ledger. Record the Fund&apos;s positions and cash to begin.
       </NotYet>
     );
   }
@@ -41,6 +43,29 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
       <NotYet title="Price history is still loading">
         Closes for the ledger&apos;s tickers and the sector ETFs have not been stored yet. They load after each ledger change and every weeknight.
       </NotYet>
+    );
+  }
+
+  // Today: the live session, the old Daily page. Same page, same period buttons.
+  const asked = Array.isArray(query.period) ? query.period[0] : query.period;
+  if (asked === TODAY_KEY) {
+    const snapshot = await loadLiveSnapshot({});
+    if (!snapshot) {
+      return (
+        <NotYet title="Nothing to show yet">Today&apos;s performance starts once the ledger has positions and their closing prices have loaded.</NotYet>
+      );
+    }
+    const closed = periodFromQuery({ period: "1d" }, { inception: loaded.inception, latest: loaded.latest });
+    // The live numbers use the same saved sector weights, so a stale set is worth a word here too.
+    const notices = qualityNotices(loaded, closed.period, { canEdit: true }).filter((n) => n.word === "Stale" || n.text.startsWith("No S&P 500 sector weights"));
+    return (
+      <TodayView
+        initial={snapshot}
+        scope={{ kind: "fund" }}
+        teams={teamList.map((t) => [t.id, { name: t.name, slug: t.slug }])}
+        period={{ basePath: "/attribution", inception: loaded.inception, latest: loaded.latest }}
+        notices={notices}
+      />
     );
   }
 
@@ -64,7 +89,6 @@ export default async function AttributionPage({ searchParams }: PageProps<"/attr
         notices={notices}
         showAll={query.all === "1"}
         transparency={transparencyEnabled(user)}
-        sectorEffects={sectorEffectPoints(result)}
         weightsAsOf={loaded.weightSets.at(-1)?.asOf}
       />
     </>

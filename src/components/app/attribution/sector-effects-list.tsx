@@ -1,5 +1,5 @@
-import { Move } from "../move";
-import { DivergingBar } from "./bars";
+import { CenterBar, Signed } from "@/components/app/portfolio/parts";
+import { fmtChangeBp } from "@/lib/format";
 
 export type SectorEffectPoint = { sector: string; allocation: number; selection: number; interaction: number; total: number };
 
@@ -16,8 +16,8 @@ export function SectorEffectsList({ data }: { data: SectorEffectPoint[] }) {
       {rows.map((r) => (
         <li key={r.sector} className="grid grid-cols-[minmax(0,10rem)_1fr_3rem] items-center gap-2.5 text-body">
           <span className="truncate text-ink-2" title={r.sector}>{r.sector}</span>
-          <DivergingBar value={r.total} max={max} className="h-2.5" />
-          <Move value={r.total} unit="" digits={0} className="text-right text-body font-semibold" />
+          <CenterBar value={r.total} max={max} />
+          <Signed text={fmtChangeBp(r.total, 0).replace(" bp", "")} className="text-right text-body font-semibold" />
         </li>
       ))}
     </ul>
