@@ -33,7 +33,7 @@ export function RiskSources({ report: r, teams }: { report: RiskReport; teams: T
         title="Where the risk comes from"
         sub={
           <>
-            Top {rows.length} of the {r.holdings.length} holdings measured · {rpct(covered, 0)} of the {r.scope === "fund" ? "fund" : "team"}&apos;s volatility · <Tip label="Adds more">{RISK_EXPLAIN.addsMore}</Tip> when a holding&apos;s share of risk is {rnum(ADDS_MORE, 1)}× its weight or more
+            Top {rows.length} of the {r.holdings.length} holdings measured, {rpct(covered, 0)} of the {r.scope === "fund" ? "fund" : "team"}&apos;s volatility. <Tip label="Adds more">{RISK_EXPLAIN.addsMore}</Tip> when a holding&apos;s share of risk is {rnum(ADDS_MORE, 1)}× its weight or more
           </>
         }
       />

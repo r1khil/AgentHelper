@@ -50,7 +50,7 @@ export function CorrelationHeatmap({ tickers, matrix }: { tickers: string[]; mat
         <span className="inline-flex items-center gap-1"><span className="inline-block size-3 rounded-sm" style={{ background: shade(0.9) }} />high</span>
         {high.length > 0 && (
           <span>
-            · Moves together (≥ 0.8): {high.slice(0, 6).map((p) => `${p.a}–${p.b} ${rnum(p.c)}`).join(", ")}
+            Moves together (≥ 0.8): {high.slice(0, 6).map((p) => `${p.a}–${p.b} ${rnum(p.c)}`).join(", ")}
             {high.length > 6 ? `, +${high.length - 6} more` : ""}
           </span>
         )}

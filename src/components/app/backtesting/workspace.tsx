@@ -367,7 +367,7 @@ export function ReplayNote({ result, realizedHref }: { result: BacktestResult; r
             href={`${realizedHref}?${new URLSearchParams({ period: "custom", from: result.from, to: lastSession })}`}
             className="text-foreground underline underline-offset-2"
           >
-            See the realized return for these dates on Attribution
+            See the realized return for these dates on Performance
           </Link>
           .
         </>

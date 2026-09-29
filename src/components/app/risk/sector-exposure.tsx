@@ -40,7 +40,7 @@ export function SectorExposure({
             <TableHead className={head}>Sector</TableHead>
             <TableHead className={head}>
               <Tip label="Weight" side="bottom">{RISK_EXPLAIN.sectorWeight}</Tip>
-              {hasBench && <span className="ml-1.5 text-caption font-normal text-muted-foreground">Fund · {benchmarkLabel}</span>}
+              {hasBench && <span className="ml-1.5 text-caption font-normal text-muted-foreground">Fund, {benchmarkLabel}</span>}
             </TableHead>
             {hasBench && <TableHead className={`${head} text-right`}><Tip label="Active" side="bottom">{RISK_EXPLAIN.activeWeight}</Tip></TableHead>}
             {!hideRisk && <TableHead className={`${head} text-right`}><Tip label="Share of risk" side="bottom">{RISK_EXPLAIN.riskShare}</Tip></TableHead>}
@@ -57,7 +57,7 @@ export function SectorExposure({
                   {s.label}
                   {etf && <span className="ml-1 text-caption font-normal text-muted-foreground">{etf}</span>}
                   {/* Every holding in the sector, wrapping rather than cut off. */}
-                  {s.tickers.length > 0 && <div className="max-w-64 text-caption font-normal whitespace-normal text-muted-foreground">{s.tickers.join(" · ")}</div>}
+                  {s.tickers.length > 0 && <div className="max-w-64 text-caption font-normal whitespace-normal text-muted-foreground">{s.tickers.join(", ")}</div>}
                   {note && <div className="max-w-64 text-caption font-normal text-muted-foreground italic">{note}</div>}
                 </TableCell>
                 <TableCell>
@@ -87,7 +87,7 @@ export function SectorExposure({
           <TableFooter className="bg-transparent">
             <TableRow>
               <TableCell className="font-semibold first:pl-0"><Tip label="Over and under">{RISK_EXPLAIN.overUnder}</Tip></TableCell>
-              <TableCell className="text-muted-foreground">{rpct(sectors.reduce((s, x) => s + x.weight, 0))} · {rpct(sectors.reduce((s, x) => s + (x.benchWeight ?? 0), 0))}</TableCell>
+              <TableCell className="text-muted-foreground">{rpct(sectors.reduce((s, x) => s + x.weight, 0))}, {rpct(sectors.reduce((s, x) => s + (x.benchWeight ?? 0), 0))}</TableCell>
               <TableCell className="text-right whitespace-nowrap">
                 <div className="grid justify-end gap-0.5">
                   <span>overweights <Signed text={fmtChangeBp(balance.overweight * 10_000)} /></span>

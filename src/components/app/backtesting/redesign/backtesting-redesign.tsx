@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
-import { PageHead } from "@/components/app/page-head";
 import { Hero } from "@/components/app/portfolio/hero";
+import { ViewMeta } from "@/components/app/portfolio/view-meta";
 import { BENCH_LINE, FUND_LINE, LineKey, LinesChart } from "@/components/app/portfolio/lines-chart";
 import { HowNote, SectionHead, signTone } from "@/components/app/portfolio/parts";
 import { ReplaySkeleton } from "@/components/app/skeletons";
@@ -81,21 +81,21 @@ export function BacktestingRedesign({
     if (baseline) {
       value = fmtChangeBp(shown(period.currentActive) * 10_000);
       tone = signTone(period.currentActive, 10_000);
-      label = `Today's weights against ${result.benchmark} · ${span}`;
+      label = `Today's weights against ${result.benchmark}, ${span}`;
       change = <span className="text-foreground">Today&apos;s weights {chgPct(period.current)}</span>;
-      note = <>· {result.benchmark} {chgPct(period.benchmark)}</>;
+      note = <>, {result.benchmark} {chgPct(period.benchmark)}</>;
     } else {
       value = fmtChangeBp(shown(period.delta) * 10_000);
       tone = signTone(period.delta, 10_000);
       label = (
         <>
-          {active ? <>&ldquo;{active.name}&rdquo;</> : "Your changes"} against today&apos;s weights · {span}
+          {active ? <>&ldquo;{active.name}&rdquo;</> : "Your changes"} against today&apos;s weights, {span}
         </>
       );
       change = <span className="text-foreground">Modified {chgPct(period.modified)}</span>;
       note = (
         <>
-          · today&apos;s weights {chgPct(period.current)} · {result.benchmark} {chgPct(period.benchmark)} · {risky}
+          , today&apos;s weights {chgPct(period.current)}, {result.benchmark} {chgPct(period.benchmark)}, {risky}
         </>
       );
     }
@@ -118,7 +118,7 @@ export function BacktestingRedesign({
 
   return (
     <>
-      <PageHead crumbs={[{ label: "Portfolio" }]} scope asof="A replay of past prices · not a forecast" actions={<LayoutSwitch to="classic" href={classicHref} />} />
+      <ViewMeta actions={<LayoutSwitch to="classic" href={classicHref} />}>A replay of past prices, not a forecast</ViewMeta>
       <form onSubmit={bt.run} className="flex min-w-0 flex-col">
         <Hero label={label} value={value ?? "—"} tone={tone} change={change} note={note} />
         {(banner || bt.opened.problem) && (
@@ -176,7 +176,7 @@ export function BacktestingRedesign({
           </span>
           <span className="flex-1" />
           <span className={cn("min-w-0 truncate", dirty && "font-semibold text-caution-foreground")} title={runStatus(bt)}>
-            {result && !busy && !dirty ? `${day(result.baseline)} – ${day(result.days.at(-1)!.date)} · rebalanced daily` : runStatus(bt)}
+            {result && !busy && !dirty ? `${day(result.baseline)} – ${day(result.days.at(-1)!.date)}, rebalanced daily` : runStatus(bt)}
           </span>
         </div>
         {result && (
@@ -243,19 +243,19 @@ function SavedPanel({ items, activeId, viewerId, fundWide, audience }: { items: 
         <ul className="mt-1 max-h-[360px] overflow-y-auto">
           {items.map((s) => {
             const open = s.id === activeId;
-            const detail = `${s.changes} change${s.changes === 1 ? "" : "s"} · ${day(s.from)} – ${day(s.to)} vs ${s.benchmark}${s.note ? ` · ${s.note}` : ""}`;
+            const detail = `${s.changes} change${s.changes === 1 ? "" : "s"}, ${day(s.from)} – ${day(s.to)} vs ${s.benchmark}${s.note ? `. ${s.note}` : ""}`;
             return (
               <li key={s.id} className="group relative flex items-center gap-2 border-b border-row py-2.5">
                 <Link
-                  href={`/backtesting?scenario=${s.id}`}
+                  href={`?scenario=${s.id}`}
                   aria-current={open ? "page" : undefined}
                   title={detail}
                   className="flex min-w-0 flex-1 flex-col gap-0.5 after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
                 >
                   <span className={cn("truncate text-body", open ? "font-semibold" : "font-normal")}>{s.name}</span>
                   <span className="truncate text-caption text-muted-foreground">
-                    {s.createdBy ?? "Someone"} · {fmtDayMonth(s.createdAt)} · {s.changes} change{s.changes === 1 ? "" : "s"}
-                    {open ? " · open now" : ""}
+                    {s.createdBy ?? "Someone"}, {fmtDayMonth(s.createdAt)}, {s.changes} change{s.changes === 1 ? "" : "s"}
+                    {open ? ". Open now" : ""}
                   </span>
                 </Link>
                 {(fundWide || (viewerId && s.createdById === viewerId)) && (

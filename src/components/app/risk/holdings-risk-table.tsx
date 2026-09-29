@@ -74,7 +74,7 @@ export function HoldingsRiskTable({ rows, teams, totals, showActive }: { rows: H
           <TableFooter className="bg-transparent">
             <TableRow>
               <TableCell className="font-semibold first:pl-0">All holdings</TableCell>
-              <TableCell>{rpct(totals.weight)} of value · 100.0% of risk</TableCell>
+              <TableCell>{rpct(totals.weight)} of value, 100.0% of risk</TableCell>
               <TableCell className="text-right font-semibold">{rpct(totals.vol, 2)}</TableCell>
               <TableCell colSpan={showActive ? 5 : 4} />
             </TableRow>

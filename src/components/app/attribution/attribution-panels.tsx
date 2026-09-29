@@ -14,10 +14,10 @@ import { Tip } from "./info-tip";
 import { SectorEffectsList, type SectorEffectPoint } from "./sector-effects-list";
 
 export function rangeText(start: string, end: string, days: number) {
-  return `${fmtDay(start)} close through ${fmtDay(end)} · ${days} trading ${days === 1 ? "day" : "days"}`;
+  return `${fmtDay(start)} close through ${fmtDay(end)}, ${days} trading ${days === 1 ? "day" : "days"}`;
 }
 
-export const LEDGER_HREF = "/attribution/ledger";
+export const LEDGER_HREF = "/t/fund/activity";
 
 /** The period buttons with, on the right, whatever the caller puts there (the chart's key, the Details button). */
 export function PeriodBar({ basePath, active, from, to, inception, latest, children }: { basePath: string; active: ViewPeriodKey; from?: string; to?: string; inception: string; latest: string; children?: React.ReactNode }) {
@@ -145,7 +145,7 @@ export function TeamBars({ rows, teams, cashContribution, cashWeight, portfolioR
                   "No team"
                 )}
                 <span className="block text-caption text-muted-foreground">
-                  {fmtPct(pct(t.avgWeight), 1)} of the Fund · {fmtChangePct(pct(t.ret))}
+                  {fmtPct(pct(t.avgWeight), 1)} of the Fund, {fmtChangePct(pct(t.ret))}
                 </span>
               </span>
               <span role="cell"><CenterBar value={t.contribution} max={max} /></span>
@@ -199,7 +199,7 @@ export function HoldingsSection({
       <SectionHead
         id="perf-holdings"
         title={<Tip label="Holdings by contribution">{EXPLAIN.contributors}</Tip>}
-        sub={`${holdings.length} ${holdings.length === 1 ? "holding" : "holdings"} · contribution in bp of the return`}
+        sub={`${holdings.length} ${holdings.length === 1 ? "holding" : "holdings"}, contribution in bp of the return`}
         aside={
           toggle && (
             <Segmented
@@ -220,8 +220,8 @@ export function HoldingsSection({
         </div>
       ) : (
         <div className="mt-2 grid grid-cols-2 gap-x-14">
-          <HoldingsColumn rows={top} teams={teams} label="Helped most" caption={showTeam ? "Helped most · team, avg weight" : "Helped most · avg weight"} />
-          <HoldingsColumn rows={bottom} teams={teams} label="Hurt most" caption={showTeam ? "Hurt most · team, avg weight" : "Hurt most · avg weight"} />
+          <HoldingsColumn rows={top} teams={teams} label="Helped most" caption={showTeam ? "Helped most, team and average weight" : "Helped most, average weight"} />
+          <HoldingsColumn rows={bottom} teams={teams} label="Hurt most" caption={showTeam ? "Hurt most, team and average weight" : "Hurt most, average weight"} />
         </div>
       )}
     </section>

@@ -91,7 +91,7 @@ export function ActiveRiskSection({ report: r, teams, benchmarkLabel, transparen
               <TableRow className="text-muted-foreground">
                 <TableCell className="first:pl-0">
                   <Link href={`${basePath}${q}&all=1#${ACTIVE_RISK_ANCHOR}`} className="font-semibold hover:underline">{rest.length} smaller holdings</Link>
-                  <div className="max-w-44 text-caption whitespace-normal">{rest.map((h) => h.ticker).join(" · ")}</div>
+                  <div className="max-w-44 text-caption whitespace-normal">{rest.map((h) => h.ticker).join(", ")}</div>
                 </TableCell>
                 <TableCell>
                   <Bars weight={rest.reduce((s, h) => s + h.weight, 0)} share={rest.reduce((s, h) => s + h.share, 0)} max={max} aggregate />

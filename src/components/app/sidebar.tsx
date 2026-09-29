@@ -82,8 +82,9 @@ export function useTeamSection() {
   if (book) return `/${book[1]}`;
   const m = pathname.match(/^\/t\/[^/]+(\/[^/]+)?/);
   const section = m?.[1] ?? "";
-  // Holding pages (/h/<ticker>) have no fund-wide list of their own; land on Holdings instead.
-  return section === "/h" ? "" : section;
+  // Holding pages (/h/<ticker>) have no fund-wide list of their own, and Activity (the ledger) is the fund's alone; both
+  // land on Positions instead.
+  return section === "/h" || section === "/activity" ? "" : section;
 }
 
 /**

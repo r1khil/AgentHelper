@@ -1,6 +1,6 @@
-import { LedgerSkeleton } from "@/components/app/page-skeletons";
+import { PortfolioSkeleton } from "@/components/app/portfolio/view-skeletons";
 
-/** The ledger: shown at once on navigation while the page streams in, shaped like it so nothing moves. */
+/** This page redirects to a Portfolio view; the Portfolio's shape shows for the moment it takes. */
 export default function Loading() {
-  return <LedgerSkeleton />;
+  return <PortfolioSkeleton />;
 }

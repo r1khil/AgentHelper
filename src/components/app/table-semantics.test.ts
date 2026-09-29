@@ -165,7 +165,7 @@ describe("div grids read as tables", () => {
     expect(toggles.every((b) => role(b.parent!) === "cell")).toBe(true);
     const links = nodes.filter((n) => n.tag === "a" && role(n.parent!) === "rowheader");
     expect(links.map((a) => a.attrs["aria-label"])).toEqual(["MSFT, Microsoft", "AVGO, Broadcom"]);
-    expect(nodes.filter((n) => role(n) === "columnheader").map((n) => all(n).map((c) => c.text).join("").trim())).toEqual(["Name", "Intraday", "Last", "Today", "Market value", "Weight", "Total gain"]);
+    expect(nodes.filter((n) => role(n) === "columnheader").map((n) => all(n).map((c) => c.text).join("").trim())).toEqual(["Name", "Last", "Today", "vs S&amp;P", "Market value", "Weight", "Total gain"]);
   });
 
   it("Today's teams, with and without the book", () => {

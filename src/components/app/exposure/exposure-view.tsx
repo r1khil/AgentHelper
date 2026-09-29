@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PageHead } from "@/components/app/page-head";
 import { Hero } from "@/components/app/portfolio/hero";
+import { ViewMeta } from "@/components/app/portfolio/view-meta";
 import { HowNote, ShareBar } from "@/components/app/portfolio/parts";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fmtChangeBp, fmtDate, fmtDay } from "@/lib/format";
@@ -115,17 +115,16 @@ export function ExposureView({
   return (
     <>
       <OpenDetailsOnHash />
-      <PageHead
-        crumbs={[{ label: "Portfolio" }]}
-        scope
-        asof={asOfLists ? `Today's weights · ETF holdings as of ${fmtDay(asOfLists)}` : `Today's weights · closes through ${fmtDay(r.asOf)}`}
+      <ViewMeta
         actions={
           <Button variant="secondary" nativeButton={false} render={<a href={`/api/risk/export?file=exposure&lookback=${r.lookback}${exportQuery}`} download />}>
             <Download aria-hidden />
             Export CSV
           </Button>
         }
-      />
+      >
+        {asOfLists ? `Today's weights, ETF holdings as of ${fmtDay(asOfLists)}` : `Today's weights, closes through ${fmtDay(r.asOf)}`}
+      </ViewMeta>
       <div data-tour="exposure-toolbar">
         <Hero
           label={
@@ -140,8 +139,8 @@ export function ExposureView({
           note={
             first ? (
               <>
-                {second && <>· then {second.label} {bp(second.active)} </>}
-                {showUnder && <>· most underweight {under.label} ({rnum(Math.abs(under.active!) * 10_000, 0)} bp)</>}
+                {second && <>, then {second.label} {bp(second.active)}</>}
+                {showUnder && <>, most underweight {under.label} ({rnum(Math.abs(under.active!) * 10_000, 0)} bp)</>}
               </>
             ) : (
               "Add S&P 500 sector weights to compare against the benchmark."
@@ -176,8 +175,10 @@ export function ExposureView({
               Sector table: exact weights, holdings in each sector and share of risk
             </h2>
             <span className="text-caption text-muted-foreground">
-              {x.throughEtfs ? "Through ETFs · " : ""}
-              {x.hasBenchmark ? `Largest overweight first · vs ${benchmarkLabel}` : "By weight · no benchmark saved"}
+              {[x.throughEtfs ? "Through ETFs" : null, x.hasBenchmark ? `largest overweight first, against ${benchmarkLabel}` : "by weight, no benchmark saved"]
+                .filter(Boolean)
+                .join(", ")
+                .replace(/^./, (c) => c.toUpperCase())}
             </span>
           </summary>
           <div className="mt-1">
@@ -199,7 +200,7 @@ export function ExposureView({
                       const s = lt.report.sectors.find((v) => v.key === key);
                       if (!s) return null;
                       const parts = [`as held ${rpct(s.asHeld)}`, ...(s.assumed > 5e-5 ? [`${rpct(s.assumed, 2)} assumed`] : [])];
-                      return parts.join(" · ");
+                      return parts.join(", ");
                     }
                   : undefined
               }
@@ -214,7 +215,7 @@ export function ExposureView({
           explain={RISK_EXPLAIN.top10}
           aside={
             <span className="inline-flex flex-wrap items-center gap-x-1">
-              {x.top.holdings.length} of {x.holdingsCount} holdings{x.top.holdings.length > 5 && <> · top 5 {rpct(r.portfolio.top5)}</>} ·{" "}
+              {x.top.holdings.length} of {x.holdingsCount} holdings{x.top.holdings.length > 5 && <>, top 5 {rpct(r.portfolio.top5)}</>},{" "}
               <Explained label={`effective positions ${rnum(x.effectiveN, 1)}`}>{RISK_EXPLAIN.effectiveN}</Explained>
             </span>
           }
@@ -252,7 +253,7 @@ export function ExposureView({
             <p>
               Weights are today&apos;s positions (the trade ledger replayed to the {fmtDate(r.asOf)} close) as a share of {fund ? "NAV, cash included" : `the ${scopeLabel}'s holdings, scaled to 100%`}.
               The benchmark is {fund ? (weightSetAsOf ? `the S&P 500 sector weights saved ${fmtDate(weightSetAsOf)}, drifted to today by the Select Sector SPDR ETFs' returns` : "the saved S&P 500 sector weights, drifted to today") : `the team's own sectors (${benchmarkLabel}), rescaled to 100%`},
-              the same weights the Risk and Attribution pages use. Active weight is the portfolio&apos;s weight minus the benchmark&apos;s. Share of risk and of active risk
+              the same weights the Risk and Performance views use. Active weight is the portfolio&apos;s weight minus the benchmark&apos;s. Share of risk and of active risk
               come from the Risk page&apos;s model over the selected window ({r.window.days} trading days); weights don&apos;t depend on the window.
             </p>
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -323,7 +324,7 @@ function TopPositions({ x, report: r }: { x: Exposure; report: RiskReport }) {
                 <TableCell className="text-body text-muted-foreground first:pl-0">{i + 1}</TableCell>
                 <TableCell>
                   <span className="font-semibold">{h.ticker}</span>
-                  <div className="max-w-52 text-caption whitespace-normal text-muted-foreground">{h.name}{s ? ` · ${SECTOR_LABELS[s]}` : ""}</div>
+                  <div className="max-w-52 text-caption whitespace-normal text-muted-foreground">{h.name}{s ? `, ${SECTOR_LABELS[s]}` : ""}</div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">

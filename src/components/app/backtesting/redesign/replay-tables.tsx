@@ -201,8 +201,8 @@ export function DailyHeatmap({ result, names, defaultMode }: { result: BacktestR
         title="By day"
         sub={
           mode === "delta"
-            ? `Green: ${names.modified.toLowerCase()} ahead that day · red: ${names.original.toLowerCase()} ahead · neutral: equal · darker: larger, up to 100 bp. Daily colors do not show the full-period result.`
-            : `Green: ahead of ${result.benchmark} that day · red: behind · neutral: equal · darker: larger, up to 100 bp. Daily colors do not show the full-period result.`
+            ? `Green: ${names.modified.toLowerCase()} ahead that day; red: ${names.original.toLowerCase()} ahead; neutral: equal; darker: larger, up to 100 bp. Daily colors do not show the full-period result.`
+            : `Green: ahead of ${result.benchmark} that day; red: behind; neutral: equal; darker: larger, up to 100 bp. Daily colors do not show the full-period result.`
         }
         aside={
           <Segmented
@@ -263,7 +263,7 @@ export function DailyHeatmap({ result, names, defaultMode }: { result: BacktestR
       </div>
       <p className="mt-3 text-caption text-muted-foreground">Select a trading day for contributions. Blank sessions are not assigned a zero return.</p>
 
-      <h3 className="mt-6 text-title font-bold tracking-[-0.01em]">Day detail · {fmtDay(date)}</h3>
+      <h3 className="mt-6 text-title font-bold tracking-[-0.01em]">Day detail, {fmtDay(date)}</h3>
       <div role="table" aria-label="Selected day, portfolio and benchmark" className="mt-2 text-body">
         <div role="row" className={cn(dayCols, "min-h-8 items-center border-b", head)}>
           <span role="columnheader">Return</span>
@@ -273,7 +273,7 @@ export function DailyHeatmap({ result, names, defaultMode }: { result: BacktestR
         </div>
         {[
           ["Portfolio", pct(selected.original), pct(selected.modified), bp(selected.delta)],
-          [`Benchmark · ${result.benchmark}`, pct(selected.benchmark), pct(selected.benchmark), bp(0)],
+          [`Benchmark, ${result.benchmark}`, pct(selected.benchmark), pct(selected.benchmark), bp(0)],
           [`Difference vs ${result.benchmark}`, bp(selected.originalActive), bp(selected.modifiedActive), bp(selected.delta)],
         ].map(([label, a, b, c]) => (
           <div key={label} role="row" className={cn(dayCols, "min-h-9 items-center border-b border-row")}>
@@ -346,7 +346,7 @@ export function ScenarioRiskSection({ data, busy, error, stale, names }: { data:
       <SectionHead
         id="bt-risk"
         title={<Tip label="Risk impact">{RISK_IMPACT_EXPLAIN}</Tip>}
-        sub={data ? `Today's weights against the scenario · ${data.window.days} daily returns to the ${data.window.to} close` : "Today's weights against the scenario"}
+        sub={data ? `Today's weights against the scenario, ${data.window.days} daily returns to the ${data.window.to} close` : "Today's weights against the scenario"}
       />
       {error ? (
         <p role="alert" className="mt-2 text-body"><b className="font-semibold text-caution-foreground">Failed</b> <span className="text-ink-3">{error}</span></p>

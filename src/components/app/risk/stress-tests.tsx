@@ -77,7 +77,7 @@ export function StressTests({
             <div key={r.key} role="row" className={cn(STRESS_COLS, "min-h-10 items-center border-b border-row")}>
               <span role="rowheader" className="font-semibold">{r.label}</span>
               <span role="cell" aria-colspan={STRESS_COLUMNS - 1} className="col-span-5 text-muted-foreground">
-                {stressDates(r.from, r.to)} · {r.reason}
+                {stressDates(r.from, r.to)}. {r.reason}
               </span>
             </div>
           ),

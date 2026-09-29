@@ -42,7 +42,7 @@ function Held({ t, today, positions }: { t: HeldTicket; today: string; positions
   const value = t.shares * t.price;
   const signed = t.side === "buy" ? -value : value;
   const amount = t.side === "buy" ? fmtMoney(signed) : fmtChangeMoney(signed);
-  const defaults = { ticker: t.ticker, side: t.side, tradeDate: t.date, shares: t.shares, price: t.price, note: "Trade ticket, emailed · price checked against the broker confirmation" };
+  const defaults = { ticker: t.ticker, side: t.side, tradeDate: t.date, shares: t.shares, price: t.price, note: "Trade ticket, emailed. Price checked against the broker confirmation" };
 
   const record = () =>
     start(async () => {
@@ -65,7 +65,7 @@ function Held({ t, today, positions }: { t: HeldTicket; today: string; positions
     });
 
   const fields: { k: string; v: string; caution?: boolean }[] = [
-    { k: "Symbol", v: t.name ? `${t.ticker} · ${t.name}` : t.ticker },
+    { k: "Symbol", v: t.name ? `${t.ticker}, ${t.name}` : t.ticker },
     { k: "Shares", v: fmtNumber(t.shares) },
     { k: "Price on ticket", v: fmtMoney(t.price), caution: true },
     { k: "Trade date", v: fmtDay(t.date) },
@@ -85,7 +85,7 @@ function Held({ t, today, positions }: { t: HeldTicket; today: string; positions
           <span className="text-emph font-semibold">
             {t.side === "buy" ? "Buy" : "Sell"} {fmtNumber(t.shares)} {t.ticker} at {fmtMoney(t.price)}
           </span>
-          <span className="truncate text-caption text-muted-foreground">Emailed ticket · sent by {t.from} · DKIM verified · {fmtDateTime(t.receivedAt)}</span>
+          <span className="truncate text-caption text-muted-foreground">Emailed ticket, sent by {t.from}, DKIM verified, {fmtDateTime(t.receivedAt)}</span>
         </span>
         <span className="text-right text-emph font-semibold">
           <Delta text={amount} />

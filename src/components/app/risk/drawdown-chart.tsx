@@ -25,7 +25,7 @@ export function DrawdownChart({ data, fundLabel, marketLabel = "S&P 500 (SPY)", 
   const worstIdx = data.findIndex((d) => d.date === worstAt);
   const nearest = pick.reduce((best, d, i) => (Math.abs(data.findIndex((x) => x.date === d) - worstIdx) < Math.abs(data.findIndex((x) => x.date === pick[best]) - worstIdx) ? i : best), 0);
   const ticks = pick.map((d, i) => (i === nearest && i > 0 && i < pick.length - 1 ? worstAt : d));
-  const label = (d: string) => (d === worstAt && d !== data[0].date && d !== data.at(-1)!.date ? `${fmtDate(d)} · worst ${fmtPct(worst.fund)}` : fmtDate(d));
+  const label = (d: string) => (d === worstAt && d !== data[0].date && d !== data.at(-1)!.date ? `${fmtDate(d)}, worst ${fmtPct(worst.fund)}` : fmtDate(d));
   return (
     <div className="w-full" style={{ height }} role="img" aria-label={`${fundLabel} drawdown from the previous high; the worst was ${fmtPct(worst.fund)} on ${fmtDate(worstAt)}`}>
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>

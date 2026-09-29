@@ -149,7 +149,7 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
   const corner = hoot && <HootCorner onAsk={() => openPalette("ask")} suppressed={palette !== null} />;
 
   // The provider lets links built on the client (book tables, the sidebar) open in the scope in view.
-  if (pathname === "/backtesting" && backtestingLayout === "classic") {
+  if (/^\/t\/[^/]+\/what-if\/?$/.test(pathname) && backtestingLayout === "classic") {
     return (
       <ScopeProvider value={scopeSlug}>
         <ShellProvider value={shell}>

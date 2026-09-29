@@ -73,7 +73,7 @@ export function ImportDialog() {
             <div className="rounded-lg border p-3">
               <div className="font-medium">
                 {preview.trades} trades and {preview.cashFlows} cash entries
-                {preview.from && ` · ${fmtDate(preview.from)} to ${fmtDate(preview.to)}`}
+                {preview.from && `, ${fmtDate(preview.from)} to ${fmtDate(preview.to)}`}
               </div>
               <ul className="mt-1 grid gap-0.5 text-muted-foreground">
                 {preview.duplicates > 0 && <li>{preview.duplicates} rows are already in the ledger and will be skipped.</li>}
