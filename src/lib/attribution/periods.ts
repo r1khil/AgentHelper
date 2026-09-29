@@ -4,6 +4,9 @@ import { NY, isTradingDay, previousTradingDay } from "../providers/calendar";
 export const PERIOD_KEYS = ["1d", "7d", "1m", "6m", "ytd", "1y", "itd", "custom"] as const;
 export type PeriodKey = (typeof PERIOD_KEYS)[number];
 
+/** The live session, Performance's "Today" (`?period=today`): not a closed period, so not one of PERIOD_KEYS. */
+export const TODAY_KEY = "today";
+
 export const PERIOD_LABELS: Record<PeriodKey, string> = {
   "1d": "1D",
   "7d": "7D",

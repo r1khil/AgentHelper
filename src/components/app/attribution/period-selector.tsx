@@ -4,13 +4,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { periodOptions, type PeriodKey } from "@/lib/attribution/periods";
+import { periodOptions, TODAY_KEY, type PeriodKey } from "@/lib/attribution/periods";
 import { fmtDate, fmtDayMonth } from "@/lib/format";
 import { Segmented, segmentClass } from "@/components/app/panel";
 
 /** "today" is the live session (the Daily numbers); every other key is a closed period, as in the URL (`?period=7d`). */
-export type ViewPeriodKey = PeriodKey | "today";
-export const TODAY_KEY = "today";
+export type ViewPeriodKey = PeriodKey | typeof TODAY_KEY;
 
 const SEGMENT_LABELS: Record<Exclude<PeriodKey, "itd">, string> = {
   "1d": "1D",

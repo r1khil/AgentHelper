@@ -10,6 +10,7 @@ import { TodayView } from "@/components/app/daily/today-view";
 import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { computeAttribution, computeTeamAttribution } from "@/lib/attribution/attribution";
 import { loadAttributionSeries, loadTeamSectors } from "@/lib/attribution/load";
+import { TODAY_KEY } from "@/lib/attribution/periods";
 import { loadLiveSnapshot } from "@/lib/attribution/live-load";
 import { ETF_BY_SECTOR, INDEX_LABEL, SECTOR_LABELS } from "@/lib/attribution/sectors";
 import { indexCumulative, indexReturn, periodFromQuery, qualityNotices, sectorEffectPoints } from "@/lib/attribution/view";
@@ -17,10 +18,6 @@ import { canManageTeam, isFundWide, listAccessibleTeams, transparencyEnabled } f
 import { loadScope } from "@/lib/teams";
 
 export const metadata: Metadata = { title: "Performance" };
-
-// The live session's period key: period-selector's TODAY_KEY, written out here since a server component reads a client
-// module's exports as references, not values.
-const TODAY_KEY = "today";
 
 /** Before there is anything to attribute: the empty state, and the ledger one click away. */
 function NotYet({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {

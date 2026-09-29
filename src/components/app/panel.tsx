@@ -220,7 +220,7 @@ export function Pill({ tone = "neutral", className, children, title }: { tone?: 
 }
 
 /**
- * A filter, e.g. "Needs attention · 3": narrows a list. The chosen one is filled ink, the rest are bare words, the
+ * A filter, e.g. "Needs attention 3": narrows a list. The chosen one is filled ink, the rest are bare words, the
  * same look as the range buttons. A link chip (the filter lives in the URL) marks itself `aria-current`; a button chip
  * is a toggle button (`aria-pressed`). A row of them goes in a `FilterChips` group.
  */
@@ -229,7 +229,8 @@ export function FilterChip({ href, onClick, active, count, title, children }: { 
   const body = (
     <>
       {children}
-      {count !== undefined && count !== null && <span className="ml-1 tabular-nums">· {count}</span>}
+      {/* The count in the chip's secondary tone, no separator: "Needs attention 3". */}
+      {count !== undefined && count !== null && <span className="ml-1.5 font-medium tabular-nums opacity-60">{count}</span>}
     </>
   );
   return href ? (

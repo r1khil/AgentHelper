@@ -44,6 +44,7 @@ export function BacktestingRedesign({
   fundWide,
   teams = {},
   classicHref,
+  scopeNote,
   ...options
 }: BacktestingOptions & {
   saveAudience?: string;
@@ -56,6 +57,8 @@ export function BacktestingRedesign({
   teams?: Record<string, string>;
   /** The synthetic preview switches layouts with a link instead of the saved preference. */
   classicHref?: string;
+  /** Said beside the page's note when the replay isn't of the scope in view (an exec on a team: it replays the fund). */
+  scopeNote?: React.ReactNode;
 }) {
   const bt = useBacktesting(options);
   const { completed, busy, dirty, error, risk } = bt;
@@ -118,7 +121,9 @@ export function BacktestingRedesign({
 
   return (
     <>
-      <ViewMeta actions={<LayoutSwitch to="classic" href={classicHref} />}>A replay of past prices, not a forecast</ViewMeta>
+      <ViewMeta actions={<LayoutSwitch to="classic" href={classicHref} />}>
+        A replay of past prices, not a forecast{scopeNote ? <>. {scopeNote}</> : null}
+      </ViewMeta>
       <form onSubmit={bt.run} className="flex min-w-0 flex-col">
         <Hero label={label} value={value ?? "—"} tone={tone} change={change} note={note} />
         {(banner || bt.opened.problem) && (

@@ -18,6 +18,7 @@ import { db } from "@/db/client";
 import { holdings, teams } from "@/db/schema";
 import { BacktestingRedesign } from "@/components/app/backtesting/redesign/backtesting-redesign";
 import { LayoutSwitch } from "@/components/app/backtesting/layout-switch";
+import Link from "next/link";
 import { loadScope } from "@/lib/teams";
 
 export const metadata: Metadata = { title: "What if" };
@@ -30,7 +31,18 @@ const BENCHMARKS = new Set(["SPY", "QQQ", "IWM"]);
  * replays the reader's own portfolio (the fund for execs and admins, their team otherwise) whichever scope is in view.
  */
 export default async function WhatIfPage({ params, searchParams }: PageProps<"/t/[team]/what-if">) {
-  const { user } = await loadScope((await params).team);
+  const scope = await loadScope((await params).team);
+  const { user } = scope;
+  // The replay is the reader's own portfolio, which for an exec or admin is the whole fund whatever team is in view.
+  const scopeNote =
+    scope.kind === "team" && isFundWide(user) ? (
+      <>
+        Replays the whole fund, not {scope.team.name}.{" "}
+        <Link href="/t/fund/what-if" className="font-semibold text-foreground hover:underline">
+          Open it on the whole fund
+        </Link>
+      </>
+    ) : undefined;
   const query = await searchParams;
   // Each member picks the redesign (default) or the classic layout; the shell draws the matching chrome.
   const classic = user.hoot?.layouts?.backtesting === "classic";
@@ -139,6 +151,7 @@ export default async function WhatIfPage({ params, searchParams }: PageProps<"/t
       viewerId={user.id}
       fundWide={isFundWide(user)}
       teams={await teamNames}
+      scopeNote={scopeNote}
     />
   );
 }

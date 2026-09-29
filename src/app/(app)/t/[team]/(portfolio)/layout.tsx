@@ -44,7 +44,8 @@ export default async function PortfolioLayout({ children, params }: { children: 
   const seesBook = !team || canManageTeam(user, team.id);
   // Not awaited: the header and the view control draw at once and the numbers stream into place.
   const book = !team ? loadFundBookView() : seesBook ? loadTeamBookView(team.id, team.name) : null;
-  const views = portfolioViews(team ? { slug } : "fund", { fundWide, seesBook });
+  // What if replays the reader's own portfolio: for an exec or admin that is the whole fund, so from a team it opens there.
+  const views = portfolioViews(team ? { slug } : "fund", { fundWide, seesBook }).map((v) => (v.key === "what-if" && team && fundWide ? { ...v, href: "/t/fund/what-if" } : v));
 
   // Holdings open in the scope in view; each position's team gives its link.
   const teamSlugs = new Map([...scope.teamById.values()].map((t) => [t.id, t.slug]));
