@@ -501,7 +501,7 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
     }),
 
     get_team_context: tool({
-      description: "The team's current holdings, theses, recent notes, and open movement investigations from the workspace database. In a fund-wide conversation: every team's holdings, with the detail for the one ticker you pass.",
+      description: "The team's current holdings, theses, recent notes, and open movement investigations from the workspace database. In a fund-wide conversation: without a ticker, every team's holdings with their team in one call; with a ticker, that holding's detail.",
       inputSchema: z.object({ ticker: tickerArg.optional().describe("Limit to one holding") }),
       execute: async ({ ticker }): Promise<ToolResult<unknown>> => {
         const rows = await db

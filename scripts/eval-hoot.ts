@@ -39,7 +39,8 @@ async function viewerFor(username: string): Promise<CurrentUser> {
 async function runCase(c: EvalCase, viewers: Record<EvalCase["as"], CurrentUser>, fallbackTeamId: string): Promise<EvalTurn> {
   const viewer = viewers[c.as];
   const [holding] = c.ticker ? await db.select().from(holdings).where(eq(holdings.ticker, c.ticker)).limit(1) : [];
-  const teamId = holding?.teamId ?? viewer.teamId ?? fallbackTeamId;
+  // An exec's general chat is fund-wide (no team), as startHootChat files it; everyone else's is their team's.
+  const teamId = holding?.teamId ?? (c.as === "exec" ? null : (viewer.teamId ?? fallbackTeamId));
   const [chat] = await db.insert(chats).values({ teamId, holdingId: holding?.id ?? null, title: `eval: ${c.id}`, createdBy: viewer.id }).returning();
   try {
     const user: UIMessage = { id: "msg-eval-1", role: "user", parts: [{ type: "text", text: c.question }], ...(c.page ? { metadata: { page: c.page } } : {}) };
