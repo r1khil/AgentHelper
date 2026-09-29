@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { pinChatToHolding } from "@/lib/actions/chats";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -65,14 +65,16 @@ export function PinToBoard({ chatId, targets, look = "link", onPinned, className
           />
         </div>
         <div className="max-h-64 overflow-y-auto p-1">
-          <DropdownMenuLabel>File this conversation under</DropdownMenuLabel>
-          {shown.length === 0 && <p className="px-2 py-2 text-body text-muted-foreground">No holding matches.</p>}
-          {shown.map((t) => (
-            <DropdownMenuItem key={`${t.teamSlug}:${t.ticker}`} onClick={() => pin(t)}>
-              <span className="w-12 shrink-0 font-semibold">{t.ticker}</span>
-              <span className="min-w-0 flex-1 truncate text-muted-foreground">{t.company}</span>
-            </DropdownMenuItem>
-          ))}
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>File this conversation under</DropdownMenuLabel>
+            {shown.length === 0 && <p className="px-2 py-2 text-body text-muted-foreground">No holding matches.</p>}
+            {shown.map((t) => (
+              <DropdownMenuItem key={`${t.teamSlug}:${t.ticker}`} onClick={() => pin(t)}>
+                <span className="w-12 shrink-0 font-semibold">{t.ticker}</span>
+                <span className="min-w-0 flex-1 truncate text-muted-foreground">{t.company}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

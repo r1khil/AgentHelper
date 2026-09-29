@@ -339,7 +339,7 @@ export type ComposerVariant = "pill" | "thread" | "compact";
  * The question box under a conversation. `pill` is a thread's follow-up, floating over the page (the raised surface, a
  * hairline, a soft shadow, fully round ends and a round send); `thread` is the older 12px-radius box with a 34px send;
  * `compact` is the board's and the panel's (10px radius, a 30px send). What Hoot can see sits in the box, in grey; a
- * stop button takes the send button's place while an answer streams.
+ * stop button takes the send button's place while an answer is being written; it ends the run on the server.
  */
 export function Composer({
   value,
@@ -347,6 +347,7 @@ export function Composer({
   onSend,
   onStop,
   streaming = false,
+  stopping = false,
   disabled,
   sendDisabled,
   placeholder,
@@ -361,6 +362,8 @@ export function Composer({
   onSend: () => void;
   onStop?: () => void;
   streaming?: boolean;
+  /** Stop was pressed and the run is winding down. */
+  stopping?: boolean;
   disabled: boolean;
   sendDisabled?: boolean;
   placeholder: string;
@@ -418,8 +421,10 @@ export function Composer({
         <button
           type="button"
           onClick={onStop}
-          aria-label="Stop"
-          className={cn("grid shrink-0 place-items-center bg-secondary hover:bg-border", pill ? "size-9 rounded-full" : thread ? "size-[34px] rounded-lg" : "size-[30px] rounded-[7px]")}
+          disabled={stopping}
+          aria-label={stopping ? "Stopping" : "Stop"}
+          title={stopping ? "Stopping…" : "Stop Hoot. He keeps what he has written so far."}
+          className={cn("grid shrink-0 place-items-center bg-secondary hover:bg-border disabled:opacity-60", pill ? "size-9 rounded-full" : thread ? "size-[34px] rounded-lg" : "size-[30px] rounded-[7px]")}
         >
           <span className="size-2.5 rounded-sm bg-foreground" />
         </button>

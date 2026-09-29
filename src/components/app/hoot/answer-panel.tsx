@@ -99,8 +99,9 @@ function Panel({ panel, holdings }: { panel: NonNullable<AnswerPanelState>; hold
           value={conv.input}
           onChange={conv.setInput}
           onSend={conv.submit}
-          onStop={conv.stopWatching}
-          streaming={conv.streaming}
+          onStop={conv.stopRun}
+          streaming={conv.busy}
+          stopping={conv.stopping}
           disabled={conv.catchingUp}
           sendDisabled={conv.busy}
           inputRef={composerRef}

@@ -80,8 +80,9 @@ export function TurnView(props: TurnViewProps) {
     [props.links, open, hover, turn.id],
   );
 
-  const meta = (turn.assistant?.metadata ?? {}) as { uncited?: number };
-  const elapsed = props.elapsedMs ?? savedTurnMs(turn);
+  const meta = (turn.assistant?.metadata ?? {}) as { uncited?: number; stopped?: boolean };
+  // The saved time is the whole run on the server; this page's own clock only stands in until the answer is saved.
+  const elapsed = savedTurnMs(turn) ?? props.elapsedMs;
   const pages = live ? [] : turnPageLinks(turn.activity, teamSlug);
   // Changes Hoot proposed in this answer, each a card the member confirms or cancels. Inert data: never applied here.
   const proposals = useMemo(() => proposalsOf((turn.assistant?.parts ?? []) as Part[]), [turn.assistant]);
@@ -109,10 +110,11 @@ export function TurnView(props: TurnViewProps) {
         {turn.answerText ? (
           <div className={cn(variant === "thread" ? "mt-[22px]" : variant === "panel" ? "mt-2" : "mt-1.5")}>
             <ResearchAnswer text={turn.answerText} className={cn(variant === "thread" && "leading-[29px] [&_p+p]:mt-3.5", variant === "panel" && "[&_p+p]:mt-3")} />
+            {meta.stopped && <p className="mt-2 text-caption text-muted-foreground">You stopped Hoot here, so this answer may be incomplete.</p>}
           </div>
         ) : turn.assistant && !live && !catchingUp ? (
           <div className="mt-2 text-body font-medium text-caution-foreground">
-            Hoot stopped before writing an answer.{variant === "board" ? " Its lookups are on the right; ask again to get a written answer." : " Ask again to get a written answer."}
+            {meta.stopped ? "You stopped Hoot before he wrote an answer." : "Hoot stopped before writing an answer."}{variant === "board" ? " Its lookups are on the right; ask again to get a written answer." : " Ask again to get a written answer."}
           </div>
         ) : null}
 

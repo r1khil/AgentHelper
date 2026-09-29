@@ -7,7 +7,7 @@ import { useSourceViewer, ResearchSources } from "./research-answer";
 import { Composer, HootFace, SourceListCard, SourcesHeading } from "./thread-parts";
 import { ConversationTurns, useConversation, useRelated, type Conversation } from "./conversation";
 import { fmtDateTime, fmtDay, fmtTime } from "@/lib/format";
-import { isCallTitle, threadTitle } from "@/lib/thread-title";
+import { clipTitle, isCallTitle, threadTitle } from "@/lib/thread-title";
 import { isMemberQuestion } from "@/lib/agent/hidden-prompt";
 import { pageContextFromMessages, pageContextLabel } from "@/lib/agent/page-context";
 import type { RunStatus } from "@/lib/chats";
@@ -44,8 +44,9 @@ function composerProps(conv: Conversation, { configured, sees }: { configured: b
     value: conv.input,
     onChange: conv.setInput,
     onSend: conv.submit,
-    onStop: conv.stopWatching,
-    streaming: conv.streaming,
+    onStop: conv.stopRun,
+    streaming: conv.busy,
+    stopping: conv.stopping,
     disabled: !configured || conv.catchingUp,
     sendDisabled: conv.busy,
     inputRef: conv.composerRef,
@@ -172,7 +173,11 @@ export function ChatWorkspace({
   const questions = conv.messages.filter(isMemberQuestion).length;
   const first = conv.messages.find(isMemberQuestion);
   const firstText = first?.parts.map((p) => (p.type === "text" ? p.text : "")).join(" ").replace(/\s+/g, " ").trim();
-  const shown = title === "New chat" ? firstText?.slice(0, 80) || "New conversation" : threadTitle(title, ticker);
+  const shown = title === "New chat" ? (firstText && clipTitle(firstText)) || "New conversation" : threadTitle(title, ticker);
+  // The tab title came from the server while the chat was still "New chat"; follow the first question once asked.
+  useEffect(() => {
+    if (title === "New chat" && firstText) document.title = `${clipTitle(firstText)} | The Owl's Nest`;
+  }, [title, firstText]);
   const asof = [author, isCallTitle(title) && questions === 0 ? null : `${questions} question${questions === 1 ? "" : "s"}`, updatedAt ? `updated ${fmtDay(updatedAt) === fmtDay(new Date()) ? fmtTime(updatedAt) : fmtDateTime(updatedAt)}` : null].filter(Boolean).join(", ");
   return (
     <div data-full-bleed className="flex h-dvh min-h-0 flex-col">

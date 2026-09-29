@@ -188,3 +188,28 @@ describe("tab and segment markup lives in the shared controls", () => {
     expect(hits).toEqual([]);
   });
 });
+
+describe("menu labels", () => {
+  const files = (dir: string): string[] =>
+    readdirSync(dir).flatMap((name) => {
+      const p = path.join(dir, name);
+      if (statSync(p).isDirectory()) return files(p);
+      return /\.tsx$/.test(name) ? [p] : [];
+    });
+
+  // Base UI throws (error #31) when a menu's group label renders outside a group, and the page's error boundary takes over.
+  it("puts every DropdownMenuLabel inside a DropdownMenuGroup", () => {
+    const hits = ["src/app", "src/components"]
+      .flatMap(files)
+      .filter((f) => !f.startsWith("src/components/ui/"))
+      .flatMap((f) => {
+        const text = readFileSync(f, "utf8");
+        return [...text.matchAll(/<DropdownMenuLabel\b/g)].flatMap((m) => {
+          const before = text.slice(0, m.index);
+          const open = (before.match(/<DropdownMenuGroup\b/g) ?? []).length - (before.match(/<\/DropdownMenuGroup>/g) ?? []).length;
+          return open > 0 ? [] : [`${f}:${before.split("\n").length}`];
+        });
+      });
+    expect(hits).toEqual([]);
+  });
+});

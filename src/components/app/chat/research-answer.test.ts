@@ -30,6 +30,12 @@ describe("research answer rendering (actual react-markdown pipeline)", () => {
     expect(defaultUrlTransform("src:sec-1")).toBe("");
     expect(renderToStaticMarkup(h(ReactMarkdown, { children: "[sec-1](src:sec-1)" }))).toContain('href=""');
   });
+  it("drops an empty [src: ] marker instead of printing it", () => {
+    const html = render("Revenue grew 8% [src: ]. Margins held [src:sec-1].");
+    expect(html).not.toContain("[src:");
+    expect(html).toContain("Revenue grew 8%.");
+    expect(html).toContain('href="https://www.sec.gov/Archives/filing.htm');
+  });
   it.each(["[src:sec-1][src:doc-1][src:xbrl-1]", "[src: sec-1, doc-1, xbrl-1]", "[src:sec-1, src:doc-1, src:xbrl-1]", "[sec-1](src:sec-1)[doc-1](src:doc-1)[xbrl-1](src:xbrl-1)"])(
     "renders real source links and readable numbers for %s",
     (text) => {

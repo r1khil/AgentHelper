@@ -123,12 +123,15 @@ export function useResearchChat({
     }
   }, [status, messages]);
 
+  // Stop was pressed on the current run (reset by the next question).
+  const [stopping, setStopping] = useState(false);
   const send = useCallback(
     (text: string, page?: PageContext | null) => {
       const t = text.trim();
       if (!t || busy) return false;
       if (runCommand(t)) return true;
       setRunError(null);
+      setStopping(false);
       setTrace([]);
       asked.current = { at: Date.now(), id: "" };
       void sendMessage(page ? { text: t, metadata: { page } } : { text: t });
@@ -137,13 +140,23 @@ export function useResearchChat({
     [busy, sendMessage, runCommand],
   );
 
-  const stopWatching = useCallback(() => {
-    // The server keeps going and saves the answer; this page just stops streaming and polls for the result.
-    stop();
+  // Stop ends the run on the server (it saves what it had). The page stays attached so the answer visibly ends there,
+  // then reloads the saved turn. If the request can't get through, the page just stops following, as before.
+  const stopRun = useCallback(async () => {
+    if (stopping && busy) return;
+    setStopping(true);
+    try {
+      const res = await fetch(`/api/chat/${chatId}/stop`, { method: "POST" });
+      // 409: it had already finished.
+      if (!res.ok && res.status !== 409) throw new Error(await res.text());
+    } catch (e) {
+      console.error("[chat] stop failed", e);
+      stop();
+    }
     setCatchingUp(true);
-  }, [stop]);
+  }, [busy, chatId, stop, stopping]);
 
   const requestError = error && !isStillWorking(error) ? error.message : null;
 
-  return { messages, status, streaming, busy, catchingUp, runError, requestError, traceView, now, durations, send, stopWatching };
+  return { messages, status, streaming, busy, catchingUp, runError, requestError, traceView, now, durations, send, stopRun, stopping: stopping && busy };
 }

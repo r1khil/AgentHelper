@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SendButton } from "@/components/app/chat/thread-parts";
 import { cn } from "@/lib/utils";
 import { useStartChat } from "./use-start-chat";
@@ -197,14 +197,16 @@ function HoldingChip({ holdings, value, onChange }: { holdings: AskHolding[]; va
             />
           </div>
           <div className="max-h-64 overflow-y-auto p-1">
-            <DropdownMenuLabel>The thread is filed under this holding</DropdownMenuLabel>
-            {shown.length === 0 && <p className="px-2 py-2 text-body text-muted-foreground">No holding matches.</p>}
-            {shown.map((h) => (
-              <DropdownMenuItem key={`${h.teamSlug}:${h.ticker}`} onClick={() => onChange(h)}>
-                <span className="w-12 shrink-0 font-semibold">{h.ticker}</span>
-                <span className="min-w-0 flex-1 truncate text-muted-foreground">{h.company}</span>
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>The thread is filed under this holding</DropdownMenuLabel>
+              {shown.length === 0 && <p className="px-2 py-2 text-body text-muted-foreground">No holding matches.</p>}
+              {shown.map((h) => (
+                <DropdownMenuItem key={`${h.teamSlug}:${h.ticker}`} onClick={() => onChange(h)}>
+                  <span className="w-12 shrink-0 font-semibold">{h.ticker}</span>
+                  <span className="min-w-0 flex-1 truncate text-muted-foreground">{h.company}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
           </div>
         </DropdownMenuContent>
       </DropdownMenu>

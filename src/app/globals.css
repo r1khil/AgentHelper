@@ -474,6 +474,8 @@
   .hoot-prose { font-family: var(--font-serif); font-size: var(--text-title); line-height: 27px; color: color-mix(in oklab, var(--foreground) 92%, var(--background)); }
   /* A citation marker in Hoot's prose. */
   .cite { font-family: var(--font-sans); font-size: var(--text-caption); line-height: 0; vertical-align: super; font-weight: 600; padding: 0 1px; text-decoration: underline; text-underline-offset: 2px; }
+  /* Side-by-side citations read as separate numbers ("2 14 3"), not one figure ("2143"). */
+  .cite + .cite { margin-left: 3px; }
   .hoot-halo { background: var(--hoot-halo); border-radius: 9999px; }
   [data-hoot-dock="rail"] .hoot-halo, [data-rail-surface] .hoot-halo { background: radial-gradient(circle at 50% 55%, oklch(1 0 0 / 0.14), transparent 68%); }
   /* One Hoot per screen: while the tour flies him around, the page's own Hoots step aside. */
