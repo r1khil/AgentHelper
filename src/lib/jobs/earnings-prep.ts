@@ -83,7 +83,7 @@ export async function buildPrepPack(earningsId: string, opts: { notify?: boolean
     await db.update(earnings).set({ prepPack: pack, prepPackAt: new Date(), prepPackModel: def.modelId, prepPackError: null }).where(eq(earnings.id, e.id));
 
     const appUrl = process.env.APP_URL ?? "";
-    const boardUrl = `${appUrl}/t/${row.teamSlug}/agent/h/${h.ticker}`;
+    const holdingUrl = `${appUrl}/t/${row.teamSlug}/h/${encodeURIComponent(h.ticker)}?tab=earnings`;
     const earningsUrl = `${appUrl}/t/${row.teamSlug}/earnings/${e.id}`;
     for (const r of opts.notify === false ? [] : await teamRecipients(h.teamId)) {
       await queueNotification({
@@ -93,7 +93,7 @@ export async function buildPrepPack(earningsId: string, opts: { notify?: boolean
         refId: e.id,
         dedupeKey: `prep:${e.id}:${r.id}`,
         subject: `Earnings prep pack ready: ${h.ticker} reports ${fmtDay(e.reportDate)}`,
-        body: `The agent gathered ${bulletCount(pack)} sourced evidence bullets for ${h.ticker}'s ${e.fiscalPeriod ?? ""} report on ${fmtDay(e.reportDate)}: last quarter's figures, guidance on record, consensus, the team's own questions, and items to watch.\n\nIt contains no expectations; those are yours to write before the report.\n\n${h.ticker} research: ${boardUrl}\nEarnings page: ${earningsUrl}`,
+        body: `The agent gathered ${bulletCount(pack)} sourced evidence bullets for ${h.ticker}'s ${e.fiscalPeriod ?? ""} report on ${fmtDay(e.reportDate)}: last quarter's figures, guidance on record, consensus, the team's own questions, and items to watch.\n\nIt contains no expectations; those are yours to write before the report.\n\n${h.ticker}'s earnings: ${holdingUrl}\nThis report: ${earningsUrl}`,
       }).catch((err) => console.error("[prep] notify failed", err));
     }
     await rememberMemory({ scope: "holding", teamId: h.teamId, holdingId: h.id, kind: "log", body: `Built the earnings prep pack for the ${e.reportDate} report: ${bulletCount(pack)} sourced bullets across ${pack.sections.filter((s) => s.key !== "not_retrieved").length} sections.`, meta: { earningsId: e.id }, model: def.modelId }).catch(() => {});

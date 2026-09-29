@@ -176,6 +176,15 @@ export function destinations({ scope, fundWide, seesBook }: Omit<NavInput, "path
     for (const v of views) out.push({ label: v.key === "positions" ? "Portfolio" : v.label, href: v.href, ...hint[v.key] });
   }
   out.push({ label: "Markets", hoot: "Markets", href: "/markets", hint: "Earnings and economic releases on one schedule", keywords: "calendar earnings economic macro cpi jobs reports" });
+  out.push({ label: "All threads", hoot: "Threads", href: "/hoot", hint: "Every conversation with Hoot", keywords: "research chats conversations history" });
+  // The lists behind a holding's tabs, across the scope.
+  if (base) {
+    out.push(
+      { label: "Write-ups", hoot: "Write-ups", href: `${base}/movements`, hint: "Major movements and the team's write-ups", keywords: "movements movement investigations overdue" },
+      { label: "Models", hoot: "Models", href: `${base}/models`, hint: "Excel models and values to approve", keywords: "model xbrl spreadsheet" },
+      { label: "Sell-side calls", hoot: "Sell-side calls", href: `${base}/sell-side`, hint: "Recorded broker calls and Hoot's briefs", keywords: "calls broker analyzer transcripts" },
+    );
+  }
   if (fundWide) {
     out.push(
       { label: "Weekly update", hoot: "Weekly update", href: "/weekly", hint: "The Sunday pack for Aadi", keywords: "weekly pack email" },

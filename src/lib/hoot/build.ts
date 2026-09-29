@@ -1,4 +1,4 @@
-import { earningsHref, holdingHref, modelHref, movementHref, scopedHref, sellSideHref } from "@/lib/scope";
+import { earningsHref, holdingHref, modelHref, movementHref, sellSideHref } from "@/lib/scope";
 import { fmtDateTime } from "@/lib/format";
 import type { HootNudge } from "./types";
 
@@ -90,7 +90,7 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
       kind: "earnings",
       priority: 5,
       mood: "idle",
-      href: later.length === 1 ? earningsHref(i.scope, first.teamSlug, first.id) : scopedHref(i.scope, first.teamSlug, "/earnings"),
+      href: later.length === 1 ? earningsHref(i.scope, first.teamSlug, first.id) : "/markets",
       at: first.reportDate,
       title: `${list(later.map((e) => e.ticker))} ${later.length === 1 ? "reports" : "report"} in the next few days`,
     });

@@ -175,9 +175,18 @@ describe("moods and routes", () => {
   it("gives each page's tip once and fits suggestions to the page", () => {
     expect(tipFor("/", [])?.id).toBe("tip:today");
     expect(tipFor("/", ["tip:today"])).toBeNull();
-    expect(tipFor("/t/fund/attribution", [])?.id).toBe("tip:attribution");
+    // A tip keeps its id when its page moved: Attribution is the Portfolio's Performance view now.
+    expect(tipFor("/t/fund/performance", [])?.id).toBe("tip:attribution");
+    expect(tipFor("/t/tech/what-if", [])?.title).toBe("What if");
+    expect(tipFor("/markets", [])?.id).toBe("tip:markets");
+    // Pages that are gone (they redirect) have no tip.
+    expect(tipFor("/attribution", [])).toBeNull();
+    expect(tipFor("/backtesting", [])).toBeNull();
     expect(suggestionsFor("/t/tech/h/NVDA", "NVDA")[0]).toContain("NVDA");
-    expect(suggestionsFor("/t/tech/earnings", null)[0]).toContain("report");
+    expect(suggestionsFor("/markets", null)[0]).toContain("report");
+    expect(suggestionsFor("/t/fund/activity", null)[0]).toContain("trades");
+    expect(suggestionsFor("/t/fund/performance", null)[0]).toContain("performance");
+    expect(suggestionsFor("/t/fund/what-if", null)[0]).toContain("scenario");
   });
 
   it("forgets old dismissals", () => {

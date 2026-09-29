@@ -111,15 +111,17 @@ describe("activeToolsFor", () => {
   it("offers every tool the page-context block names", async () => {
     available = await allRegisteredTools();
     const pages: PageContext[] = [
-      { kind: "attribution", path: "/attribution", title: "Performance", scope: "fund", period: "1m", start: "2026-08-28", end: "2026-09-28" },
-      { kind: "daily", path: "/daily", title: "Today", scope: "fund", session: "2026-09-28", status: "live" },
-      { kind: "backtesting", path: "/backtesting", title: "Backtesting", from: "2026-06-28", to: "2026-09-28", benchmark: "SPY", changed: [], addedTickers: [], ran: false },
-      { kind: "risk", path: "/risk", title: "Risk", scope: "fund", lookback: "1y", asOf: "2026-09-28" },
-      { kind: "exposure", path: "/exposure", title: "Exposure", scope: "fund", lookback: "1y", asOf: "2026-09-28" },
+      { kind: "attribution", path: "/t/fund/performance", title: "Performance", scope: "fund", period: "1m", start: "2026-08-28", end: "2026-09-28" },
+      { kind: "daily", path: "/t/fund/performance", title: "Today", scope: "fund", session: "2026-09-28", status: "live" },
+      { kind: "backtesting", path: "/t/fund/what-if", title: "What if", from: "2026-06-28", to: "2026-09-28", benchmark: "SPY", changed: [], addedTickers: [], ran: false },
+      { kind: "risk", path: "/t/fund/risk", title: "Risk", scope: "fund", lookback: "1y", asOf: "2026-09-28" },
+      { kind: "exposure", path: "/t/fund/exposure", title: "Exposure", scope: "fund", lookback: "1y", asOf: "2026-09-28" },
       { kind: "page", path: "/", title: "Home" },
       { kind: "page", path: "/t/tech", title: "Information Technology" },
-      { kind: "page", path: "/t/tech/sell-side", title: "Sell-side" },
-      { kind: "page", path: "/economic-calendar", title: "Economic releases" },
+      { kind: "page", path: "/t/tech/sell-side/00000000-0000-0000-0000-000000000000", title: "Sell-side call" },
+      { kind: "page", path: "/t/tech/h/AVGO", title: "AVGO" },
+      { kind: "page", path: "/markets", title: "Markets" },
+      { kind: "page", path: "/t/fund/economic-calendar", title: "Economic releases" },
     ];
     for (const page of pages) {
       const named = toolsNamedOnPage(page, available);

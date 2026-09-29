@@ -65,7 +65,7 @@ async function apply(p: HootProposal, ctx: { user: CurrentUser; chatId: string; 
     case "pin_chat": {
       if (p.chatId !== ctx.chatId) return { ok: false, error: "That change is for another conversation." };
       const r = await pinChatToHolding({ chatId: p.chatId, ticker: p.ticker, teamSlug: p.teamSlug });
-      return "error" in r ? { ok: false, error: r.error } : { ok: true, message: `Pinned to ${p.ticker}'s research board.`, href: r.href };
+      return "error" in r ? { ok: false, error: r.error } : { ok: true, message: `Pinned to ${p.ticker}. It's on the holding's Threads tab.`, href: r.href };
     }
     case "dismiss_nudge": {
       const r = await dismissHootNudge(p.nudgeId);

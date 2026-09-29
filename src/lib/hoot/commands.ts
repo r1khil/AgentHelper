@@ -1,15 +1,30 @@
 /** Only whole, explicit UI requests are commands. Research prose is left untouched. */
-export type HootCommand = { kind: "theme"; theme: "light" | "dark" | "system" | "toggle" } | { kind: "navigate"; destination: string } | { kind: "scope"; scope: string };
+export type HootCommand =
+  | { kind: "theme"; theme: "light" | "dark" | "system" | "toggle" }
+  /** `destination` is the page's name in the sidebar's hidden links (nav.ts `hoot`); `query` a view of it. */
+  | { kind: "navigate"; destination: string; query?: string }
+  | { kind: "scope"; scope: string };
 
+// What members call a page, today's names and the names of pages that moved into the five screens (Sep 29, 2026).
 const destinations: Record<string, string> = {
-  home: "Home", dashboard: "Home", today: "Home", portfolio: "Portfolio", overview: "Portfolio", holdings: "Holdings", positions: "Holdings",
-  activity: "Activity", ledger: "Activity", trades: "Activity", performance: "Attribution",
-  research: "Research", hoot: "Research", chat: "Research", chats: "Research", conversations: "Research", agent: "Research",
-  boards: "Research", "research boards": "Research", "sell side": "Sell-side calls", "sell side calls": "Sell-side calls", "sell side analyzer": "Sell-side calls",
-  models: "Models", movements: "Movements", earnings: "Earnings", calendar: "Economic calendar",
-  "economic calendar": "Economic calendar", attribution: "Attribution", "daily performance": "Daily performance", "daily": "Daily performance", "today's performance": "Daily performance", risk: "Risk", exposure: "Exposure",
-  backtesting: "Backtesting", backtest: "Backtesting", "weekly update": "Weekly update", changelog: "Changelog",
-  "what's new": "Changelog", admin: "Admin", administration: "Admin",
+  home: "Home", dashboard: "Home", today: "Home", hoot: "Home", "ask hoot": "Home", new: "Home",
+  portfolio: "Portfolio", overview: "Portfolio", holdings: "Portfolio", positions: "Portfolio",
+  performance: "Performance", attribution: "Performance", risk: "Risk", exposure: "Exposure",
+  activity: "Activity", ledger: "Activity", trades: "Activity",
+  "what if": "What if", backtesting: "What if", backtest: "What if",
+  markets: "Markets", market: "Markets", earnings: "Markets", calendar: "Markets", "earnings calendar": "Markets", "economic calendar": "Markets", "economic releases": "Markets",
+  threads: "Threads", "all threads": "Threads", research: "Threads", chat: "Threads", chats: "Threads", conversations: "Threads", agent: "Threads", boards: "Threads", "research boards": "Threads",
+  "write ups": "Write-ups", writeups: "Write-ups", movements: "Write-ups",
+  models: "Models", "sell side": "Sell-side calls", "sell side calls": "Sell-side calls", "sell side analyzer": "Sell-side calls",
+  "weekly update": "Weekly update", changelog: "Changelog", "what's new": "Changelog", admin: "Admin", administration: "Admin",
+};
+
+/** Views of a page, by name: today's performance is Performance with the period Today. */
+const views: Record<string, { destination: string; query: string }> = {
+  daily: { destination: "Performance", query: "?period=today" },
+  "daily performance": { destination: "Performance", query: "?period=today" },
+  "today's performance": { destination: "Performance", query: "?period=today" },
+  "performance today": { destination: "Performance", query: "?period=today" },
 };
 
 export function parseHootCommand(text: string): HootCommand | null {
@@ -28,22 +43,19 @@ export function parseHootCommand(text: string): HootCommand | null {
   const scope = q.match(new RegExp(`^(?:switch|change|toggle)(?: me)? to (?:the )?(?:(whole fund)|${sector})$`))
     ?? q.match(new RegExp(`^(?:take me to|bring me to|go to|navigate to|open|show me|filter to) (?:the )?${sector}$`));
   if (scope) return { kind: "scope", scope: scope[1] ?? scope[2] };
-  const navigation = q.match(/^(?:take me to|bring me to|go to|navigate to|open) (?:the )?(.+?)(?: page| section| area)?$/);
-  const destination = navigation && destinations[navigation[1]];
+  const navigation = q.match(/^(?:take me to|bring me to|go to|navigate to|open) (?:the )?(.+?)(?: page| section| area| view)?$/);
+  if (!navigation) return null;
+  const view = views[navigation[1]];
+  if (view) return { kind: "navigate", ...view };
+  const destination = destinations[navigation[1]];
   return destination ? { kind: "navigate", destination } : null;
 }
-
-/** A rail section Hoot opens by name goes where the rail does: the first of its pages this member can open. */
-const SECTION_PAGES: Record<string, string[]> = { Portfolio: ["Portfolio", "Attribution", "Backtesting"], Holdings: ["Holdings", "Portfolio"] };
 
 export type HootLink = { label: string; href: string };
 /** Routes come from the member's scoped sidebar, never from user-provided URLs. */
 export function commandHref(destination: string, links: HootLink[]): string | null {
-  for (const name of SECTION_PAGES[destination] ?? [destination]) {
-    const href = links.find((link) => link.label === name)?.href;
-    if (href) return /^\/(?!\/)/.test(href) && !/[\\\s]/.test(href) ? href : null;
-  }
-  return null;
+  const href = links.find((link) => link.label === destination)?.href;
+  return href && /^\/(?!\/)/.test(href) && !/[\\\s]/.test(href) ? href : null;
 }
 
 /** Match only a rendered, accessible scope option. No generated team slugs or arbitrary URLs. */

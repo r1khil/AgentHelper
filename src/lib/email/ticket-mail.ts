@@ -4,7 +4,7 @@ import { fmtCurrency, fmtDate, fmtNumber } from "@/lib/format";
 /** An attachment on an OpenMail `message.received` event. */
 export type InboundAttachment = { filename: string; contentType?: string; sizeBytes?: number; url?: string; parsedText?: string; extractionMethod?: string };
 
-/** At most this many tickets are read from one email, the same cap as the Ledger page's upload. */
+/** At most this many tickets are read from one email, the same cap as the upload on the Portfolio's Activity view. */
 export const MAX_EMAIL_TICKETS = 15;
 
 /** Word attachments, the only kind a trade ticket comes in. */
@@ -80,14 +80,14 @@ export function ticketReplyBody(opts: { name: string; outcome: TicketOutcome; le
       `I held back ${held.length === 1 ? "this ticket" : "these tickets"} because the price looks off:`,
       ...held.map((r) => `- ${describeTrade(r.ticket!)}: ${r.warnings.at(-1)}`),
       "",
-      `If the ticket has a typo, fix it and send it again. If the price is right, upload the ticket on the Ledger page${opts.ledgerUrl ? ` (${opts.ledgerUrl})` : ""}, where you can confirm it.`,
+      `If the ticket has a typo, fix it and send it again. If the price is right, upload the ticket on the Portfolio's Activity view${opts.ledgerUrl ? ` (${opts.ledgerUrl})` : ""}, where you can confirm it.`,
     );
   }
   if (skipped.length) out.push("", "Already recorded, so I left these alone:", ...skipped.map((r) => `- ${describeTrade(r.ticket!)}: ${r.skip}`));
   if (unreadable.length) {
     out.push("", "I couldn't read these tickets:", ...unreadable.map((r) => `- ${r.file}: ${r.errors.join(" ")}`), "", "Fix them and send them again. Tickets already in the ledger are skipped, so resending the whole set is safe.");
   }
-  if (opts.ledgerUrl && recorded?.ok) out.push("", `If something is wrong, void the trade on the Ledger page: ${opts.ledgerUrl}`);
+  if (opts.ledgerUrl && recorded?.ok) out.push("", `If something is wrong, void the trade on the Portfolio's Activity view: ${opts.ledgerUrl}`);
   out.push("", "Best,", "Hoot");
   return out.join("\n");
 }
@@ -98,7 +98,7 @@ export function ticketNotAllowedBody(opts: { name: string; reason: "role" | "not
     role: "Only execs and admins can record trades, so I didn't add this ticket to the ledger. Forward it to an exec and they can send it to me.",
     "not signed in": "I can only record trades for people who have signed in to the Owl Fund app. Sign in once, then send the ticket again.",
     unverified:
-      "I couldn't confirm this email came from your Owl Fund account, so I didn't record anything. Send the ticket from your theowlfund.com address in Gmail, or upload it on the Ledger page. If you didn't send it, let an admin know.",
+      "I couldn't confirm this email came from your Owl Fund account, so I didn't record anything. Send the ticket from your theowlfund.com address in Gmail, or upload it on the Portfolio's Activity view. If you didn't send it, let an admin know.",
   }[opts.reason];
   return [`Hi ${opts.name},`, "", why, "", "Best,", "Hoot"].join("\n");
 }

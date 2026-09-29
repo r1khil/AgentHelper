@@ -1,5 +1,5 @@
-// What Hoot may do to the app for a member: open a page (with the period, lookback or trade it shows) or change the
-// theme. Pure and client-safe: the agent's tools resolve a request here against the member's own pages, and the
+// What Hoot may do to the app for a member: open a page (with the period, lookback, trade or holding tab it shows) or
+// change the theme. Pure and client-safe: the agent's tools resolve a request here against the member's own pages, and the
 // browser applies the resulting action once, when it streams in.
 import { PERIOD_KEYS } from "@/lib/attribution/periods";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
@@ -9,28 +9,54 @@ import { tradeParam, type Funding } from "@/lib/backtesting/trade";
 
 export type HootAction = { kind: "navigate"; href: string; label: string } | { kind: "theme"; theme: "light" | "dark" | "system" };
 
-/** Pages Hoot can open, by the name the model uses; each maps to the sidebar destination of that label. */
+/** Pages Hoot can open, by the name the model uses; each maps to the destination Hoot knows by that name (see nav.ts). */
 export const APP_PAGES = {
   home: "Home",
   portfolio: "Portfolio",
-  team: "Team page",
-  research: "Research",
-  movements: "Movements",
-  models: "Models",
-  sell_side: "Sell-side calls",
-  earnings: "Earnings",
-  economic_calendar: "Economic releases",
   performance: "Performance",
-  performance_today: "Performance today",
   risk: "Risk",
   exposure: "Exposure",
-  backtesting: "Backtesting",
   activity: "Activity",
+  what_if: "What if",
+  markets: "Markets",
+  threads: "Threads",
+  write_ups: "Write-ups",
+  models: "Models",
+  sell_side: "Sell-side calls",
   weekly: "Weekly update",
   changelog: "Changelog",
   admin: "Admin",
 } as const;
-export type AppPage = keyof typeof APP_PAGES | "holding";
+type CurrentPage = keyof typeof APP_PAGES;
+
+/** A holding page's tabs besides All (`?tab=`), and what the page calls them. */
+export const HOLDING_TABS = { threads: "Threads", "write-ups": "Write-ups", model: "Model", filings: "Filings & notes", earnings: "Earnings" } as const;
+export type HoldingTab = keyof typeof HOLDING_TABS;
+
+/** Lists across a scope whose one holding's share is a tab on that holding: "AVGO's write-ups" is AVGO's Write-ups tab. */
+const TICKER_TABS: Partial<Record<CurrentPage, HoldingTab>> = { threads: "threads", write_ups: "write-ups", models: "model", sell_side: "filings" };
+
+/**
+ * Pages from before the five screens, still understood when a member or the model names one: each opens where its
+ * content lives now (with a ticker, `tab` on that holding's page instead).
+ */
+export const FORMER_PAGES = {
+  team: { page: "portfolio" },
+  research: { page: "threads" },
+  movements: { page: "write_ups" },
+  earnings: { page: "markets", tab: "earnings" },
+  economic_calendar: { page: "markets" },
+  attribution: { page: "performance" },
+  performance_today: { page: "performance", today: true },
+  backtesting: { page: "what_if" },
+  ledger: { page: "activity" },
+} as const satisfies Record<string, { page: CurrentPage; tab?: HoldingTab; today?: true }>;
+type FormerPage = keyof typeof FORMER_PAGES;
+
+export type AppPage = CurrentPage | FormerPage | "holding";
+
+/** Performance's periods: the attribution periods, plus today (live while the market is open). */
+export const NAV_PERIODS = ["today", ...PERIOD_KEYS] as const;
 
 export type AppTeam = { id: string; slug: string; name: string };
 export type AppViewer = { role: string; teamId: string | null };
@@ -40,7 +66,9 @@ export type NavigateRequest = {
   /** A team by slug, name or abbreviation ("fig", "tech", "Healthcare", "C&CS"), or "fund" for the whole Fund. */
   team?: string;
   ticker?: string;
-  period?: (typeof PERIOD_KEYS)[number];
+  /** For page "holding": the tab to open. */
+  tab?: HoldingTab;
+  period?: (typeof NAV_PERIODS)[number];
   from?: string;
   to?: string;
   lookback?: "6m" | "1y" | "2y";
@@ -119,15 +147,14 @@ function scopeFor(req: NavigateRequest, ctx: NavigateContext): { scope: NavScope
   return own ? { scope: { slug: own.slug }, slug: own.slug } : { error: "You're not on a team yet, so there is nothing to open." };
 }
 
-const WHY_NOT: Partial<Record<keyof typeof APP_PAGES, string>> = {
+const WHY_NOT: Partial<Record<CurrentPage, string>> = {
   performance: "Performance shows position sizes and P&L, which only the team's lead analyst, execs and admins see.",
-  performance_today: "Performance today shows position sizes and P&L, which only the team's lead analyst, execs and admins see.",
   risk: "Risk shows position sizes, which only the team's lead analyst, execs and admins see.",
   exposure: "Exposure shows position sizes, which only the team's lead analyst, execs and admins see.",
   portfolio: "The Fund's Portfolio page is for execs and admins.",
-  activity: "Activity (the trade ledger) is for execs and admins.",
+  activity: "Activity (the trade ledger) is the whole Fund's, for execs and admins.",
   weekly: "The weekly update is for execs and admins.",
-  changelog: "The changelog is for execs and admins.",
+  changelog: "What's new (the changelog) is for execs and admins.",
   admin: "Admin is for execs and admins.",
 };
 
@@ -137,35 +164,40 @@ const WHY_NOT: Partial<Record<keyof typeof APP_PAGES, string>> = {
  */
 export function resolveNavigation(req: NavigateRequest, ctx: NavigateContext): { action: Extract<HootAction, { kind: "navigate" }> } | { error: string } {
   const fundWide = fundWideRole(ctx.viewer.role);
-  if (req.page === "holding") {
+  const former: { page: CurrentPage; tab?: HoldingTab; today?: true } | null = req.page in FORMER_PAGES ? FORMER_PAGES[req.page as FormerPage] : null;
+  const page: CurrentPage = former?.page ?? (req.page as CurrentPage);
+  // "AVGO's write-ups" is AVGO's Write-ups tab.
+  const tickerTab = former?.tab ?? TICKER_TABS[page];
+  const tab = req.page === "holding" ? req.tab : req.ticker && tickerTab ? tickerTab : undefined;
+  if (req.page === "holding" || tab) {
     if (!req.ticker) return { error: "Name the holding's ticker to open its page." };
     const t = req.ticker.trim().toUpperCase();
     const h = ctx.holdings?.find((x) => x.ticker.toUpperCase() === t);
     if (!h) return { error: `${t} isn't an active holding in a team you can open.` };
     // Opened from the scope the member is in when it shows this holding (the fund shows every team's).
-    const here = ctx.path ? (isFundBookPath(ctx.path) ? FUND_SCOPE_SLUG : scopeSlugFromPath(ctx.path)) : fundWide ? FUND_SCOPE_SLUG : null;
-    return { action: { kind: "navigate", href: holdingHref(here, h.teamSlug, t), label: t } };
+    const here = (ctx.path ? (isFundBookPath(ctx.path) ? FUND_SCOPE_SLUG : scopeSlugFromPath(ctx.path)) : null) ?? (fundWide ? FUND_SCOPE_SLUG : null);
+    return { action: { kind: "navigate", href: holdingHref(here, h.teamSlug, t, tab ? `?tab=${tab}` : ""), label: tab ? `${t}, ${HOLDING_TABS[tab]}` : t } };
   }
   const where = scopeFor(req, ctx);
   if ("error" in where) return where;
   const ownTeam = ctx.teams.find((t) => t.id === ctx.viewer.teamId);
   const lead = ctx.viewer.role === "lead_analyst" && where.scope !== "fund" && where.scope !== null && ownTeam?.slug === where.scope.slug;
   const seesBook = where.scope === "fund" || fundWide || lead;
-  const page = req.page === "team" && where.scope === "fund" ? "portfolio" : req.page;
   const label = APP_PAGES[page];
-  const dest = destinations({ scope: where.scope, fundWide, seesBook }).find((d) => d.label === label);
+  const dest = destinations({ scope: where.scope, fundWide, seesBook }).find((d) => d.hoot === label);
   if (!dest) return { error: WHY_NOT[page] ?? `${label} isn't available to you here.` };
 
   const params = new URLSearchParams();
-  if (page === "performance" && req.period) {
-    params.set("period", req.period);
-    if (req.period === "custom") {
+  const period = former?.today ? "today" : req.period;
+  if (page === "performance" && period) {
+    params.set("period", period);
+    if (period === "custom") {
       if (req.from) params.set("from", req.from);
       if (req.to) params.set("to", req.to);
     }
   }
   if ((page === "risk" || page === "exposure") && req.lookback) params.set("lookback", req.lookback);
-  if (page === "backtesting") {
+  if (page === "what_if") {
     if (req.trade) {
       const f = req.trade.fundFrom.toLowerCase();
       const funding: Funding = f === "cash" ? { kind: "cash" } : f === "pro_rata" ? { kind: "pro_rata" } : { kind: "ticker", ticker: req.trade.fundFrom.toUpperCase() };
@@ -174,10 +206,13 @@ export function resolveNavigation(req: NavigateRequest, ctx: NavigateContext): {
     if (req.from) params.set("from", req.from);
     if (req.to) params.set("to", req.to);
   }
-  const query = params.toString();
   const team = where.scope === "fund" || where.scope === null ? null : ctx.teams.find((t) => t.slug === (where.scope as { slug: string }).slug);
-  const scoped = team && dest.href.startsWith(`/t/${team.slug}`) ? ` for ${team.name}` : "";
-  return { action: { kind: "navigate", href: query ? `${dest.href}?${query}` : dest.href, label: `${label}${scoped}` } };
+  // Markets is one page for everyone; a team named ("earnings for tech") filters it to that team's holdings.
+  if (page === "markets" && req.team && team) params.set("team", team.slug);
+  const query = params.toString();
+  const scoped = team && (dest.href.startsWith(`/t/${team.slug}`) || params.has("team")) ? ` for ${team.name}` : "";
+  const shown = page === "performance" && period === "today" ? "Performance today" : dest.label;
+  return { action: { kind: "navigate", href: query ? `${dest.href}?${query}` : dest.href, label: `${shown}${scoped}` } };
 }
 
 type PartLike = { type: string; toolCallId?: string; state?: string; output?: unknown };

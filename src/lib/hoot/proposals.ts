@@ -48,7 +48,7 @@ export type ProposalOutcome = {
   message: string;
   /** What was saved when it differs from the proposal (a note the member edited before confirming). */
   detail?: string;
-  /** Where to see the change (the research board a chat was pinned to). */
+  /** Where to see the change (the thread, or the holding a chat was pinned to). */
   href?: string;
   /** ISO time and the member who decided. */
   at: string;

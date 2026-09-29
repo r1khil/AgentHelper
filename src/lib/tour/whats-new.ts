@@ -1,11 +1,12 @@
 import type { Tour } from "./types";
 
 /**
- * Hoot's tour of the Sep 27, 2026 redesign (the rail, section tabs, ⌘K and every page's new layout), for execs and
- * admins (the only people who see every section, Manage included). It replaced the Sep 25 what's-new tour, so a new
- * id offers it once more to everyone who finished that one.
+ * Hoot's tour of the five screens (Sep 29, 2026: the sidebar with New, Portfolio, Markets and Threads, the bell, and
+ * every old page moved onto the holding, Portfolio view or Markets it was about), for execs and admins. It keeps the
+ * Sep 27 tour's id, so it is offered to nobody new; "Replay the tour" shows it, and a new id would offer it again.
  * Copy rules: plain English, say where things moved before what they do, and name where any new figure comes from.
- * Keep each line to a sentence or two; the pages' own tooltips carry the detail.
+ * Keep each line to a sentence or two; the pages' own tooltips carry the detail. Steps inside a page talk from the
+ * middle of the screen, so they never wait on a part of a page that moved.
  */
 export const WHATS_NEW_TOUR_ID = "new-look-2026-09-27";
 
@@ -13,20 +14,14 @@ export const WHATS_NEW_TOUR_ID = "new-look-2026-09-27";
 export const WHATS_NEW_PITCH = {
   title: "Want a quick tour of the new look?",
   again: "Still up for a tour of the new look?",
-  body: "The Owl's Nest got a redesign: a slim menu on the left, each section's pages as tabs along the top, ⌘K to jump anywhere, and every page laid out again. I'll show you where everything went. It takes about 6 minutes.",
+  body: "The Owl's Nest is five screens now: Home to ask me, a thread for each answer, a page for each holding, the Portfolio and Markets. I'll show you where everything went. It takes about 3 minutes.",
 };
 
 // Said the same way everywhere, so the member learns each source once.
 const QUOTES = "Prices are live quotes from Yahoo Finance.";
-const CLOSES = "Daily closing prices from Yahoo Finance, saved every weekday evening after the market closes.";
 const LEDGER = "What the fund owns comes from the trade ledger, replayed to the latest close.";
 
 const nav = (id: string) => `[data-tour="nav-${id}"]`;
-/**
- * A header tab of a rail section. From another section the rail item is lit instead (clicking it opens the
- * section, then the tab lights up); the rail item stops matching once its section is open.
- */
-const tab = (id: string, section: string) => `${nav(id)}, ${nav(section)}:not([aria-current])`;
 
 export const WHATS_NEW_TOUR: Tour = {
   id: WHATS_NEW_TOUR_ID,
@@ -37,113 +32,75 @@ export const WHATS_NEW_TOUR: Tour = {
       route: /^\//,
       steps: [
         {
-          id: "rail",
+          id: "sidebar",
           kind: "info",
           target: '[data-tour="sidebar"]',
-          title: "Five places, one slim menu",
-          body: "Today, Holdings, Research, Calendar and Portfolio, with Manage near the bottom. Pages that used to have their own line in the menu are now tabs along the top of their section: Movements and Models under Holdings, Sell-side calls under Research, Risk, Exposure and Backtesting under Portfolio.",
-        },
-        {
-          id: "scope",
-          kind: "info",
-          target: '[data-tour="scope"]',
-          title: "Whose numbers you're looking at",
-          what: "This tile under the logo says whose holdings every page is showing. \"Fund\" is everyone.",
-          how: "Click it to narrow the whole app to one sector team.",
+          title: "Five screens, one sidebar",
+          body: "Home to ask me, a thread for each answer, a page for each holding, the Portfolio and Markets. The old pages moved onto the screen they were about: Movements, Models and Sell-side calls onto each holding, Attribution, Risk and Backtesting onto the Portfolio, the calendars onto Markets.",
         },
         {
           id: "command",
           kind: "info",
           target: '[data-tour="command"]',
           title: "⌘K goes anywhere",
-          what: "Type a ticker to open that holding, a page's name to jump there, or a question to start a research chat with me.",
-          how: "Click the box or press ⌘K from any page. Arrow keys pick, Enter goes.",
-        },
-      ],
-    },
-    {
-      id: "today",
-      label: "Today",
-      route: /^\/$/,
-      steps: [
-        {
-          id: "go-today",
-          kind: "go",
-          target: nav("today"),
-          title: "Today, built around what needs you",
-          body: "On the left: my list for you and how each team did. On the right: the last session, my evening brief and what's coming up.",
-          prompt: "Click Today in the menu.",
+          what: "Type a ticker to open that holding, a page's name (old names work too) to jump there, or a question to ask me.",
+          how: "Click the magnifier or press ⌘K from any page. Arrow keys pick, Enter goes.",
         },
         {
-          id: "today-greeting",
+          id: "new",
           kind: "info",
-          target: '[data-tour="today-greeting"]',
-          title: "The day in one line",
-          what: "The market clock, then one sentence from me: how the fund did last session and how many things are waiting for you.",
-          how: "Once the tour's over I sit right here, beside the greeting, instead of at the bottom of the menu. Click me to ask a research question.",
+          target: '[data-tour="ask-hoot"]',
+          title: "New: a question for me",
+          what: "Opens Home, where you ask me anything. Every answer becomes a thread.",
+          how: "On any other page, ⌘J asks me about what's on it.",
         },
         {
-          id: "today-list",
+          id: "threads",
           kind: "info",
-          target: '[data-tour="today-list"]',
-          title: "My list for you",
-          what: "Everything waiting on you, most urgent first: write-ups due, expectations to set before earnings, model values to review, new sell-side calls and the weekly pack. Each one says when it's due.",
-          how: "Click a line to deal with it, or × to clear it. The list refreshes every 5 minutes.",
-          source: "The app's own records: open movements, the earnings calendar, uploaded models and the weekly pack.",
+          target: '[data-tour="threads"]',
+          title: "Every conversation, newest first",
+          what: "Your threads with me, general ones and ones about a holding. This is what Research used to be.",
+          how: "A holding's threads are also on its page, under Threads.",
+          ifMissing: "skip",
         },
         {
-          id: "today-teams",
+          id: "bell",
           kind: "info",
-          target: '[data-tour="today-teams"]',
-          title: "Teams, by what they added",
-          what: "Each team's return last session and what it added to the fund, with a bar that grows right for a gain and left for a loss, and the team's biggest mover. The team that added most comes first.",
-          how: "Open a team to see each holding's price, today's move against the S&P 500 and next report.",
-          source: `${LEDGER} ${QUOTES}`,
-        },
-        {
-          id: "today-result",
-          kind: "info",
-          target: '[data-tour="today-result"]',
-          title: "The last session, in the dark card",
-          what: "The fund's return next to the S&P 500 and the difference, then my written brief underneath.",
-          how: "Losses are in parentheses, like an accountant would write them.",
-          source: `${LEDGER} ${CLOSES} I write the brief at 5:05 pm ET.`,
+          target: '[data-tour="bell"]',
+          title: "What needs you",
+          what: "Write-ups due or overdue, expectations to set before earnings, model values and call briefs to review, and the weekly pack, most urgent first.",
+          how: "Click a line to deal with it. Each holding's page shows its own too.",
+          source: "The app's own records: open movements, the earnings calendar, uploaded models, recorded calls and the weekly pack.",
           ifMissing: "skip",
         },
       ],
     },
     {
-      id: "holdings",
-      label: "Holdings",
-      route: /^\/t\/[^/]+$/,
+      id: "portfolio",
+      label: "Portfolio",
+      route: /^\/t\/[^/]+(\/(performance|risk|exposure|activity|what-if))?$/,
       steps: [
         {
-          id: "go-holdings",
+          id: "go-portfolio",
           kind: "go",
-          target: nav("holdings"),
-          title: "Holdings is one table now",
-          body: "Every holding in one list, grouped by team, with what needs doing right on the row.",
-          prompt: "Click Holdings in the menu.",
+          target: nav("portfolio"),
+          title: "Portfolio: the book in one place",
+          body: "Value, chart and every position grouped by team, with the analytics as views of the same page.",
+          prompt: "Click Portfolio in the sidebar.",
         },
         {
-          id: "holdings-filters",
+          id: "portfolio-views",
           kind: "info",
-          target: '[data-tour="holdings-filters"]',
-          title: "Filter to what matters",
-          what: "Needs attention and Reporting in 2 weeks, each with a count. The S&P 500's move today sits on the right.",
-          how: "Needs attention turns red when a write-up is overdue.",
-        },
-        {
-          id: "holdings-table",
-          kind: "info",
-          target: '[data-tour="holdings-table"]',
-          title: "Every holding at a glance",
+          title: "Six views of the same book",
           points: [
-            { label: "Team rows", text: "each team's share of the fund and its move today. Click one to fold it away." },
-            { label: "5 days", text: "a small chart of the last five closes." },
-            { label: "Needs attention", text: "what's waiting on the holding: a write-up, expectations, model values, a proposed thesis." },
+            { label: "Positions", text: "every holding by team. Open a row for the holding's page." },
+            { label: "Performance", text: "where the return came from, from today (what Daily showed, live) to all time. This was Attribution." },
+            { label: "Risk and Exposure", text: "how bumpy the book is and where it sits against the index." },
+            { label: "Activity", text: "the trade ledger and tickets to review." },
+            { label: "What if", text: "replay different weights on past prices. This was Backtesting." },
           ],
-          source: `${QUOTES} The 5-day line uses stored closing prices; weights are the saved holding weights.`,
+          how: "The Whole fund filter at the top narrows everything to one team: that's what the team pages were. Weekly update is a button in the header.",
+          source: `${LEDGER} ${QUOTES}`,
         },
       ],
     },
@@ -155,7 +112,7 @@ export const WHATS_NEW_TOUR: Tour = {
         {
           id: "go-holding",
           kind: "go",
-          target: '[data-tour="holdings-table"] [role="row"] a[href*="/h/"]',
+          target: 'main a[href*="/h/"]',
           title: "Each holding has its own page",
           body: "Let's open one.",
           prompt: "Click any holding in the table.",
@@ -163,250 +120,38 @@ export const WHATS_NEW_TOUR: Tour = {
         {
           id: "holding-tabs",
           kind: "info",
-          target: 'nav[aria-label="Holding sections"]',
           title: "Everything about it, in tabs",
           points: [
-            { label: "Overview", text: "the price chart, the thesis, notes, the key figures and the latest news and filings." },
-            { label: "Research", text: "your research chats with me about this company." },
-            { label: "Documents & filings", text: "the Drive folder and SEC filings, with my summaries." },
-            { label: "Earnings", text: "the next report and expectations." },
-            { label: "Notes", text: "the team's notes." },
+            { label: "Threads", text: "your conversations with me about it. This was its research board." },
+            { label: "Write-ups", text: "its major movements and the team's write-ups." },
+            { label: "Model", text: "the Excel model and values from new filings to approve." },
+            { label: "Filings & notes", text: "SEC filings, the team's documents and notes, and sell-side calls." },
+            { label: "Earnings", text: "the next report, expectations and the prep pack." },
           ],
-          how: "\"Ask Hoot about…\", under the company's name, starts a research chat about it.",
-        },
-        {
-          id: "holding-scope",
-          kind: "info",
-          target: '[data-tour="scope"]',
-          title: "Still showing whose numbers you picked",
-          what: "Opening a holding doesn't change this tile: from Fund you stay on the whole fund, so the next few pages still show everyone's numbers.",
-          how: "Click it any time to narrow the app to one sector team, or pick Fund to see everyone again.",
+          how: "The box under the price asks me about this company. What's due on it sits at the top of the page.",
         },
       ],
     },
     {
-      id: "movements",
-      label: "Movements",
-      route: /^\/t\/[^/]+\/movements(\/[^/]+)?$/,
+      id: "markets",
+      label: "Markets",
+      route: /^\/markets$/,
       steps: [
         {
-          id: "go-movements",
+          id: "go-markets",
           kind: "go",
-          target: tab("movements", "holdings"),
-          title: "Movements: the list and the write-up side by side",
-          prompt: "Click Movements along the top.",
+          target: nav("markets"),
+          title: "Markets: earnings and releases together",
+          body: "Our holdings' reports and the big economic releases on one schedule.",
+          prompt: "Click Markets in the sidebar.",
         },
         {
-          id: "movements-list",
+          id: "markets-schedule",
           kind: "info",
-          target: '[data-tour="movements-list"]',
-          title: "Every big move",
-          what: "A movement opens when a holding beats or trails the S&P 500 by 4 percentage points or more in a day. The write-up is due at noon the next trading day.",
-          how: "Pick one and it opens beside the list, without leaving the page. In a narrower window the list folds into a Movements button above the write-up.",
-          source: `${CLOSES} Checked every night after the close.`,
-        },
-        {
-          id: "movement-detail",
-          kind: "info",
-          target: '[data-tour="movement-detail"]',
-          title: "Your update, the evidence, my feedback",
-          what: "Your update is the wide column. Beside it: the news, filings and peer moves I gathered, each with Cite to drop a reference into your update, and my feedback in its own tab.",
-          how: "I flag claims without support, missing evidence and anything that contradicts the thesis. Models, the next tab, works the same way: pick a model, then approve or reject the proposed values from new filings.",
-          ifMissing: "skip",
-        },
-      ],
-    },
-    {
-      id: "research",
-      label: "Research",
-      route: /^\/t\/[^/]+\/agent$/,
-      steps: [
-        {
-          id: "go-research",
-          kind: "go",
-          target: nav("research"),
-          title: "Research, in three columns",
-          body: "Your chats on the left, the conversation in the middle, the sources on the right.",
-          prompt: "Click Research in the menu.",
-        },
-        {
-          id: "research-list",
-          kind: "info",
-          target: '[data-tour="research-list"]',
-          title: "Your chats",
-          what: "Every research chat, with search and New at the top: by holding, then general questions.",
-        },
-        {
-          id: "research-ask",
-          kind: "info",
-          target: '[data-tour="ask-hoot"]',
-          title: "Ask me here",
-          what: "Ask for evidence: I pull prices, SEC filings, financials, news, economic data and your team's notes, with a source on every fact.",
-          how: "Inside a chat, the sources I used fill the right-hand column. Try one of these:",
-          examples: ["What moved our biggest holding this week?", "Summarize the latest 10-Q for our largest position."],
-        },
-        {
-          id: "research-side",
-          kind: "info",
-          target: '[data-tour="research-side"]',
-          title: "By holding",
-          what: "One row per holding: its chats and sources, an open movement, and the next report.",
-          how: "Sell-side calls, the next tab, is where you record an analyst call and get my brief beside it.",
-        },
-      ],
-    },
-    {
-      id: "calendar",
-      label: "Calendar",
-      route: /^\/t\/[^/]+\/(earnings|economic-calendar)$/,
-      steps: [
-        {
-          id: "go-calendar",
-          kind: "go",
-          target: nav("calendar"),
-          title: "One calendar for earnings and releases",
-          body: "Our holdings' reports, bellwethers and the big economic releases share one week.",
-          prompt: "Click Calendar in the menu.",
-        },
-        {
-          id: "calendar-week",
-          kind: "info",
-          target: '[data-tour="calendar-week"]',
-          title: "The week",
-          what: "The week day by day: the Fund's reports, plus anything else you tick under Show. Switch to Month or List at the top right.",
-          how: "Click a release to see what's expected and why it matters for us. On a weekend it opens on the coming week.",
+          title: "The next few weeks, day by day",
+          what: "The fund's reports (est. means the company hasn't confirmed the date) and the economic releases, with which prep packs are built. Add sector bellwethers at the top.",
+          how: "Click a report to open its holding's Earnings tab. This replaces the Earnings and Economic releases pages.",
           source: "Earnings dates from Finnhub and Yahoo Finance. The release schedule from TradingView.",
-        },
-        {
-          id: "calendar-side",
-          kind: "info",
-          target: '[data-tour="calendar-side"]',
-          title: "Pick what to show",
-          points: [
-            { label: "Month", text: "a dot marks a day with something you're showing, blue for a Fund report. Click a day to jump to its week." },
-            { label: "Show", text: "it opens on the Fund's reports. Tick bellwethers or releases to add them (the number beside each says how many), and filter releases by importance." },
-            { label: "Expectations this week", text: "who still has to set expectations before their company reports. They lock when the report lands." },
-          ],
-        },
-      ],
-    },
-    {
-      id: "portfolio",
-      label: "Portfolio",
-      route: /^(\/t\/[^/]+)?\/attribution$/,
-      steps: [
-        {
-          id: "go-portfolio",
-          kind: "go",
-          target: nav("portfolio"),
-          title: "Portfolio: the book's own numbers",
-          body: "Attribution, Risk, Exposure and Backtesting now live together.",
-          prompt: "Click Portfolio in the menu.",
-        },
-        {
-          id: "portfolio-tabs",
-          kind: "info",
-          target: '[data-tour="section-tabs"]',
-          title: "Four pages, one row of tabs",
-          what: "Attribution (where the return came from), Risk (how bumpy the fund is), Exposure (where our money sits against the index) and Backtesting (what if the weights were different).",
-          how: "Every page leads with a strip of headline numbers. Hover a label for what it means.",
-        },
-        {
-          id: "attribution-strip",
-          kind: "info",
-          target: '[data-tour="attribution-strip"]',
-          title: "Attribution, up top",
-          what: "The return and how it compares with the index and the sector benchmark; for a team, also what it added to the fund. Below: the running difference over time, where it came from (sector choices or stock picks), then sectors and holdings.",
-          source: `${LEDGER} ${CLOSES}`,
-          ifMissing: "skip",
-        },
-      ],
-    },
-    {
-      id: "risk",
-      label: "Risk",
-      route: /^(\/t\/[^/]+)?\/risk$/,
-      steps: [
-        {
-          id: "go-risk",
-          kind: "go",
-          target: tab("risk", "portfolio"),
-          title: "Risk, tidied up",
-          prompt: "Click Risk along the top.",
-        },
-        {
-          id: "risk-headline",
-          kind: "info",
-          target: 'section[aria-label="Headline risk"]',
-          title: "Five numbers in one strip",
-          what: "Volatility, tracking error, beta, the 1-day VaR and the worst day, all in one row.",
-          how: "Pick 6 months, 1 year or 2 years of history just above it.",
-        },
-        {
-          id: "risk-sources",
-          kind: "info",
-          target: '[data-tour="risk-sources"]',
-          title: "Where the risk comes from, and past crashes",
-          what: "The holdings carrying the most risk, with Trim 1 pp to try a smaller position in Backtesting. Beside it: how today's holdings would have done in past crashes.",
-          how: "Sectors, what moves together and the full method are further down the page.",
-          ifMissing: "skip",
-        },
-      ],
-    },
-    {
-      id: "backtesting",
-      label: "Backtesting",
-      route: /^\/backtesting$/,
-      steps: [
-        {
-          id: "go-backtesting",
-          kind: "go",
-          target: tab("backtesting", "portfolio"),
-          title: "Backtesting, side by side",
-          prompt: "Click Backtesting along the top.",
-        },
-        {
-          id: "bt-weights",
-          kind: "info",
-          target: '[data-tour="bt-weights"]',
-          title: "Weights on the left, results on the right",
-          what: "Dates, benchmark, a quick trade and the weights you can edit, then Run replay and Save. The replay, saved scenarios and the risk impact fill in on the right.",
-          source: "It starts from the saved holding weights. Nothing changes in the real portfolio.",
-          ifMissing: "skip",
-        },
-        {
-          id: "bt-layout",
-          kind: "info",
-          target: '[data-tour="bt-layout"]',
-          title: "Old layout or new: your pick",
-          what: "This button switches Backtesting between the new layout and the classic one, just for you.",
-          how: "Both use the same engine, so the numbers are the same either way.",
-          ifMissing: "skip",
-        },
-      ],
-    },
-    {
-      id: "manage",
-      label: "Manage",
-      route: /^\/(weekly|changelog|admin)(\/|$)/,
-      steps: [
-        {
-          id: "go-manage",
-          kind: "go",
-          // The classic Backtesting layout keeps the old sidebar, where Manage's pages are still separate lines.
-          target: `${nav("manage")}, ${nav("weekly-update")}`,
-          title: "Manage: the running of the fund",
-          body: "The weekly pack, the changelog and admin, as three tabs.",
-          prompt: "Click Manage near the bottom of the menu.",
-        },
-        {
-          id: "weekly-packs",
-          kind: "info",
-          target: '[data-tour="weekly-packs"]',
-          title: "Weekly packs",
-          what: "Every Sunday's pack on the left; pick one to see its numbers, performers, earnings and releases, with the email, highlights, agenda and checks in tabs.",
-          source: "I build it Sundays at noon ET from the ledger, the PT sheet and the fund calendar.",
-          ifMissing: "skip",
         },
       ],
     },
@@ -419,8 +164,8 @@ export const WHATS_NEW_TOUR: Tour = {
           id: "account",
           kind: "info",
           target: '[data-tour="account"]',
-          title: "Your preferences live here",
-          body: "Click your initials at the bottom of the menu for Theme (light or dark), Hoot in the menu, Transparency (the math behind every number), and \"Replay the tour\" to watch this again.",
+          title: "What's new, Admin and your preferences",
+          body: "Click your name at the bottom of the sidebar for What's new, Admin, Theme (light or dark), Hoot in the corner, Transparency (the math behind every number), and \"Replay the tour\" to watch this again.",
         },
       ],
     },

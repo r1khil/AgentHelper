@@ -24,7 +24,7 @@ import { commandGroups, recentWhen, typedQuestionTarget, type CommandItem as Ite
 const shortDate = (iso: string) => fmtDay(iso);
 
 /**
- * The one place to ask Hoot outside Research, in two modes. ⌘J ("ask") is Hoot's palette, scoped to the page: with
+ * The palette on every page, in two modes. ⌘J ("ask") is Hoot's palette, scoped to the page: with
  * nothing typed it offers questions about the page, recent answers and a few pages. ⌘K ("search") jumps to a holding
  * or page first, with a preview. Both send typed text to Hoot as a question or a command ("take me to holdings", "turn
  * on light mode"). Enter opens what the query names (a holding, page, scope or theme) and otherwise asks Hoot;
@@ -78,7 +78,7 @@ export function CommandMenu({
     }
   }
 
-  // On a holding page a typed question goes to that holding's research, unless the member asked about the whole app.
+  // On a holding page a typed question is about that holding, unless the member asked about the whole app.
   const onPage = !wholeApp;
   const pageTicker = onPage ? tickerFromPath(pathname) : null;
   const pageTeamSlug = onPage ? scopeSlugFromPath(pathname) : null;
@@ -203,7 +203,7 @@ export function CommandMenu({
                 <span className="flex h-[26px] max-w-[45%] shrink-0 items-center gap-1.5 rounded-lg bg-secondary pr-1 pl-2 text-caption text-ink-3">
                   <span className="truncate">
                     {pageLabel}
-                    {scopeLabel && scopeLabel !== pageLabel ? ` · ${scopeLabel}` : ""}
+                    {scopeLabel && scopeLabel !== pageLabel ? `, ${scopeLabel}` : ""}
                   </span>
                   <button
                     type="button"
@@ -276,7 +276,7 @@ function ItemRow({ item, ask }: { item: Item; ask: boolean }) {
           <Briefcase className={icon} strokeWidth={1.8} />
           <span className="font-semibold">{item.holding.ticker}</span>
           <span className="min-w-0 flex-1 truncate text-muted-foreground">
-            {item.holding.company} · {item.holding.team}
+            {item.holding.company}, {item.holding.team}
           </span>
           <span className="text-caption text-muted-foreground opacity-0 [[data-selected=true]_&]:opacity-100">↵</span>
         </>
@@ -328,8 +328,8 @@ function ItemRow({ item, ask }: { item: Item; ask: boolean }) {
 
 function PageIcon({ label }: { label: string }) {
   const cls = "size-[15px] shrink-0 text-muted-foreground";
-  if (/calendar|earnings|releases/i.test(label)) return <CalendarDays className={cls} strokeWidth={1.8} />;
-  if (/portfolio|performance|activity|risk|exposure|backtesting/i.test(label)) return <ChartColumn className={cls} strokeWidth={1.8} />;
+  if (/markets|earnings/i.test(label)) return <CalendarDays className={cls} strokeWidth={1.8} />;
+  if (/portfolio|performance|activity|risk|exposure|what if/i.test(label)) return <ChartColumn className={cls} strokeWidth={1.8} />;
   return <ArrowRight className={cls} strokeWidth={1.8} />;
 }
 
@@ -340,13 +340,13 @@ function Preview({ item, seeing }: { item: Item; seeing: string | null }) {
   const [title, body] = command
     ? ["Hoot", "Does this right away. No chat is opened."]
     : item.kind === "ask"
-      ? ["Ask Hoot", `Opens ${item.ticker ? `a chat in ${item.ticker} research` : "a research chat"} and sends this question. Hoot cites a source for every fact.`]
+      ? ["Ask Hoot", `Opens a thread${item.ticker ? ` about ${item.ticker}` : ""} and sends this question. Hoot cites a source for every fact.`]
       : item.kind === "suggest"
         ? ["Suggested question", "Puts it in the box so you can edit it. Enter then asks Hoot."]
         : item.kind === "page"
           ? [item.page.label, item.page.hint ?? "Open this page."]
           : item.kind === "scope"
-            ? [item.scope.label, "Every section follows the scope. You stay on the same kind of page."]
+            ? [item.scope.label, "The Portfolio and its views follow the scope. You stay on the same kind of page."]
             : [`${item.theme === "dark" ? "Dark" : "Light"} mode`, "Remembered in this browser."];
   return (
     <div>
@@ -399,7 +399,7 @@ function HoldingPreview({ holding: h }: { holding: CommandHolding }) {
     <div>
       <div className="text-title font-bold">{h.ticker}</div>
       <div className="text-body text-muted-foreground">
-        {h.company} · {h.team}
+        {h.company}, {h.team}
       </div>
       <div className="mt-3 flex items-baseline gap-2">
         <span className="figure text-display">{fmtCurrency(q?.price, q?.currency)}</span>

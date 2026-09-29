@@ -91,7 +91,33 @@ describe("navModel: the default header", () => {
 
 describe("destinations", () => {
   it("names the five screens and the Portfolio's views", () => {
-    expect(destinations(exec).map((d) => d.hoot)).toEqual(["Home", "Portfolio", "Performance", "Risk", "Exposure", "Activity", "What if", "Markets", "Weekly update", "Changelog", "Admin"]);
-    expect(destinations({ scope: { slug: "tech" }, fundWide: false, seesBook: false }).map((d) => d.href)).toEqual(["/", "/t/tech", "/t/tech/what-if", "/markets"]);
+    expect(destinations(exec).map((d) => d.hoot)).toEqual([
+      "Home",
+      "Portfolio",
+      "Performance",
+      "Risk",
+      "Exposure",
+      "Activity",
+      "What if",
+      "Markets",
+      "Threads",
+      "Write-ups",
+      "Models",
+      "Sell-side calls",
+      "Weekly update",
+      "Changelog",
+      "Admin",
+    ]);
+    expect(destinations({ scope: { slug: "tech" }, fundWide: false, seesBook: false }).map((d) => d.href)).toEqual([
+      "/",
+      "/t/tech",
+      "/t/tech/what-if",
+      "/markets",
+      "/hoot",
+      "/t/tech/movements",
+      "/t/tech/models",
+      "/t/tech/sell-side",
+    ]);
+    expect(destinations({ scope: null, fundWide: false, seesBook: false }).map((d) => d.href)).toEqual(["/", "/markets", "/hoot"]);
   });
 });

@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { teams, teamSectors } from "@/db/schema";
 import type { CurrentUser } from "@/lib/auth";
 import { canManageTeam, isFundWide } from "@/lib/roles";
+import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { computeAttribution, computeTeamAttribution } from "@/lib/attribution/attribution";
 import { PERIOD_KEYS, PERIOD_LABELS, resolvePeriod } from "@/lib/attribution/periods";
 import type { GicsSector } from "@/lib/attribution/sectors";
@@ -49,14 +50,14 @@ function metricsOut(m: Metrics) {
 }
 
 /**
- * The Fund's own performance tools: attribution (the same calculation as the Attribution pages), backtests
- * (the same engine as the Backtesting page) and risk (the Risk pages). They need the signed-in member, so they only exist in chat turns, and
+ * The Fund's own performance tools: attribution (the same calculation as the Portfolio's Performance view), backtests
+ * (the same engine as its What if view) and risk (its Risk and Exposure views). They need the signed-in member, so they only exist in chat turns, and
  * they apply the pages' access rules: fund attribution for execs and admins, a team's for its lead too.
  */
 export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string | null }) {
   const { viewer } = ctx;
 
-  /** The Attribution pages' access rule: the whole Fund for execs and admins, a team's sleeve for its lead too. */
+  /** Performance's access rule: the whole Fund for execs and admins, a team's sleeve for its lead too. */
   async function resolveSleeve(scope: "fund" | "team", team: string | undefined, what: string) {
     const teamRows = await db.select({ id: teams.id, slug: teams.slug, name: teams.name }).from(teams);
     const teamNames = new Map(teamRows.map((t) => [t.id, t.name]));
@@ -74,7 +75,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string | 
   return {
     get_attribution: tool({
       description:
-        "The Fund's performance attribution, exactly as the Attribution page computes it from the trade ledger: return vs the S&P 500 (price return), active return vs the sector benchmark split into allocation, selection and interaction (Brinson-Fachler, bps), every sector's effects, the top and bottom contributing holdings (contribution in bps), team contributions, and day-by-day returns for periods up to about a month. Use it for any question about how the Fund or a team performed, what drove over- or underperformance, or which holdings or sectors helped or hurt. Scope 'fund' is the whole Fund (execs and admins); 'team' is one team's sleeve. Periods end at the last completed close.",
+        "The Fund's performance attribution, exactly as the Portfolio's Performance view computes it from the trade ledger: return vs the S&P 500 (price return), active return vs the sector benchmark split into allocation, selection and interaction (Brinson-Fachler, bps), every sector's effects, the top and bottom contributing holdings (contribution in bps), team contributions, and day-by-day returns for periods up to about a month. Use it for any question about how the Fund or a team performed, what drove over- or underperformance, or which holdings or sectors helped or hurt. Scope 'fund' is the whole Fund (execs and admins); 'team' is one team's sleeve. Periods end at the last completed close.",
       inputSchema: z.object({
         scope: z.enum(["fund", "team"]).default(isFundWide(viewer) ? "fund" : "team"),
         team: z.string().optional().describe("Team slug or name for scope 'team'; defaults to this chat's team"),
@@ -108,8 +109,8 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string | 
             if (from) query.set("from", from);
             if (to) query.set("to", to);
           }
-          const path = sleeve ? `/t/${sleeve.slug}/attribution?${query}` : `/attribution?${query}`;
-          const title = `${sleeve ? `${sleeve.name} attribution` : "Fund attribution"} · ${PERIOD_LABELS[key]} · through ${period.end} close`;
+          const path = `/t/${sleeve?.slug ?? FUND_SCOPE_SLUG}/performance?${query}`;
+          const title = `${sleeve ? `${sleeve.name} attribution` : "Fund attribution"}, ${PERIOD_LABELS[key]}, through ${period.end} close`;
           const source: Source = {
             id: sourceId("attr", `${path}:${period.start}:${period.end}`),
             title,
@@ -129,7 +130,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string | 
 
     get_daily_performance: tool({
       description:
-        "Today's performance as the Daily page shows it, live during market hours: the Fund's (or a team's) return and P&L so far from the prior close, the S&P 500 and Dow, active vs the S&P 500 and vs the sector benchmark split into allocation, selection and interaction (bps), every sector's effects, stocks vs ETFs, and the top and bottom contributing holdings with their weight at the open, weight now, price, return today, contribution (bps) and P&L. Priced from live quotes while the market is open, closing quotes after the bell until the 5:00 pm price run, and stored closes after that (then it equals get_attribution's 1d). Before the open, on weekends and holidays it returns the last session. Use it for any question about today, right now, this morning or intraday. Scope 'fund' is the whole Fund (execs and admins); 'team' is one team's sleeve.",
+        "Today's performance as the Portfolio's Performance view shows it for Today, live during market hours: the Fund's (or a team's) return and P&L so far from the prior close, the S&P 500 and Dow, active vs the S&P 500 and vs the sector benchmark split into allocation, selection and interaction (bps), every sector's effects, stocks vs ETFs, and the top and bottom contributing holdings with their weight at the open, weight now, price, return today, contribution (bps) and P&L. Priced from live quotes while the market is open, closing quotes after the bell until the 5:00 pm price run, and stored closes after that (then it equals get_attribution's 1d). Before the open, on weekends and holidays it returns the last session. Use it for any question about today, right now, this morning or intraday. Scope 'fund' is the whole Fund (execs and admins); 'team' is one team's sleeve.",
       inputSchema: z.object({
         scope: z.enum(["fund", "team"]).default(isFundWide(viewer) ? "fund" : "team"),
         team: z.string().optional().describe("Team slug or name for scope 'team'; defaults to this chat's team"),
@@ -142,11 +143,11 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string | 
           const snapshot = await loadLiveSnapshot(sleeve ? { team: { ...sleeve, sectors } } : {});
           if (!snapshot) return { data: { note: "No positions or closing prices are recorded yet, so there is no daily performance." }, sources: [] };
           const summary = summarizeLive(snapshot, { scope, teamName: sleeve?.name, teamSectors: sectors, teamNames, holdingsLimit });
-          const path = sleeve ? `/t/${sleeve.slug}/daily` : "/daily";
+          const path = `/t/${sleeve?.slug ?? FUND_SCOPE_SLUG}/performance?period=today`;
           const asOf = snapshot.asOf ?? snapshot.hours.close;
           const source: Source = {
             id: sourceId("daily", `${path}:${snapshot.session}:${snapshot.status}:${asOf.slice(0, 16)}`),
-            title: [sleeve ? `${sleeve.name} daily performance` : "Fund daily performance", snapshot.session, snapshot.status === "final" ? "final" : [snapshot.status, summary.pricesAsOf].filter(Boolean).join(", ")].join(" · "),
+            title: [sleeve ? `${sleeve.name} daily performance` : "Fund daily performance", snapshot.session, snapshot.status === "final" ? "final" : [snapshot.status, summary.pricesAsOf].filter(Boolean).join(", ")].join(", "),
             url: appUrl(path),
             publisher: "Owl Fund daily performance (trade ledger + live quotes)",
             publishedAt: asOf,
@@ -165,7 +166,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string | 
       description:
         "Hypothetical replay of the current holdings over past prices with today's weights held fixed (the current replay) and an optional modified scenario. It does not reconstruct past trades, weight changes or cash flows, so it is not realized performance; use get_attribution for how the Fund or a team actually did. The scenario may add recognized company tickers and change or drop weights with explicit offsets. Fixed weights rebalance daily using Yahoo adjusted closes. Returns performance metrics and holding contributions. This sandbox never changes the real portfolio. Execs and admins backtest the Fund; everyone else their team. Call it directly with the tickers as asked: it reads another share class as the one held (GOOGL for GOOG) and returns the saved weights, so no quote or company lookup is needed first.",
       inputSchema: z.object({
-        from: iso.optional().describe("First session; defaults to one year before `to`, like the Backtesting page"),
+        from: iso.optional().describe("First session; defaults to one year before `to`, like the What if view"),
         to: iso.optional().describe("Last session; defaults to the last completed session"),
         benchmark: z.enum(Object.keys(BENCHMARKS) as [keyof typeof BENCHMARKS, ...(keyof typeof BENCHMARKS)[]]).default("SPY"),
         addedTickers: z.array(z.string()).max(MAX_SCENARIO_COMPANIES).optional().describe("Companies the portfolio does not hold, added only to the modified scenario (each starts at 0%; give it a weight). Held tickers go straight into weights or trades; savedWeights in the result lists them."),
@@ -187,7 +188,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string | 
         try {
           const yesterday = DateTime.now().setZone(NY).minus({ days: 1 }).toISODate()!;
           const end = to && to < yesterday ? to : yesterday;
-          // Same default window as the Backtesting page: a year back from the end date.
+          // Same default window as the What if view: a year back from the end date.
           const start = from ?? defaultWindow(end).from;
           const saved = await loadSnapshot(viewer);
           // Another share class of a holding means the holding; an "added" ticker that is already held isn't an error.
@@ -213,8 +214,8 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string | 
             .map((c) => ({ ticker: c.ticker, currentReplayContributionPct: pct(c.original), modifiedReplayContributionPct: pct(c.modified), changePct: pct(c.delta) }));
           const source: Source = {
             id: sourceId("backtest", `${snapshot.version}:${benchmark}:${r.from}:${r.to}:${JSON.stringify(addedTickers ?? [])}:${JSON.stringify(overrides ?? {})}:${fillFrom}:${JSON.stringify(trades ?? [])}`),
-            title: `Backtest · ${snapshot.scope} · ${r.from} to ${r.to} vs ${benchmark}${changed.length ? ` · ${changed.length} weight${changed.length === 1 ? "" : "s"} changed` : ""}`,
-            url: appUrl("/backtesting"),
+            title: `Backtest, ${snapshot.scope}, ${r.from} to ${r.to} vs ${benchmark}${changed.length ? `, ${changed.length} weight${changed.length === 1 ? "" : "s"} changed` : ""}`,
+            url: appUrl(`/t/${isFundWide(viewer) ? FUND_SCOPE_SLUG : (viewer.team?.slug ?? FUND_SCOPE_SLUG)}/what-if`),
             publisher: "Owl Fund backtest (Yahoo adjusted closes)",
             publishedAt: r.to,
             retrievedAt: new Date().toISOString(),
@@ -289,11 +290,11 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string | 
             historicalStressTests: summarizeStress(stress),
             etfLookThrough: summarizeLookthrough(lookthrough, holdingsLimit),
           };
-          const path = `${sleeve ? `/t/${sleeve.slug}/${page}` : `/${page}`}?lookback=${lookback}`;
+          const path = `/t/${sleeve?.slug ?? FUND_SCOPE_SLUG}/${page}?lookback=${lookback}`;
           const pageName = page === "exposure" ? "exposure" : "risk";
           const source: Source = {
             id: sourceId("risk", `${path}:${loaded.report.asOf}`),
-            title: `${sleeve ? `${sleeve.name} ${pageName}` : `Fund ${pageName}`} · ${LOOKBACKS[lookback].label} window · positions at ${loaded.report.asOf} close`,
+            title: `${sleeve ? `${sleeve.name} ${pageName}` : `Fund ${pageName}`}, ${LOOKBACKS[lookback].label} window, positions at ${loaded.report.asOf} close`,
             url: appUrl(path),
             publisher: "Owl Fund risk (trade ledger, Yahoo closes)",
             publishedAt: loaded.report.asOf,

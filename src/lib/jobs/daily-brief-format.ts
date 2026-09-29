@@ -1,4 +1,5 @@
 import type { AttributionSummary } from "@/lib/attribution/summary";
+import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { fmtAccounting, fmtDate, fmtDay } from "@/lib/format";
 import type { Source } from "@/lib/providers/types";
 
@@ -125,7 +126,7 @@ function longDate(iso: string) {
 
 export function briefEmail(opts: { sessionDate: string; facts: string; analysis: string | null; sources: Source[]; failure?: string; appUrl?: string }) {
   const subject = `Owl Fund Daily Attribution Analysis (${fmtDate(opts.sessionDate)})`;
-  const link = opts.appUrl ? `${opts.appUrl.replace(/\/$/, "")}/attribution` : null;
+  const link = opts.appUrl ? `${opts.appUrl.replace(/\/$/, "")}/t/${FUND_SCOPE_SLUG}/performance?period=1d` : null;
   const opening = opts.analysis
     ? [`Here's what drove the fund on ${longDate(opts.sessionDate)}.`, "", opts.analysis]
     : [`My analysis of ${longDate(opts.sessionDate)} didn't finish${opts.failure ? ` (${opts.failure})` : ""}, so here are just the numbers. They come straight from the app's attribution and are complete.`];

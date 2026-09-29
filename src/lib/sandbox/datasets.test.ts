@@ -101,7 +101,7 @@ describe("prices dataset", () => {
 });
 
 describe("holdings dataset", () => {
-  it("uses the Backtesting snapshot for the viewer's scope", async () => {
+  it("uses What if's snapshot for the viewer's scope", async () => {
     vi.mocked(loadSnapshot).mockResolvedValue({
       positions: [
         { id: "1", ticker: "AXP", name: "American Express", weight: 0.6 },
@@ -118,7 +118,7 @@ describe("holdings dataset", () => {
     const d = await loadDataset({ viewer, teamId: "team-fin" }, { name: "holdings" });
     expect(loadSnapshot).toHaveBeenCalledWith(viewer);
     expect(d.content).toBe('ticker,name,weight,kind\nAXP,American Express,0.6,stock\nJPM,"JPMorgan, Chase",0.4,stock\n');
-    expect(d.source).toMatchObject({ sourceType: "Fund holdings", title: "Financials portfolio · current holdings and saved weights" });
+    expect(d.source).toMatchObject({ sourceType: "Fund holdings", title: "Financials portfolio, current holdings and saved weights" });
   });
 });
 
@@ -143,14 +143,14 @@ describe("returns dataset", () => {
     vi.mocked(computeTeamAttribution).mockReturnValue(result as never);
   });
 
-  it("gives execs the fund's daily returns with the S&P 500, citing the Attribution page", async () => {
+  it("gives execs the fund's daily returns with the S&P 500, citing the Performance view", async () => {
     const d = await loadDataset({ viewer: user("exec"), teamId: "team-fin" }, { name: "returns" });
     expect(d.name).toBe("returns");
     expect(d.columns).toEqual(["date", "return", "sector_benchmark_return", "sp500_return"]);
     expect(d.content.split("\n")[1]).toBe("2026-09-23,0.01,0.02,0.01");
     expect(d.content.split("\n")[2]).toBe("2026-09-24,0.0049505,,-0.01");
     expect(d.source.id).toMatch(/^attr-/);
-    expect(d.source.url).toContain("/attribution?period=itd");
+    expect(d.source.url).toContain("/t/fund/performance?period=itd");
   });
 
   it("refuses whole-fund returns to analysts", async () => {
@@ -165,7 +165,7 @@ describe("returns dataset", () => {
     const d = await loadDataset({ viewer: user("lead_analyst"), teamId: "team-fin" }, { name: "returns:team", range: "1y" });
     expect(computeTeamAttribution).toHaveBeenCalledWith(series.series, expect.objectContaining({ key: "1y" }), "team-fin", ["financials"]);
     expect(d.columns).toEqual(["date", "return", "sector_benchmark_return"]);
-    expect(d.source.url).toContain("/t/financials/attribution?period=1y");
+    expect(d.source.url).toContain("/t/financials/performance?period=1y");
   });
 
   it("explains an empty ledger", async () => {
