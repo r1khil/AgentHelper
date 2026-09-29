@@ -17,11 +17,14 @@ export function BookSensitivity({
   events,
   now,
   onPick,
+  className,
 }: {
   context: Promise<CalendarFactorContext>;
   events: EconomicEvent[];
   now: number;
   onPick: (e: EconomicEvent) => void;
+  /** Markets shows it as a card in the right rail. */
+  className?: string;
 }) {
   const ctx = use(context);
   const lines = factorLines(events, ctx.exposure);
@@ -29,8 +32,8 @@ export function BookSensitivity({
   const byId = new Map(events.map((e) => [e.id, e]));
   const caption = ctx.exposure ? `Open one for ${ctx.exposure.subject}'s beta. Past co-movement, not a forecast.` : "Which factors each release tends to move.";
   return (
-    <section aria-label="Factor-sensitive releases" className="max-w-[760px]">
-      <h2 className="text-title font-bold tracking-[-0.01em] whitespace-nowrap">Factor-sensitive releases</h2>
+    <section aria-label="Factor-sensitive releases" className={className}>
+      <h2 className="text-body font-semibold">Factor-sensitive releases</h2>
       {/* One line each; the book's exposure for a release is in that release's details (click the line). */}
       <ul className="mt-1 flex flex-col">
         {lines.map((l) => {
@@ -41,11 +44,12 @@ export function BookSensitivity({
               <button
                 type="button"
                 onClick={() => onPick(e)}
-                title={l.text}
-                className={cn("block w-full truncate py-1.5 text-left text-body outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring", out ? "text-muted-foreground" : "text-foreground")}
+                title={l.text.replaceAll(" · ", ", ")}
+                className={cn("block w-full py-1.5 text-left text-body text-pretty outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring", out ? "text-muted-foreground" : "text-foreground")}
               >
-                <span className="font-medium">{l.head}</span>
-                {out && <span> · released</span>}
+                {/* The line's parts read as a phrase ("CPI Wed, Oct 14, 8:30 AM ET, rates- and dollar-sensitive"), no dots. */}
+                <span className="font-medium">{l.head.replaceAll(" · ", ", ")}</span>
+                {out && <span>, released</span>}
               </button>
             </li>
           );
@@ -73,7 +77,7 @@ export function FactorClause({ context, event }: { context: Promise<CalendarFact
   if (!line) return null;
   return (
     <p className="mt-2.5 text-body text-ink-2">
-      {line.text}
+      {line.text.replaceAll(" · ", ", ")}
       {ctx.exposure && ctx.basis && (
         <span className="block text-muted-foreground">
           {`With ${ctx.exposure.subject}'s factor betas over ${ctx.basis}. Betas with |t| below 2 read "no clear exposure". Past co-movement, not a forecast or a recommendation.`}

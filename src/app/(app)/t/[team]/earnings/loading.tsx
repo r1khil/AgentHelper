@@ -1,6 +1,9 @@
-import { CalendarSkeleton } from "@/components/app/page-skeletons";
+import { EarningsReportSkeleton } from "@/components/app/page-skeletons";
 
-/** The earnings calendar: shown at once on navigation while the page streams in, shaped like it so nothing moves. */
+/**
+ * /earnings itself only redirects to Markets now; what loads under this segment is one report (earnings/[id]), so this
+ * boundary shows that page's shape rather than a calendar's. Safe to delete along with the redirect.
+ */
 export default function Loading() {
-  return <CalendarSkeleton />;
+  return <EarningsReportSkeleton />;
 }

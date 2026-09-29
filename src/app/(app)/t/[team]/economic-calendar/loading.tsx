@@ -1,6 +1,6 @@
-import { CalendarSkeleton } from "@/components/app/page-skeletons";
+import { MarketsSkeleton } from "@/app/(app)/markets/markets-skeleton";
 
-/** The economic calendar: shown at once on navigation while the page streams in, shaped like it so nothing moves. */
+/** This route redirects to Markets; while it does, show Markets' own skeleton so nothing jumps. */
 export default function Loading() {
-  return <CalendarSkeleton />;
+  return <MarketsSkeleton />;
 }
