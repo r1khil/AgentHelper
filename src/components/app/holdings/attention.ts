@@ -61,7 +61,7 @@ export type NeedRow = {
   key: string;
   /** "4 days overdue", "Due Sep 29, 12:00 PM ET", "3 to decide". */
   status: string;
-  /** Red once a write-up is a day or more late; amber for everything else that waits. */
+  /** Red for anything overdue (the bell agrees from the first minute); amber for everything else that waits. */
   tone: "overdue" | "caution";
   title: string;
   detail?: string;
@@ -76,8 +76,6 @@ export type NeedsInput = {
   models: { id: string; fileName: string; version: number; toDecide: number }[];
   thesisProposed: boolean;
 };
-
-const DAY_MS = 86_400_000;
 
 /** "4 days overdue", "1 hour overdue", "12 minutes overdue": the largest whole unit, in words. */
 export function overdueWords(dueAt: Date, now: number) {
@@ -101,7 +99,7 @@ export function holdingNeeds(s: NeedsInput, ctx: { base: string; today: string; 
     out.push({
       key: `move-${m.id}`,
       status,
-      tone: !m.dataQuality && late && ctx.now - m.dueAt!.getTime() >= DAY_MS ? "overdue" : "caution",
+      tone: late && !m.dataQuality ? "overdue" : "caution",
       title: `Movement write-up for ${bp == null || m.dataQuality ? "the move" : fmtChangeBp(bp)} on ${fmtDayMonth(m.sessionDate)}`,
       detail: m.dataQuality ? m.dataQuality : m.drafted ? "A draft is started" : m.evidence > 0 ? `Hoot gathered ${m.evidence} ${m.evidence === 1 ? "source" : "sources"}` : undefined,
       action: m.drafted ? "Finish" : m.dataQuality ? "Open" : "Write it",
@@ -111,10 +109,11 @@ export function holdingNeeds(s: NeedsInput, ctx: { base: string; today: string; 
   const r = s.nextReport;
   if (r && !r.locked && reportsWithin(r.reportDate, ctx.today)) {
     const due = expectationsDue(r.reportDate, r.reportHour);
+    const late = due < ctx.today;
     out.push({
       key: `report-${r.id}`,
-      status: due < ctx.today ? "Overdue" : due === ctx.today ? "Due today" : `Due ${fmtDay(due)}`,
-      tone: "caution",
+      status: late ? "Overdue" : due === ctx.today ? "Due today" : `Due ${fmtDay(due)}`,
+      tone: late ? "overdue" : "caution",
       title: `Expectations for the ${r.fiscalPeriod ? `${r.fiscalPeriod} ` : ""}report on ${fmtDayMonth(r.reportDate)}`,
       detail: r.drafted ? "A draft, not locked yet" : "Lock them before the report",
       action: r.drafted ? "Finish" : "Write them",

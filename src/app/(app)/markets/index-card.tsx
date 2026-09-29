@@ -2,7 +2,7 @@ import { fmtAccounting, fmtChangeBp, fmtChangePct, fmtPct, fmtTime } from "@/lib
 import { getQuotes } from "@/lib/providers/yahoo";
 import type { Quote } from "@/lib/providers/types";
 import { cn } from "@/lib/utils";
-import { RailCard, RailRow } from "./rail";
+import { RailCard, RailRow } from "@/components/app/rail-card";
 
 /** The index levels in the rail. The 10-year is a yield, so its move is in basis points rather than percent. */
 const INDICES = [

@@ -67,7 +67,7 @@ describe("holdingNeeds", () => {
     expect(holdingNeeds(empty, base)).toEqual([]);
   });
 
-  it("lists every open write-up, the most overdue first, red a day late and amber before", () => {
+  it("lists every open write-up, the most overdue first, red from the first minute late", () => {
     const rows = holdingNeeds(
       {
         ...empty,
@@ -81,9 +81,14 @@ describe("holdingNeeds", () => {
     );
     expect(rows.map((r) => [r.status, r.tone, r.title, r.action, r.href])).toEqual([
       ["4 days overdue", "overdue", "Movement write-up for +453 bp on Sep 24", "Write it", "/t/fund/movements/m1"],
-      ["1 hour overdue", "caution", "Movement write-up for (402 bp) on Sep 25", "Finish", "/t/fund/movements/m2"],
+      ["1 hour overdue", "overdue", "Movement write-up for (402 bp) on Sep 25", "Finish", "/t/fund/movements/m2"],
     ]);
     expect(rows[0].detail).toBe("Hoot gathered 17 sources");
+  });
+
+  it("keeps a data problem amber even when late", () => {
+    const [row] = holdingNeeds({ ...empty, moves: [{ ...move, dataQuality: "No close for Sep 24" }] }, base);
+    expect(row).toMatchObject({ status: "Data problem", tone: "caution", action: "Open" });
   });
 
   it("says when a write-up is due before it is late", () => {
@@ -109,6 +114,8 @@ describe("holdingNeeds", () => {
       ["4 to decide", "Review", "/t/fund/models/v2"],
       ["Proposed", "Review", "#thesis"],
     ]);
+    const lateReport = { id: "e2", reportDate: "2026-09-29", reportHour: "bmo", fiscalPeriod: null, locked: false, drafted: true };
+    expect(holdingNeeds({ ...empty, nextReport: lateReport }, { ...base, today: "2026-09-29" })[0]).toMatchObject({ status: "Overdue", tone: "overdue", action: "Finish" });
     expect(holdingNeeds({ ...empty, nextReport: { id: "e1", reportDate: "2026-11-18", reportHour: null, fiscalPeriod: null, locked: false, drafted: false } }, base)).toEqual([]);
   });
 

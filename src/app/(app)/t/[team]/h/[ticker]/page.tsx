@@ -201,7 +201,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
             ? `Draft, ${words} ${words === 1 ? "word" : "words"}`
             : `Not started${mv.evidence ? `, Hoot gathered ${mv.evidence} ${mv.evidence === 1 ? "source" : "sources"}` : ""}`,
       when: done ? "Completed" : mv.dataQuality ? "Data problem" : late ? overdueWords(mv.dueAt!, now) : mv.dueAt ? `Due ${fmtDayMonth(mv.dueAt)}, ${fmtTime(mv.dueAt)}` : "Open",
-      tone: done ? null : late && !mv.dataQuality && now - mv.dueAt!.getTime() >= DAY ? "overdue" : "caution",
+      tone: done ? null : late && !mv.dataQuality ? "overdue" : "caution",
       href: `${base}/movements/${mv.id}`,
       at: noon(mv.sessionDate),
     };
@@ -223,6 +223,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
       at: mm.createdAt.getTime(),
     };
   });
+  // "Missing" only where a model can do its job: an ETF or other non-SEC filer has no filings to propose values from.
   const noModel: FeedItem = { key: "model-none", kind: "Model", title: "No model uploaded yet", sub: "Upload an .xlsx to map its values to what the company reports", when: "Missing", tone: "caution", href: tabHref("model"), at: 0 };
   // Models filed in the Fund's Drive (not uploaded here) list on the Model tab too.
   const driveModels = docs.filter((d) => d.kind === "model");
@@ -299,7 +300,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
     };
   });
 
-  const allItems = [...threadItems, ...writeUpItems, ...(modelItems.length ? modelItems : [noModel]), ...indexedItems, ...edgarItems.filter((f) => !alsoIndexed.has(f.key)), ...docItems, ...callItems, ...noteFeed, ...reportItems]
+  const allItems = [...threadItems, ...writeUpItems, ...(modelItems.length || !h.cik ? modelItems : [noModel]), ...indexedItems, ...edgarItems.filter((f) => !alsoIndexed.has(f.key)), ...docItems, ...callItems, ...noteFeed, ...reportItems]
     .sort((a, b) => b.at - a.at)
     .slice(0, 40);
 
@@ -373,6 +374,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
             companyName={h.companyName}
             hasModel={!!latestModel}
             canUpload={active}
+            canUploadModel={active && !!h.cik}
             uploadDisabledReason={driveNote}
             trade={fundWide ? { today, shares: h.shares != null ? Number(h.shares) : null } : null}
             canExit={manage && active}
@@ -391,7 +393,10 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
               </span>
               <span className="truncate text-body text-muted-foreground">
                 {h.ticker}
-                {q?.exchange ? ` on ${q.exchange}` : ""}, {team.name} team
+                {q?.exchange ? ` on ${q.exchange}` : ""},{" "}
+                <Link href={`/t/${team.slug}`} className="hover:text-foreground hover:underline">
+                  {team.name} team
+                </Link>
               </span>
             </div>
           </div>
@@ -441,7 +446,11 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
                   <FeedList
                     label={`Models of ${h.ticker}`}
                     items={modelItems}
-                    empty={`No model uploaded yet. Upload an .xlsx: map its line items once to what ${h.ticker} reports to the SEC, and Hoot proposes each new period's values with a source for every number.`}
+                    empty={
+                      h.cik
+                        ? `No model uploaded yet. Upload an .xlsx: map its line items once to what ${h.ticker} reports to the SEC, and Hoot proposes each new period's values with a source for every number.`
+                        : `No model uploaded. ${h.ticker} isn't an SEC filer, so Hoot has no filings to propose a model's values from.`
+                    }
                   />
                 </TabSection>
                 {driveModels.length > 0 && (
@@ -533,7 +542,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
                     <p className="py-4 text-body text-muted-foreground">No report is on the calendar yet. The prep pack builds five trading days before one.</p>
                   )}
                 </TabSection>
-                <EarningsTab rows={earningsRows} calendarHref="/markets" />
+                <EarningsTab rows={earningsRows} calendarHref={scope.kind === "team" ? `/markets?team=${encodeURIComponent(team.slug)}` : "/markets"} />
               </>
             )}
           </div>

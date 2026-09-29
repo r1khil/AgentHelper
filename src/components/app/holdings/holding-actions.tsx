@@ -21,6 +21,7 @@ export function HoldingActions({
   companyName,
   hasModel,
   canUpload,
+  canUploadModel,
   uploadDisabledReason,
   trade,
   canExit,
@@ -30,8 +31,10 @@ export function HoldingActions({
   holdingId: string;
   companyName: string;
   hasModel: boolean;
-  /** An active holding: models and documents can be added. */
+  /** An active holding: documents can be added to the Drive. */
   canUpload: boolean;
+  /** An active SEC filer: a model's values can be proposed from its filings (an ETF gets no "Upload model"). */
+  canUploadModel: boolean;
   uploadDisabledReason?: string;
   /** Execs and admins record trades; `today` and the position size prefill the dialog. */
   trade: { today: string; shares: number | null } | null;
@@ -44,7 +47,7 @@ export function HoldingActions({
   const menu = canUpload || canExit || links.length > 0;
   return (
     <>
-      {canUpload && <UploadModelDialog targets={[{ id: holdingId, ticker, companyName, hasModel }]} label="Upload model" trigger="header" />}
+      {canUploadModel && <UploadModelDialog targets={[{ id: holdingId, ticker, companyName, hasModel }]} label="Upload model" trigger="header" />}
       {trade && (
         <>
           <Button variant="secondary" onClick={() => setTradeOpen(true)}>

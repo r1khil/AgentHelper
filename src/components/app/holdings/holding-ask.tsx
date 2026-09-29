@@ -42,7 +42,7 @@ export function HoldingAsk({ teamId, holdingId, ticker, suggestions, configured 
   };
 
   return (
-    <div className="mt-[22px] rounded-2xl border bg-surface">
+    <div className="mt-[22px] rounded-composer border bg-surface">
       <label htmlFor="holding-ask" className="sr-only">
         Ask about {ticker}
       </label>

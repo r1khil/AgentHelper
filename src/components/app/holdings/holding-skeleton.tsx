@@ -4,8 +4,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 /** A rail card's shape while it loads: the surface, its title, and `rows` label / value rows. */
 export function RailCardFallback({ title, rows }: { title?: string; rows: number }) {
   return (
-    <div aria-hidden className="rounded-xl bg-surface p-4">
-      {title ? <p className="mb-1.5 text-body font-semibold">{title}</p> : <Skeleton className="mb-3 h-3 w-24" />}
+    <div aria-hidden className="rounded-[12px] bg-surface p-4">
+      {title ? <p className="mb-1 text-body font-semibold">{title}</p> : <Skeleton className="mb-3 h-3 w-24" />}
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex h-[34px] items-center justify-between border-b border-row last:border-b-0">
           <Skeleton className="h-3 w-20" />
@@ -43,7 +43,7 @@ export function HoldingPageSkeleton() {
               <Skeleton key={i} className="h-7 w-9" />
             ))}
           </div>
-          <Skeleton className="mt-[22px] h-[104px] w-full rounded-2xl" />
+          <Skeleton className="mt-[22px] h-[104px] w-full rounded-composer" />
           <div className="mt-[26px] flex h-9 gap-5 border-b">
             {Array.from({ length: 6 }, (_, i) => (
               <Skeleton key={i} className="h-3 w-16" />
