@@ -3,7 +3,7 @@ import { and, asc, count, eq, gte, inArray, ne } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
 import { earnings, holdings, modelProposals, models, movements, sellSideCalls } from "@/db/schema";
-import { isFundWide, listAccessibleTeams, type CurrentUser } from "@/lib/auth";
+import { canManageTeam, isFundWide, listAccessibleTeams, type CurrentUser } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { todayNY } from "@/lib/providers/calendar";
 import { latestPackStatus } from "@/lib/weekly/latest";
@@ -118,7 +118,8 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
         company: r.company,
         team: t?.name ?? "",
         teamSlug: t?.slug ?? scope,
-        weightPct: r.weightPct == null ? null : Number(r.weightPct),
+        // Position sizes are for execs, admins and the team's leads (docs/PRODUCT.md, Access).
+        weightPct: r.weightPct == null || !(isFundWide(user) || canManageTeam(user, r.teamId)) ? null : Number(r.weightPct),
         nextReport: n?.date ?? null,
         nextReportEstimated: n?.estimated ?? false,
         openMovement: moving.has(r.ticker),

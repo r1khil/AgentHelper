@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { pageLabelFor } from "./hoot/page-context";
 import { useShell } from "./shell/shell-context";
 import { markScopeIntent } from "./shell/scope-intent";
 import { useTeamSection } from "./sidebar";
@@ -40,13 +43,49 @@ export function PageHead({
   return <HeadFrame marker="page" crumbs={crumbs} scope={scope} asof={asof} actions={actions} tabs={tabs} className={className} />;
 }
 
-/** The shell's header for a page that doesn't render its own PageHead: the section's name and its tabs. */
+/**
+ * The shell's header for a page that doesn't render its own PageHead: the section's name and its tabs. On a page about
+ * one item (a holding, a report) the section links back up and the page's own title follows it.
+ */
 export function DefaultHead() {
   const shell = useShell();
+  const pathname = usePathname();
+  const [title, setTitle] = useState<{ path: string; label: string } | null>(null);
+  // The page's title is only known once it has rendered (document.title); read it after each navigation.
+  useEffect(() => {
+    const id = window.setTimeout(() => setTitle({ path: pathname, label: pageLabelFor(pathname) }), 0);
+    return () => window.clearTimeout(id);
+  }, [pathname]);
   if (!shell) return null;
   const { nav } = shell;
   if (!nav.crumbs.length && !nav.tabs.length) return null;
-  return <HeadFrame marker="shell" crumbs={nav.crumbs} scope={nav.section === "portfolio" && nav.tabs.length > 1} tabs="section" />;
+  const own = nav.back && title?.path === pathname && title.label && title.label !== nav.back.label ? [{ label: title.label }] : [];
+  return <HeadFrame marker="shell" crumbs={[...nav.crumbs, ...own]} scope={nav.section === "portfolio" && nav.tabs.length > 1} tabs="section" />;
+}
+
+/**
+ * For a page designed without a header (Home): hides the shell's default one. Render it anywhere in the page.
+ */
+export function NoPageHead() {
+  return <span data-page-head="" hidden />;
+}
+
+/** PageHead's shape while the page loads, so the header doesn't jump when the page lands: 52px, plus the tab row. */
+export function SkeletonPageHead({ tabs = 0, className }: { tabs?: number; className?: string }) {
+  return (
+    <div data-page-head="" aria-hidden="true" className={cn("shrink-0 border-b bg-background", className)}>
+      <div className="flex h-[52px] items-center gap-2.5 px-10">
+        <span className="h-3 w-28 animate-pulse rounded-[4px] bg-muted" />
+      </div>
+      {tabs > 0 && (
+        <div className="flex h-11 items-center gap-[22px] px-10">
+          {Array.from({ length: tabs }, (_, i) => (
+            <span key={i} className="h-3 w-16 animate-pulse rounded-[4px] bg-muted" />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function HeadFrame({
@@ -72,8 +111,16 @@ function HeadFrame({
       ? (shell?.nav.tabs ?? []).map((t) => ({ key: t.key, label: t.label, href: t.href, active: t.active, count: shell?.counts[t.key]?.value, hot: shell?.counts[t.key]?.hot, tour: `nav-${t.key}` }))
       : tabs || [];
   const markerProps = marker === "page" ? { "data-page-head": "" } : { "data-shell-head": "" };
+  const ref = useRef<HTMLElement>(null);
+  // A PageHead only bleeds to the content area's edges as its first child (or at the top of a full-bleed page).
+  useEffect(() => {
+    const el = ref.current;
+    if (process.env.NODE_ENV !== "development" || marker !== "page" || !el) return;
+    const placed = el.parentElement?.classList.contains("app-container") || !!el.closest("[data-full-bleed]");
+    if (!placed) console.warn("PageHead should be the first element a page returns, or the top of its data-full-bleed wrapper.", el);
+  }, [marker]);
   return (
-    <header {...markerProps} className={cn("shrink-0 border-b bg-background", className)}>
+    <header ref={ref} {...markerProps} className={cn("shrink-0 border-b bg-background", className)}>
       <div className="flex h-[52px] items-center gap-2.5 px-10 text-body">
         <nav aria-label="Breadcrumb" className="min-w-0">
           <ol className="flex min-w-0 items-center gap-2.5">
@@ -86,7 +133,7 @@ function HeadFrame({
                       /
                     </span>
                   )}
-                  {c.href && !last ? (
+                  {c.href ? (
                     <Link href={c.href} className="truncate text-muted-foreground transition-colors hover:text-foreground">
                       {c.label}
                     </Link>
@@ -168,5 +215,39 @@ function ScopeItem({ href, selected, children }: { href: string; selected: boole
       <span className="min-w-0 flex-1">{children}</span>
       {selected && <Check className="text-muted-foreground" />}
     </DropdownMenuItem>
+  );
+}
+
+/**
+ * The block every page opens with: a grey label, the one big number, and the line that explains it (the change in its
+ * colour, then a grey note). `tone` colours the change: up green, down red, none ink.
+ */
+export function PageHero({
+  label,
+  value,
+  change,
+  tone,
+  note,
+  className,
+}: {
+  label: React.ReactNode;
+  value: React.ReactNode;
+  change?: React.ReactNode;
+  tone?: "up" | "down" | null;
+  note?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-col", className)}>
+      <span className="text-body text-muted-foreground">{label}</span>
+      <span className="hero-figure">{value}</span>
+      {(change || note) && (
+        <span className="text-emph">
+          {change && <span className={cn("font-semibold", tone === "up" && "text-up", tone === "down" && "text-down")}>{change}</span>}
+          {change && note && " "}
+          {note && <span className="text-muted-foreground">{note}</span>}
+        </span>
+      )}
+    </div>
   );
 }

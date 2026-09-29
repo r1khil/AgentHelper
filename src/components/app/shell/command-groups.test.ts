@@ -123,6 +123,10 @@ describe("⌘J with nothing typed", () => {
     expect(groups[1].items[0]).toMatchObject({ kind: "recent", chat: { href: "/hoot/c1" } });
     expect(groups[2].items).toHaveLength(3);
   });
+  it("asks a typed question on Enter, with the pages it names after", () => {
+    expect(enter("what moved risk today", { mode: "ask" })).toMatchObject({ kind: "ask" });
+    expect(run("risk today", { mode: "ask" })[0].label).toBe("Ask Hoot");
+  });
   it("says Ask Hoot when the page has no name, and drops empty groups", () => {
     expect(run("", { mode: "ask", suggestions: ["x"] }).map((g) => g.label)).toEqual(["Ask Hoot", "Go to"]);
   });

@@ -6,7 +6,6 @@ import { EmptyState } from "@/components/app/empty-state";
 import { Panel, Pill } from "@/components/app/panel";
 import { Button } from "@/components/ui/button";
 import { EntryMenu } from "./entry-menu";
-import { ReplayTourLink } from "./replay-tour-link";
 import { fmtDate, fmtDay } from "@/lib/format";
 
 const NY = "America/New_York";
@@ -134,8 +133,6 @@ export function ChangelogView({ entries, isAdmin, status, now }: ChangelogViewPr
               </div>
             ))}
           </dl>
-          <div className="flex-1" />
-          <ReplayTourLink />
         </Panel>
       </div>
     </div>

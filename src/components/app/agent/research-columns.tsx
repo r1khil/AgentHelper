@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  */
 export function ResearchGrid({ children }: { children: ReactNode }) {
   return (
-    <div data-full-bleed className="grid min-h-0 flex-1 grid-cols-1 lg:h-[calc(100dvh-3.5rem)] lg:flex-none lg:grid-rows-[minmax(0,1fr)] lg:grid-cols-[288px_minmax(0,1fr)_312px] lg:overflow-hidden">
+    <div data-full-bleed className="grid min-h-0 flex-1 grid-cols-1 lg:h-[calc(100dvh-6rem)] lg:flex-none lg:grid-rows-[minmax(0,1fr)] lg:grid-cols-[288px_minmax(0,1fr)_312px] lg:overflow-hidden">
       {children}
     </div>
   );
@@ -20,7 +20,7 @@ export function ResearchGrid({ children }: { children: ReactNode }) {
  */
 export function ResearchHomeGrid({ children }: { children: ReactNode }) {
   return (
-    <div data-full-bleed className="grid min-h-0 flex-1 grid-cols-1 lg:h-[calc(100dvh-3.5rem)] lg:flex-none lg:grid-rows-[minmax(0,1fr)] lg:grid-cols-[248px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[288px_minmax(0,1fr)]">
+    <div data-full-bleed className="grid min-h-0 flex-1 grid-cols-1 lg:h-[calc(100dvh-6rem)] lg:flex-none lg:grid-rows-[minmax(0,1fr)] lg:grid-cols-[248px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[288px_minmax(0,1fr)]">
       {children}
     </div>
   );

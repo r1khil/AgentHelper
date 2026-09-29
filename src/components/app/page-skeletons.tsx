@@ -539,7 +539,7 @@ export function ResearchWorkspaceSkeleton() {
   return (
     <SkeletonPage
       fullBleed
-      className="grid min-h-0 flex-1 grid-cols-1 lg:h-[calc(100dvh-3.5rem)] lg:flex-none lg:grid-cols-[288px_minmax(0,1fr)_312px] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden"
+      className="grid min-h-0 flex-1 grid-cols-1 lg:h-[calc(100dvh-6rem)] lg:flex-none lg:grid-cols-[288px_minmax(0,1fr)_312px] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden"
     >
       <ConversationColumn />
       <section className="flex min-h-[560px] min-w-0 flex-col bg-card lg:min-h-0">
@@ -584,7 +584,7 @@ export function ResearchHomeSkeleton() {
   return (
     <SkeletonPage
       fullBleed
-      className="grid min-h-0 flex-1 grid-cols-1 lg:h-[calc(100dvh-3.5rem)] lg:flex-none lg:grid-cols-[248px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[288px_minmax(0,1fr)]"
+      className="grid min-h-0 flex-1 grid-cols-1 lg:h-[calc(100dvh-6rem)] lg:flex-none lg:grid-cols-[248px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[288px_minmax(0,1fr)]"
     >
       <ConversationColumn />
       <div className="flex min-h-0 min-w-0 flex-col gap-4 p-5 xl:gap-5 xl:p-6">

@@ -442,6 +442,7 @@
   /* A page that renders its own header (PageHead) hides the shell's default one; rendered first in the page, it
      bleeds to the edges of the content area. */
   .app-container > [data-page-head]:first-child { margin: -32px -40px 32px; }
+  .app-container > [data-page-head][hidden]:first-child { margin: 0; }
   [data-shell-main]:has([data-page-head]) > [data-shell-head] { display: none; }
   /* A panel: an object on the page (a table, an editor). Hairlines, not boxes: a 1px frame, no fill, no shadow. */
   .panel { background: transparent; border-radius: 8px; box-shadow: 0 0 0 1px var(--border); }

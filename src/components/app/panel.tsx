@@ -67,6 +67,8 @@ export type StatCell = {
   note?: React.ReactNode;
   /** Colors the figure. */
   tone?: "up" | "down" | "hoot" | null;
+  /** The cell opens the page it summarises (Overview's stats open their tab). */
+  href?: string;
 };
 
 /**
@@ -98,22 +100,25 @@ export function StatStrip({ cells, className, wrap, ...props }: { cells: StatCel
   const grid = stripGrid(cells.length, wrap);
   const strip = (
     <section className={cn("grid shrink-0 gap-x-4 border-y py-[18px]", grid.className, className)} style={grid.style} {...props}>
-      {cells.map((c, i) => (
-        <div key={i} className="row-span-3 grid min-w-0 grid-rows-subgrid gap-y-[3px]">
-          <div className="self-end text-caption text-muted-foreground">{c.label}</div>
-          <div
-            className={cn(
-              "figure truncate text-title",
-              c.tone === "up" && "text-up",
-              c.tone === "down" && "text-down",
-              c.tone === "hoot" && "text-hoot-foreground",
-            )}
-          >
-            {c.value}
+      {cells.map((c, i) => {
+        const cls = cn("row-span-3 grid min-w-0 grid-rows-subgrid gap-y-[3px]", c.href && "group/cell rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring");
+        const body = (
+          <>
+            <div className="self-end text-caption text-muted-foreground group-hover/cell:text-foreground">{c.label}</div>
+            <div className={cn("figure truncate text-title", c.tone === "up" && "text-up", c.tone === "down" && "text-down", c.tone === "hoot" && "text-hoot-foreground")}>{c.value}</div>
+            {c.note && <div className="text-caption text-muted-foreground">{c.note}</div>}
+          </>
+        );
+        return c.href ? (
+          <Link key={i} href={c.href} className={cls}>
+            {body}
+          </Link>
+        ) : (
+          <div key={i} className={cls}>
+            {body}
           </div>
-          {c.note && <div className="text-caption text-muted-foreground">{c.note}</div>}
-        </div>
-      ))}
+        );
+      })}
     </section>
   );
   return wrap ? <div className="@container/strip min-w-0 shrink-0">{strip}</div> : strip;

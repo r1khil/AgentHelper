@@ -162,6 +162,8 @@ export function commandGroups({ query, holdings, pages, scopes, teamSlug, scopeS
     .filter((g) => g.items.length)
     .map((g) => ({ ...g, items: [...g.items.filter((i) => named.has(i.id)), ...g.items.filter((i) => !named.has(i.id))] }));
   const naming = (g: CommandGroup) => g.items.some((i) => named.has(i.id));
+  // ⌘J is for asking: a typed question goes to Hoot on Enter, with what it names listed after.
+  if (mode === "ask") return [...groups.filter((g) => g.label === "Ask Hoot"), ...groups.filter((g) => g.label !== "Ask Hoot")];
   return [...groups.filter(naming), ...groups.filter((g) => !naming(g))];
 }
 

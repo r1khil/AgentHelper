@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { Team } from "@/db/schema";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { askShortcut } from "@/lib/hoot/shortcuts";
+import { marketPhase } from "@/lib/providers/calendar";
 import { destinations, navModel } from "@/lib/nav";
 import type { CommandHolding, NavData, RecentChat, TabCount } from "@/lib/nav-data";
 import { resolveScope } from "@/lib/scope";
@@ -32,7 +33,7 @@ type Props = {
 
 /** Counts barely move; refetch on a new page at most this often. */
 const COUNTS_MIN_MS = 30_000;
-/** Teams' moves in the sidebar follow the market, a minute at a time. */
+/** Teams' moves in the sidebar follow the market, a minute at a time while it trades; outside the session they hold. */
 const MOVES_MS = 60_000;
 
 type LoadedNav = { scope: string; counts: Record<string, TabCount>; badges: NavData["badges"]; holdings: CommandHolding[]; recent: RecentChat[] };
@@ -230,7 +231,10 @@ function useTeamMoves(scope: "fund" | string | null, ownTeamId: string | null): 
     const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1500));
     const cancel = window.cancelIdleCallback ?? window.clearTimeout;
     const first = idle(() => void fetchMoves());
-    const tick = window.setInterval(() => void fetchMoves(), MOVES_MS);
+    // The live numbers only move in the session; the first fetch covers the rest of the day.
+    const tick = window.setInterval(() => {
+      if (marketPhase().phase === "open") void fetchMoves();
+    }, MOVES_MS);
     return () => {
       stop = true;
       cancel(first);
