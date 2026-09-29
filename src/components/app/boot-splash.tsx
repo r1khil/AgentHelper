@@ -185,8 +185,8 @@ export function BootSplash() {
             className="hoot-wave-loop absolute top-0 left-0 h-full w-[1200%] max-w-none select-none"
           />
         </div>
-        <div className="h-1.5 w-48 overflow-hidden rounded-full bg-row" role="progressbar" aria-label="Loading">
-          <div data-boot-bar className="boot-trickle h-full w-full rounded-full bg-primary" />
+        <div className="h-0.5 w-48 overflow-hidden rounded-full bg-border" role="progressbar" aria-label="Loading">
+          <div data-boot-bar className="boot-trickle h-full w-full rounded-full bg-foreground" />
         </div>
       </div>
       <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: `(${bootSplash.toString()})(${JSON.stringify(BOOT)})` }} />

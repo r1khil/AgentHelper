@@ -2,28 +2,26 @@
 
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, Briefcase, CalendarDays, Sparkles } from "lucide-react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { HootHero } from "@/components/app/hoot/hoot-hero";
 import { completeOnboarding } from "@/lib/actions/onboarding";
+import { signOut } from "@/lib/actions/auth";
 import type { ActionResult } from "@/lib/actions/holdings";
-import { BOUNDARY_IMPLICATIONS, LEARNING_BOUNDARY, ONBOARDING_STEPS, TOUR_CARDS } from "@/lib/onboarding";
+import { BOUNDARY_HOOT_DOES, BOUNDARY_YOU_DO, LEARNING_BOUNDARY, ONBOARDING_STEPS, TOUR_CARDS } from "@/lib/onboarding";
+import { OwlMark } from "@/components/app/owl-mark";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export type OnboardingUser = { fullName: string; roleLabel: string; teamName: string | null; signIn: string };
+/** `teamName` is the sector team; `fundWide` is set for execs and admins, who have none and see every team. */
+export type OnboardingUser = { fullName: string; roleLabel: string; teamName: string | null; fundWide: boolean; signIn: string };
 
-const TOUR_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  holdings: Briefcase,
-  movements: Activity,
-  earnings: CalendarDays,
-  agent: Sparkles,
-};
-
+/**
+ * First-sign-in setup: the steps down the left, one step at a time on the right. The last step is the learning boundary,
+ * and only it submits (the name typed on step 2 and the acknowledgement travel as hidden fields).
+ */
 export function OnboardingFlow({ user }: { user: OnboardingUser }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -42,127 +40,167 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
 
   const current = ONBOARDING_STEPS[step];
   const nameOk = fullName.trim().length > 0;
+  const total = ONBOARDING_STEPS.length;
+  const team = user.teamName ?? (user.fundWide ? "Fund-wide" : "No team yet");
 
   return (
-    <div className="space-y-6">
-      <ol className="flex items-center gap-2 text-body" aria-label="Setup steps">
-        {ONBOARDING_STEPS.map((s, i) => (
-          <li key={s.id} className="flex items-center gap-2" aria-current={i === step ? "step" : undefined}>
-            <span
-              className={cn(
-                "grid size-5 place-items-center rounded-full text-caption font-semibold",
-                i < step ? "bg-primary/15 text-primary" : i === step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+    <div className="flex min-h-screen bg-background">
+      <aside aria-label="Steps" className="flex w-80 shrink-0 flex-col border-r bg-band px-8 py-10">
+        <div className="flex items-center gap-2.5">
+          <OwlMark className="size-7 rounded-full" />
+          <span className="text-body font-semibold">Owl Fund</span>
+        </div>
+        <ol className="mt-10 flex flex-col gap-1" aria-label="Setup steps">
+          {ONBOARDING_STEPS.map((s, i) => {
+            const done = i < step;
+            const cur = i === step;
+            return (
+              <li key={s.id} aria-current={cur ? "step" : undefined} className={cn("flex h-10 items-center gap-3 text-body", cur ? "font-semibold text-foreground" : "text-ink-2")}>
+                <span
+                  className={cn(
+                    "grid size-[22px] shrink-0 place-items-center rounded-full border text-caption font-semibold",
+                    done ? "border-foreground bg-foreground text-background" : cur ? "border-foreground bg-background text-foreground" : "border-border-strong bg-background text-ink-2",
+                  )}
+                >
+                  {done ? <Check className="size-[11px]" strokeWidth={3} aria-label="Done" /> : i + 1}
+                </span>
+                {s.label}
+              </li>
+            );
+          })}
+        </ol>
+        <div className="grow" />
+        <p className="text-caption text-muted-foreground">
+          Signed in as {user.fullName} · {user.roleLabel} · {team.toLowerCase()}
+        </p>
+        <form action={signOut} className="mt-2">
+          <Button type="submit" variant="ghost" size="sm" className="-ml-2.5">
+            Sign out
+          </Button>
+        </form>
+      </aside>
+
+      <main className="flex min-w-0 grow flex-col justify-center px-[120px] py-10">
+        <div className="flex max-w-[620px] flex-col">
+          <span className="text-body text-muted-foreground">
+            Step {step + 1} of {total}
+          </span>
+
+          {current.id === "welcome" && (
+            <>
+              <h1 className="mt-1 text-hero font-bold tracking-[-0.035em]">Welcome to Owl Fund</h1>
+              <p className="mt-2.5 text-title leading-[27px] font-normal text-ink-3">
+                A quick setup before you reach the workspace. It takes about a minute. Hoot, your research companion, sits in the corner of every page, and ⌘J opens him.
+              </p>
+              <dl className="mt-7 grid grid-cols-3 gap-8 border-t pt-4">
+                <Fact label="Role">{user.roleLabel}</Fact>
+                <Fact label="Team">{team}</Fact>
+                <Fact label="Sign-in">{user.signIn}</Fact>
+              </dl>
+              {!user.teamName && !user.fundWide && (
+                <p className="mt-4 text-body text-ink-2">A fund admin assigns you to a sector team. Until then you can finish setup and wait on Today.</p>
               )}
-            >
-              {i + 1}
-            </span>
-            <span className={cn(i === step ? "font-medium" : "text-muted-foreground")}>{s.label}</span>
-            {i < ONBOARDING_STEPS.length - 1 && <span className="mx-1 h-px w-6 bg-border" aria-hidden />}
+              <div className="mt-6 flex gap-2">
+                <Button type="button" className="h-[38px] px-[18px]" onClick={() => setStep(1)}>
+                  Continue
+                </Button>
+              </div>
+            </>
+          )}
+
+          {current.id === "name" && (
+            <>
+              <h1 className="mt-1 text-hero font-bold tracking-[-0.035em]">Your name</h1>
+              <p className="mt-2.5 text-title leading-[27px] font-normal text-ink-3">How you appear to your team on holdings, movements and notes.</p>
+              <div className="mt-7 flex max-w-[360px] flex-col gap-1">
+                <Label htmlFor="ob-name" className="text-caption font-normal text-ink-2">
+                  Full name
+                </Label>
+                <Input
+                  id="ob-name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  autoComplete="name"
+                  maxLength={120}
+                  autoFocus
+                  className="h-[34px] rounded-none border-0 border-b border-border-strong bg-transparent px-0 text-body focus-visible:border-foreground"
+                />
+              </div>
+              <div className="mt-6 flex gap-2">
+                <Button type="button" variant="secondary" className="h-[38px] px-3.5" onClick={() => setStep(0)}>
+                  Back
+                </Button>
+                <Button type="button" className="h-[38px] px-[18px]" onClick={() => setStep(2)} disabled={!nameOk}>
+                  Continue
+                </Button>
+              </div>
+            </>
+          )}
+
+          {current.id === "tour" && (
+            <>
+              <h1 className="mt-1 text-hero font-bold tracking-[-0.035em]">How the workspace works</h1>
+              <p className="mt-2.5 text-title leading-[27px] font-normal text-ink-3">Four things you will use most.</p>
+              <div className="mt-7 border-t">
+                {TOUR_CARDS.map((c) => (
+                  <div key={c.id} className="border-b border-row py-3">
+                    <h2 className="text-body font-bold">{c.title}</h2>
+                    <p className="mt-1 text-body text-ink-2">{c.body}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 flex gap-2">
+                <Button type="button" variant="secondary" className="h-[38px] px-3.5" onClick={() => setStep(1)}>
+                  Back
+                </Button>
+                <Button type="button" className="h-[38px] px-[18px]" onClick={() => setStep(3)}>
+                  Continue
+                </Button>
+              </div>
+            </>
+          )}
+
+          {current.id === "boundary" && (
+            <form action={action} className="flex flex-col">
+              <input type="hidden" name="fullName" value={fullName} />
+              <input type="hidden" name="acknowledged" value={acknowledged ? "on" : ""} />
+              <h1 className="mt-1 text-hero font-bold tracking-[-0.035em]">The learning boundary</h1>
+              <p className="mt-2.5 text-title leading-[27px] font-normal text-ink-3">{LEARNING_BOUNDARY}</p>
+              <div className="mt-7 grid grid-cols-2 gap-8 border-t pt-[18px]">
+                <BoundaryList title="Hoot does" items={BOUNDARY_HOOT_DOES} />
+                <BoundaryList title="You do" items={BOUNDARY_YOU_DO} />
+              </div>
+              <Label htmlFor="ob-ack" className="mt-7 items-center gap-2.5 text-emph leading-snug font-medium">
+                <Checkbox id="ob-ack" checked={acknowledged} onCheckedChange={(c) => setAcknowledged(c === true)} />
+                <span>I understand: Hoot gathers the evidence, and I write the interpretation.</span>
+              </Label>
+              <div className="mt-6 flex gap-2">
+                <Button type="button" variant="secondary" className="h-[38px] px-3.5" onClick={() => setStep(2)} disabled={pending}>
+                  Back
+                </Button>
+                <Button type="submit" className="h-[38px] px-[18px]" disabled={!acknowledged || pending}>
+                  {pending ? "Saving…" : "Enter the workspace"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function BoundaryList({ title, items }: { title: string; items: readonly string[] }) {
+  return (
+    <div>
+      <h2 className="mb-2 text-body font-bold">{title}</h2>
+      <ul>
+        {items.map((line) => (
+          <li key={line} className="border-b border-row py-2 text-body">
+            {line}
           </li>
         ))}
-      </ol>
-
-      {current.id === "profile" && (
-        <section className="space-y-5">
-          <div className="flex items-center gap-4">
-            <HootHero size={112} className="shrink-0" />
-            <div>
-              <h1 className="text-title font-semibold tracking-tight">Welcome to The Owl&apos;s Nest</h1>
-              <p className="mt-1 text-body text-muted-foreground">A quick setup before you reach the workspace. It takes about a minute. I&apos;m Hoot, and I&apos;ll be at the bottom of the menu if you need me.</p>
-            </div>
-          </div>
-          <Card>
-            <CardContent className="grid gap-3 sm:grid-cols-3">
-              <Fact label="Role">{user.roleLabel}</Fact>
-              <Fact label="Team">{user.teamName ?? "No team yet"}</Fact>
-              <Fact label="Sign-in">{user.signIn}</Fact>
-            </CardContent>
-            {!user.teamName && (
-              <CardContent className="text-body text-muted-foreground">A Fund admin assigns you to a sector team. Until then you can finish setup and wait on Today.</CardContent>
-            )}
-          </Card>
-          <div className="grid gap-1.5">
-            <Label htmlFor="ob-name">Your name</Label>
-            <Input id="ob-name" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" maxLength={120} autoFocus />
-            <p className="text-body text-muted-foreground">How you appear to your team on holdings, movements, and notes.</p>
-          </div>
-          <div className="flex justify-end">
-            <Button type="button" onClick={() => setStep(1)} disabled={!nameOk}>
-              Continue
-            </Button>
-          </div>
-        </section>
-      )}
-
-      {current.id === "tour" && (
-        <section className="space-y-5">
-          <div>
-            <h1 className="text-title font-semibold tracking-tight">How the workspace works</h1>
-            <p className="mt-1 text-body text-muted-foreground">Four things you will use most.</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {TOUR_CARDS.map((c) => {
-              const Icon = TOUR_ICONS[c.id] ?? Briefcase;
-              return (
-                <Card key={c.id} size="sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Icon className="size-4 text-muted-foreground" />
-                      {c.title}
-                    </CardTitle>
-                    <CardDescription>{c.body}</CardDescription>
-                  </CardHeader>
-                </Card>
-              );
-            })}
-          </div>
-          <div className="flex justify-between">
-            <Button type="button" variant="ghost" onClick={() => setStep(0)}>
-              Back
-            </Button>
-            <Button type="button" onClick={() => setStep(2)}>
-              Continue
-            </Button>
-          </div>
-        </section>
-      )}
-
-      {current.id === "boundary" && (
-        <form action={action} className="space-y-5">
-          <input type="hidden" name="fullName" value={fullName} />
-          <input type="hidden" name="acknowledged" value={acknowledged ? "on" : ""} />
-          <div>
-            <h1 className="text-title font-semibold tracking-tight">The learning boundary</h1>
-            <p className="mt-1 text-body text-muted-foreground">One rule shapes every feature.</p>
-          </div>
-          <blockquote className="rounded-lg border-l-4 border-primary bg-background px-4 py-3 text-body leading-relaxed ring-1 ring-foreground/10">
-            {LEARNING_BOUNDARY}
-          </blockquote>
-          <div>
-            <div className="mb-2 text-body font-semibold">How Hoot helps</div>
-            <ul className="space-y-1.5 text-body text-muted-foreground">
-              {BOUNDARY_IMPLICATIONS.map((line) => (
-                <li key={line} className="flex gap-2">
-                  <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-primary/60" />
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <Label htmlFor="ob-ack" className="flex items-start gap-3 rounded-lg border bg-background p-3 text-body font-normal leading-snug">
-            <Checkbox id="ob-ack" checked={acknowledged} onCheckedChange={(c) => setAcknowledged(c === true)} className="mt-0.5" />
-            <span>I understand: Hoot gathers the evidence, and I write the interpretation.</span>
-          </Label>
-          <div className="flex justify-between">
-            <Button type="button" variant="ghost" onClick={() => setStep(1)} disabled={pending}>
-              Back
-            </Button>
-            <Button type="submit" disabled={!acknowledged || pending}>
-              {pending ? "Saving…" : "Enter the workspace"}
-            </Button>
-          </div>
-        </form>
-      )}
+      </ul>
     </div>
   );
 }
@@ -170,8 +208,8 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <div className="text-caption font-semibold tracking-wide text-muted-foreground uppercase">{label}</div>
-      <div className="truncate text-body font-medium">{children}</div>
+      <dt className="text-caption text-muted-foreground">{label}</dt>
+      <dd className="truncate text-body font-medium">{children}</dd>
     </div>
   );
 }
