@@ -100,8 +100,19 @@ export function pageContextLabel(ctx: PageContext): string {
 
 const q = (s: string) => JSON.stringify(s);
 
+/**
+ * On a page that publishes its own numbers, "what is this page saying?" is a question about those numbers: explained
+ * from the page's own tool, not from the app map's description of the page.
+ */
+const EXPLAIN_WITH_NUMBERS = `\n- "What is this page saying?" or "I don't understand this page" is a question about it too: make the call above and explain what its numbers mean in plain language. explain_app is only for a term those numbers don't explain.`;
+
 /** The prompt block that tells the agent what is on the member's screen and which call reproduces it. */
 export function pageContextBlock(ctx: PageContext): string {
+  const block = pageBlock(ctx);
+  return ctx.kind === "page" ? block : block + EXPLAIN_WITH_NUMBERS;
+}
+
+function pageBlock(ctx: PageContext): string {
   const head = `\n\nWHAT THE MEMBER IS LOOKING AT: they asked from ${ctx.path} ("${ctx.title}"). Read "this", "here", "today" and "the page" against it.`;
   if (ctx.kind === "attribution") {
     const args = [`scope: ${q(ctx.scope)}`, ...(ctx.team ? [`team: ${q(ctx.team)}`] : []), `period: ${q(ctx.period)}`, ...(ctx.period === "custom" && ctx.from ? [`from: ${q(ctx.from)}`] : []), ...(ctx.period === "custom" && ctx.to ? [`to: ${q(ctx.to)}`] : [])].join(", ");
