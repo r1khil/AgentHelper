@@ -85,7 +85,7 @@ describe("runStressTest", () => {
     const newco = r.holdings.find((h) => h.ticker === "NEWCO")!;
     expect(newco.proxied).toBe(true);
     expect(newco.series).toBe("XLF");
-    expect(newco.proxyReason).toBe("first stored close 2024-01-04");
+    expect(newco.proxyReason).toBe("first stored close Jan 4, 2024");
     expect(newco.ret).toBeCloseTo(-0.2, 12);
     expect(r.proxied).toBe(1);
     expect(r.holdings.find((h) => h.ticker === "BANK")!.proxied).toBe(false);

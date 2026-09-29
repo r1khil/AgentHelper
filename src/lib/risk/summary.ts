@@ -5,6 +5,7 @@ import { describeExposure } from "./lookthrough";
 import { STALE_AFTER_DAYS, type LookthroughState } from "./lookthrough-report";
 import { LOOKBACKS, type RiskReport } from "./model";
 import type { StressResult } from "./stress";
+import { fmtDate } from "@/lib/format";
 
 const pct = (x: number | null | undefined, d = 2) => (x === null || x === undefined || !Number.isFinite(x) ? null : +(x * 100).toFixed(d));
 const num = (x: number | null | undefined, d = 2) => (x === null || x === undefined || !Number.isFinite(x) ? null : +x.toFixed(d));
@@ -23,7 +24,7 @@ export function summarizeRisk(r: RiskReport, opts: { teamNames: Map<string, stri
   return {
     scope: r.scope,
     asOf: r.asOf,
-    method: `Forward-looking: today's ledger weights applied to ${r.window.days} daily total returns (${LOOKBACKS[r.lookback].label}, ${r.window.from} to ${r.window.to}); sample covariance, annualized with √252. Beta vs SPY total return; tracking error vs the S&P 500 sector benchmark (saved sector weights on Select Sector SPDR ETFs); VaR is 1-day 95% historical simulation. Cash is riskless.`,
+    method: `Forward-looking: today's ledger weights applied to ${r.window.days} daily total returns (${LOOKBACKS[r.lookback].label}, ${fmtDate(r.window.from)} to ${fmtDate(r.window.to)}); sample covariance, annualized with √252. Beta vs SPY total return; tracking error vs the S&P 500 sector benchmark (saved sector weights on Select Sector SPDR ETFs); VaR is 1-day 95% historical simulation. Cash is riskless.`,
     navUsd: Math.round(r.nav),
     cashPct: pct(r.cash.weight),
     annualizedVolatilityPct: pct(p.vol),
@@ -101,7 +102,7 @@ export function summarizeFactors(r: RiskReport) {
       : null;
   const read = factorReadings(f, { basis: r.scope === "fund" ? "NAV" : "the team's holdings" });
   return {
-    method: `One OLS regression with an intercept per holding of daily total returns on seven factors over ${f.sample.n} days (${f.sample.from} to ${f.sample.to}): ${FACTORS.map((x) => `${x.label} = ${x.definition}`).join("; ")}. The portfolio's beta is the weight-sum of holding betas (identical to regressing the portfolio's return). |t| < 2 means not statistically significant: describe it as no clear exposure, never as a position. Descriptive of past co-movement only; not a recommendation.`,
+    method: `One OLS regression with an intercept per holding of daily total returns on seven factors over ${f.sample.n} days (${fmtDate(f.sample.from)} to ${fmtDate(f.sample.to)}): ${FACTORS.map((x) => `${x.label} = ${x.definition}`).join("; ")}. The portfolio's beta is the weight-sum of holding betas (identical to regressing the portfolio's return). |t| < 2 means not statistically significant: describe it as no clear exposure, never as a position. Descriptive of past co-movement only; not a recommendation.`,
     portfolio: row(f.fund),
     benchmark: row(f.benchmark),
     activeVsBenchmark: row(f.active),

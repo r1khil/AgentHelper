@@ -23,7 +23,7 @@ export type MovementsScope = { slug: string; label: string };
 export function MovementsView({ scope, items, selected, list }: { scope: MovementsScope; items: MovementListItem[]; selected: MovementDetailData | null; /** Rendered by /movements, the list of every write-up, rather than one write-up's own route. */ list?: boolean }) {
   const anyOverdue = items.some((i) => i.overdue) || !!selected?.overdue;
   const open = items.filter((i) => i.status !== "completed").length;
-  const asof = [`${scope.label}, ${open} open, ${items.length - open} completed`, selected && `Anyone on ${selected.teamName} can write this one`].filter(Boolean).join(". ");
+  const asof = [`${scope.label}, ${open} open, ${items.length - open} completed`, selected && (selected.status === "completed" ? (selected.completedByName ? `Completed by ${selected.completedByName}` : "Completed") : `Anyone on ${selected.teamName} can write this one`)].filter(Boolean).join(". ");
   return (
     <div data-full-bleed className="flex h-dvh min-h-0 flex-col">
       <PageHead

@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { SectionTitle } from "@/components/app/page-header";
 import type { ScenarioMetrics, ScenarioRisk } from "@/lib/risk/compare";
-import { fmtAccounting, fmtBp, fmtPct } from "@/lib/format";
+import { fmtAccounting, fmtBp, fmtDate, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Explained, InfoTip } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "../risk/explainers";
@@ -38,7 +38,7 @@ export const RISK_IMPACT_EXPLAIN =
   "Today's risk of the current and modified weights, using the Risk page's model: a 1-year window of daily total returns, sample covariance, beta against SPY, tracking error against the sector benchmark, and 1-day 95% historical VaR. It is independent of the backtest period above and is an estimate from past returns, not a forecast.";
 
 /** The window the risk was measured over, for the section's aside. */
-export const riskWindow = (data: ScenarioRisk | null) => (data ? `${data.window.days} daily returns to the ${data.window.to} close` : undefined);
+export const riskWindow = (data: ScenarioRisk | null) => (data ? `${data.window.days} daily returns to the ${fmtDate(data.window.to)} close` : undefined);
 
 /** Current vs modified weights' risk, computed with the Risk page's model on today's portfolio. */
 export function RiskImpact({ data, busy, error, stale }: { data: ScenarioRisk | null; busy: boolean; error: string; stale: boolean }) {

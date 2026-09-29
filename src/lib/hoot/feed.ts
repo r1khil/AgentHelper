@@ -46,7 +46,7 @@ export async function loadHootFeedFor(user: CurrentUser, { teamList, scope }: { 
   const [myMovements, teamMovements, upcoming, mySellSide, thesis, modelRows, weekly, changelog] = await Promise.all([
     ownTeamId
       ? db
-          .select({ id: movements.id, ticker: holdings.ticker, teamSlug: teams.slug, dueAt: movements.dueAt })
+          .select({ id: movements.id, ticker: holdings.ticker, teamSlug: teams.slug, dueAt: movements.dueAt, sessionDate: movements.sessionDate })
           .from(movements)
           .innerJoin(holdings, eq(holdings.id, movements.holdingId))
           .innerJoin(teams, eq(teams.id, holdings.teamId))
@@ -56,7 +56,7 @@ export async function loadHootFeedFor(user: CurrentUser, { teamList, scope }: { 
       : none,
     managedOthers.length
       ? db
-          .select({ id: movements.id, ticker: holdings.ticker, teamSlug: teams.slug, teamName: teams.name, dueAt: movements.dueAt })
+          .select({ id: movements.id, ticker: holdings.ticker, teamSlug: teams.slug, teamName: teams.name, dueAt: movements.dueAt, sessionDate: movements.sessionDate })
           .from(movements)
           .innerJoin(holdings, eq(holdings.id, movements.holdingId))
           .innerJoin(teams, eq(teams.id, holdings.teamId))

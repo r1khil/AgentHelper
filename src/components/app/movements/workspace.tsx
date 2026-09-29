@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { insertAt } from "./cite";
 import type { MovementDetailData, MovementEvidence } from "./types";
+import { readableTitle } from "@/lib/format";
 
 /** A gathered source as the side list shows it; the dates are formatted on the server so hydration matches. */
 export type EvidenceRow = MovementEvidence & { n: number; meta: string; citation: string };
@@ -148,7 +149,7 @@ export function MovementWorkspace({
                   <li key={e.id} className="grid grid-cols-[18px_minmax(0,1fr)] gap-1.5 border-b border-row py-[7px] text-caption">
                     <b className="font-semibold">{e.n}</b>
                     <span className="flex min-w-0 flex-col gap-[3px]">
-                      <span className="text-body break-words">{e.title}</span>
+                      <span className="text-body break-words">{readableTitle(e.title)}</span>
                       {(e.meta || e.failed) && (
                         <span className="text-muted-foreground">
                           {e.meta}

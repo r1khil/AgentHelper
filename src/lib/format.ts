@@ -174,6 +174,22 @@ export function fmtDate(d: When) {
   return toNY(d)?.toFormat("LLL d, yyyy") ?? "";
 }
 
+/**
+ * Text saved with ISO days in it (a filing's "10-Q filed 2026-07-31", an older evidence title) read the app's way:
+ * "10-Q filed Jul 31, 2026". Timestamps (a date followed by T) are left alone.
+ */
+export function humanDates(text: string): string {
+  return text.replace(/\b(\d{4}-\d{2}-\d{2})\b(?!T)/g, (d) => fmtDate(d) || d);
+}
+
+/**
+ * A saved document or evidence title as the app shows it: ISO days in its words ("filed Jul 31, 2026") and no
+ * exhibit type repeated in brackets ("EX-99.1 (EX-99.1)" or "(EXHIBIT 99.1)" reads "EX-99.1").
+ */
+export function readableTitle(title: string): string {
+  return humanDates(title.replace(/\b(EX-(\d+(?:\.\d+)?)) \((?:EX-|EXHIBIT\s*)\2\)/gi, "$1"));
+}
+
 /** "Mon, Sep 28" for a day this year; "Sep 22, 2025" for one in another year. */
 export function fmtDay(d: When, now: Date = new Date()) {
   const dt = toNY(d);
@@ -215,4 +231,12 @@ export function relativeTime(d: When, now: number = Date.now()) {
   const days = Math.round(h / 24);
   if (days < 30) return `${days}d ago`;
   return fmtDate(new Date(t));
+}
+
+/** Sentences and fragments joined with ". ", never doubling a period a part already ends with ("…the team. 4 days overdue"). */
+export function joinSentences(parts: (string | null | undefined | false)[]): string {
+  return parts
+    .filter((p): p is string => Boolean(p && p.trim()))
+    .map((p, i, all) => (i < all.length - 1 ? p.trim().replace(/[.\s]+$/, "") : p.trim()))
+    .join(". ");
 }

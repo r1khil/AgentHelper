@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { readableTitle } from "@/lib/format";
 
 export type FeedItem = {
   key: string;
@@ -35,7 +36,7 @@ export function FeedList({ items, label, empty, className }: { items: FeedItem[]
           <>
             <span className="truncate text-body text-muted-foreground">{i.kind}</span>
             <span className="flex min-w-0 flex-col">
-              <span className="truncate text-emph leading-snug">{i.title}</span>
+              <span className="truncate text-emph leading-snug">{typeof i.title === "string" ? readableTitle(i.title) : i.title}</span>
               {i.sub && <span className="truncate text-caption text-muted-foreground">{i.sub}</span>}
             </span>
             <span className={cn("max-w-[190px] truncate text-right text-body", i.tone === "overdue" ? "font-semibold text-down" : i.tone === "caution" ? "text-caution-foreground" : "text-muted-foreground")}>{i.when}</span>

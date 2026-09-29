@@ -103,7 +103,7 @@ function TabPanel({ tab }: { tab: PtTab }) {
         aside={
           tab.status === "ok" ? (
             <span>
-              {tab.rows.length} rows · {tab.rows.reduce((n, r) => n + r.cells.length, 0)} cells{tab.errorCells ? ` · ${tab.errorCells} error cells` : ""}
+              {tab.rows.length} rows · {tab.rows.reduce((n, r) => n + r.cells.length, 0)} cells{tab.errorCells ? ` · ${tab.errorCells} ${tab.errorCells === 1 ? "cell" : "cells"} with errors` : ""}
               {tab.truncated ? " · cut short" : ""}
             </span>
           ) : undefined

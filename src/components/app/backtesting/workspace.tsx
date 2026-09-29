@@ -11,7 +11,7 @@ import {
   type BacktestResult,
   type Metrics,
 } from "@/lib/backtesting/engine";
-import { fmtAccounting, fmtBp, fmtMonth, fmtPct } from "@/lib/format";
+import { fmtAccounting, fmtBp, fmtDate, fmtMonth, fmtPct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { QuickTrade } from "./quick-trade";
@@ -354,8 +354,8 @@ export function ReplayNote({ result, realizedHref }: { result: BacktestResult; r
   const lastSession = result.days.at(-1)!.date;
   return (
     <>
-      Both replays hold their weights fixed, rebalanced daily, from the {result.baseline} close through{" "}
-      {lastSession}. Past trades, weight changes, and cash flows are not reconstructed. The benchmark uses adjusted
+      Both replays hold their weights fixed, rebalanced daily, from the {fmtDate(result.baseline)} close through{" "}
+      {fmtDate(lastSession)}. Past trades, weight changes, and cash flows are not reconstructed. The benchmark uses adjusted
       total returns for {result.benchmark}
       {result.benchmark === "SPY"
         ? "; an S&P 500 figure in another report may use the index’s price return and differ."

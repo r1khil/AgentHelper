@@ -41,7 +41,8 @@ export function releaseFigures(e: EconomicEvent, now: number | null): ReactNode 
     );
   return (
     <>
-      <span title={consensusSource(e)}>Cons {e.estimate ?? (e.marketImplied ? marketText(e) : "—")}</span>
+      {/* A market price isn't a consensus: without a survey figure it stands under its own name ("Kalshi 0.17%"). */}
+      {e.estimate === null && e.marketImplied ? <span>{marketText(e)}</span> : <span title={consensusSource(e)}>Cons {e.estimate ?? "—"}</span>}
       <span title={revised(e) ? `Revised from ${e.previousBeforeRevision}` : undefined}>
         {", "}prior {e.previous ?? "—"}
         {revised(e) && "*"}
