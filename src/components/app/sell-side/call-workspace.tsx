@@ -397,7 +397,7 @@ export function CallWorkspace({
   const showProgress = (status === "transcribing" || status === "summarizing") && expected > 0;
   const autoTab: Tab = children ? "brief" : segments.length ? "transcript" : "brief";
   const tab: Tab = chosenTab === "chat" && !chat ? autoTab : (chosenTab ?? autoTab);
-  const meta = header ? [header.ticker, header.sector, header.when, total > 0 ? minutesLabel(total) : null, header.by].filter(Boolean).join(" · ") : "";
+  const meta = header ? [header.ticker, header.sector, header.when, total > 0 ? minutesLabel(total) : null, header.by].filter(Boolean).join(", ") : "";
   const filtered = segments.map((s, i) => ({ s, i })).filter(({ s }) => `${s.speaker ?? ""} ${s.text}`.toLowerCase().includes(filter.toLowerCase()));
   const tabs: { key: Tab; label: string }[] = [
     { key: "brief", label: "Call brief" },
@@ -442,7 +442,7 @@ export function CallWorkspace({
                     {recording ? (paused ? "Recording paused" : "Recording live") : data.call.status === "ready" ? "Call saved" : (callStatusLabel[data.call.status] ?? "Call recording")}
                   </h3>
                   <p className="text-body text-muted-foreground">
-                    <span className="font-mono">{recording ? clock(elapsed) : clock(callLength(parts))}</span> ·{" "}
+                    <span className="font-mono">{recording ? clock(elapsed) : clock(callLength(parts))}</span>,{" "}
                     {pending ? `${pending} audio sections waiting to save` : parts.length ? "Audio saved securely" : "Ready when you are"}
                   </p>
                 </div>
@@ -545,7 +545,7 @@ export function CallWorkspace({
             <section className="pt-4" aria-label="Call transcript">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-body font-bold">
-                  Transcript · {segments.length} passages
+                  Transcript, {segments.length} passages
                 </h3>
                 <Input aria-label="Search transcript" placeholder="Search transcript…" value={filter} onChange={(e) => setFilter(e.target.value)} className="w-64 max-w-full" />
               </div>

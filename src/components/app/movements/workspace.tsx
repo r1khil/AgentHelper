@@ -32,7 +32,7 @@ export function MovementWorkspace({
   d: MovementDetailData;
   /** The big number and the facts row, rendered on the server. */
   head: React.ReactNode;
-  /** The update header's right side: "Draft · 120 words", "Completed 2h ago by Jane Doe", … */
+  /** The update header's right side: "Draft, 120 words", "Completed 2h ago by Jane Doe", … */
   status: string;
   /** The evidence in display order, by kind. */
   groups: EvidenceGroup[];

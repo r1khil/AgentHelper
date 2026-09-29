@@ -1,17 +1,17 @@
 import { cn } from "@/lib/utils";
-import { PageHead } from "@/components/app/page-head";
+import { PageHead, type Crumb } from "@/components/app/page-head";
 import { RowLink } from "@/components/app/row-link";
 import type { ListStatus } from "./timeline";
 
 export type SavedCallRow = { id: string; href: string; ticker: string; title: string; when: string; status: ListStatus; /** Who recorded it, how long it ran and which team, for a tooltip. */ detail: string };
 
 /**
- * Research › Sell-side calls: the page header (with the section's tabs and "Record a call"), the saved calls on the
- * left, and the selected call beside them (its own middle column and timeline, or a note when none is selected).
+ * Sell-side calls: the page header (`crumbs`, and "Record a call"), the saved calls on the left, and the selected call
+ * beside them (its own middle column and timeline, or a note when none is selected).
  * At desktop widths the screen is exactly the window, so the list and the call scroll inside their columns.
  */
 export function SellSideLayout({
-  scopeSlug,
+  crumbs,
   record,
   calls,
   selectedId,
@@ -19,19 +19,20 @@ export function SellSideLayout({
   empty,
   children,
 }: {
-  scopeSlug: string;
+  /** Portfolio / Sell-side calls for the list; Portfolio / TICKER / the call for one call about a holding. */
+  crumbs: Crumb[];
   /** The "Record a call" button and its form. */
   record: React.ReactNode;
   calls: SavedCallRow[];
   selectedId: string | null;
-  /** Saved calls header, e.g. "Whole fund · 18 calls". */
+  /** Saved calls header, e.g. "Whole fund, 18 calls". */
   heading: React.ReactNode;
   empty: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div data-full-bleed className="flex h-dvh min-h-0 flex-col">
-      <PageHead crumbs={[{ label: "Research", href: `/t/${scopeSlug}/agent` }, { label: "Sell-side calls" }]} actions={record} />
+      <PageHead crumbs={crumbs} tabs={false} actions={record} />
       <div className="flex min-h-0 flex-1">
         <aside aria-label="Saved calls" className="w-[260px] shrink-0 overflow-y-auto border-r pt-[18px] pr-4 pb-10 pl-10">
           <h2 className="pb-1 text-caption font-semibold text-muted-foreground">{heading}</h2>
@@ -52,10 +53,10 @@ export function SellSideLayout({
                         )}
                       >
                         <span className={cn("truncate text-body", selected ? "font-semibold" : "font-normal")}>
-                          {c.ticker} · {c.title}
+                          {c.ticker}, {c.title}
                         </span>
                         <span className="truncate text-caption text-muted-foreground">
-                          {c.when} · <span className={cn(c.status.tone === "caution" && "text-caution-foreground")}>{c.status.label}</span>
+                          {c.when}, <span className={cn(c.status.tone === "caution" && "text-caution-foreground")}>{c.status.label}</span>
                         </span>
                       </RowLink>
                     </li>

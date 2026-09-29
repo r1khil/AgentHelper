@@ -23,12 +23,12 @@ type Props = {
   onCreated?: () => void;
 };
 
-/** "Record a call" as the page header's primary button; its form opens under it. */
-export function RecordACall(props: Omit<Props, "onCreated">) {
+/** "Record a call" as a button (the ink primary unless `variant` says otherwise); its form opens under it. */
+export function RecordACall({ variant = "default", ...props }: Omit<Props, "onCreated"> & { variant?: "default" | "secondary" }) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<Button />}>Record a call</PopoverTrigger>
+      <PopoverTrigger render={<Button variant={variant} size={variant === "secondary" ? "sm" : "default"} />}>Record a call</PopoverTrigger>
       <PopoverContent align="end" className="w-[340px] gap-0 p-4">
         <NewCall {...props} onCreated={() => setOpen(false)} />
       </PopoverContent>
@@ -98,7 +98,7 @@ export function NewCall({ team, teamId, holdings, teams, scope, onCreated }: Pro
       <NativeSelect aria-label="Company" name="holdingId" value={company} onChange={(e) => setCompany(e.target.value)} disabled={busy}>
         {(current?.holdings ?? []).map((h) => (
           <option key={h.id} value={h.id}>
-            {h.ticker} · {h.companyName}
+            {h.ticker}, {h.companyName}
           </option>
         ))}
         <option value="other">Other company</option>

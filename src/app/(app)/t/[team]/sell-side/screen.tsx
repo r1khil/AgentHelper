@@ -8,7 +8,7 @@ import { getChat, loadMessages, effectiveRunStatus } from "@/lib/chats";
 import { agentConfigured } from "@/lib/agent/model";
 import { canOpenChat, transparencyEnabled, type CurrentUser } from "@/lib/auth";
 import type { TeamIds } from "@/lib/team-filter";
-import { sellSideHref } from "@/lib/scope";
+import { holdingHref, sellSideHref } from "@/lib/scope";
 import { HootMoodFor } from "@/components/app/hoot/presence";
 import { RecordACall, type CallTeam } from "@/components/app/sell-side/new-call";
 import { CallWorkspace } from "@/components/app/sell-side/call-workspace";
@@ -54,8 +54,9 @@ async function callFacts(calls: Call[]) {
 }
 
 /**
- * Research › Sell-side calls. Both routes render this: the list route selects the most recent call,
- * the call route selects its call.
+ * Sell-side calls. Both routes render this: the list route (every call in the scope, reached from a holding's Filings &
+ * notes tab) selects the most recent call; the call route selects its call, which belongs to its holding when it is
+ * about one (Portfolio / TICKER / the call).
  */
 export async function SellSideScreen({ scope, call }: { scope: SellSideScope; call?: Call }) {
   const { team, teamIds, teamById, user } = scope;
@@ -71,7 +72,7 @@ export async function SellSideScreen({ scope, call }: { scope: SellSideScope; ca
       title: c.title,
       when: fmtDayMonth(c.createdAt),
       status: listStatus(c, counts),
-      detail: [facts.name(c), fmtDay(c.createdAt), counts.seconds > 0 ? minutesLabel(counts.seconds) : null, !team ? teamById.get(c.teamId)?.name : null].filter(Boolean).join(" · "),
+      detail: [facts.name(c), fmtDay(c.createdAt), counts.seconds > 0 ? minutesLabel(counts.seconds) : null, !team ? teamById.get(c.teamId)?.name : null].filter(Boolean).join(", "),
     };
   });
   // Who a new call can be for: the team in view, or any team in the fund's view.
@@ -81,13 +82,22 @@ export async function SellSideScreen({ scope, call }: { scope: SellSideScope; ca
     name: t.name,
     holdings: holdings.filter(({ h }) => h.teamId === t.id).map(({ h }) => ({ id: h.id, ticker: h.ticker, companyName: h.companyName })),
   }));
+  const portfolio = { label: "Portfolio", href: `/t/${scope.slug}` };
+  const listCrumb = { label: "Sell-side calls", href: `/t/${scope.slug}/sell-side` };
+  const ownerSlug = call ? (teamById.get(call.teamId)?.slug ?? scope.slug) : scope.slug;
+  const crumbs = !call
+    ? [portfolio, { label: "Sell-side calls" }]
+    : call.holdingId
+      ? [portfolio, { label: call.ticker, href: holdingHref(scope.slug, ownerSlug, call.ticker, "?tab=filings") }, { label: call.title }]
+      : // A call about a company the fund doesn't hold has no holding page to belong to.
+        [portfolio, listCrumb, { label: `${call.ticker}, ${call.title}` }];
   return (
     <SellSideLayout
-      scopeSlug={scope.slug}
+      crumbs={crumbs}
       record={team ? <RecordACall team={team.slug} teamId={team.id} holdings={callTeams[0]?.holdings ?? []} /> : <RecordACall teams={callTeams} scope={scope.slug} />}
       calls={rows}
       selectedId={selected?.id ?? null}
-      heading={`${team ? team.name : "Whole fund"} · ${calls.length} call${calls.length === 1 ? "" : "s"}`}
+      heading={`${team ? team.name : "Whole fund"}, ${calls.length} call${calls.length === 1 ? "" : "s"}`}
       empty={`${team ? "Your team’s" : "Every team’s"} calls, summaries, transcripts, and follow-up chats will appear here.`}
     >
       {selected ? (

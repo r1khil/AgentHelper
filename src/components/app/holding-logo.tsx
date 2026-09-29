@@ -8,26 +8,39 @@ const logoUrl = (ticker: string) => `https://financialmodelingprep.com/image-sto
 
 /**
  * A holding's company logo wherever a holding is a row or a header: on a white tile so dark marks read on the dark
- * theme, with the ticker's first letter while it loads or when there's no logo. `size` is the tile in px.
+ * theme. The ticker's first letter shows until the logo arrives, and stays when there's no logo, so a tile is never
+ * an empty white square. `size` is the tile in px.
  */
 export function HoldingLogo({ ticker, size = 20, className }: { ticker: string; size?: number; className?: string }) {
-  const [failed, setFailed] = useState(false);
+  const [state, setState] = useState<"loading" | "loaded" | "failed">("loading");
   const radius = size >= 32 ? 10 : size >= 24 ? 6 : 5;
-  if (failed) {
-    return (
-      <span
-        aria-hidden="true"
-        className={cn("grid shrink-0 place-items-center bg-secondary font-semibold text-ink-2", size >= 32 ? "text-emph" : "text-caption", className)}
-        style={{ width: size, height: size, borderRadius: radius }}
-      >
-        {ticker.slice(0, 1).toUpperCase()}
-      </span>
-    );
-  }
+  const loaded = state === "loaded";
   return (
-    <span aria-hidden="true" className={cn("grid shrink-0 place-items-center overflow-hidden bg-white ring-1 ring-border ring-inset dark:ring-0", className)} style={{ width: size, height: size, borderRadius: radius }}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- a remote logo, sized by its tile; next/image would need the host allowlisted for no gain */}
-      <img src={logoUrl(ticker)} alt="" width={size} height={size} loading="lazy" decoding="async" onError={() => setFailed(true)} className="size-[78%] object-contain" />
+    <span
+      aria-hidden="true"
+      className={cn(
+        "relative grid shrink-0 place-items-center overflow-hidden font-semibold",
+        loaded ? "bg-white ring-1 ring-border ring-inset dark:ring-0" : "bg-secondary text-ink-2",
+        size >= 32 ? "text-emph" : "text-caption",
+        className,
+      )}
+      style={{ width: size, height: size, borderRadius: radius }}
+    >
+      {!loaded && ticker.slice(0, 1).toUpperCase()}
+      {state !== "failed" && (
+        // eslint-disable-next-line @next/next/no-img-element -- a remote logo, sized by its tile; next/image would need the host allowlisted for no gain
+        <img
+          src={logoUrl(ticker)}
+          alt=""
+          width={size}
+          height={size}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setState("loaded")}
+          onError={() => setState("failed")}
+          className={cn("absolute inset-[11%] size-[78%] object-contain", !loaded && "opacity-0")}
+        />
+      )}
     </span>
   );
 }

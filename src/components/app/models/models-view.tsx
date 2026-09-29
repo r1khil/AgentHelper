@@ -27,6 +27,7 @@ export function ModelsView({
   selected,
   selectedHoldingId,
   error,
+  list,
 }: {
   scope: ModelsScope;
   items: ModelListItem[];
@@ -35,12 +36,19 @@ export function ModelsView({
   selectedHoldingId: string | null;
   /** A list-level error (e.g. from an upload) when no model is selected to show it. */
   error?: string | null;
+  /** Rendered by /models, every holding's model, rather than one model's own route. */
+  list?: boolean;
 }) {
   const toDecide = items.reduce((n, i) => n + (i.model ? i.model.proposed + i.model.exceptions : 0), 0);
   return (
     <div data-full-bleed className="flex h-dvh min-h-0 flex-col">
       <PageHead
-        crumbs={[{ label: "Models", href: selected ? `/t/${scope.slug}/models` : undefined }, ...(selected ? [{ label: selected.fileName }] : [])]}
+        crumbs={
+          // One model belongs to its holding (Portfolio / META / the file); the list of every holding's is Portfolio's.
+          selected && !list
+            ? [{ label: "Portfolio", href: `/t/${scope.slug}` }, { label: selected.ticker, href: `${selected.holdingHref}?tab=model` }, { label: selected.fileName }]
+            : [{ label: "Portfolio", href: `/t/${scope.slug}` }, { label: "Models" }]
+        }
         tabs={selected ? modelTabs(selected) : false}
         actions={
           selected ? (
@@ -124,7 +132,7 @@ function ModelList({ items, uploadTargets, selectedHoldingId }: { items: ModelLi
               <RowLink
                 href={m.href}
                 aria-current={on ? "page" : undefined}
-                title={`${i.companyName} · version ${m.version} · ${m.versions} version${m.versions === 1 ? "" : "s"} · uploaded by ${m.uploader ?? "an unknown uploader"}`}
+                title={`${i.companyName}, version ${m.version} of ${m.versions}, uploaded by ${m.uploader ?? "an unknown uploader"}`}
                 className={cn(
                   "-mx-2 flex flex-col rounded-lg border-b border-row px-2 py-[9px] transition-colors outline-none hover:bg-band focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                   on && "bg-secondary hover:bg-secondary",
@@ -132,7 +140,7 @@ function ModelList({ items, uploadTargets, selectedHoldingId }: { items: ModelLi
               >
                 <span className={cn("truncate text-body", on ? "font-semibold" : "font-normal")}>{m.fileName}</span>
                 <span className={cn("truncate text-caption", status.tone === "caution" ? "text-caution-foreground" : "text-muted-foreground")}>
-                  {[i.teamName, status.text].filter(Boolean).join(" · ")}
+                  {[i.teamName, status.text].filter(Boolean).join(", ")}
                 </span>
               </RowLink>
             </li>
@@ -141,14 +149,14 @@ function ModelList({ items, uploadTargets, selectedHoldingId }: { items: ModelLi
       </ul>
       {without.length > 0 && (
         <section aria-label="No model yet">
-          <h2 className="pt-3.5 pb-1 text-caption font-semibold text-muted-foreground">No model yet · {without.length}</h2>
+          <h2 className="pt-3.5 pb-1 text-caption font-semibold text-muted-foreground">No model yet, {without.length}</h2>
           <ul>
             {without.map((i) => (
               <li key={i.holdingId} className="flex items-center gap-2 border-b border-row py-[9px]">
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="text-body font-semibold">{i.ticker}</span>
                   <span className="truncate text-caption text-muted-foreground" title={i.companyName}>
-                    {[i.teamName, !i.hasCik && "not an SEC filer"].filter(Boolean).join(" · ") || i.companyName}
+                    {[i.teamName, !i.hasCik && "not an SEC filer"].filter(Boolean).join(", ") || i.companyName}
                   </span>
                 </span>
                 <UploadModelDialog targets={uploadTargets} defaultHoldingId={i.holdingId} label="Upload" trigger="link" />
@@ -175,9 +183,9 @@ function headline(d: ModelDetailData, counts: Record<ModelProposalRow["status"],
   if (counts.exception) parts.push(`${counts.exception} exception${counts.exception === 1 ? "" : "s"} need${counts.exception === 1 ? "s" : ""} your judgment`);
   if (counts.approved) parts.push(`${counts.approved} approved`);
   if (counts.rejected) parts.push(`${counts.rejected} rejected`);
-  if (open > 0) return { figure: `${open} value${open === 1 ? "" : "s"} to decide`, line: parts.join(" · ") };
-  if (counts.approved > 0) return { figure: `${counts.approved} value${counts.approved === 1 ? "" : "s"} approved`, line: `Write ${counts.approved === 1 ? "it" : "them"} into version ${d.nextVersion} when you are ready${counts.rejected ? ` · ${counts.rejected} rejected` : ""}` };
-  return { figure: "Nothing to decide", line: parts.join(" · ") || "Every proposed value has been decided." };
+  if (open > 0) return { figure: `${open} value${open === 1 ? "" : "s"} to decide`, line: parts.join(", ") };
+  if (counts.approved > 0) return { figure: `${counts.approved} value${counts.approved === 1 ? "" : "s"} approved`, line: `Write ${counts.approved === 1 ? "it" : "them"} into version ${d.nextVersion} when you are ready${counts.rejected ? `. ${counts.rejected} rejected` : ""}` };
+  return { figure: "Nothing to decide", line: parts.join(", ") || "Every proposed value has been decided." };
 }
 
 function ModelDetail({ d }: { d: ModelDetailData }) {
@@ -195,9 +203,9 @@ function ModelDetail({ d }: { d: ModelDetailData }) {
             <>
               <Link href={d.holdingHref} title={d.companyName} className="font-semibold text-foreground underline-offset-2 hover:underline">
                 {d.ticker}
-              </Link>{" "}
-              · Version {d.version} · uploaded {fmtDay(d.createdAt)} by {d.uploader ?? "an unknown uploader"}
-              {mapped ? ` · ${d.mappings.length} line item${d.mappings.length === 1 ? "" : "s"} mapped` : null}
+              </Link>
+              , version {d.version}, uploaded {fmtDay(d.createdAt)} by {d.uploader ?? "an unknown uploader"}
+              {mapped ? `, ${d.mappings.length} line item${d.mappings.length === 1 ? "" : "s"} mapped` : null}
             </>
           }
           value={figure}
@@ -207,7 +215,7 @@ function ModelDetail({ d }: { d: ModelDetailData }) {
           {d.cik && <span className="text-ink-2">Straight from SEC filings (XBRL), not written by AI</span>}
           <span className="text-muted-foreground">
             {d.cik ? `SEC CIK ${Number(d.cik)}` : null}
-            {d.cik && latestFiling ? " · " : null}
+            {d.cik && latestFiling ? ", " : null}
             {latestFiling ? `latest filing ${fmtDate(latestFiling)}` : null}
           </span>
           <span className="flex flex-wrap items-center justify-end gap-x-1.5 text-muted-foreground">
@@ -216,11 +224,10 @@ function ModelDetail({ d }: { d: ModelDetailData }) {
                 <span>Versions</span>
                 {d.versions.map((v, i) => (
                   <span key={v.id}>
-                    {i > 0 && <span className="mr-1.5">·</span>}
                     {v.id === d.id ? <strong className="font-semibold text-foreground">{v.version}</strong> : <Link href={v.href} className="underline underline-offset-2 hover:text-foreground">{v.version}</Link>}
+                    {i < d.versions.length - 1 ? "," : "."}
                   </span>
                 ))}
-                <span>·</span>
               </>
             )}
             <a href={d.downloadHref} className="underline underline-offset-2 hover:text-foreground">

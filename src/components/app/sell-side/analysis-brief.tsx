@@ -126,7 +126,7 @@ export function AnalysisBrief({ messages, chatId }: { messages: UIMessage[]; cha
                       <span className="shrink-0 text-right font-semibold">{n.value}</span>
                     </div>
                     <p className="text-caption text-muted-foreground">
-                      <span className="text-ink-2">{n.period}</span> · {n.context} {citations(n.sourceIds)}
+                      <span className="text-ink-2">{n.period}</span>, {n.context} {citations(n.sourceIds)}
                     </p>
                   </li>
                 ))}
