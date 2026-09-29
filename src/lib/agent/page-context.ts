@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PERIOD_KEYS, PERIOD_LABELS } from "@/lib/attribution/periods";
+import { appPageContext } from "@/lib/hoot/app-map";
 
 // What the member was looking at when they asked Hoot. It rides on the question's message metadata, is
 // re-validated on the server, and only ever steers which tools the agent reaches for first: every number the agent
@@ -140,5 +141,7 @@ export function pageContextBlock(ctx: PageContext): string {
 - Sector bets are against the sector ETFs; stock-level bets and Active Share come from etfLookThrough and depend on each ETF's coverage (say so when an ETF is only partly looked through or its list is stale). Describe positioning; never present it as a recommendation to trade.
 - The page also shows factor and macro sensitivities (market, size, value, momentum, rates, dollar, oil betas with t-stats): use factorSensitivities. A beta with |t| < 2 is not statistically significant; call it "no clear exposure" and never describe it as a position or a bet.`;
   }
-  return head;
+  // Pages that don't describe themselves: the app map says what they show, and the address which company or team.
+  const known = appPageContext(ctx.path);
+  return known ? `${head}\n${known}` : head;
 }

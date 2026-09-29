@@ -60,6 +60,7 @@ export function pinnedFilingsBlock(filings: FilingDoc[]): string {
 }
 import { todayNY } from "@/lib/providers/calendar";
 import { pageContextBlock, type PageContext } from "./page-context";
+import { appMapPromptBlock } from "@/lib/hoot/app-map";
 import { dateFromName, effectiveDate } from "./doc-recency";
 
 export type ExternalToolsInfo = { servers: { name: string; toolCount: number }[]; instructions: string[]; toolNames: string[] };
@@ -187,7 +188,10 @@ ANSWER FORMAT:
 - End with "Not retrieved:" listing anything you could not get, and, when useful, one or two questions the analyst might look into. Omit the section if nothing is missing.
 - Plain English, no filler, no summary of what you did. Write figures the way the app shows them: accounting style, a negative in parentheses such as (0.29%) or (40 bp), no plus sign on a positive. Returns and weights are in %; a move against the S&P 500, active return and contributions are in basis points, written bp (tools report some of these in percentage points: 1 pp = 100 bp). The Fund's major-movement rule is an absolute difference of at least ${MOVEMENT_THRESHOLD_PP * 100} bp between a holding's daily return and the S&P 500's daily return, using official closes.
 
-TEAM CONTEXT
+${opts.portfolioTools && (opts.purpose ?? "chat") === "chat" ? `THE APP (The Owl's Nest; the member may ask how it works, where something is, or what a page or term means: answer from explain_app, which needs no citation token, and offer to open the page with navigate):
+${appMapPromptBlock()}
+
+` : ""}TEAM CONTEXT
 ${driveLine}
 ${webLine}
 

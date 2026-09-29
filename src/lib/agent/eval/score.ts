@@ -62,6 +62,13 @@ export function scoreTurn(c: EvalCase, message: UIMessage): EvalTurn {
   if (e.maxErrors !== undefined) checks.push({ name: `≤ ${e.maxErrors} failed lookups`, pass: errors <= e.maxErrors, detail: calls.filter((x) => !x.ok).map((x) => `${x.name}: ${x.error}`).join(" | ") || undefined });
   for (const re of e.answer ?? []) checks.push({ name: `answer ~ ${re}`, pass: re.test(text) });
   for (const re of e.answerNot ?? []) checks.push({ name: `answer !~ ${re}`, pass: !re.test(text), detail: re.exec(text)?.[0] });
+  if (e.href) {
+    const hrefs = tools.flatMap((p) => {
+      const href = toolName(p) === "navigate" ? (p.output?.data as { action?: { href?: unknown } } | undefined)?.action?.href : undefined;
+      return typeof href === "string" ? [href] : [];
+    });
+    checks.push({ name: `opened ${e.href}`, pass: hrefs.some((h) => e.href!.test(h)), detail: hrefs.join(", ") || "nothing opened" });
+  }
   checks.push({ name: "answered", pass: Boolean(text) && !meta.unanswered });
   checks.push({ name: "no repeated lookups", pass: duplicates === 0, detail: duplicates ? `${duplicates}` : undefined });
 

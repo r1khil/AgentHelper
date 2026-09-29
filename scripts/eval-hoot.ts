@@ -2,7 +2,8 @@
 // and scores it: which tools it used, failed or repeated lookups, narration, uncited facts, time and tokens, and
 // each case's own expectations. Use it before and after a prompt, tool or model change.
 //
-// Usage: npm run eval:hoot -- [--only id,id] [--tag control] [--concurrency 2] [--compare .artifacts/hoot-eval/<run>.json] [--show-answers]
+// Usage: npm run eval:hoot -- [--only id,id] [--tag control] [--concurrency 2] [--repeat 3] [--compare .artifacts/hoot-eval/<run>.json] [--show-answers]
+// --repeat runs each case N times and marks a case that passes only sometimes as FLAKY; it passes only when every run does.
 //
 // Each case runs in a temporary chat that is deleted afterwards; nothing is saved to the research log (memoryOff).
 // Results go to .artifacts/hoot-eval/<timestamp>.json. Cases needing a provider that isn't configured here (FRED,
@@ -68,6 +69,7 @@ async function main() {
   const only = arg("only")?.split(",");
   const tag = arg("tag");
   const concurrency = Math.max(1, Number(arg("concurrency") ?? 1));
+  const repeat = Math.max(1, Math.min(10, Number(arg("repeat") ?? 1)));
   const drive = await driveStatus().catch(() => null);
   const available = { fred: fredConfigured(), sandbox: sandboxAvailable(), web: tavilyConfigured(), drive: Boolean(drive?.configured && drive.connected && !drive.needsReconnect) };
   const selected = EVAL_CASES.filter((c) => (!only || only.includes(c.id)) && (!tag || c.tags.includes(tag as EvalCase["tags"][number])));
@@ -81,16 +83,20 @@ async function main() {
   console.log(`Hoot eval · ${model} · ${cases.length} case${cases.length === 1 ? "" : "s"}${skipped.length ? ` · skipped (provider not configured here): ${skipped.map((c) => c.id).join(", ")}` : ""}\n`);
 
   const results: EvalTurn[] = new Array(cases.length);
+  const runs: Record<string, boolean[]> = {};
+  const jobs = cases.flatMap((c, i) => Array.from({ length: repeat }, (_, n) => ({ c, i, n })));
   let next = 0;
   await Promise.all(
-    Array.from({ length: Math.min(concurrency, cases.length) }, async () => {
-      for (let i = next++; i < cases.length; i = next++) {
-        const c = cases[i];
+    Array.from({ length: Math.min(concurrency, jobs.length) }, async () => {
+      for (let j = next++; j < jobs.length; j = next++) {
+        const { c, i, n } = jobs[j];
         const r = await runCase(c, viewers, anyTeam.id).catch((e) => crashed(c, e));
-        results[i] = r;
+        (runs[c.id] ??= []).push(r.pass);
+        // The case's result is its first failing run, else its first run, so --compare sees any failure.
+        if (!results[i] || (results[i].pass && !r.pass)) results[i] = r;
         const failed = r.checks.filter((x) => !x.pass).map((x) => (x.detail ? `${x.name} (${x.detail})` : x.name));
         console.log(
-          `${r.pass ? "PASS" : "FAIL"}  ${c.id.padEnd(26)} ${String(r.calls.length).padStart(2)} lookups${r.errors ? `, ${r.errors} failed` : ""}${r.duplicates ? `, ${r.duplicates} repeated` : ""}${r.narration ? `, ${r.narration} narration` : ""} · ${r.steps ?? "?"} steps · ${r.ms ? `${Math.round(r.ms / 1000)}s` : "?"}${r.uncited ? ` · ${r.uncited} uncited` : ""}${r.repaired ? " · repaired" : ""}${r.writeUp ? ` · write-up (${r.writeUp})` : ""}`,
+          `${r.pass ? "PASS" : "FAIL"}  ${(repeat > 1 ? `${c.id} #${n + 1}` : c.id).padEnd(26)} ${String(r.calls.length).padStart(2)} lookups${r.errors ? `, ${r.errors} failed` : ""}${r.duplicates ? `, ${r.duplicates} repeated` : ""}${r.narration ? `, ${r.narration} narration` : ""} · ${r.steps ?? "?"} steps · ${r.ms ? `${Math.round(r.ms / 1000)}s` : "?"}${r.uncited ? ` · ${r.uncited} uncited` : ""}${r.repaired ? " · repaired" : ""}${r.writeUp ? ` · write-up (${r.writeUp})` : ""}`,
         );
         console.log(`      ${r.calls.map((x) => (x.ok ? x.name : `${x.name}✗`)).join(" → ") || "(no lookups)"}`);
         if (failed.length) console.log(`      failed: ${failed.join("; ")}`);
@@ -99,6 +105,10 @@ async function main() {
     }),
   );
 
+  if (repeat > 1) {
+    const flaky = Object.entries(runs).filter(([, r]) => r.some(Boolean) && !r.every(Boolean));
+    console.log(`\n${repeat} runs each: ${flaky.length ? `FLAKY ${flaky.map(([id, r]) => `${id} (${r.filter(Boolean).length}/${r.length})`).join(", ")}` : "no flaky cases"}`);
+  }
   const s = summarize(results);
   console.log(
     `\n${s.passed}/${s.cases} passed · ${s.lookups} lookups (${s.failedLookups} failed, ${s.duplicates} repeated) · ${s.narration} narration parts · ${s.uncited} uncited · ${s.repaired} repaired · ${s.writeUps} write-ups · ${s.unanswered} unanswered · median ${s.medianMs ? Math.round(s.medianMs / 1000) : "?"}s · ${s.tokens.input} in / ${s.tokens.output} out tokens`,
@@ -113,7 +123,7 @@ async function main() {
 
   mkdirSync(".artifacts/hoot-eval", { recursive: true });
   const out = `.artifacts/hoot-eval/${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
-  writeFileSync(out, JSON.stringify({ model, at: new Date().toISOString(), skipped: skipped.map((c) => c.id), summary: s, results }, null, 2));
+  writeFileSync(out, JSON.stringify({ model, at: new Date().toISOString(), repeat, runs, skipped: skipped.map((c) => c.id), summary: s, results }, null, 2));
   console.log(`\nsaved ${out}`);
 }
 

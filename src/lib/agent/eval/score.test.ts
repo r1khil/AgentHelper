@@ -53,6 +53,15 @@ describe("scoreTurn", () => {
   });
 });
 
+describe("href expectations", () => {
+  it("checks where navigate sent the member", () => {
+    const c: EvalCase = { ...backtest, expect: { href: /^\/t\/fig$/ } };
+    const nav = (href: string) => message([tool("navigate", { page: "team", team: "fig" }, { data: { action: { kind: "navigate", href, label: "FIG" } } }), { type: "text", text: "Opened FIG." }]);
+    expect(scoreTurn(c, nav("/t/fig")).pass).toBe(true);
+    expect(scoreTurn(c, nav("/t/fund")).checks.find((x) => x.name.startsWith("opened"))).toMatchObject({ pass: false, detail: "/t/fund" });
+  });
+});
+
 describe("summarize and compareRuns", () => {
   it("adds up a run and lists regressions first", () => {
     const pass = scoreTurn({ ...backtest, id: "a" }, message([tool("run_backtest", {}, { data: {} }), { type: "text", text: "Hypothetical." }], { ms: 10 }));
