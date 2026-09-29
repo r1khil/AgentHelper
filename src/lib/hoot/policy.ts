@@ -103,7 +103,35 @@ export function suggestionsFor(pathname: string, ticker: string | null): string[
       "Which recent reports from our holdings surprised versus consensus?",
     ];
   }
-  if (/\/attribution$/.test(pathname)) {
+  if (/^\/t\/fund\/?$/.test(pathname)) {
+    return [
+      "What moved the fund today, and which holdings drove it?",
+      "Why are we ahead of or behind the benchmark since Sep 17?",
+      "Which positions have grown the most since the ledger opened?",
+    ];
+  }
+  if (/\/risk$/.test(pathname)) {
+    return [
+      "Which holdings add the most risk for their size?",
+      "What would trimming our largest risk source do to tracking error?",
+      "How would the book have done in the 2022 rate shock, and why?",
+    ];
+  }
+  if (/\/exposure$/.test(pathname)) {
+    return [
+      "Where are we most overweight against the S&P 500, and since when?",
+      "What do our ETFs hold underneath, and where does that overlap our stocks?",
+      "Which sector tilt cost us the most this month?",
+    ];
+  }
+  if (/^\/attribution\/ledger$/.test(pathname)) {
+    return [
+      "Which trades changed the book the most since the ledger opened?",
+      "Check the last week's trades against the closing prices.",
+      "How much cash came in or went out this month, and why?",
+    ];
+  }
+  if (/\/(attribution|daily)$/.test(pathname)) {
     return [
       "What drove this period's performance versus the S&P 500?",
       "Which holdings and sectors hurt most, and was it allocation or selection?",
