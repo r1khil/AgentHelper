@@ -2,11 +2,12 @@ import "server-only";
 import { and, eq, isNull, max, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { dailyCloses, trades } from "@/db/schema";
-import { beforeOpening, parseTicket, recordable, ticketsToCsv, UNREADABLE_DOCX, type TicketRead, type TradeTicket } from "./ticket";
+import { beforeOpening, markRepeats, parseTicket, recordable, ticketsToCsv, UNREADABLE_DOCX, type TicketRead, type TradeTicket } from "./ticket";
 import { importLedger, type ImportResult } from "./import";
 import { fmtCurrency, fmtPct, fmtUsd } from "@/lib/format";
+import { splitHeld, type PastedTicketCheck } from "./pasted-tickets";
 
-/** Trade tickets from the Ledger page's upload and from emails to Hoot share these checks and the import. */
+/** Trade tickets from the Ledger page's upload, from emails to Hoot and pasted into a Hoot chat share these checks and the import. */
 
 // Server Actions accept 1MB bodies; a ticket is about 40KB.
 export const MAX_TICKET_BYTES = 300_000;
@@ -73,4 +74,13 @@ export async function checkLedger(reads: TicketRead[]): Promise<TicketRead[]> {
 export async function recordTickets(tickets: TradeTicket[], userId: string): Promise<ImportResult> {
   if (!tickets.length) return { ok: false, error: "No readable tickets to record." };
   return importLedger(ticketsToCsv(tickets), false, userId);
+}
+
+/**
+ * Ticket text pasted into a Hoot chat, checked the way an emailed ticket is: repeats and trades the ledger already has
+ * are skipped, and a price far from that session's close is held rather than recorded on a chat's say-so.
+ */
+export async function checkPastedTickets(texts: string[]): Promise<PastedTicketCheck> {
+  const reads = markRepeats(texts.map((t, i) => parseTicket(t, texts.length > 1 ? `Pasted ticket ${i + 1}` : "Pasted ticket")));
+  return splitHeld(await checkPrices(await checkLedger(reads)));
 }

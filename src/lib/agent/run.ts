@@ -13,11 +13,21 @@ import { toolErrorText } from "@/lib/agent/tool-repair";
 import type { AgentMetadata, AgentUIMessage } from "@/lib/trace/events";
 import { pageContextFromMessages } from "@/lib/agent/page-context";
 import { usesPtSheet } from "@/lib/agent/pt-sheet-guard";
+import { isMemberQuestion } from "@/lib/agent/hidden-prompt";
+import { withExpiredProposals } from "@/lib/hoot/proposals";
 import type { CurrentUser } from "@/lib/auth";
 
 export { MAX_STEPS };
 
 export type TurnResult = { messages: UIMessage[]; response: UIMessage };
+
+/** The member's own words in the chat, newest first (a job's hidden prompt is not the member's). */
+export function memberTexts(messages: UIMessage[]): string[] {
+  return messages
+    .filter(isMemberQuestion)
+    .map((m) => m.parts.map((p) => (p.type === "text" ? p.text : "")).join("\n").trim())
+    .reverse();
+}
 
 /** The write-up runs after the research, inside the route's 300 s limit. */
 const WRITE_UP_BUDGET_MS = 60_000;
@@ -66,6 +76,7 @@ export async function runAgentTurn(opts: {
     chatId: chat.id,
     sheetInHistory: Boolean(chat.fundOnly) || usesPtSheet(messages),
     memoryOff: opts.memoryOff,
+    memberTexts: memberTexts(messages),
   });
   const t0 = Date.now();
   sink?.emit({ t: "run.start", chatId: chat.id, modelId: def.modelId, maxSteps: MAX_STEPS });
@@ -73,7 +84,8 @@ export async function runAgentTurn(opts: {
   const result = streamText({
     model: def.model,
     instructions: def.instructions,
-    messages: await convertToModelMessages(compactHistory(messages), { tools: def.tools, ignoreIncompleteToolCalls: true }),
+    // A proposal nobody confirmed in time reads "expired" to the model, so it neither re-offers nor claims it.
+    messages: await convertToModelMessages(compactHistory(withExpiredProposals(messages)), { tools: def.tools, ignoreIncompleteToolCalls: true }),
     tools: def.tools,
     stopWhen: def.stopWhen,
     prepareStep: def.prepareStep,

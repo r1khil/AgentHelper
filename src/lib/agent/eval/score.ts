@@ -2,6 +2,7 @@ import type { UIMessage } from "ai";
 import type { AgentMetadata } from "@/lib/trace/events";
 import { isToolPart, splitAssistantParts, toolFailed, toolName, type ToolPart } from "../turn";
 import type { EvalCase } from "./cases";
+import { proposalsOf } from "@/lib/hoot/proposals";
 
 export type EvalToolCall = { name: string; input: unknown; ok: boolean; error?: string };
 
@@ -58,6 +59,8 @@ export function scoreTurn(c: EvalCase, message: UIMessage): EvalTurn {
   const checks: EvalCheck[] = [];
   for (const need of e.calls ?? []) checks.push({ name: `calls ${need}`, pass: calledAny(names, need) });
   for (const avoid of e.notCalls ?? []) checks.push({ name: `avoids ${avoid}`, pass: !names.has(avoid) });
+  const proposed = new Set(proposalsOf(tools).map((p) => p.proposal.kind as string));
+  for (const kind of e.proposes ?? []) checks.push({ name: `proposes ${kind}`, pass: proposed.has(kind), detail: calls.find((x) => x.name === kind && !x.ok)?.error });
   if (e.maxToolCalls !== undefined) checks.push({ name: `≤ ${e.maxToolCalls} lookups`, pass: calls.length <= e.maxToolCalls, detail: `${calls.length}` });
   if (e.maxErrors !== undefined) checks.push({ name: `≤ ${e.maxErrors} failed lookups`, pass: errors <= e.maxErrors, detail: calls.filter((x) => !x.ok).map((x) => `${x.name}: ${x.error}`).join(" | ") || undefined });
   for (const re of e.answer ?? []) checks.push({ name: `answer ~ ${re}`, pass: re.test(text) });

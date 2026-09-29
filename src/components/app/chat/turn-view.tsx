@@ -9,7 +9,10 @@ import { answerForCopy, savedTurnMs } from "@/lib/agent/board";
 import { resolveSource, sourceType } from "@/lib/agent/source-resolution";
 import { turnPageLinks } from "@/lib/agent/turn-links";
 import { cn } from "@/lib/utils";
+import { proposalsOf } from "@/lib/hoot/proposals";
+import type { Part } from "@/lib/agent/turn";
 import { PinToBoard, type PinTarget } from "./pin-to-board";
+import { ProposalCard } from "./proposal-card";
 import { ResearchAnswer, ResearchSources, useSourceViewer, type CitationLinks } from "./research-answer";
 import { ActivityRow, PromptLabel, shortDate, UserBubble } from "./thread-parts";
 import type { TraceView } from "./trace-panel";
@@ -80,6 +83,8 @@ export function TurnView(props: TurnViewProps) {
   const meta = (turn.assistant?.metadata ?? {}) as { uncited?: number };
   const elapsed = props.elapsedMs ?? savedTurnMs(turn);
   const pages = live ? [] : turnPageLinks(turn.activity, teamSlug);
+  // Changes Hoot proposed in this answer, each a card the member confirms or cancels. Inert data: never applied here.
+  const proposals = useMemo(() => proposalsOf((turn.assistant?.parts ?? []) as Part[]), [turn.assistant]);
   const sm = variant !== "thread";
 
   return (
@@ -110,6 +115,10 @@ export function TurnView(props: TurnViewProps) {
             Hoot stopped before writing an answer.{variant === "board" ? " Its lookups are on the right; ask again to get a written answer." : " Ask again to get a written answer."}
           </div>
         ) : null}
+
+        {proposals.map((p) => (
+          <ProposalCard key={p.toolCallId} chatId={chatId} toolCallId={p.toolCallId} proposal={p.proposal} outcome={p.outcome} compact={sm} />
+        ))}
 
         {variant === "panel" && sources.length > 0 && <SourceList rows={sources} open={open} hover={hover} onHover={setHover} anchor={anchor} />}
 
