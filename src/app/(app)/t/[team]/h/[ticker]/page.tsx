@@ -10,7 +10,7 @@ import { getBarsRange, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { listFilings } from "@/lib/providers/edgar";
 import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
 import { NY, todayNY } from "@/lib/providers/calendar";
-import { fmtChangeBp, fmtChangePct, fmtCurrency, fmtDay, fmtDayMonth, fmtNumber, fmtTime, ppToBp } from "@/lib/format";
+import { fmtChangeBp, fmtChangePair, fmtCurrency, fmtDay, fmtDayMonth, fmtNumber, fmtTime, ppToBp } from "@/lib/format";
 import { canManageTeam, isFundWide } from "@/lib/auth";
 import { effectiveRunStatus, listHoldingChats } from "@/lib/chats";
 import { documentLabel } from "@/lib/drive/labels";
@@ -142,7 +142,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
   const delta = q && prev != null ? q.price - prev : null;
   const deltaPct = q?.changePct ?? (q && prev ? (q.price / prev - 1) * 100 : null);
   const deltaMoney = delta === null || !q ? null : fmtCurrency(delta, q.currency);
-  const changeText = deltaMoney !== null && deltaPct !== null ? `${delta! > 0 && /[1-9]/.test(deltaMoney) ? "+" : ""}${deltaMoney} (${fmtChangePct(deltaPct)})` : null;
+  const changeText = deltaMoney !== null && deltaPct !== null ? fmtChangePair(`${delta! > 0 && /[1-9]/.test(deltaMoney) ? "+" : ""}${deltaMoney}`, deltaPct) : null;
   const bp = ppToBp(m?.relativePp);
   const heroNote = [
     "Today",

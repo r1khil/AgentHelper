@@ -4,7 +4,7 @@ import { PageHero } from "@/components/app/page-head";
 import { toneOfText } from "@/components/app/portfolio/figures";
 import type { MarketSnapshot } from "@/lib/market";
 import { NY } from "@/lib/providers/calendar";
-import { fmtBp, fmtChangePct, fmtChangeUsd, fmtDay, fmtTime, fmtUsd } from "@/lib/format";
+import { fmtBp, fmtChangePair, fmtChangePct, fmtChangeUsd, fmtDay, fmtTime, fmtUsd } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { MarketLine } from "./holdings-toolbar";
 import { teamDay, type HoldingListRow } from "./holdings-table";
@@ -61,7 +61,7 @@ export async function TeamHero({ input, market }: { input: TeamHeroInput; market
   const missing = rows.length - priced.length;
   const vsText = vsSpx == null ? null : Math.round(Math.abs(vsSpx)) === 0 ? "level with the S&P 500" : `${fmtBp(Math.round(Math.abs(vsSpx)))} ${vsSpx > 0 ? "ahead of" : "behind"} the S&P 500`;
   const sinceText = sinceBp ? `${fmtBp(Math.round(Math.abs(sinceBp.bp)))} ${sinceBp.bp >= 0 ? "ahead of" : "behind"} ${sinceBp.label} since ${fmtDay(sinceBp.from)}` : null;
-  const change = book && priced.length ? `${fmtChangeUsd(dayPnl, 0)} (${fmtChangePct(dayPct)})` : dayPct != null ? fmtChangePct(dayPct) : null;
+  const change = book && priced.length ? fmtChangePair(fmtChangeUsd(dayPnl, 0), dayPct) : dayPct != null ? fmtChangePct(dayPct) : null;
   return (
     <>
       <PageHero

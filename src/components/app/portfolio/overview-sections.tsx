@@ -9,7 +9,7 @@ import { loadWeek } from "@/lib/portfolio/week";
 import { buildExposure } from "@/lib/risk/exposure";
 import { loadRisk } from "@/lib/risk/load";
 import { LOOKBACKS } from "@/lib/risk/model";
-import { fmtBp, fmtChangeBp, fmtChangePct, fmtChangeUsd, fmtDay, fmtDayMonth, fmtMoney, fmtPct, fmtTime, fmtUsd } from "@/lib/format";
+import { fmtBp, fmtChangeBp, fmtChangePair, fmtChangePct, fmtChangeUsd, fmtDay, fmtDayMonth, fmtMoney, fmtPct, fmtTime, fmtUsd } from "@/lib/format";
 import { holdingHref } from "@/lib/scope";
 import { isOverdue, listNudges, nudgeWhen } from "@/lib/today";
 import { cn } from "@/lib/utils";
@@ -42,7 +42,7 @@ export async function OverviewHero({ overview, today }: { overview: Promise<Over
   const o = await overview;
   if (!o) return null;
   const day = o.status === "final" && o.session !== today ? fmtDay(o.session) : "Today";
-  const change = `${fmtChangeUsd(o.dayPnl)} (${fmtChangePct(o.dayPct)})`;
+  const change = fmtChangePair(fmtChangeUsd(o.dayPnl), o.dayPct);
   return (
     <div className="flex flex-col">
       <PageHero label="Owl Fund" value={fmtUsd(o.value)} change={change} tone={toneOfText(change)} note={`${day}${o.vsBenchmark ? ` · ${versus(o.vsBenchmark)}` : ""}`} />

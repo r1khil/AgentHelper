@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fixed, fmtAccounting, fmtBp, fmtChangeBp, fmtChangeMoney, fmtChangePct, fmtChangeUsd, fmtCompact, fmtCurrency, fmtDate, fmtDateTime, fmtDay, fmtDayMonth, fmtMonth, fmtMoney, fmtNumber, fmtPct, fmtTime, fmtUsd, fmtUsdCompact, ppToBp, relativeTime } from "./format";
+import { fixed, fmtAccounting, fmtBp, fmtChangeBp, fmtChangeMoney, fmtChangePair, fmtChangePct, fmtChangeUsd, fmtCompact, fmtCurrency, fmtDate, fmtDateTime, fmtDay, fmtDayMonth, fmtMonth, fmtMoney, fmtNumber, fmtPct, fmtTime, fmtUsd, fmtUsdCompact, ppToBp, relativeTime } from "./format";
 
 describe("fixed", () => {
   it("drops the minus from a value that rounds to zero", () => {
@@ -279,5 +279,12 @@ describe("dates, in New York time", () => {
     expect(relativeTime(new Date(t - 2 * 86_400_000), t)).toBe("2d ago");
     expect(relativeTime("2026-07-01T16:00:00Z", t)).toBe("Jul 1, 2026");
     expect(relativeTime(null, t)).toBe("");
+  });
+});
+
+describe("fmtChangePair", () => {
+  it("wraps an up percentage and leaves a down one in its own parentheses", () => {
+    expect(fmtChangePair("+$17,294.21", 0.39)).toBe("+$17,294.21 (+0.39%)");
+    expect(fmtChangePair("($49,570.01)", -1.06)).toBe("($49,570.01) (1.06%)");
   });
 });
