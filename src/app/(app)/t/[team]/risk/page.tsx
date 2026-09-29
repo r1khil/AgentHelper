@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { EmptyState } from "@/components/app/empty-state";
-import { DataNoticesButton } from "@/components/app/attribution/data-quality-notice";
 import { PageContextPublisher } from "@/components/app/hoot/page-context";
 import { riskNotices } from "@/components/app/risk/notices";
 import { RiskView } from "@/components/app/risk/risk-view";
-import { StressPanelFallback, StressPanelSection, StressSection, StressSectionFallback } from "@/components/app/risk/stress-section";
+import { StressSection, StressSectionFallback } from "@/components/app/risk/stress-section";
 import { loadTeamSectors } from "@/lib/attribution/load";
 import { ETF_BY_SECTOR } from "@/lib/attribution/sectors";
 import { canManageTeam, isFundWide, transparencyEnabled } from "@/lib/auth";
@@ -61,12 +60,7 @@ export default async function TeamRiskPage({ params, searchParams }: PageProps<"
         benchmarkLabel={sectors.length ? sectors.map((s) => ETF_BY_SECTOR[s]).join(" + ") : "team sectors"}
         showAll={one(query.all) === "1"}
         context={`${team.name} holdings as their own portfolio (scaled to 100%, no cash) · ${LOOKBACKS[lookback].label} of daily returns`}
-        notices={<DataNoticesButton notices={notices} />}
-        stressPanel={
-          <Suspense fallback={<StressPanelFallback />}>
-            <StressPanelSection report={report} fundLabel={team.name} />
-          </Suspense>
-        }
+        notices={notices}
         stress={
           <Suspense fallback={<StressSectionFallback />}>
             <StressSection

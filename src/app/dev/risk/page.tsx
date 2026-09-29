@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { RiskView } from "@/components/app/risk/risk-view";
-import { STRESS_DETAIL, StressPanel } from "@/components/app/risk/stress-panel";
 import { StressTests } from "@/components/app/risk/stress-tests";
 import { LOOKBACKS, parseLookback } from "@/lib/risk/model";
 import { previewEnabled, previewReport, previewStress } from "@/lib/risk/preview";
@@ -32,10 +31,8 @@ export default async function Preview({ searchParams }: PageProps<"/dev/risk">) 
         benchmarkLabel={team ? "XLK + XLC" : "S&P 500 sectors"}
         showAll={one(query.all) === "1"}
         context={`${team ? "Tech & media holdings as their own portfolio" : "Today's positions"} · ${LOOKBACKS[lookback].label} of daily returns · synthetic preview`}
-        stressPanel={<StressPanel results={stress} fundLabel={team ? "Tech & media" : "Fund"} />}
         stress={
           <StressTests
-            {...STRESS_DETAIL}
             results={stress}
             fundLabel={team ? "Tech & media" : "Fund"}
             scopeLabel={team ? "Tech & media holdings" : "NAV"}

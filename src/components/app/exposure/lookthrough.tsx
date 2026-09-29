@@ -1,20 +1,16 @@
-import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Segmented } from "@/components/app/panel";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
-import { fmtDate, fmtDay } from "@/lib/format";
+import { fmtChangeBp, fmtDate, fmtDay } from "@/lib/format";
 import { SOURCE_LABELS } from "@/lib/lookthrough/parse";
 import { describeExposure, type ActiveName, type EtfCoverage, type LookthroughReport, type NameExposure } from "@/lib/risk/lookthrough";
 import { STALE_AFTER_DAYS, type LookthroughState } from "@/lib/risk/lookthrough-report";
-import type { LookbackKey } from "@/lib/risk/model";
 import { cn } from "@/lib/utils";
-import { DivergingBar, MagnitudeBar } from "../attribution/bars";
+import { CenterBar, ShareBar, Signed } from "@/components/app/portfolio/parts";
 import { Explained } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "../risk/explainers";
 import { rnum, rpct } from "../risk/format";
 import { Source, Step, Working } from "../risk/working";
 import type { SectorBet } from "@/lib/risk/exposure";
-import { Move } from "../move";
 import { ExposureSection } from "./exposure-section";
 import { ActiveShareWorking, StockBetWorking } from "./lookthrough-cards";
 
@@ -30,26 +26,6 @@ export const LOOKTHROUGH_ANCHOR = "lookthrough";
 export const STOCK_ACTIVE_ANCHOR = "stock-active-detail";
 
 /**
- * Toolbar switch: sector weights with each ETF counted whole in its own sector ("Direct holdings"), or split into the
- * companies it holds ("Through ETFs"). Links keep the lookback. Without stored ETF lists, "Through ETFs" is disabled.
- */
-export function SectorViewToggle({ basePath, lookback, throughEtfs, available, extra = "" }: { basePath: string; lookback: LookbackKey; throughEtfs: boolean; available: boolean; extra?: string }) {
-  const href = (on: boolean) => `${basePath}?lookback=${lookback}${sectorViewQuery(on)}${extra}`;
-  return (
-    <Segmented
-      label="Sector weights"
-      segments={[
-        { key: "held", label: "Direct holdings", title: "Each ETF counted whole in its own sector", href: available ? href(false) : undefined, active: !throughEtfs || !available },
-        available
-          ? { key: "etf", label: "Through ETFs", title: "Each ETF split into the companies it holds", href: href(true), active: throughEtfs }
-          : { key: "etf", label: "Through ETFs", title: "No ETF holdings lists are stored yet", active: false, disabled: true },
-      ]}
-    />
-  );
-}
-
-
-/**
  * The look-through sections for the Exposure page: coverage per ETF, combined exposure per company, and stock-level
  * active weights. Every state is shown, including no lists yet, stale lists and Yahoo's top 10.
  */
@@ -58,12 +34,12 @@ export function LookthroughSections({ state, scope, transparency, download, sect
     const held = state?.heldEtfs ?? [];
     return (
       <ExposureSection id={LOOKTHROUGH_ANCHOR} title="Through the ETFs" explain={RISK_EXPLAIN.lookthrough}>
-        <Card className="p-4 text-body text-muted-foreground">
+        <p className="text-body text-muted-foreground">
           {state?.reason === "no-table"
             ? "ETF holdings aren't set up yet (migration 0021). Once they are, the nightly price job stores each held ETF's full holdings weekly."
             : "No ETF holdings lists are stored yet. The nightly price job fetches them from each issuer weekly."}
           {held.length > 0 && <> ETFs held: {held.join(", ")}.</>}
-        </Card>
+        </p>
       </ExposureSection>
     );
   }
@@ -99,8 +75,8 @@ export function LookthroughSections({ state, scope, transparency, download, sect
             <p className="mb-2.5 text-body text-ink-2">
               {lt.active.largestBet && (
                 <>
-                  Largest bet by company: <span className="font-mono font-semibold text-foreground">{lt.active.largestBet.key}</span>{" "}
-                  <Move value={lt.active.largestBet.active * 10_000} unit=" bp" digits={0} /> ({rpct(lt.active.largestBet.fund)} vs {rpct(lt.active.largestBet.benchmark)}).{" "}
+                  Largest bet by company: <span className="font-semibold text-foreground">{lt.active.largestBet.key}</span>{" "}
+                  <Signed text={fmtChangeBp(lt.active.largestBet.active * 10_000)} /> ({rpct(lt.active.largestBet.fund)} vs {rpct(lt.active.largestBet.benchmark)}).{" "}
                 </>
               )}
               <Explained label="Active Share">{RISK_EXPLAIN.activeShare}</Explained> {rpct(lt.active.activeShare)} vs {state.benchmarkLabel}&apos;s {lt.active.rows.filter((r) => r.benchmark > 0).length} companies; {rpct(lt.active.overlapWithBenchmark)} of the portfolio is in index names.
@@ -114,7 +90,7 @@ export function LookthroughSections({ state, scope, transparency, download, sect
             )}
           </>
         ) : (
-          <Card className="p-4 text-body text-muted-foreground">{state.benchmarkMissing ?? "The benchmark's holdings aren't stored yet."} Stock-level active weights need them.</Card>
+          <p className="text-body text-muted-foreground"><b className="font-semibold text-caution-foreground">Missing</b> {state.benchmarkMissing ?? "The benchmark's holdings aren't stored yet."} Stock-level active weights need them.</p>
         )}
       </ExposureSection>
     </>
@@ -125,12 +101,12 @@ const STATUS: Record<EtfCoverage["status"], { label: string; tone: string }> = {
   full: { label: "Full list", tone: "text-muted-foreground" },
   partial: { label: "Partial", tone: "text-caution-foreground" },
   "top-holdings": { label: "Top 10 only", tone: "text-caution-foreground" },
-  none: { label: "No list", tone: "text-destructive" },
+  none: { label: "No list", tone: "text-caution-foreground" },
 };
 
 function EtfCoverageTable({ etfs, stale }: { etfs: EtfCoverage[]; stale: string[] }) {
   return (
-    <Card className="mb-3 overflow-x-auto p-0">
+    <div className="mb-3 overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -148,43 +124,43 @@ function EtfCoverageTable({ etfs, stale }: { etfs: EtfCoverage[]; stale: string[
             return (
               <TableRow key={e.etf}>
                 <TableCell>
-                  <span className="font-mono font-semibold">{e.etf}</span>
+                  <span className="font-semibold">{e.etf}</span>
                   <div className={cn("text-caption", s.tone)}>
                     {s.label}
                     {e.names > 0 && <span className="text-muted-foreground"> · {e.names} names</span>}
                   </div>
                   {/* On a phone the as-of column is hidden, so the date and source sit under the ETF. */}
                   {e.asOf && e.source && (
-                    <div className={cn("text-caption text-muted-foreground sm:hidden", isStale && "font-medium text-caution-foreground")}>
+                    <div className={cn("text-caption text-muted-foreground sm:hidden", isStale && "font-semibold text-caution-foreground")}>
                       {fmtDay(e.asOf)} · {SOURCE_LABELS[e.source]}{isStale && " · stale"}
                     </div>
                   )}
                 </TableCell>
-                <TableCell className="text-right font-mono text-body">{rpct(e.weight, 2)}</TableCell>
+                <TableCell className="text-right text-body">{rpct(e.weight, 2)}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <MagnitudeBar value={e.coverage} max={1} className="h-1.5 w-16 sm:w-24" />
-                    <span className="w-12 font-mono text-body">{rpct(e.coverage)}</span>
+                    <ShareBar value={e.coverage} max={1} className="w-24" />
+                    <span className="w-12 text-body">{rpct(e.coverage)}</span>
                   </div>
                 </TableCell>
                 <TableCell className="hidden text-body sm:table-cell">
                   {e.asOf && e.source ? (
                     <>
-                      <span className={cn(isStale && "font-medium text-caution-foreground")}>{fmtDay(e.asOf)}{isStale && " · stale"}</span>
+                      <span className={cn(isStale && "font-semibold text-caution-foreground")}>{fmtDay(e.asOf)}{isStale && " · stale"}</span>
                       <div className="text-caption text-muted-foreground">{SOURCE_LABELS[e.source]}</div>
                     </>
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
                 </TableCell>
-                <TableCell className="text-right font-mono text-body">{e.notLookedThrough > 5e-5 ? rpct(e.notLookedThrough, 2) : "—"}</TableCell>
+                <TableCell className="text-right text-body">{e.notLookedThrough > 5e-5 ? rpct(e.notLookedThrough, 2) : "—"}</TableCell>
               </TableRow>
             );
           })}
         </TableBody>
       </Table>
-      {stale.length > 0 && <p className="border-t px-4 py-2 text-body text-muted-foreground">Stale: holdings more than {STALE_AFTER_DAYS} days older than the positions. The weekly refresh retries each night until it succeeds.</p>}
-    </Card>
+      {stale.length > 0 && <p className="border-t py-2 text-body text-muted-foreground"><b className="font-semibold text-caution-foreground">Stale</b> Holdings more than {STALE_AFTER_DAYS} days older than the positions. The weekly refresh retries each night until it succeeds.</p>}
+    </div>
   );
 }
 
@@ -198,7 +174,7 @@ function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughRep
   const top = shown.find((n) => n.overlap) ?? shown[0];
   const notLookedText = lt.notLookedThrough.byEtf.map((l) => `${rpct(l.weight, 2)} ${l.via}`).join(" · ");
   return (
-    <Card className="overflow-x-auto p-0">
+    <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -212,8 +188,8 @@ function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughRep
           {shown.map((n) => (
             <TableRow key={n.key}>
               <TableCell>
-                <span className="font-mono font-semibold">{n.key}</span>
-                {n.overlap && <span className="ml-1.5 rounded border px-1 py-px text-caption text-muted-foreground" title={RISK_EXPLAIN.overlap}>both</span>}
+                <span className="font-semibold">{n.key}</span>
+                {n.overlap && <span className="ml-1.5 text-caption font-semibold text-muted-foreground" title={RISK_EXPLAIN.overlap}>both</span>}
                 <div className="max-w-56 text-caption whitespace-normal text-muted-foreground">
                   {n.name}
                   {n.sector ? ` · ${SECTOR_LABELS[n.sector]}` : ""}
@@ -224,11 +200,11 @@ function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughRep
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <MagnitudeBar value={n.total} max={max} className="hidden h-1.5 w-20 sm:flex" />
-                  <span className="w-12 font-mono text-body font-medium">{rpct(n.total, 2)}</span>
+                  <ShareBar value={n.total} max={max} className="hidden w-20 sm:block" />
+                  <span className="w-12 text-body font-semibold">{rpct(n.total, 2)}</span>
                 </div>
               </TableCell>
-              <TableCell className="text-right font-mono text-body">{n.direct > 0 ? rpct(n.direct, 2) : "—"}</TableCell>
+              <TableCell className="text-right text-body">{n.direct > 0 ? rpct(n.direct, 2) : "—"}</TableCell>
               {/* Wraps, so a long list of ETFs doesn't push the table past a 1,045 px window. */}
               <TableCell className="hidden min-w-32 text-body whitespace-normal text-muted-foreground sm:table-cell">{viaText(n) || "—"}</TableCell>
             </TableRow>
@@ -238,7 +214,7 @@ function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughRep
           {rest.length > 0 && (
             <TableRow>
               <TableCell className="text-body text-muted-foreground">Other {rest.length} companies</TableCell>
-              <TableCell className="font-mono text-body text-muted-foreground">{rpct(restTotal, 2)}</TableCell>
+              <TableCell className="text-body text-muted-foreground">{rpct(restTotal, 2)}</TableCell>
               <TableCell />
               <TableCell className="hidden sm:table-cell" />
             </TableRow>
@@ -248,28 +224,28 @@ function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughRep
               <Explained label="Not looked through">{RISK_EXPLAIN.notLookedThrough}</Explained>
               {notLookedText && <div className="max-w-44 text-caption whitespace-normal sm:hidden">{notLookedText}</div>}
             </TableCell>
-            <TableCell className="font-mono text-body text-muted-foreground">{rpct(lt.notLookedThrough.total, 2)}</TableCell>
+            <TableCell className="text-body text-muted-foreground">{rpct(lt.notLookedThrough.total, 2)}</TableCell>
             <TableCell />
             <TableCell className="hidden text-body whitespace-normal text-muted-foreground sm:table-cell">{notLookedText || "—"}</TableCell>
           </TableRow>
           {(scope === "fund" || lt.cash !== 0) && (
             <TableRow>
               <TableCell className="text-body text-muted-foreground">Cash</TableCell>
-              <TableCell className="font-mono text-body text-muted-foreground">{rpct(lt.cash, 2)}</TableCell>
+              <TableCell className="text-body text-muted-foreground">{rpct(lt.cash, 2)}</TableCell>
               <TableCell />
               <TableCell className="hidden sm:table-cell" />
             </TableRow>
           )}
           <TableRow>
-            <TableCell className="text-body font-medium">Total <span className="font-normal text-muted-foreground">· {lt.names.length} companies</span></TableCell>
-            <TableCell className="font-mono text-body font-medium">{rpct(lt.total, 2)}</TableCell>
+            <TableCell className="text-body font-semibold">Total <span className="font-normal text-muted-foreground">· {lt.names.length} companies</span></TableCell>
+            <TableCell className="text-body font-semibold">{rpct(lt.total, 2)}</TableCell>
             <TableCell />
             <TableCell className="hidden sm:table-cell" />
           </TableRow>
         </TableFooter>
       </Table>
       {transparency && top && (
-        <div className="border-t p-3">
+        <div className="pt-1">
           <Working>
             <Step label="Example">{describeExposure(top)}</Step>
             {top.viaEtfs.slice(0, 3).map((v) => {
@@ -281,7 +257,7 @@ function CombinedExposureTable({ lt, scope, transparency }: { lt: LookthroughRep
           </Working>
         </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -290,7 +266,7 @@ function StockActiveTables({ rows, benchmarkLabel }: { rows: ActiveName[]; bench
   const under = rows.filter((r) => r.active < 0).sort((a, b) => a.active - b.active).slice(0, TOP_ACTIVE);
   const max = Math.max(...[...over, ...under].map((r) => Math.abs(r.active)), 0);
   const list = (title: string, items: ActiveName[]) => (
-    <Card className="overflow-x-auto p-0">
+    <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -303,16 +279,16 @@ function StockActiveTables({ rows, benchmarkLabel }: { rows: ActiveName[]; bench
           {items.map((r) => (
             <TableRow key={r.key}>
               <TableCell>
-                <span className="font-mono font-semibold">{r.key}</span>
+                <span className="font-semibold">{r.key}</span>
                 <div className="max-w-44 text-caption whitespace-normal text-muted-foreground">{r.name}</div>
               </TableCell>
-              <TableCell className="text-right font-mono text-body">
+              <TableCell className="text-right text-body">
                 {rpct(r.fund, 2)} <span className="text-muted-foreground">· {rpct(r.benchmark, 2)}</span>
               </TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-2">
-                  <DivergingBar value={r.active} max={max} className="hidden w-12 sm:flex" />
-                  <span className="w-14 text-right font-mono text-body sm:w-16">{rnum(r.active * 10_000, 0)}</span>
+                  <CenterBar value={r.active} max={max} className="hidden w-14 sm:block" />
+                  <span className="w-14 text-right text-body sm:w-16">{rnum(r.active * 10_000, 0)}</span>
                 </div>
               </TableCell>
             </TableRow>
@@ -324,10 +300,10 @@ function StockActiveTables({ rows, benchmarkLabel }: { rows: ActiveName[]; bench
           )}
         </TableBody>
       </Table>
-    </Card>
+    </div>
   );
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
+    <div className="grid gap-x-14 gap-y-3 lg:grid-cols-2">
       {list("Largest overweights", over)}
       {list("Largest underweights", under)}
     </div>

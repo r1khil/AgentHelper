@@ -1,5 +1,4 @@
 import { Download } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fixed, fmtDate } from "@/lib/format";
 import {
@@ -35,7 +34,7 @@ const title = (c: Coefficient) => `β ${formatBeta(c.beta, 4)}, standard error $
 function BetaCell({ c, className }: { c: Coefficient; className?: string }) {
   return (
     <TableCell className={cn("tnum text-right", className)} title={title(c)}>
-      <div className={cn("text-body", c.significant ? "font-medium" : "text-muted-foreground/60")}>{beta(c)}</div>
+      <div className={cn("text-body", c.significant ? "font-semibold" : "text-muted-foreground/60")}>{beta(c)}</div>
       <div className={cn("text-caption", c.significant ? "text-muted-foreground" : "text-muted-foreground/50")}>{tText(c)}</div>
     </TableCell>
   );
@@ -50,7 +49,7 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
   if (!isFactorReport(f)) {
     return (
       <ExposureSection id={id} title="Factor and macro sensitivities" explain={RISK_EXPLAIN.factors}>
-        <Card className="p-4 text-body text-muted-foreground">{f.reason}</Card>
+        <p className="text-body text-muted-foreground">{f.reason}</p>
       </ExposureSection>
     );
   }
@@ -58,7 +57,7 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
   const who = fund ? "The Fund" : "The team's holdings";
   const read = factorReadings(f, { basis: fund ? "NAV" : "the team's holdings" });
   const download = (file: string, label: string) => (
-    <a href={`/api/risk/export?file=${file}&lookback=${r.lookback}${exportQuery}`} className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-2" download>
+    <a href={`/api/risk/export?file=${file}&lookback=${r.lookback}${exportQuery}`} className="inline-flex items-center gap-1 font-semibold text-foreground underline underline-offset-2" download>
       <Download className="size-3" aria-hidden />
       {label}
     </a>
@@ -76,12 +75,12 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
       explain={RISK_EXPLAIN.factors}
       aside={`${f.sample.n} trading days to ${fmtDate(f.sample.to)} · greyed: |t| < ${T_STAT_THRESHOLD}`}
     >
-      <Card className="mb-3 gap-2 p-4 text-body">
+      <div className="mb-3 grid gap-2 text-body">
         {read.clear.length > 0 ? (
           <ul className="grid gap-1">
             {read.clear.map((x) => (
               <li key={x.key}>
-                <span className="font-medium">{x.label}</span> <span className="font-mono text-body text-muted-foreground">β {formatBeta(x.beta, 2)}</span> · {x.text}
+                <span className="font-semibold">{x.label}</span> <span className="text-body text-muted-foreground">β {formatBeta(x.beta, 2)}</span> · {x.text}
               </li>
             ))}
           </ul>
@@ -99,17 +98,17 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
         )}
         {f.active && (
           <p>
-            <span className="font-medium">Against {benchmarkLabel}:</span>{" "}
+            <span className="font-semibold">Against {benchmarkLabel}:</span>{" "}
             {read.active.length ? read.active.map((x) => x.text).join("; ") : "no statistically clear factor tilts."}
           </p>
         )}
-      </Card>
+      </div>
 
-      <Card className="overflow-x-auto p-0">
+      <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Factor</TableHead>
+              <TableHead className="first:pl-0">Factor</TableHead>
               <TableHead className="text-right"><Explained align="right" label={fund ? "Fund β" : "Team β"}>{RISK_EXPLAIN.factorBeta}</Explained></TableHead>
               <TableHead className="text-right">
                 <span className="hidden sm:inline"><Explained align="right" label="Benchmark β">{RISK_EXPLAIN.factorBenchmarkRow}</Explained></span>
@@ -122,7 +121,7 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
             {FACTORS.map((x) => (
               <TableRow key={x.key}>
                 <TableCell>
-                  <span className="font-medium">{x.label}</span>
+                  <span className="font-semibold">{x.label}</span>
                   <div className="text-caption text-muted-foreground sm:hidden" title={x.definition}>{x.short ? `${x.long} − ${x.short}` : x.long}</div>
                   <div className="hidden text-caption whitespace-normal text-muted-foreground sm:block">{x.definition}</div>
                 </TableCell>
@@ -134,14 +133,14 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
           </TableBody>
           <TableFooter>
             <TableRow>
-              <TableCell className="text-body font-medium"><Explained label="R²">{RISK_EXPLAIN.factorR2}</Explained></TableCell>
-              <TableCell className="text-right font-mono text-body">{fixed(f.fund.r2, 2)}</TableCell>
-              <TableCell className="text-right font-mono text-body">{f.benchmark ? fixed(f.benchmark.r2, 2) : "—"}</TableCell>
-              <TableCell className="text-right font-mono text-body">{f.active ? fixed(f.active.r2, 2) : "—"}</TableCell>
+              <TableCell className="text-body font-semibold"><Explained label="R²">{RISK_EXPLAIN.factorR2}</Explained></TableCell>
+              <TableCell className="text-right text-body">{fixed(f.fund.r2, 2)}</TableCell>
+              <TableCell className="text-right text-body">{f.benchmark ? fixed(f.benchmark.r2, 2) : "—"}</TableCell>
+              <TableCell className="text-right text-body">{f.active ? fixed(f.active.r2, 2) : "—"}</TableCell>
             </TableRow>
           </TableFooter>
         </Table>
-      </Card>
+      </div>
       <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 px-1 text-caption text-muted-foreground">
         <Explained label="t-stat under each beta">{RISK_EXPLAIN.factorT}</Explained>
         <span>
@@ -166,16 +165,16 @@ export function FactorSection({ report: r, transparency, exportQuery, benchmarkL
 function HoldingBetas({ f }: { f: FactorReport }) {
   const rows = [...f.holdings].sort((a, b) => b.weight - a.weight);
   return (
-    <details className="mt-2 rounded-[14px] bg-card shadow-[0_0_0_1px_var(--border)]">
-      <summary className="cursor-pointer px-4 py-2.5 text-body font-medium text-muted-foreground select-none hover:text-foreground">
+    <details className="mt-2 border-t">
+      <summary className="cursor-pointer py-2.5 text-body font-semibold text-muted-foreground select-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
         Each holding&apos;s betas ({rows.length})
       </summary>
-      <div className="border-t">
-        <p className="px-4 pt-2 text-body text-muted-foreground">{RISK_EXPLAIN.factorHoldings}</p>
+      <div className="border-t border-row">
+        <p className="pt-2 text-body text-muted-foreground">{RISK_EXPLAIN.factorHoldings}</p>
         <Table className="text-body">
           <TableHeader>
             <TableRow>
-              <TableHead>Holding</TableHead>
+              <TableHead className="first:pl-0">Holding</TableHead>
               <TableHead className="text-right">Weight</TableHead>
               {FACTORS.map((x) => <TableHead key={x.key} className="text-right">{x.label}</TableHead>)}
               <TableHead className="text-right">R²</TableHead>
@@ -185,14 +184,14 @@ function HoldingBetas({ f }: { f: FactorReport }) {
             {rows.map((h) => (
               <TableRow key={h.ticker}>
                 <TableCell>
-                  <span className="font-mono font-semibold">{h.ticker}</span>
+                  <span className="font-semibold">{h.ticker}</span>
                   {h.source !== "own" && (
-                    <span className="ml-1.5 rounded border px-1 py-px text-caption text-muted-foreground" title={h.source === "proxy" ? `Too little price history; modeled with ${h.proxy}` : "No price history or sector; treated as riskless"}>
+                    <span className="ml-1.5 text-caption font-semibold text-caution-foreground" title={h.source === "proxy" ? `Too little price history; modeled with ${h.proxy}` : "No price history or sector; treated as riskless"}>
                       {h.source === "proxy" ? `via ${h.proxy}` : "not modeled"}
                     </span>
                   )}
                 </TableCell>
-                <TableCell className="text-right font-mono">{rpct(h.weight)}</TableCell>
+                <TableCell className="text-right">{rpct(h.weight)}</TableCell>
                 {FACTORS.map((x) => {
                   const c = h.betas[x.key];
                   return (
@@ -201,7 +200,7 @@ function HoldingBetas({ f }: { f: FactorReport }) {
                     </TableCell>
                   );
                 })}
-                <TableCell className="text-right font-mono text-muted-foreground">{fixed(h.r2, 2)}</TableCell>
+                <TableCell className="text-right text-muted-foreground">{fixed(h.r2, 2)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

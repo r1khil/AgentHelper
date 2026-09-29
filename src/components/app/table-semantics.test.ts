@@ -10,7 +10,7 @@ import { TeamBars as AttributionTeams } from "./attribution/attribution-panels";
 import { HoldingsColumn } from "./attribution/holdings-columns";
 import { DayTable } from "./attribution/sector-breakdown";
 import { SectorsPanel } from "./attribution/sectors-panel";
-import { ActiveBetsPanel, SectorWeightsPanel } from "./exposure/exposure-panels";
+import { ActiveBetsPanel, SectorTilts } from "./exposure/exposure-panels";
 import { HoldingsTable } from "./holdings/holdings-table";
 import { EarningsTab } from "./holdings/tab-panels";
 import { StressPanelFallback } from "./risk/stress-panel";
@@ -196,14 +196,14 @@ describe("div grids read as tables", () => {
     ];
     const x = { throughEtfs: false, hasBenchmark: true, sectors } as unknown as Exposure;
     // The weights are visible figures in their own cells, not screen-reader text inside the bars.
-    const weights = checkTables(render(h(SectorWeightsPanel, { x, benchShort: "S&P 500" })));
+    const weights = checkTables(render(h(SectorTilts, { x, benchShort: "S&P 500" })));
     const cellText = (n: Node) => all(n).map((c) => c.text).join("").trim();
-    expect(weights.filter((n) => role(n) === "columnheader").map(cellText).slice(0, 3)).toEqual(["Sector", "Fund", "S&amp;P 500"]);
-    expect(weights.filter((n) => role(n) === "cell").map(cellText).slice(0, 3)).toEqual(["30.0%", "28.0%", "200"]);
+    expect(weights.filter((n) => role(n) === "columnheader").map(cellText)).toEqual(["Sector", "Fund", "Benchmark", "TiltTilt, active weight in basis pointsPortfolio weight minus benchmark weight. Positive is an overweight."]);
+    expect(weights.filter((n) => role(n) === "cell").map(cellText).slice(0, 3)).toEqual(["30.0%", "28.0%", "+200 bp"]);
     expect(weights.some((n) => (n.attrs.class ?? "").split(" ").includes("sr-only") && /%/.test(cellText(n)))).toBe(false);
     const bets = render(h(ActiveBetsPanel, { report: { holdings: [] } as unknown as RiskReport, x, lookthrough: null, teams: new Map(), benchShort: "S&P 500" }));
     const nodes = checkTables(bets);
-    expect(nodes.filter((n) => role(n) === "columnheader").map((n) => all(n).map((c) => c.text).join("").trim())).toEqual(["ETF", "Sector", "Fund", "S&amp;P 500", "ActiveActive weight, basis points"]);
+    expect(nodes.filter((n) => role(n) === "columnheader").map((n) => all(n).map((c) => c.text).join("").trim())).toEqual(["ETF", "Sector", "Fund", "S&amp;P 500", "Active, bpActive weight, basis points"]);
   });
 
   it("Stress tests, research boards and a holding's earnings", () => {

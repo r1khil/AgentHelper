@@ -1,33 +1,25 @@
 import Link from "next/link";
-import { ChevronRight, Download } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { fmtDate } from "@/lib/format";
+import { Download } from "lucide-react";
+import { ExpandRow } from "@/components/app/portfolio/expand-row";
+import { Signed } from "@/components/app/portfolio/parts";
+import { fmtAccounting, fmtChangeBp, fmtDate } from "@/lib/format";
 import type { StressOk, StressResult } from "@/lib/risk/stress";
 import { cn } from "@/lib/utils";
-import { Explained } from "../attribution/info-tip";
+import { Tip } from "../attribution/info-tip";
 import { RISK_EXPLAIN } from "./explainers";
 import { rbp, rpct, rusd, rusdFull } from "./format";
 import { StressPathChart } from "./stress-path-chart";
-import { SectionHead } from "./section-head";
-import { backtestHref, stressAnchor, stressDates } from "./stress-panel";
+import { backtestHref, stressAnchor, StressColumnHeads, StressHead, STRESS_COLS, STRESS_COLUMNS, STRESS_DETAIL, stressDates } from "./stress-panel";
 import { Source, Step, Working } from "./working";
 
+/** Fund, benchmark or a gap as a figure in accounting style, coloured by sign. */
+const pctText = (v: number | null) => (v === null ? "—" : rpct(v));
 const tone = (v: number | null) => (v === null || Math.abs(v) < 5e-5 ? "" : v > 0 ? "text-up" : "text-down");
-/** Window, five figures, worst contributors, stood-in count. Below md the same cells wrap into a four-column card. */
-const GRID = "grid grid-cols-4 items-baseline gap-x-3 gap-y-1 md:grid-cols-[minmax(0,1.5fr)_repeat(5,minmax(0,0.75fr))_minmax(0,1.6fr)_minmax(0,0.55fr)] md:gap-x-4";
-const HEAD = [
-  { label: "Fund", explain: RISK_EXPLAIN.stressFund },
-  { label: "S&P 500", explain: RISK_EXPLAIN.stressMarket },
-  { label: "Sector bench.", explain: RISK_EXPLAIN.stressBenchmark },
-  { label: "Active", explain: RISK_EXPLAIN.stressActive },
-  { label: "On today's value", explain: RISK_EXPLAIN.stressDollars },
-  { label: "Worst contributors", explain: RISK_EXPLAIN.stressWorst },
-  { label: "Stood in", explain: RISK_EXPLAIN.stressProxy },
-];
 
 /**
- * Historical stress tests on the Risk page: one row per window, expanding to its path, every
- * holding's contribution and (in transparency mode) the arithmetic behind the row.
+ * Historical stress tests on the Risk page: today's positions through each historical window, against the sector
+ * benchmark replayed the same way. One row per window; a row opens to its path, the S&P 500, the worst contributors, every
+ * holding's contribution and (in transparency mode) the arithmetic behind it.
  */
 export function StressTests({
   results,
@@ -37,9 +29,7 @@ export function StressTests({
   transparency,
   exportQuery,
   backtesting = true,
-  label = "Historical stress tests",
-  title = "Historical stress tests",
-  id,
+  label = STRESS_DETAIL.label,
 }: {
   results: StressResult[];
   /** Name of the portfolio line, e.g. "Fund" or "Tech sleeve". */
@@ -52,46 +42,49 @@ export function StressTests({
   exportQuery: string | null;
   /** Link each window to Backtesting with its dates. */
   backtesting?: boolean;
-  /** The section's accessible name; the Risk page's summary panel owns "Historical stress tests". */
+  /** The section's accessible name. */
   label?: string;
   title?: string;
   id?: string;
 }) {
-  const download = (file: string, label: string) => (
-    <a href={`/api/risk/export?file=${file}${exportQuery ?? ""}`} className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-2" download>
+  const ok = results.filter((r): r is StressOk => r.status === "ok");
+  // The section's link replays the window where today's positions fell furthest.
+  const worst = [...ok].sort((a, b) => a.fund - b.fund)[0];
+  const download = (file: string, text: string) => (
+    <a href={`/api/risk/export?file=${file}${exportQuery ?? ""}`} className="inline-flex items-center gap-1 font-semibold text-foreground underline underline-offset-2" download>
       <Download className="size-3" aria-hidden />
-      {label}
+      {text}
     </a>
   );
   return (
-    <section id={id} aria-label={label} className="scroll-mt-4">
-      <SectionHead aside={<Explained label="Today's positions, buy-and-hold" align="right">{RISK_EXPLAIN.stressTests}</Explained>}>{title}</SectionHead>
-      <Card className="gap-0 overflow-hidden p-0">
-        <div className={cn(GRID, "hidden border-b px-4 py-2 pl-10 text-body font-medium text-muted-foreground md:grid")}>
-          <span>Window</span>
-          {HEAD.map((h, i) => (
-            <span key={h.label} className={i < 5 || i === 6 ? "text-right" : undefined}>
-              <Explained label={h.label} align={i < 5 || i === 6 ? "right" : "left"}>{h.explain}</Explained>
-            </span>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-x-3 gap-y-1 border-b px-4 py-2 text-caption text-muted-foreground md:hidden">
-          {HEAD.map((h) => (
-            <Explained key={h.label} label={h.label}>{h.explain}</Explained>
-          ))}
-        </div>
+    <section id={STRESS_DETAIL.id} aria-label={label} className="mt-[34px] scroll-mt-4">
+      <StressHead
+        aside={
+          backtesting &&
+          worst && (
+            <Link href={backtestHref(worst)} title={`Opens ${worst.label} in Backtesting with its dates filled in`} className="font-semibold text-foreground hover:underline">
+              Replay the worst in Backtesting →
+            </Link>
+          )
+        }
+      />
+      <div role="table" aria-label="Stress tests" className="mt-2 text-body">
+        <StressColumnHeads fundLabel={fundLabel} />
         {results.map((r) =>
           r.status === "ok" ? (
             <StressRow key={r.key} r={r} fundLabel={fundLabel} scopeLabel={scopeLabel} benchmarkLabel={benchmarkLabel} transparency={transparency} backtesting={backtesting} />
           ) : (
-            <div key={r.key} className="border-b px-4 py-3 text-body last:border-b-0">
-              <span className="font-medium">{r.label}</span> <span className="text-muted-foreground">· {fmtDate(r.from)} – {fmtDate(r.to)} · {r.reason}</span>
+            <div key={r.key} role="row" className={cn(STRESS_COLS, "min-h-10 items-center border-b border-row")}>
+              <span role="rowheader" className="font-semibold">{r.label}</span>
+              <span role="cell" aria-colspan={STRESS_COLUMNS - 1} className="col-span-5 text-muted-foreground">
+                {stressDates(r.from, r.to)} · {r.reason}
+              </span>
             </div>
           ),
         )}
-      </Card>
+      </div>
       <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted-foreground">
-        <span>Replays, not forecasts: they show how today&apos;s book would have moved through each episode.</span>
+        <span>Replays, not forecasts: they show how today&apos;s book would have moved through each episode. Select a window for its path and holdings.</span>
         {exportQuery !== null && (
           <>
             {download("stress", "Stress results (CSV)")}
@@ -104,29 +97,35 @@ export function StressTests({
 }
 
 function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, backtesting }: { r: StressOk; fundLabel: string; scopeLabel: string; benchmarkLabel: string; transparency: boolean; backtesting: boolean }) {
-  const small = "text-caption text-muted-foreground md:hidden";
   const stoodIn = r.holdings.filter((h) => h.proxied);
   return (
-    <details id={stressAnchor(r.key)} className="group scroll-mt-4 border-b border-row last:border-b-0">
-      <summary className="cursor-pointer list-none px-4 py-3 hover:bg-band [&::-webkit-details-marker]:hidden">
-        <div className="flex items-start gap-2">
-          <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden />
-          <div className={cn(GRID, "tnum min-w-0 flex-1 text-body")}>
-            <div className="col-span-3 min-w-0 md:col-span-1">
-              <div className="font-medium">{r.label}</div>
-              <div className="font-mono text-caption text-muted-foreground">{stressDates(r.start, r.end)}</div>
-            </div>
-            <div className="text-right">
-              <div className={cn("font-mono text-emph font-semibold md:text-body", tone(r.fund))}>{rpct(r.fund)}</div>
-              <div className={small}>{fundLabel}</div>
-            </div>
-            <Figure label="S&P 500" value={rpct(r.market)} className={tone(r.market)} />
-            <Figure label="Sector bench." value={rpct(r.benchmark)} className={tone(r.benchmark)} />
-            <Figure label="Active" value={rbp(r.active)} className={tone(r.active)} />
-            <Figure label={`On ${scopeLabel}`} value={rusd(r.dollars)} className={cn("font-medium", tone(r.dollars))} />
-            <div className="col-span-4 min-w-0 text-body md:col-span-1">
-              <span className="text-muted-foreground md:hidden">Worst: </span>
-              {r.worst.map((h, i) => (
+    <ExpandRow
+      id={stressAnchor(r.key)}
+      grid={STRESS_COLS}
+      span={STRESS_COLUMNS}
+      name={r.label}
+      cells={
+        <>
+          <span role="cell" className="text-muted-foreground" title={r.note}>{stressDates(r.start, r.end)}</span>
+          <Signed role="cell" text={rpct(r.fund)} className="text-right font-semibold" />
+          <span role="cell" className="text-right text-muted-foreground">{pctText(r.benchmark)}</span>
+          <Signed role="cell" text={r.active === null ? "—" : fmtChangeBp(r.active * 10_000)} className="text-right" />
+          <span role="cell" className="text-right">{fmtAccounting(r.dollars, 0)}</span>
+        </>
+      }
+      detail={
+        <div className="grid gap-4">
+          <p className="text-body text-ink-2">
+            {r.note} Bought at the {fmtDate(r.start)} close, valued at the {fmtDate(r.end)} close ({r.sessions} sessions){r.cashWeight > 0 ? `, with ${rpct(r.cashWeight)} in cash at 0%` : ""}. Impact on today&apos;s {scopeLabel}:{" "}
+            <b className={cn("font-semibold", tone(r.dollars))}>{rusdFull(r.dollars)}</b>.
+          </p>
+          <dl className="grid grid-cols-4 gap-x-6 gap-y-3 text-body">
+            <Fact label="S&P 500" explain={RISK_EXPLAIN.stressMarket} value={<span className={tone(r.market)}>{rpct(r.market)}</span>} />
+            <Fact label="Dollars" explain={RISK_EXPLAIN.stressDollars} value={<span className={tone(r.dollars)}>{rusd(r.dollars)}</span>} />
+            <Fact
+              label="Worst contributors"
+              explain={RISK_EXPLAIN.stressWorst}
+              value={r.worst.map((h, i) => (
                 <span key={h.ticker}>
                   {i > 0 && ", "}
                   <span className="whitespace-nowrap">
@@ -134,92 +133,83 @@ function StressRow({ r, fundLabel, scopeLabel, benchmarkLabel, transparency, bac
                   </span>
                 </span>
               ))}
+            />
+            <Fact label="Stood in" explain={RISK_EXPLAIN.stressProxy} value={r.proxied ? String(r.proxied) : "none"} />
+          </dl>
+          {stoodIn.length > 0 && (
+            <p className="text-body">
+              <span className="font-semibold">Stood in: </span>
+              {stoodIn.map((h, i) => (
+                <span key={h.ticker}>
+                  {i > 0 && "; "}
+                  {h.ticker} uses {h.series} ({h.proxyReason})
+                </span>
+              ))}
+              .
+            </p>
+          )}
+          <div className="grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-6">
+            <div className="min-w-0">
+              <StressPathChart data={r.path} fundLabel={fundLabel} benchmarkLabel={benchmarkLabel} />
             </div>
-            <div className="col-span-4 text-body text-muted-foreground md:col-span-1 md:text-right">
-              <span className="md:hidden">Stood in: </span>
-              {r.proxied ? <span className="text-foreground">{r.proxied}</span> : "none"}
+            <div className="min-w-0">
+              <ContributionTable r={r} />
             </div>
           </div>
+          {transparency && <StressWorking r={r} />}
+          {backtesting && (
+            <div className="text-body">
+              <Link href={backtestHref(r)} className="font-semibold underline underline-offset-2 hover:text-foreground">
+                Open in Backtesting →
+              </Link>
+              <span className="text-muted-foreground"> with {fmtDate(r.backtestFrom)} – {fmtDate(r.end)} filled in. Backtesting replays saved weights rebalanced daily, so its result will differ.</span>
+            </div>
+          )}
         </div>
-      </summary>
-
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 border-t border-dashed bg-muted/20 px-4 py-4 md:pl-10">
-        <p className="text-body text-muted-foreground">
-          {r.note} Bought at the {fmtDate(r.start)} close, valued at the {fmtDate(r.end)} close ({r.sessions} sessions){r.cashWeight > 0 ? `, with ${rpct(r.cashWeight)} in cash at 0%` : ""}. Impact on today&apos;s {scopeLabel}: <b className={cn("tnum", tone(r.dollars))}>{rusdFull(r.dollars)}</b>.
-        </p>
-        {stoodIn.length > 0 && (
-          <p className="text-body">
-            <span className="font-medium">Stood in: </span>
-            {stoodIn.map((h, i) => (
-              <span key={h.ticker}>
-                {i > 0 && "; "}
-                {h.ticker} uses {h.series} ({h.proxyReason})
-              </span>
-            ))}
-            .
-          </p>
-        )}
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-12">
-          <div className="min-w-0 lg:col-span-5">
-            <StressPathChart data={r.path} fundLabel={fundLabel} benchmarkLabel={benchmarkLabel} />
-          </div>
-          <div className="min-w-0 lg:col-span-7">
-            <ContributionTable r={r} />
-          </div>
-        </div>
-        {transparency && <StressWorking r={r} />}
-        {backtesting && (
-          <div className="text-body">
-            <Link href={backtestHref(r)} className="font-medium underline underline-offset-2 hover:text-foreground">
-              Open in Backtesting →
-            </Link>
-            <span className="text-muted-foreground"> with {fmtDate(r.backtestFrom)} – {fmtDate(r.end)} filled in. Backtesting replays saved weights rebalanced daily, so its result will differ.</span>
-          </div>
-        )}
-      </div>
-    </details>
+      }
+    />
   );
 }
 
-function Figure({ label, value, className }: { label: string; value: string; className?: string }) {
+function Fact({ label, explain, value }: { label: string; explain: string; value: React.ReactNode }) {
   return (
-    <div className="md:text-right">
-      <div className={cn("font-mono text-body whitespace-nowrap", className)}>{value}</div>
-      <div className="text-caption text-muted-foreground md:hidden">{label}</div>
+    <div className="min-w-0">
+      <dt className="text-caption text-muted-foreground"><Tip label={label}>{explain}</Tip></dt>
+      <dd className="font-semibold">{value}</dd>
     </div>
   );
 }
 
 function ContributionTable({ r }: { r: StressOk }) {
   return (
-    <div className="max-h-80 overflow-auto rounded-md border bg-background">
-      <table className="tnum w-full text-body whitespace-nowrap">
-        <thead className="sticky top-0 bg-background text-muted-foreground">
+    <div className="max-h-80 overflow-auto bg-background">
+      <table className="w-full text-body whitespace-nowrap">
+        <thead className="sticky top-0 bg-background text-caption text-muted-foreground">
           <tr className="border-b">
-            <th scope="col" className="px-2 py-1.5 text-left font-medium">Holding</th>
-            <th scope="col" className="px-2 py-1.5 text-right font-medium">Weight</th>
-            <th scope="col" className="px-2 py-1.5 text-right font-medium">Return</th>
-            <th scope="col" className="px-2 py-1.5 text-right font-medium">
-              <Explained label="Contribution" align="right">{RISK_EXPLAIN.stressWorst}</Explained>
+            <th scope="col" className="px-2 py-1.5 text-left font-normal">Holding</th>
+            <th scope="col" className="px-2 py-1.5 text-right font-normal">Weight</th>
+            <th scope="col" className="px-2 py-1.5 text-right font-normal">Return</th>
+            <th scope="col" className="px-2 py-1.5 text-right font-normal">
+              <Tip label="Contribution">{RISK_EXPLAIN.stressWorst}</Tip>
             </th>
-            <th scope="col" className="px-2 py-1.5 text-right font-medium">Dollars</th>
+            <th scope="col" className="px-2 py-1.5 text-right font-normal">Dollars</th>
           </tr>
         </thead>
         <tbody>
           {r.holdings.map((h) => (
-            <tr key={h.ticker} className="border-b border-border/50">
+            <tr key={h.ticker} className="border-b border-row">
               <td className="px-2 py-1">
-                <span className="font-mono font-semibold">{h.ticker}</span>
-                {h.proxied && <span className="ml-1.5 rounded border px-1 py-px text-caption text-muted-foreground" title={h.proxyReason ?? undefined}>via {h.series}</span>}
+                <span className="font-semibold">{h.ticker}</span>
+                {h.proxied && <span className="ml-1.5 text-caption font-semibold text-caution-foreground" title={h.proxyReason ?? undefined}>via {h.series}</span>}
               </td>
               <td className="px-2 py-1 text-right">{rpct(h.weight)}</td>
               <td className={cn("px-2 py-1 text-right", tone(h.ret))}>{rpct(h.ret)}</td>
-              <td className={cn("px-2 py-1 text-right font-medium", tone(h.contribution))}>{rpct(h.contribution, 2)}</td>
+              <td className={cn("px-2 py-1 text-right font-semibold", tone(h.contribution))}>{rpct(h.contribution, 2)}</td>
               <td className={cn("px-2 py-1 text-right", tone(h.dollars))}>{rusd(h.dollars)}</td>
             </tr>
           ))}
           {r.cashWeight > 0 && (
-            <tr className="border-b border-border/50 text-muted-foreground">
+            <tr className="border-b border-row text-muted-foreground">
               <td className="px-2 py-1">Cash</td>
               <td className="px-2 py-1 text-right">{rpct(r.cashWeight)}</td>
               <td className="px-2 py-1 text-right">0.0%</td>
@@ -228,7 +218,7 @@ function ContributionTable({ r }: { r: StressOk }) {
             </tr>
           )}
         </tbody>
-        <tfoot className="sticky bottom-0 bg-background font-medium">
+        <tfoot className="sticky bottom-0 bg-background font-semibold">
           <tr className="border-t">
             <td className="px-2 py-1.5">Total</td>
             <td className="px-2 py-1.5 text-right">{rpct(r.cashWeight + r.holdings.reduce((s, h) => s + h.weight, 0))}</td>

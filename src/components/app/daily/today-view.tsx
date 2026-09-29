@@ -5,7 +5,8 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHead } from "@/components/app/page-head";
 import { FilterChip, FilterChips, Pill, StatStrip, type PillTone } from "@/components/app/panel";
-import { HowNote, Hero, SectionHead, Signed, Strong, signTone } from "@/components/app/portfolio/parts";
+import { Hero } from "@/components/app/portfolio/hero";
+import { HowNote, SectionHead, Signed, signTone } from "@/components/app/portfolio/parts";
 import { BENCH_LINE, FUND_LINE, LineKey } from "@/components/app/portfolio/lines-chart";
 import { bridgeCells, LegendItem, PeriodBar, SectorEffectsSection, TeamBars } from "@/components/app/attribution/attribution-panels";
 import type { TeamLookup } from "@/components/app/attribution/contributors-table";
@@ -165,11 +166,13 @@ export function TodayView({ initial, scope, teams: teamList, period, notices: pa
   const group = shownRows.reduce((s, h) => ({ w: s.w + h.weightOpen, c: s.c + h.contribution, pnl: s.pnl + h.pnl }), { w: 0, c: 0, pnl: 0 });
 
   const hoursLabel = snap.status === "live" ? "today so far" : snap.status === "provisional" ? "today, at the closing quotes" : `on ${fmtDay(snap.session)}`;
-  const line = (
+  const change = (
+    <span className="text-foreground">
+      <Tip label={fund ? "Fund" : scope.name}>{fund ? "The Fund's return today from the prior close, cash included." : EXPLAIN.teamReturn}</Tip> {fmtChangePct(pct(snap.ret))}
+    </span>
+  );
+  const note = (
     <>
-      <Strong>
-        <Tip label={fund ? "Fund" : scope.name}>{fund ? "The Fund's return today from the prior close, cash included." : EXPLAIN.teamReturn}</Tip> {fmtChangePct(pct(snap.ret))}
-      </Strong>{" "}
       · P&amp;L {fmtChangeUsd(snap.pnl, 0)}
       {r.benchmarkReturn !== null && (
         <>
@@ -213,7 +216,8 @@ export function TodayView({ initial, scope, teams: teamList, period, notices: pa
         label={`${gap === null ? `${portfolioLabel} return` : "Against the sector benchmark"}, ${hoursLabel} · from the ${fmtDay(snap.base)} close`}
         value={gap === null ? fmtChangePct(pct(snap.ret)) : fmtChangeBp(bps(gap))}
         tone={signTone(gap ?? snap.ret, 10_000)}
-        line={line}
+        change={change}
+        note={note}
         aside={<HeroNotes notices={notices} />}
       />
       <div className="mt-[22px]">

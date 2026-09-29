@@ -23,7 +23,19 @@ export const FUND_LINE = { color: "var(--series-1)", width: 2.5 } as const;
 /** Dashed grey for the benchmark, the dotted/dashed style of the design. */
 export const BENCH_LINE = { color: "var(--series-neutral)", width: 2, dash: "5 4" } as const;
 
-const TICK = { fontSize: 12, fill: "var(--muted-foreground)" };
+/**
+ * An x-axis label in the chart's own type (12px grey sans), the first flush with the left edge and the last with the
+ * right so neither is cut off; the rest are centred on their date.
+ */
+export function EdgeTick({ x = 0, y = 0, payload, index = 0, visibleTicksCount = 1, format }: { x?: number; y?: number; payload?: { value: string | number }; index?: number; visibleTicksCount?: number; format?: (v: never, i: number) => string }) {
+  const anchor = visibleTicksCount > 1 && index === 0 ? "start" : visibleTicksCount > 1 && index === visibleTicksCount - 1 ? "end" : "middle";
+  const value = payload?.value ?? "";
+  return (
+    <text x={x} y={y} dy={12} textAnchor={anchor} fill="var(--muted-foreground)" fontSize={12}>
+      {format ? format(value as never, index) : String(value)}
+    </text>
+  );
+}
 
 /** The key of a line's legend swatch, drawn like the line itself. */
 export function LineKey({ line, className }: { line: Pick<LineSpec, "color" | "dash" | "width">; className?: string }) {
@@ -72,7 +84,7 @@ export function LinesChart<Row extends Record<string, unknown>>({
     <div className="w-full" style={{ height }} role="img" aria-label={ariaLabel}>
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <LineChart data={rows} margin={{ top: 6, right: 2, bottom: 0, left: 2 }} accessibilityLayer={false}>
-          <XAxis dataKey={xKey as string} tick={TICK} tickLine={false} axisLine={false} dy={8} padding={{ left: 0, right: 0 }} {...xAxis} />
+          <XAxis dataKey={xKey as string} tick={<EdgeTick format={xAxis.tickFormatter as ((v: never, i: number) => string) | undefined} />} tickLine={false} axisLine={false} padding={{ left: 0, right: 0 }} {...xAxis} />
           <YAxis hide domain={scale?.domain ?? ["auto", "auto"]} />
           {zero && <ReferenceLine y={0} stroke="var(--bench-bar)" strokeOpacity={0.55} />}
           <Tooltip

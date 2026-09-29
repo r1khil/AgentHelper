@@ -2,7 +2,8 @@ import Link from "next/link";
 import { EmptyState } from "@/components/app/empty-state";
 import { PageHead } from "@/components/app/page-head";
 import { StatStrip } from "@/components/app/panel";
-import { HowNote, Hero, Strong, signTone } from "@/components/app/portfolio/parts";
+import { Hero } from "@/components/app/portfolio/hero";
+import { HowNote, signTone } from "@/components/app/portfolio/parts";
 import { BENCH_LINE, FUND_LINE, LineKey } from "@/components/app/portfolio/lines-chart";
 import type { AttributionResult, TeamAttributionResult } from "@/lib/attribution/attribution";
 import type { PeriodKey } from "@/lib/attribution/periods";
@@ -106,17 +107,19 @@ export function FundAttributionView({
     index: spxSeries[i] == null ? null : spxSeries[i]! * 100,
   }));
 
-  const line = (
+  const change = (
+    <span className="text-foreground">
+      <Tip label="Fund">{EXPLAIN.portfolio}</Tip> {chgPct(result.portfolioReturn)}
+    </span>
+  );
+  const note = (
     <>
-      <Strong>
-        <Tip label="Fund">{EXPLAIN.portfolio}</Tip> {chgPct(result.portfolioReturn)}
-      </Strong>
       {result.benchmarkReturn !== null && (
         <>
-          {" "}· <Tip label="Benchmark">{EXPLAIN.benchmark}</Tip> {chgPct(result.benchmarkReturn)}
+          · <Tip label="Benchmark">{EXPLAIN.benchmark}</Tip> {chgPct(result.benchmarkReturn)}{" "}
         </>
       )}
-      {" "}· <Tip label={INDEX_LABEL}>{EXPLAIN.index}</Tip> {chgPct(spx)}, for reference
+      · <Tip label={INDEX_LABEL}>{EXPLAIN.index}</Tip> {chgPct(spx)}, for reference
       {active !== null && (
         <>
           {" "}· {fmtChangeBp(bps(active))} <Tip label="vs S&P 500">{EXPLAIN.active}</Tip>
@@ -134,7 +137,8 @@ export function FundAttributionView({
         label={result.benchmarkReturn === null ? `Fund return, ${periodPhrase(view, result.days)}` : `Against the sector benchmark, ${periodPhrase(view, result.days)}`}
         value={gap === null ? chgPct(result.portfolioReturn) : fmtChangeBp(bps(gap))}
         tone={signTone(gap ?? result.portfolioReturn, 10_000)}
-        line={line}
+        change={change}
+        note={note}
         aside={<HeroNotes notices={notices} />}
       />
       <div className="mt-[22px]">
@@ -213,17 +217,19 @@ export function TeamAttributionView({
 
   const chart: CumulativeChartPoint[] = result.cumulative.map((c) => ({ date: c.date, portfolio: c.portfolio * 100, benchmark: c.benchmark === null ? null : c.benchmark * 100 }));
 
-  const line = (
+  const change = (
+    <span className="text-foreground">
+      <Tip label={teamName}>{EXPLAIN.teamReturn}</Tip> {chgPct(result.portfolioReturn)}
+    </span>
+  );
+  const note = (
     <>
-      <Strong>
-        <Tip label={teamName}>{EXPLAIN.teamReturn}</Tip> {chgPct(result.portfolioReturn)}
-      </Strong>
       {result.benchmarkReturn !== null && (
         <>
-          {" "}· <Tip label="Benchmark">{EXPLAIN.teamBenchmark}</Tip> {chgPct(result.benchmarkReturn)} <span title={benchmarkSectors}>({benchmarkName})</span>
+          · <Tip label="Benchmark">{EXPLAIN.teamBenchmark}</Tip> {chgPct(result.benchmarkReturn)} <span title={benchmarkSectors}>({benchmarkName})</span>{" "}
         </>
       )}
-      {" "}· <Tip label="To the Fund">{EXPLAIN.fundContribution}</Tip> {fmtChangeBp(bps(result.fundContribution))}, {fmtPct(pct(result.avgFundWeight), 1)} of the Fund on average
+      · <Tip label="To the Fund">{EXPLAIN.fundContribution}</Tip> {fmtChangeBp(bps(result.fundContribution))}, {fmtPct(pct(result.avgFundWeight), 1)} of the Fund on average
     </>
   );
 
@@ -236,7 +242,8 @@ export function TeamAttributionView({
         label={result.benchmarkReturn === null ? `${teamName} return, ${periodPhrase(view, result.days)}` : `Against its sector benchmark, ${periodPhrase(view, result.days)}`}
         value={gap === null ? chgPct(result.portfolioReturn) : fmtChangeBp(bps(gap))}
         tone={signTone(gap ?? result.portfolioReturn, 10_000)}
-        line={line}
+        change={change}
+        note={note}
         aside={<HeroNotes notices={notices} />}
       />
       <div className="mt-[22px]">

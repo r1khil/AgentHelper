@@ -19,26 +19,9 @@ export function plainChange(text: string, v: number | null | undefined) {
 }
 
 /** A figure already formatted in accounting style, coloured by what it says: "(40 bp)" red, "+12 bp" or "1.2%" green, a zero grey. */
-export function Signed({ text, className }: { text: string; className?: string }) {
+export function Signed({ text, className, role }: { text: string; className?: string; role?: "cell" }) {
   const tone = text === "—" || text === "" ? "text-muted-foreground" : text.startsWith("(") ? "text-down" : /[1-9]/.test(text) ? "text-up" : "text-muted-foreground";
-  return <span className={cn(tone, className)}>{text}</span>;
-}
-
-/**
- * The one big number that opens a page, the label above it and the line under it that says what it is made of. `aside`
- * sits at the right, level with the line (a data note, or a switch).
- */
-export function Hero({ label, value, tone, line, aside }: { label: React.ReactNode; value: React.ReactNode; tone?: Tone; line: React.ReactNode; aside?: React.ReactNode }) {
-  return (
-    <div className="flex items-end gap-10">
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="text-body text-muted-foreground">{label}</span>
-        <span className={cn("hero-figure", toneClass(tone))}>{value}</span>
-        <span className="text-emph text-muted-foreground">{line}</span>
-      </div>
-      {aside}
-    </div>
-  );
+  return <span role={role} className={cn(tone, className)}>{text}</span>;
 }
 
 /** A part of the hero's line that carries the weight: ink and semibold among the grey. */
@@ -91,6 +74,17 @@ export function ShareBar({ value, max, className }: { value: number | null; max:
   return (
     <span aria-hidden className={cn("relative block h-1.5 bg-secondary", className)}>
       <span className="absolute inset-y-0 left-0 bg-series-1" style={{ width: `${w}%` }} />
+    </span>
+  );
+}
+
+/** Two flat bars over each other, for a weight beside a share: `a` in grey, `b` in ink, both against the same `max`. */
+export function PairBars({ a, b, max, className }: { a: number; b: number; max: number; className?: string }) {
+  const w = (v: number) => (max > 0 ? Math.min(1, Math.max(0, v) / max) * 100 : 0);
+  return (
+    <span aria-hidden className={cn("flex flex-col gap-[3px]", className)}>
+      <span className="h-1 bg-bench-bar" style={{ width: `${w(a)}%` }} />
+      <span className="h-1 bg-series-1" style={{ width: `${w(b)}%` }} />
     </span>
   );
 }

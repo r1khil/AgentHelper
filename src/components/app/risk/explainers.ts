@@ -9,6 +9,13 @@ export const RISK_EXPLAIN = {
   trackingError:
     "Annualized standard deviation of the return difference between the portfolio and the sector benchmark: √(aᵀΣa) × √252, where a is the active weights (the Fund's holdings, minus the benchmark's sector ETFs at its S&P 500 sector weights). Higher means the Fund's results will differ more from the index.",
   var: "Value at risk, 1 day, 95%, historical simulation: today's weights are applied to each day in the window, and VaR is the loss on the 5th-percentile day (Excel PERCENTILE.INC). On about 1 day in 20 the portfolio would be expected to lose at least this much, if the window's days repeated.",
+  addsMore:
+    "The word means a holding takes a bigger share of the portfolio's risk than its size in the portfolio: its share of risk is at least 1.5 times its weight. It is a prompt to look, not a recommendation to sell.",
+  riskPerWeight: "A holding's share of the portfolio's risk divided by its weight. 1.00× means it adds risk in proportion to its size; above 1 it adds more than its size suggests, below 1 less.",
+  drawdownModeled:
+    "How far the portfolio sat below its previous high after each day. Here it is today's positions held through the lookback window (the same simulated days as VaR), so it describes today's book, not the Fund's own history. The Fund's own realized drawdown is under \"Realized\" below.",
+  sharpeModeled:
+    "Return above the risk-free rate per unit of volatility, for today's positions held through the window: (average daily return × 252 − the 13-week Treasury bill yield) ÷ (daily volatility × √252). The S&P 500's is worked out over the same days for comparison. The Fund's own realized Sharpe ratio is under \"Realized\" below.",
   es: "Expected shortfall (conditional VaR): the average loss on the days at or beyond the VaR cutoff. It says how bad the bad days are, not just where they start.",
   parametric: "Parametric VaR assumes normally distributed returns: 1.645 × the daily volatility. When historical VaR is higher, the window had fatter tails than a normal distribution.",
   stress: "A simple beta stress test: the S&P 500 falling 10% times the portfolio's beta. It ignores anything specific to individual holdings.",
