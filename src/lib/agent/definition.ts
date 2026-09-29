@@ -12,6 +12,7 @@ import { compactForStep } from "./turn";
 import { repairToolCall } from "./tool-repair";
 import { loadMcpTools } from "./mcp";
 import { makePortfolioTools } from "./portfolio-tools";
+import { makeWorkspaceTools } from "./workspace-tools";
 import { makeFredTools } from "./fred-tools";
 import { fredConfigured } from "@/lib/providers/fred";
 import { makeWikipediaTools } from "./wikipedia-tools";
@@ -40,7 +41,7 @@ export type AgentContext = {
   sources?: Source[];
   sink?: TraceSink | null;
   purpose?: AgentPurpose;
-  /** The signed-in member behind a chat turn; enables the attribution and backtest tools under their access rules. */
+  /** The signed-in member behind a chat turn; enables the portfolio and workspace-page tools under their access rules. */
   viewer?: CurrentUser | null;
   /** Where the member asked from (Hoot attaches it). */
   page?: PageContext | null;
@@ -108,6 +109,7 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
   const native = {
     ...makeTools({ teamId: ctx.teamId, holdingId: ctx.holdingId, userId: ctx.user.id, sources: ctx.sources, memoryBlocked: () => sheet.read, memoryOff: ctx.memoryOff }),
     ...(ctx.viewer ? makePortfolioTools({ viewer: ctx.viewer, teamId: ctx.teamId }) : {}),
+    ...(ctx.viewer ? makeWorkspaceTools({ viewer: ctx.viewer, teamId: ctx.teamId }) : {}),
     ...(fredConfigured() ? makeFredTools() : {}),
     ...makeWikipediaTools(),
     ...makePredictionMarketTools(),
@@ -126,6 +128,7 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
     userRole: ctx.user.role,
     purpose: ctx.purpose ?? "chat",
     portfolioTools: Boolean(ctx.viewer),
+    workspaceTools: Boolean(ctx.viewer),
     ptSheet: sheetTool,
     page: ctx.page ?? null,
     externalTools: mcp.servers.length ? { servers: mcp.servers, instructions: mcp.instructions, toolNames: Object.keys(mcp.tools) } : undefined,

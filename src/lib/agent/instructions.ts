@@ -66,7 +66,7 @@ import { dateFromName, effectiveDate } from "./doc-recency";
 export type ExternalToolsInfo = { servers: { name: string; toolCount: number }[]; instructions: string[]; toolNames: string[] };
 
 /** `teamId` null: a fund-wide conversation (an exec or admin), which sees every team's holdings. */
-export async function buildInstructions(teamId: string | null, opts: { holdingId?: string | null; userName: string; userRole: string; purpose?: "chat" | "prep"; externalTools?: ExternalToolsInfo; portfolioTools?: boolean; ptSheet?: boolean; page?: PageContext | null }) {
+export async function buildInstructions(teamId: string | null, opts: { holdingId?: string | null; userName: string; userRole: string; purpose?: "chat" | "prep"; externalTools?: ExternalToolsInfo; portfolioTools?: boolean; workspaceTools?: boolean; ptSheet?: boolean; page?: PageContext | null }) {
   const [team] = teamId ? await db.select().from(teams).where(eq(teams.id, teamId)).limit(1) : [];
   const onTeam = teamId ? eq(holdings.teamId, teamId) : undefined;
   const rows = await db
@@ -160,7 +160,13 @@ TOOL PLAYBOOK (follow it; each tool call costs a step and you have about ten):
 - Statistics no other tool computes (regressions, correlations, custom screens, scenario math): run_python when it is available, with its inputs loaded through its datasets argument, never typed in; cite computed numbers with its Computation source.
 - What happened: get_news for the window, get_filings with forms ["8-K"] for company announcements, get_earnings_calendar for the next report.
 - Team context (thesis, notes, open movement investigations): get_team_context.
-- Saved sell-side calls: find_call_transcripts, then read_call_transcript; cite their returned sources.
+${opts.workspaceTools ? `- Movement write-ups across a team or the Fund (which are open, overdue or done, due when, the evidence and any write-up text): get_movements, the Movements page. get_team_context stays the way into one holding's notes and history.
+- Which of our holdings report soon, confirmed or estimated, and whether the prep pack is built, or what just reported: get_upcoming_earnings, the Earnings page, one call for the whole team. get_earnings_calendar is for a single ticker, including ones we don't hold.
+- What is on the economic calendar (a week of releases, consensus, prior, actuals, market odds): get_economic_calendar, the Economic releases page; pass search for one release such as CPI.
+- When the Fund bought or sold something, at what price, and cash movements: get_ledger, the Activity page's ledger (execs and admins). It is the record of trades, never a performance figure.
+- What this member needs to do (write-ups due, reports coming, reviews waiting): get_my_todos, Home's list. Give each item with when it is due.
+- What changed in the app: get_whats_new, the Changelog (execs and admins).
+` : ""}- Saved sell-side calls: find_call_transcripts, then read_call_transcript; cite their returned sources.
 - What traders are betting on a macro, policy or company event (a Fed decision, CPI, recession, a shutdown): get_market_odds (Kalshi and Polymarket). Report its odds as market-implied probabilities with their volume, never as consensus, and show both venues when they differ.
 - Insider buying and selling: get_insider_transactions (Form 4). Who owns the stock: get_institutional_holders. Street consensus and price targets: get_analyst_estimates, always labeled as consensus, never as guidance or as your own view. Side-by-side with other companies: compare_peers.
 ${fredConfigured() ? "- Macro and rates (Treasury yields, curve and credit spreads, CPI, unemployment, fed funds, VIX, oil, the dollar): get_macro_series reads FRED, the authoritative source; use it instead of news or the web for these numbers, and give each value with its observation date.\n" : ""}- Company history, leadership and structure (founders, CEO, parent, subsidiaries): get_company_background (Wikipedia and Wikidata). Background only, never figures; say the retrieval date, and a filing wins when they disagree.
