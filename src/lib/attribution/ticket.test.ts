@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseLedgerCsv } from "./csv";
-import { beforeOpening, markRepeats, parseTicket, recordable, ticketFileHints, ticketsToCsv } from "./ticket";
+import { beforeOpening, markRepeats, parseTicket, recordable, ticketFileHints, ticketsInText, ticketsToCsv } from "./ticket";
 
 // mammoth's raw text for the real Fall 2026 SYK ticket; the account number sits in the page header and never reaches the text.
 const SYK =
@@ -11,6 +11,21 @@ const ticket = (over: Record<string, string>) =>
   Object.entries({ "Action (Buy, Sell)": "Sell", "Equity (Name, Ticker)": "State Street Consumer Staples Sel Sect SPDR ETF (XLP)", Date: "9/22/2026", Price: "$82.65", Time: "12:30 PM", "Number of Shares": "2,246", "Market Value": "$185,631.90", ...over })
     .map(([k, v]) => `${k}:\t${v}`)
     .join("\n\n");
+
+describe("ticketsInText", () => {
+  it("finds each pasted ticket, starting at its Action line", () => {
+    const found = ticketsInText(`Can you record these?\n\n${SYK}\n\n${ticket({})}`);
+    expect(found).toHaveLength(2);
+    expect(found.map((t) => parseTicket(t, "pasted").ticket?.ticker)).toEqual(["SYK", "XLP"]);
+    // The first ticket's sign-off dates stay with it and never become the second one's trade date.
+    expect(parseTicket(found[1], "pasted").ticket?.date).toBe("2026-09-22");
+  });
+  it("reads a forwarded ticket and ignores text that only mentions an action", () => {
+    expect(ticketsInText("> Action (Buy, Sell): Buy\n> Equity: Stryker Corp (SYK)\n> Price: $280.13")).toHaveLength(1);
+    expect(ticketsInText("Action: follow up with IR about guidance")).toEqual([]);
+    expect(ticketsInText("record the SYK trade")).toEqual([]);
+  });
+});
 
 describe("parseTicket", () => {
   it("reads the real ticket, ignoring the sign-off dates", () => {

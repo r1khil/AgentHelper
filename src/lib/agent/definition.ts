@@ -18,6 +18,8 @@ import { makeWikipediaTools } from "./wikipedia-tools";
 import { makePredictionMarketTools } from "./prediction-markets-tools";
 import { makeSandboxTools } from "./sandbox-tools";
 import { makeAppTools } from "./app-tools";
+import { makeChangeTools } from "./change-tools";
+import { isProposalTool, proposalToolsFor } from "@/lib/hoot/proposals";
 import { makePtSheetTools, ptSheetToolAllowed, type PtSheetState } from "./pt-sheet-tools";
 import { PT_SHEET_MODEL_ID, sheetSafeModel } from "./pt-sheet-guard";
 import type { PageContext } from "./page-context";
@@ -50,6 +52,8 @@ export type AgentContext = {
   sheetInHistory?: boolean;
   /** Nothing is written to the research log (evaluation runs): `remember` refuses. */
   memoryOff?: boolean;
+  /** The member's own messages in this chat, newest first: which changes Hoot may propose, and pasted ticket text. */
+  memberTexts?: string[];
 };
 
 export type AgentDefinition = {
@@ -115,6 +119,15 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
     ...(sheetTool && ctx.chatId ? makePtSheetTools({ chatId: ctx.chatId, state: sheet }) : {}),
     // Operating the app is for a member in a chat, never a background job.
     ...(ctx.viewer && (ctx.purpose ?? "chat") === "chat" ? makeAppTools({ viewer: ctx.viewer, page: ctx.page }) : {}),
+    // Proposing changes to the member's data, likewise chat-only, and only the ones their latest message asks for.
+    ...(ctx.viewer && (ctx.purpose ?? "chat") === "chat"
+      ? makeChangeTools({
+          viewer: ctx.viewer,
+          chat: ctx.chatId ? { id: ctx.chatId, holdingId: ctx.holdingId } : null,
+          memberTexts: ctx.memberTexts ?? [],
+          allowed: proposalToolsFor(ctx.memberTexts?.[0] ?? ""),
+        })
+      : {}),
   };
   // Admin-registered MCP servers add tools under their prefix; a native name always wins.
   const mcp = await loadMcpTools();
@@ -128,6 +141,7 @@ export async function buildAgentDefinition(ctx: AgentContext): Promise<AgentDefi
     portfolioTools: Boolean(ctx.viewer),
     ptSheet: sheetTool,
     page: ctx.page ?? null,
+    changeTools: Object.keys(native).filter(isProposalTool),
     externalTools: mcp.servers.length ? { servers: mcp.servers, instructions: mcp.instructions, toolNames: Object.keys(mcp.tools) } : undefined,
   });
   return {

@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { holdingNotes, holdings, teams } from "@/db/schema";
-import { canManageTeam, requireTeamAccess, requireUser } from "@/lib/auth";
+import { canAccessTeam, canManageTeam, requireTeamAccess, requireUser } from "@/lib/auth";
 import { lookupCompany } from "@/lib/providers/yahoo";
 import { tickerToCik } from "@/lib/providers/edgar";
 import { pickCompanyName } from "@/lib/company-name";
@@ -74,14 +74,22 @@ export async function exitHolding(fd: FormData) {
 }
 
 export async function addNote(fd: FormData) {
-  const holdingId = String(fd.get("holdingId") ?? "");
-  const body = String(fd.get("body") ?? "").trim().slice(0, 10000);
-  if (!body) return;
-  const [h] = await db.select().from(holdings).where(eq(holdings.id, holdingId)).limit(1);
-  if (!h) return;
-  const user = await requireTeamAccess(h.teamId);
-  await db.insert(holdingNotes).values({ holdingId, authorId: user.id, body });
+  await addHoldingNote({ holdingId: String(fd.get("holdingId") ?? ""), body: String(fd.get("body") ?? "") });
+}
+
+/**
+ * Add a note to a holding as the signed-in member: the holding page's form, and Hoot's "add a note" card once the
+ * member clicks Confirm. Anyone who can open the holding's team may add one.
+ */
+export async function addHoldingNote(input: { holdingId: string; body: string }): Promise<ActionResult> {
+  const body = String(input.body ?? "").trim().slice(0, 10000);
+  if (!body) return { ok: false, error: "The note is empty." };
+  const user = await requireUser();
+  const [h] = await db.select().from(holdings).where(eq(holdings.id, String(input.holdingId ?? ""))).limit(1);
+  if (!h || !canAccessTeam(user, h.teamId)) return { ok: false, error: "That holding isn't in a team you can open." };
+  await db.insert(holdingNotes).values({ holdingId: h.id, authorId: user.id, body });
   revalidatePath(`/t/${await teamSlug(h.teamId)}/h/${h.ticker}`);
+  return { ok: true, message: `Note added to ${h.ticker}.` };
 }
 
 export async function deleteNote(fd: FormData) {
