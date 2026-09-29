@@ -63,6 +63,7 @@ export async function buildPrepPack(earningsId: string, opts: { notify?: boolean
       stopWhen: def.stopWhen,
       prepareStep: prepareAgentStep(instructions, PREP_FINAL_NUDGE),
       maxRetries: def.maxRetries,
+      repairToolCall: def.repairToolCall,
       // The pack is one long JSON object; give it more room than a chat answer.
       maxOutputTokens: 8000,
     });

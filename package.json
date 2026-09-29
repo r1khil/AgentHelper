@@ -21,6 +21,7 @@
     "smoke:providers": "tsx scripts/smoke-providers.ts",
     "changelog:sync": "tsx --conditions=react-server scripts/changelog-smoke.ts",
     "smoke:agent": "tsx --conditions=react-server scripts/smoke-agent.ts",
+    "eval:hoot": "tsx --conditions=react-server --tsconfig ./tsconfig.json scripts/eval-hoot.ts",
     "smoke:tools": "tsx --conditions=react-server scripts/smoke-tools.ts",
     "smoke:mcp": "tsx --conditions=react-server scripts/smoke-mcp.ts",
     "smoke:prep": "tsx --conditions=react-server scripts/smoke-prep.ts",

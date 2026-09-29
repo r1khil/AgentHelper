@@ -20,6 +20,7 @@ import { loadSnapshot, resolveScenarioSnapshot, runBacktest } from "@/lib/backte
 import { MAX_SCENARIO_COMPANIES } from "@/lib/backtesting/scenario";
 import { weightsFromOverrides } from "@/lib/backtesting/overrides";
 import { applyTrade, type Funding } from "@/lib/backtesting/trade";
+import { currentWeights, fitScenarioInput } from "@/lib/backtesting/scenario-input";
 import { NY } from "@/lib/providers/calendar";
 import { loadRisk } from "@/lib/risk/load";
 import { DEFAULT_LOOKBACK, LOOKBACKS, type LookbackKey } from "@/lib/risk/model";
@@ -162,31 +163,39 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
 
     run_backtest: tool({
       description:
-        "Hypothetical replay of the current holdings over past prices with today's weights held fixed (the current replay) and an optional modified scenario. It does not reconstruct past trades, weight changes or cash flows, so it is not realized performance; use get_attribution for how the Fund or a team actually did. The scenario may add recognized company tickers and change or drop weights with explicit offsets. Fixed weights rebalance daily using Yahoo adjusted closes. Returns performance metrics and holding contributions. This sandbox never changes the real portfolio. Execs and admins backtest the Fund; everyone else their team.",
+        "Hypothetical replay of the current holdings over past prices with today's weights held fixed (the current replay) and an optional modified scenario. It does not reconstruct past trades, weight changes or cash flows, so it is not realized performance; use get_attribution for how the Fund or a team actually did. The scenario may add recognized company tickers and change or drop weights with explicit offsets. Fixed weights rebalance daily using Yahoo adjusted closes. Returns performance metrics and holding contributions. This sandbox never changes the real portfolio. Execs and admins backtest the Fund; everyone else their team. Call it directly with the tickers as asked: it reads another share class as the one held (GOOGL for GOOG) and returns the saved weights, so no quote or company lookup is needed first.",
       inputSchema: z.object({
         from: iso.optional().describe("First session; defaults to one year before `to`, like the Backtesting page"),
         to: iso.optional().describe("Last session; defaults to the last completed session"),
         benchmark: z.enum(Object.keys(BENCHMARKS) as [keyof typeof BENCHMARKS, ...(keyof typeof BENCHMARKS)[]]).default("SPY"),
-        addedTickers: z.array(z.string()).max(MAX_SCENARIO_COMPANIES).optional().describe("Company tickers to add only to the modified scenario. Resolve them before assigning weights; each starts at 0%, so include explicit offsets in weights."),
+        addedTickers: z.array(z.string()).max(MAX_SCENARIO_COMPANIES).optional().describe("Companies the portfolio does not hold, added only to the modified scenario (each starts at 0%; give it a weight). Held tickers go straight into weights or trades; savedWeights in the result lists them."),
         weights: z
           .record(z.string(), z.number().min(0).max(100))
           .optional()
-          .describe("Scenario weights in percent by ticker, including CASH. Named tickers get exactly that weight; unspecified holdings keep their current weights. Supply offsetting edits so the full portfolio totals 100.00%. Omit to replay saved weights only."),
+          .describe("Scenario weights in percent by ticker, including CASH. Named tickers get exactly that weight; unspecified holdings keep their current weights, and any difference from 100.00% is funded as fillFrom says. Omit to replay saved weights only."),
+        fillFrom: z
+          .enum(["cash", "pro_rata"])
+          .default("cash")
+          .describe("Where the difference goes when the named weights don't total 100%: 'cash' (the default; e.g. META to 5% and GOOG to 3% leaves the rest untouched and moves cash) or 'pro_rata' (the holdings you did not name, in proportion to their weights)."),
         trades: z
           .array(z.object({ ticker: z.string(), changePp: z.number().min(-100).max(100).describe("Percentage points: negative trims, positive adds"), fundFrom: z.string().describe("'cash', 'pro_rata' (the other holdings in proportion to their weights) or a holding's ticker") }))
           .max(10)
           .optional()
           .describe("Relative trades applied after `weights`, each offset automatically, e.g. [{ ticker: 'AVGO', changePp: -2, fundFrom: 'cash' }]. Easier than absolute weights for 'trim X by 2%' questions."),
       }),
-      execute: async ({ from, to, benchmark, addedTickers, weights: overrides, trades }): Promise<ToolResult<unknown>> => {
+      execute: async ({ from, to, benchmark, addedTickers: askedAdded, weights: askedWeights, fillFrom, trades: askedTrades }): Promise<ToolResult<unknown>> => {
         try {
           const yesterday = DateTime.now().setZone(NY).minus({ days: 1 }).toISODate()!;
           const end = to && to < yesterday ? to : yesterday;
           // Same default window as the Backtesting page: a year back from the end date.
           const start = from ?? defaultWindow(end).from;
           const saved = await loadSnapshot(viewer);
+          // Another share class of a holding means the holding; an "added" ticker that is already held isn't an error.
+          const { weights: overrides, trades, addedTickers, notes } = fitScenarioInput(saved.positions, { weights: askedWeights, trades: askedTrades, addedTickers: askedAdded });
           const snapshot = addedTickers?.length ? await resolveScenarioSnapshot(saved, addedTickers) : saved;
-          let weights = weightsFromOverrides(snapshot.positions, overrides ?? {});
+          let weights = weightsFromOverrides(snapshot.positions, overrides ?? {}, fillFrom);
+          const cashLine = snapshot.positions.find((p) => p.kind === "cash");
+          const filled = cashLine && fillFrom === "cash" ? pct(weights[cashLine.id] - cashLine.weight) : null;
           for (const t of trades ?? []) {
             const funding: Funding = t.fundFrom === "cash" ? { kind: "cash" } : t.fundFrom === "pro_rata" ? { kind: "pro_rata" } : { kind: "ticker", ticker: t.fundFrom };
             weights = applyTrade(snapshot.positions, weights, { ticker: t.ticker, changePp: t.changePp, funding });
@@ -203,7 +212,7 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
             .slice(0, 12)
             .map((c) => ({ ticker: c.ticker, currentReplayContributionPct: pct(c.original), modifiedReplayContributionPct: pct(c.modified), changePct: pct(c.delta) }));
           const source: Source = {
-            id: sourceId("backtest", `${snapshot.version}:${benchmark}:${r.from}:${r.to}:${JSON.stringify(addedTickers ?? [])}:${JSON.stringify(overrides ?? {})}`),
+            id: sourceId("backtest", `${snapshot.version}:${benchmark}:${r.from}:${r.to}:${JSON.stringify(addedTickers ?? [])}:${JSON.stringify(overrides ?? {})}:${fillFrom}:${JSON.stringify(trades ?? [])}`),
             title: `Backtest · ${snapshot.scope} · ${r.from} to ${r.to} vs ${benchmark}${changed.length ? ` · ${changed.length} weight${changed.length === 1 ? "" : "s"} changed` : ""}`,
             url: appUrl("/backtesting"),
             publisher: "Owl Fund backtest (Yahoo adjusted closes)",
@@ -220,7 +229,10 @@ export function makePortfolioTools(ctx: { viewer: CurrentUser; teamId: string })
               to: r.to,
               sessions: r.days.length,
               benchmark: BENCHMARKS[benchmark],
+              savedWeights: currentWeights(saved.positions),
               changedWeights: changed,
+              ...(notes.length ? { assumptions: notes } : {}),
+              ...(overrides && Object.keys(overrides).length ? { fundedFrom: fillFrom === "cash" ? `cash${filled ? ` (cash weight changed by ${filled} pp)` : ""}` : "the holdings not named, pro rata" } : {}),
               currentReplay: metricsOut(r.original),
               ...(changed.length ? { modifiedReplay: metricsOut(r.modified) } : {}),
               benchmarkMetrics: metricsOut(r.benchmarkMetrics),
