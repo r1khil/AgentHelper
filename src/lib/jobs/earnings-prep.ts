@@ -7,6 +7,7 @@ import { earnings, holdings, teams } from "@/db/schema";
 import type { Source } from "@/lib/providers/types";
 import { nextTradingDay, todayNY } from "@/lib/providers/calendar";
 import { fmtDay } from "@/lib/format";
+import { PREP_BUILD_TRADING_DAYS } from "@/lib/earnings-calendar";
 import { agentConfigured } from "@/lib/agent/model";
 import { buildAgentDefinition, prepareAgentStep } from "@/lib/agent/definition";
 import { bulletCount, extractJsonObject, prepAttempts, selectPrepCandidates, validatePrepPack, type PrepValidation } from "@/lib/agent/prep-pack";
@@ -16,7 +17,7 @@ import { queueNotification } from "./notify";
 import { teamRecipients } from "./recipients";
 
 /** Reports this many NY trading days ahead get a pack. */
-export const PREP_HORIZON_DAYS = 5;
+export const PREP_HORIZON_DAYS = PREP_BUILD_TRADING_DAYS;
 /** Packs built per morning run, to stay inside the free-tier request budget. */
 export const PREP_PER_RUN = 3;
 
@@ -45,7 +46,7 @@ Then reply with the JSON object only.`;
  * Build and store the evidence pack for one earnings event. Never writes expectations or a forecast;
  * the validator drops any bullet that reads like one or that cites a source the run did not retrieve.
  */
-export async function buildPrepPack(earningsId: string): Promise<{ ok: true; pack: PrepPack; dropped: PrepValidation["dropped"]; steps: number } | { ok: false; error: string }> {
+export async function buildPrepPack(earningsId: string, opts: { notify?: boolean } = {}): Promise<{ ok: true; pack: PrepPack; dropped: PrepValidation["dropped"]; steps: number } | { ok: false; error: string }> {
   if (!agentConfigured()) return { ok: false, error: "Agent is not configured" };
   const [row] = await db.select({ e: earnings, h: holdings, teamSlug: teams.slug }).from(earnings).innerJoin(holdings, eq(holdings.id, earnings.holdingId)).innerJoin(teams, eq(teams.id, holdings.teamId)).where(eq(earnings.id, earningsId)).limit(1);
   if (!row) return { ok: false, error: "Earnings event not found" };
@@ -83,7 +84,7 @@ export async function buildPrepPack(earningsId: string): Promise<{ ok: true; pac
     const appUrl = process.env.APP_URL ?? "";
     const boardUrl = `${appUrl}/t/${row.teamSlug}/agent/h/${h.ticker}`;
     const earningsUrl = `${appUrl}/t/${row.teamSlug}/earnings/${e.id}`;
-    for (const r of await teamRecipients(h.teamId)) {
+    for (const r of opts.notify === false ? [] : await teamRecipients(h.teamId)) {
       await queueNotification({
         kind: "earnings",
         recipientId: r.id,
@@ -111,7 +112,7 @@ export function prepWindow(today = todayNY(), days = PREP_HORIZON_DAYS) {
 }
 
 /** Morning step: build packs for upcoming reports in the window, a few per run. */
-export async function prepEarnings(opts: { limit?: number; force?: boolean } = {}) {
+export async function prepEarnings(opts: { limit?: number; force?: boolean; notify?: boolean } = {}) {
   const window = prepWindow();
   const rows = await db
     .select({ id: earnings.id, reportDate: earnings.reportDate, status: earnings.status, prepPackAt: earnings.prepPackAt, prepPackError: earnings.prepPackError, ticker: holdings.ticker })
@@ -122,7 +123,7 @@ export async function prepEarnings(opts: { limit?: number; force?: boolean } = {
   const built: string[] = [];
   const failed: Record<string, string> = {};
   for (const r of picked) {
-    const res = await buildPrepPack(r.id);
+    const res = await buildPrepPack(r.id, { notify: opts.notify });
     if (res.ok) built.push(r.ticker);
     else failed[r.ticker] = res.error;
   }

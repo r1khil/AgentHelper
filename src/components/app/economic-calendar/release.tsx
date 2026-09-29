@@ -8,7 +8,8 @@ import { isUpcoming, shownActual, surprise, untilText } from "@/lib/economic-cal
 import type { EconomicEvent } from "@/lib/economic-calendar/types";
 import { NY } from "@/lib/providers/calendar";
 import { fmtDateTime, fmtDay, fmtTime } from "@/lib/format";
-import { cn } from "@/lib/utils";
+
+export { releaseClock, releaseResult } from "@/lib/economic-calendar/result";
 
 // One economic release's pieces: its figures, its status against consensus, and everything else behind a click.
 
@@ -26,11 +27,6 @@ export const revised = (e: EconomicEvent) => e.previousBeforeRevision !== null &
 export const consensusSource = (e: EconomicEvent) => (e.estimate && e.estimateSource ? `Consensus from ${e.estimateSource}` : undefined);
 export const marketText = (e: EconomicEvent) =>
   e.marketImplied && `${e.marketImplied.source} ${e.marketImplied.value}${e.marketImplied.detail === "median" ? "" : ` (${e.marketImplied.detail})`}`;
-
-/** "8:30", "14:00" in New York; the feed's own word ("TBA", "All day") when it has no time. */
-export function releaseClock(e: EconomicEvent) {
-  return e.timestamp ? et(e.timestamp).toFormat("H:mm") : e.time;
-}
 
 /** The detail column: the actual against consensus once it's out, consensus and prior before. Speeches have none. */
 export function releaseFigures(e: EconomicEvent, now: number | null): ReactNode {
@@ -52,33 +48,6 @@ export function releaseFigures(e: EconomicEvent, now: number | null): ReactNode 
       </span>
     </>
   );
-}
-
-/** The status column: a countdown before the release, the direction against consensus after it, else its importance. */
-export function ReleaseStatus({ event: e, now, today, isNext }: { event: EconomicEvent; now: number | null; today: string | null; isNext: boolean }) {
-  if (now === null || today === null) return null;
-  const actual = shownActual(e, now);
-  const until = e.timestamp ? untilText(Date.parse(e.timestamp) - now) : "";
-  if (isNext)
-    return <span className="inline-flex h-[22px] items-center rounded-full bg-primary px-[9px] font-mono text-caption font-medium whitespace-nowrap text-primary-foreground">Next · {until}</span>;
-  if (actual !== null) {
-    const s = surprise(actual, e.estimate);
-    if (s?.dir === "above" || s?.dir === "below")
-      return (
-        <span className={cn("inline-flex items-center gap-1 font-mono text-body font-medium whitespace-nowrap", s.dir === "above" ? "text-above" : "text-below")}>
-          <svg viewBox="0 0 8 8" className="size-2" aria-hidden="true">
-            <path d={s.dir === "above" ? "M4 1 7.5 6.5h-7z" : "M4 7 .5 1.5h7z"} fill="currentColor" />
-          </svg>
-          {s.text}
-        </span>
-      );
-    if (s?.dir === "inline") return <span className="text-body font-medium text-ink-2">In line</span>;
-    return <span className="text-body text-muted-foreground">Released</span>;
-  }
-  if (e.date === today && isUpcoming(e, now)) return <span className="font-mono text-body text-muted-foreground">{until}</span>;
-  if (e.date === today && e.timestamp && !isUpcoming(e, now) && (e.estimate || e.previous)) return <span className="text-body text-muted-foreground">Awaiting</span>;
-  if (e.importance === 3) return <span className="text-body font-medium text-foreground">High impact</span>;
-  return null;
 }
 
 /** A prediction market's price for a release, set apart from consensus: it isn't a survey. */
@@ -110,7 +79,7 @@ function AskHoot({ event: e, now, teamSlug, label }: { event: EconomicEvent; now
   // The same way in as ⌘K: a Research conversation with the question already written.
   const { asking, ask } = useAskHoot();
   return (
-    <Button variant="outline" size="sm" disabled={asking} onClick={() => void ask(hootQuestion(e, now), { teamSlug, ticker: null })}>
+    <Button variant="secondary" size="sm" disabled={asking} onClick={() => void ask(hootQuestion(e, now), { teamSlug, ticker: null })}>
       {asking ? "Opening Hoot…" : label}
     </Button>
   );
@@ -170,14 +139,14 @@ export function ReleaseDetails({
     ["Status", status],
   ];
   return (
-    <div id={id} className="px-5 pt-0.5 pb-3 pl-[206px] max-lg:pl-5">
-      <div className="flex items-start gap-5 rounded-[10px] bg-band px-4 py-3">
+    <div id={id} className="border-b border-row py-3">
+      <div className="flex items-start gap-5">
         <div className="min-w-0 flex-1">
           <dl className="grid grid-cols-3 gap-x-5 gap-y-2.5 xl:grid-cols-5">
             {fields.map(([k, v]) => (
               <div key={k} className="flex min-w-0 flex-col gap-0.5">
-                <dt className="label-mono text-caption text-muted-foreground">{k}</dt>
-                <dd className="text-body leading-[18px] break-words">{v}</dd>
+                <dt className="text-caption text-muted-foreground">{k}</dt>
+                <dd className="text-body break-words">{v}</dd>
               </div>
             ))}
           </dl>
@@ -185,16 +154,6 @@ export function ReleaseDetails({
         </div>
         {askable && <AskHoot event={e} now={now} teamSlug={teamSlug} label={isNext ? "Ask Hoot what to watch" : "Ask Hoot"} />}
       </div>
-    </div>
-  );
-}
-
-/** Where today's clock sits among its releases. */
-export function NowLine({ now }: { now: number }) {
-  return (
-    <div className="flex h-6 items-center gap-2.5 px-5" aria-hidden="true">
-      <span className="rounded-full bg-primary px-2 font-mono text-caption leading-[18px] font-medium text-primary-foreground">NOW {DateTime.fromMillis(now, { zone: NY }).toFormat("H:mm")}</span>
-      <span className="h-px flex-1 bg-foreground/60" />
     </div>
   );
 }
