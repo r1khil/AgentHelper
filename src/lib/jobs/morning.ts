@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, isNull, lt, ne } from "drizzle-orm";
+import { and, eq, isNull, lt, ne, sql } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
 import { holdings, jobRuns, movements, teams } from "@/db/schema";
@@ -18,6 +18,7 @@ import { prepEarnings } from "./earnings-prep";
 import { syncFilings } from "./filings";
 import { runPricesJob } from "./prices";
 import { fmtDateTime, fmtDay, fmtTime } from "@/lib/format";
+import { ABANDONED_AFTER_MS } from "@/components/app/admin/status";
 
 export type MorningJobResult = {
   date: string;
@@ -34,8 +35,23 @@ export type MorningJobResult = {
   prices: Record<string, unknown>;
 };
 
+/**
+ * The sweep must finish inside the cron function's 300s limit: a run that is killed never records its end, and Admin
+ * showed "Running since 10:25 AM" all day (Sep 29: the Drive step took 190s and the function died in the filings step).
+ * The last two steps get whatever is left of this budget.
+ */
+const MORNING_BUDGET_MS = 270_000;
+/** Kept back for the filings step when the Drive step takes its share. */
+const FILINGS_RESERVE_MS = 45_000;
+/** A step that can't have this long is skipped for the day (the next morning, or Admin's buttons, catch up). */
+const MIN_STEP_MS = 20_000;
+
+
 /** Morning sweep: finish pending evidence, remind, flag overdue, refresh earnings, retry email. */
 export async function runMorningJob(opts: { notify?: boolean } = {}): Promise<MorningJobResult> {
+  const t0 = Date.now();
+  const left = () => MORNING_BUDGET_MS - (Date.now() - t0);
+  await closeAbandonedRuns();
   const [jobRow] = await db.insert(jobRuns).values({ job: "morning" }).returning({ id: jobRuns.id });
   const progress = createJobReporter(jobRow.id);
   const date = todayNY();
@@ -158,10 +174,12 @@ export async function runMorningJob(opts: { notify?: boolean } = {}): Promise<Mo
     progress.warn("memory purge failed", { error: result.memories.error });
   }
 
-  progress.step("sync Google Drive index");
+  progress.step("sync Google Drive index", { leftMs: left() });
   try {
     const watch = await ensureDriveWatch();
-    const r = await runDriveSync({ reason: "morning", ingest: { budgetMs: 150_000, maxFiles: 25 } });
+    // Reading new files gets what's left after the listing, minus the filings step's share.
+    const ingestMs = Math.min(150_000, left() - FILINGS_RESERVE_MS - 40_000);
+    const r = await runDriveSync({ reason: "morning", ...(ingestMs >= MIN_STEP_MS ? { ingest: { budgetMs: ingestMs, maxFiles: 25 } } : {}) });
     const ingest = r.ingest ? { status: r.ingest.status, considered: r.ingest.considered, summarized: r.ingest.summarized, embedded: r.ingest.embedded, proposals: r.ingest.proposals, failed: r.ingest.failed.length, remaining: r.ingest.remaining } : undefined;
     result.drive = { status: r.status, reason: r.reason, files: r.files, matched: r.matched, unmatched: r.unmatched.length, ingest, watch: { status: watch.status, reason: watch.reason }, purgedStaged: await purgeStagedUploads().catch(() => 0) };
   } catch (e) {
@@ -170,9 +188,11 @@ export async function runMorningJob(opts: { notify?: boolean } = {}): Promise<Mo
   }
 
   // New SEC filings for every holding, then a bounded embedding pass; the shared free-model budget is respected (429 stops it).
-  progress.step("sync SEC filings");
+  progress.step("sync SEC filings", { leftMs: left() });
   try {
-    const r = await syncFilings({ budgetMs: 60_000, reason: "morning" });
+    const budgetMs = Math.min(60_000, left() - 10_000);
+    if (budgetMs < MIN_STEP_MS) throw new Error("skipped: the morning's time ran out");
+    const r = await syncFilings({ budgetMs, reason: "morning" });
     result.filings = { status: r.status, reason: r.reason, holdings: r.holdings, listed: r.listed, added: r.added, failed: r.failed.length, ingest: r.ingest ? { status: r.ingest.status, embedded: r.ingest.embedded, remaining: r.ingest.remaining } : undefined };
     if (r.failed.length) progress.warn("some holdings failed to list filings", { failed: r.failed });
   } catch (e) {
@@ -186,5 +206,14 @@ export async function runMorningJob(opts: { notify?: boolean } = {}): Promise<Mo
   return result;
 }
 
-// Used by the overdue query typing above.
-void lt;
+/**
+ * Close the records of runs a killed function left open (no finish after 15 minutes), so Admin reads them as failed
+ * instead of "Running since" forever.
+ */
+async function closeAbandonedRuns() {
+  await db
+    .update(jobRuns)
+    .set({ finishedAt: new Date(), ok: false, summary: sql`coalesce(${jobRuns.summary}, '{}'::jsonb) || '{"error":"did not finish (the function was stopped)"}'::jsonb` })
+    .where(and(isNull(jobRuns.finishedAt), lt(jobRuns.startedAt, new Date(Date.now() - ABANDONED_AFTER_MS))))
+    .catch((e) => console.error("[morning] closing abandoned runs failed", e));
+}
