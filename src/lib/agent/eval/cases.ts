@@ -124,7 +124,7 @@ export const EVAL_CASES: EvalCase[] = [
       maxErrors: 0,
       answer: [/\bbp\b/],
       // Two figures that print the same, offered as a before and after ("0.698% instead of 0.698%").
-      answerNot: [/(\d+\.\d+%)[^\n]{0,40}instead of \1/, /^Not retrieved/m],
+      answerNot: [/(?<![\d.])(\d+\.\d+%)[^\n]{0,40}instead of \1/, /^\W*Not retrieved/m],
     },
     note: "2026-09-29 prod (Tech lead): 19 s, answered for the Tech sleeve scaled to 100% with a five-row table, funded pro rata unasked, and the follow-up printed '0.698% instead of 0.698%'.",
   },
