@@ -78,6 +78,31 @@ export function useConversation({
 
 export type Conversation = ReturnType<typeof useConversation>;
 
+/** Within this many pixels of the end, the reader is following the latest and the thread keeps up with the answer. */
+const FOLLOW_SLACK = 240;
+
+/**
+ * Follow the answer to the bottom of the scroller as it arrives, but only while the reader is at (or near) the end: someone
+ * who scrolled up to read earlier text stays where they are. Sending a question always goes to it. Put `onScroll` on
+ * the scroller.
+ */
+export function useFollow(conv: Conversation) {
+  const bottom = useRef<HTMLDivElement>(null);
+  const following = useRef(true);
+  const { messages, status, catchingUp } = conv;
+  const onScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    following.current = el.scrollHeight - el.scrollTop - el.clientHeight < FOLLOW_SLACK;
+  }, []);
+  useEffect(() => {
+    if (status === "submitted") following.current = true;
+  }, [status]);
+  useEffect(() => {
+    if (following.current) bottom.current?.scrollIntoView({ block: "end" });
+  }, [messages, status, catchingUp]);
+  return { bottom, onScroll };
+}
+
 /** Every turn of the conversation, then what the run is doing now (reading, catching up, or failed). */
 export function ConversationTurns({
   conv,

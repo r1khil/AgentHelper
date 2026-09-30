@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { UIMessage } from "ai";
 import { PageHead, type Crumb } from "@/components/app/page-head";
 import { useSourceViewer, ResearchSources } from "./research-answer";
 import { Composer, HootFace, SourceListCard, SourcesHeading } from "./thread-parts";
-import { ConversationTurns, useConversation, useRelated, type Conversation } from "./conversation";
+import { ConversationTurns, useConversation, useFollow, useRelated, type Conversation } from "./conversation";
 import { fmtDateTime, fmtDay, fmtTime } from "@/lib/format";
 import { clipTitle, isCallTitle, threadTitle } from "@/lib/thread-title";
 import { isMemberQuestion } from "@/lib/agent/hidden-prompt";
@@ -53,31 +53,6 @@ function composerProps(conv: Conversation, { configured, sees }: { configured: b
     placeholder: configured ? (conv.catchingUp ? "Waiting for the current answer…" : "Ask a follow-up") : "Hoot isn't set up yet: an admin needs to turn it on",
     sees: ctx ? pageContextLabel(ctx) : sees,
   };
-}
-
-/** Within this many pixels of the end, the reader is following the latest and the thread keeps up with the answer. */
-const FOLLOW_SLACK = 240;
-
-/**
- * Follow the answer to the bottom of the scroller as it arrives, but only while the reader is at (or near) the end: someone
- * who scrolled up to read earlier text stays where they are. Sending a question always goes to it. Put `onScroll` on
- * the scroller.
- */
-function useFollow(conv: Conversation) {
-  const bottom = useRef<HTMLDivElement>(null);
-  const following = useRef(true);
-  const { messages, status, catchingUp } = conv;
-  const onScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
-    const el = e.currentTarget;
-    following.current = el.scrollHeight - el.scrollTop - el.clientHeight < FOLLOW_SLACK;
-  }, []);
-  useEffect(() => {
-    if (status === "submitted") following.current = true;
-  }, [status]);
-  useEffect(() => {
-    if (following.current) bottom.current?.scrollIntoView({ block: "end" });
-  }, [messages, status, catchingUp]);
-  return { bottom, onScroll };
 }
 
 /** The sources every answer in the thread cites, in citation-number order: a short list beside a call's chat. */

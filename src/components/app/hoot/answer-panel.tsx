@@ -7,7 +7,7 @@ import { ArrowUpRight, X } from "lucide-react";
 import type { CommandHolding } from "@/lib/nav-data";
 import { closeAnswerPanel, useAnswerPanel, type AnswerPanelState } from "./answer-panel-store";
 import { HootOnPage } from "./presence";
-import { ConversationTurns, useConversation, useRelated } from "@/components/app/chat/conversation";
+import { ConversationTurns, useConversation, useFollow, useRelated } from "@/components/app/chat/conversation";
 import type { PinTarget } from "@/components/app/chat/pin-to-board";
 import { Composer, HootFace } from "@/components/app/chat/thread-parts";
 import { cn } from "@/lib/utils";
@@ -47,11 +47,8 @@ function Panel({ panel, holdings }: { panel: NonNullable<AnswerPanelState>; hold
   const related = useRelated(panel.chatId, conv.turns.length > 0 && !conv.busy && !!conv.turns[conv.turns.length - 1]?.answerText, conv.turns.length);
   const targets = useMemo<PinTarget[]>(() => holdings.map((h) => ({ ticker: h.ticker, company: h.company, teamSlug: h.teamSlug, team: h.team })), [holdings]);
 
-  // Follow the answer to the bottom, and put the cursor in the follow-up box once the panel is in.
-  const bottom = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
-  }, [conv.messages, conv.status, conv.catchingUp]);
+  // Follow the answer while the reader stays near the end, and put the cursor in the follow-up box once the panel is in.
+  const { bottom, onScroll } = useFollow(conv);
   const { composerRef } = conv;
   useEffect(() => {
     composerRef.current?.focus({ preventScroll: true });
@@ -89,7 +86,7 @@ function Panel({ panel, holdings }: { panel: NonNullable<AnswerPanelState>; hold
           <X className="size-3.5" strokeWidth={2} aria-hidden />
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-4">
+      <div onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto px-5 pt-5 pb-4">
         <ConversationTurns conv={conv} variant="panel" teamSlug={null} pin={targets.length ? { chatId: panel.chatId, targets, onPinned: closeAnswerPanel } : null} related={related} gap="gap-6" />
         <div ref={bottom} />
       </div>
