@@ -403,6 +403,15 @@ export const EVAL_CASES: EvalCase[] = [
     note: "A 'show me' question about a figure is answered, not turned into navigation.",
   },
   {
+    id: "control-question-not-navigate",
+    question: "what is going on with today's perfomrance",
+    as: "exec",
+    page: { kind: "page", path: "/", title: "Home" },
+    tags: ["control", "portfolio"],
+    expect: { calls: ["get_daily_performance"], notCalls: ["navigate"], maxToolCalls: 3, answerNot: [CANT] },
+    note: "Production 2026-09-30: the typo hid the book tools, so Hoot opened Performance mid-answer and the member never saw it.",
+  },
+  {
     id: "control-plus-question",
     question: "open healthcare's risk page and tell me what's driving its tracking error",
     as: "exec",

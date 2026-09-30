@@ -14,7 +14,7 @@ vi.mock("@/lib/sandbox/python", async (original) => ({ ...(await original<object
 import { buildAgentDefinition } from "./definition";
 import { EVAL_CASES } from "./eval/cases";
 import { PROPOSAL_TOOLS } from "@/lib/hoot/proposals";
-import { activeToolsFor, CORE, FOLLOW_UPS, RETIRED, routingFromMessages, TIERS, toolCatalog, toolsNamedOnPage, WRITE } from "./tool-routing";
+import { activeToolsFor, asksToNavigate, CORE, FOLLOW_UPS, NAV, RETIRED, routingFromMessages, TIERS, toolCatalog, toolsNamedOnPage, WRITE } from "./tool-routing";
 import type { PageContext } from "./page-context";
 
 const viewer = (role: string) => ({ id: "u1", role, teamId: "t1", team: { id: "t1", slug: "tech", name: "Information Technology" }, fullName: "U", transparencyMode: false }) as never;
@@ -33,10 +33,10 @@ async function allRegisteredTools(): Promise<string[]> {
   return Object.keys(def.tools);
 }
 
-const grouped = () => [...CORE, ...Object.values(TIERS).flat(), ...RETIRED, ...WRITE] as string[];
+const grouped = () => [...CORE, ...Object.values(TIERS).flat(), ...NAV, ...RETIRED, ...WRITE] as string[];
 
 describe("tool tiers", () => {
-  it("put every registered tool in exactly one of CORE, a tier, WRITE or RETIRED", async () => {
+  it("put every registered tool in exactly one of CORE, a tier, NAV, WRITE or RETIRED", async () => {
     const names = await allRegisteredTools();
     expect(names.length).toBeGreaterThan(40);
     const all = grouped();
@@ -117,8 +117,45 @@ describe("activeToolsFor", () => {
       "are we green today?",
       "what's our active return this month?",
       "how much alpha did tech add?",
+      // Production 2026-09-30, typo and all: routed to the web tier only, so Hoot opened the page instead.
+      "what is going on with today's perfomrance",
+      "how's today's perf looking",
+      "todays preformance?",
     ])
       expect(route(q), q).toContain("get_daily_performance");
+  });
+
+  it("offers navigate only when the latest message asks to go somewhere", async () => {
+    available = await allRegisteredTools();
+    for (const q of [
+      "take me to the fig sector",
+      "open the exposure page for the tech team",
+      "pull up fund performance year to date",
+      "open backtesting with AVGO trimmed by 2 points from cash",
+      "go to markets",
+      "switch to the whole fund",
+      "show me the tech sector",
+      "where do I find the weekly update for Aadi?",
+      "open healthcare's risk page and tell me what's driving its tracking error",
+      "bring up AVGO's filings tab",
+    ])
+      expect(asksToNavigate(q), q).toBe(true);
+    for (const q of [
+      "what is going on with today's perfomrance",
+      "show me AVGO's operating margin for the last 4 quarters",
+      "why are we down today?",
+      "what happened since the open?",
+      "how is the tech team doing this month?",
+      "what's our YTD return?",
+    ]) {
+      expect(asksToNavigate(q), q).toBe(false);
+      expect(route(q), q).not.toContain("navigate");
+    }
+    // Not carried over from the previous answer, not turned on by find_tools, and a call the step didn't offer isn't retried.
+    const q = "and what about today?";
+    expect(route(q, { priorTools: ["navigate"] })).not.toContain("navigate");
+    expect(route(q, { stepNumber: 1, requestedTools: ["navigate"], usedTools: ["navigate"] })).not.toContain("navigate");
+    expect(route("open the risk page", { stepNumber: 1, usedTools: ["navigate"] })).toContain("navigate");
   });
 
   it("offers what find_tools turned on, but never a change or retired tool", async () => {
@@ -217,7 +254,7 @@ describe("toolCatalog", () => {
     const { lines, resolve } = toolCatalog([...available, "av_news_sentiment"]);
     const listed = lines.join("\n");
     for (const t of Object.values(TIERS).flat()) if (available.includes(t)) expect(listed, t).toContain(t);
-    for (const t of [...CORE, ...RETIRED, ...WRITE]) expect(listed, t).not.toMatch(new RegExp(`\\b${t}\\b`));
+    for (const t of [...CORE, ...NAV, ...RETIRED, ...WRITE]) expect(listed, t).not.toMatch(new RegExp(`\\b${t}\\b`));
     expect(listed).toContain("av_news_sentiment");
     expect(resolve(["book"]).enabled).toEqual([...TIERS.book]);
     expect(resolve(["get_market_odds", "external"]).enabled).toEqual(["get_market_odds", "av_news_sentiment"]);
