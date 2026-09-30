@@ -7,12 +7,13 @@ import { exitHolding } from "@/lib/actions/holdings";
 import { DocumentUploadForm } from "@/components/app/document-upload-form";
 import { TradeDialog } from "@/components/app/attribution/trade-dialog";
 import { UploadModelDialog } from "@/components/app/models/upload-model-dialog";
+import { RecordACall } from "@/components/app/sell-side/new-call";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 /**
- * The holding page header's actions: Upload model and Record trade side by side, and the rest in a quiet ⋯ menu
+ * The holding page header's actions: Upload model, Record call and Record trade side by side, and the rest in a quiet ⋯ menu
  * (Upload to Drive, SEC EDGAR, Mark exited). Each is offered only to readers the old pages offered it to.
  */
 export function HoldingActions({
@@ -23,6 +24,7 @@ export function HoldingActions({
   canUpload,
   canUploadModel,
   uploadDisabledReason,
+  call,
   trade,
   canExit,
   links,
@@ -36,6 +38,8 @@ export function HoldingActions({
   /** An active SEC filer: a model's values can be proposed from its filings (an ETF gets no "Upload model"). */
   canUploadModel: boolean;
   uploadDisabledReason?: string;
+  /** Anyone on an active holding can record a sell-side call about it, filed under the holding's team. */
+  call: { team: string; teamId: string; scope: string } | null;
   /** Execs and admins record trades; `today` and the position size prefill the dialog. */
   trade: { today: string; shares: number | null } | null;
   canExit: boolean;
@@ -48,6 +52,7 @@ export function HoldingActions({
   return (
     <>
       {canUploadModel && <UploadModelDialog targets={[{ id: holdingId, ticker, companyName, hasModel }]} label="Upload model" trigger="header" />}
+      {call && <RecordACall variant="secondary" size="default" label="Record call" {...call} holdings={[{ id: holdingId, ticker, companyName }]} />}
       {trade && (
         <>
           <Button variant="secondary" onClick={() => setTradeOpen(true)}>

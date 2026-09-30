@@ -345,6 +345,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
             canUpload={active}
             canUploadModel={active && !!h.cik}
             uploadDisabledReason={driveNote}
+            call={active ? { team: team.slug, teamId: team.id, scope: scope.slug } : null}
             trade={fundWide ? { today, shares: h.shares != null ? Number(h.shares) : null } : null}
             canExit={manage && active}
             links={h.cik ? [{ label: "Open on SEC EDGAR", href: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${h.cik}`, external: true }] : []}
