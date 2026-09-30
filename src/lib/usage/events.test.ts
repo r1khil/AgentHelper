@@ -34,4 +34,9 @@ describe("cleanUsageEvent", () => {
     expect(cleanUsageEvent({ name: "click", props: { label: "x".repeat(3000) } }, now)?.props).toEqual({});
     expect(cleanUsageEvent({ name: "click", props: { label: "hoot-corner" } }, now)?.props).toEqual({ label: "hoot-corner" });
   });
+
+  it("keeps only numbers in a page view", () => {
+    expect(cleanUsageEvent({ name: "page_view", props: { ms: "abc", vitals: { LCP: "x", INP: 80, CLS: 0.02 } } }, now)?.props).toEqual({ ms: 0, vitals: { INP: 80, CLS: 0.02 } });
+    expect(cleanUsageEvent({ name: "page_view", props: { ms: 1234.6, vitals: "no" } }, now)?.props).toEqual({ ms: 1235 });
+  });
 });

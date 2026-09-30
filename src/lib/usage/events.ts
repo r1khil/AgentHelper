@@ -67,5 +67,19 @@ export function cleanUsageEvent(raw: unknown, now = Date.now()): (UsageEventInpu
     const json = JSON.stringify(e.props);
     if (json.length <= MAX_PROPS_BYTES) props = e.props as Record<string, unknown>;
   }
+  // The Usage tab does arithmetic on a page view's numbers, so they must be numbers.
+  if (e.name === "page_view") props = pageViewProps(props);
   return { name: e.name as UsageEventName, at, route: str(e.route, 200), team: str(e.team, 64), props };
+}
+
+const VITALS = ["LCP", "INP", "CLS", "FCP", "TTFB"] as const;
+const finite = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v >= 0;
+
+/** A page view's { ms, vitals } with anything that isn't a non-negative number dropped. */
+function pageViewProps(props: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ms: finite(props.ms) ? Math.round(props.ms as number) : 0 };
+  const raw = props.vitals && typeof props.vitals === "object" ? (props.vitals as Record<string, unknown>) : {};
+  const vitals = Object.fromEntries(VITALS.filter((k) => finite(raw[k])).map((k) => [k, raw[k]]));
+  if (Object.keys(vitals).length) out.vitals = vitals;
+  return out;
 }

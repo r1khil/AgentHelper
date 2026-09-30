@@ -70,6 +70,11 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
 
   const [collapsed, setCollapsed] = useSidebarCollapsed(initialCollapsed);
   const [palette, setPalette] = useState<"ask" | "search" | null>(null);
+  // The shortcut handler reads it to count only opens; a state updater must stay free of side effects.
+  const paletteRef = useRef(palette);
+  useEffect(() => {
+    paletteRef.current = palette;
+  }, [palette]);
   const [data, setData] = useState<LoadedNav | null>(null);
   const fetchedAt = useRef<{ scope: string; at: number } | null>(null);
 
@@ -115,10 +120,8 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
       if (!k && !j) return;
       e.preventDefault();
       const mode = j ? "ask" : "search";
-      setPalette((open) => {
-        if (open !== mode) track("palette_open", { mode, via: "shortcut" });
-        return open === mode ? null : mode;
-      });
+      if (paletteRef.current !== mode) track("palette_open", { mode, via: "shortcut" });
+      setPalette((open) => (open === mode ? null : mode));
       if (homeSlug) void load(homeSlug);
     };
     window.addEventListener("keydown", onKey);
