@@ -14,6 +14,7 @@ import type { JobRunView } from "@/app/api/admin/job-runs/route";
 import { AdminView } from "@/components/app/admin/admin-view";
 import { loadAdminStatus } from "./status";
 import { loadUsageReport } from "@/lib/usage/report";
+import { queueLength } from "@/lib/screener/filing-changes/store";
 
 export const metadata: Metadata = { title: "Admin" };
 // Jobs started from this page run inside its server actions; give them the same budget as the cron routes.
@@ -58,10 +59,11 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     lastActivity(),
   ]);
   const { drive, mcp, last, driveUnmatched, services, filings, retrievalStats: retrieval, connections, attention } = status;
-  const [mcpBudget, changelogModel, backupModelId] = await Promise.all([
+  const [mcpBudget, changelogModel, backupModelId, filingQueue] = await Promise.all([
     mcpBudgets(mcp.map((m) => m.name)).catch(() => ({}) as Awaited<ReturnType<typeof mcpBudgets>>),
     changelogModelId(),
     agentBackupModelId(),
+    queueLength().catch(() => null),
   ]);
 
   const runs: JobRunView[] = runRows.map((r) => ({
@@ -126,7 +128,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           createdAt: i.createdAt.toISOString(),
         })),
       }}
-      jobs={{ canMutate, last, weekly: { recipients: weeklyRecipients, to: weeklyTo }, meEmail: me.email }}
+      jobs={{ canMutate, last, weekly: { recipients: weeklyRecipients, to: weeklyTo }, meEmail: me.email, filingQueue }}
       runs={runs}
       services={services}
       drive={drive}

@@ -28,6 +28,8 @@ export function nudgeTag(n: HootNudge): { word: string; className: string } {
       return { word: "Weekly", className: "text-muted-foreground" };
     case "changelog":
       return { word: "New", className: "text-muted-foreground" };
+    case "flag":
+      return { word: "Flag", className: "text-muted-foreground" };
     default:
       return { word: "Note", className: "text-muted-foreground" };
   }

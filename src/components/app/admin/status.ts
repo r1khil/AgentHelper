@@ -5,12 +5,12 @@ import { fmtDate, fmtDateTime } from "@/lib/format";
 // and the tests agree: a failed job or a service that needs someone is amber ("needs attention"), everything else is grey.
 
 /** `job_runs.job` names the Scheduled jobs and Connections rows show a last run for. */
-export const TRACKED_JOBS = ["prices", "daily_brief", "morning", "weekly", "drive_sync", "filings_sync"] as const;
+export const TRACKED_JOBS = ["prices", "daily_brief", "morning", "weekly", "drive_sync", "filings_sync", "screen", "filing_changes"] as const;
 
 /** A job's latest run, as the Scheduled jobs list shows it. */
 export type JobLastRun = { startedAt: string; finishedAt: string | null; ok: boolean | null; summary: Record<string, unknown> };
 
-export type JobKey = "prices" | "brief" | "morning" | "bellwethers" | "prep" | "weekly";
+export type JobKey = "prices" | "brief" | "morning" | "bellwethers" | "prep" | "weekly" | "screen" | "filing_changes";
 
 /** A run with no finish after this long died with its function (jobs stop at 300s); it will never record an end. */
 export const ABANDONED_AFTER_MS = 15 * 60_000;
@@ -21,6 +21,8 @@ export const stillRunning = (r: Pick<JobLastRun, "startedAt" | "finishedAt">, no
 /** The result of a job's last run in words, and whether it needs a look. */
 export function jobResult(key: JobKey, r: JobLastRun | null | undefined, now = Date.now()): { text: string; attention: boolean } {
   if (!r) return { text: key === "bellwethers" || key === "prep" ? "Runs with the morning sweep" : "No runs yet", attention: false };
+  // The screen runs in ten-minute pieces over an hour or more; its job row stays open until the last piece.
+  if (key === "screen" && !r.finishedAt) return { text: `Running since ${fmtDateTime(r.startedAt)}, continues every 10 minutes`, attention: false };
   const when = fmtDateTime(r.startedAt);
   if (!r.finishedAt) return stillRunning(r, now) ? { text: `Running since ${when}`, attention: false } : { text: `${when} · didn't finish (timed out)`, attention: true };
   if (r.ok === false) return { text: `${when} · failed`, attention: true };

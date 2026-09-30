@@ -46,6 +46,8 @@ export const TIERS = {
   sheet: ["read_pt_sheet"],
   transcripts: ["find_call_transcripts", "read_call_transcript"],
   background: ["get_company_background"],
+  /** The Screener's filing-change detector: what changed in a 10-K or 10-Q, and 8-K red flags. */
+  filingChanges: ["get_filing_changes", "get_screen_hits", "get_reverse_dcf", "get_value_trap_checklist"],
 } as const satisfies Record<string, readonly string[]>;
 
 export type Tier = keyof typeof TIERS;
@@ -62,6 +64,7 @@ export const TIER_LABELS: Record<Tier, string> = {
   sheet: "the PT sheet",
   transcripts: "earnings and sell-side call transcripts",
   background: "company background (Wikipedia)",
+  filingChanges: "the Screener: filing changes and 8-K red flags, the monthly screen's hits, a reverse DCF (implied growth) and the value-trap checklist",
 };
 
 /**
@@ -121,6 +124,8 @@ const WORDS: Record<Tier, RegExp> = {
   transcripts: /\b(?:calls?|transcripts?|sell-?side|conference|management (?:said|says|say|comment\w*|discuss\w*)|prepared remarks|q&a|analyst day|investor day|brokers?|bank notes?)\b/,
   background:
     /\b(?:founders?|founded|ceo|cfo|chair\w*|leadership|management team|executives?|headquarter\w*|hq|history|background|parent company|parent|subsidiar\w*|who runs|what does (?:it|the company|\w+) do|business model|overview|spun off|spin-?off|acquired by|owned by|wikipedia)\b/,
+  filingChanges:
+    /\b(?:red flags?|flag(?:s|ged)?|risk factors?|filing changes?|what(?:'s| has| have)? changed|changes? (?:in|to) (?:the |its |their )?(?:latest |last |new )?(?:10-?k|10-?q|filings?|disclosures?|risk factors?)|new (?:risks?|disclosures?)|material weakness\w*|going concern|restat\w*|non-reliance|auditor|impairment|non-gaap|customer concentration|lazy prices|screener|screens?|screened|worth a look|reverse dcf|implied growth|priced in|value traps?|cheap for a reason|garp)\b/,
 };
 
 /** Page keys (app map) that unlock a tier on their own. */
@@ -139,6 +144,7 @@ const PAGE_TIERS: Record<string, Tier[]> = {
   changelog: ["workspace"],
   sell_side_call: ["transcripts"],
   pt_sheet: ["sheet"],
+  screener: ["filingChanges"],
 };
 
 const KIND_TIERS: Record<Exclude<PageContext["kind"], "page">, Tier[]> = {

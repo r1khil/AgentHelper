@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { runBellwethersNow, runDailyBriefNow, runEarningsPrepNow, runMorningNow, runPricesNow, runWeeklyNow } from "@/lib/actions/jobs";
+import { runBellwethersNow, runDailyBriefNow, runEarningsPrepNow, runFilingChangesNow, runMorningNow, runPricesNow, runScreenNow, runWeeklyNow } from "@/lib/actions/jobs";
 import { setWeeklyRecipients } from "@/lib/actions/admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,8 @@ export type JobsPanelProps = {
   weekly: { recipients: string | null; to: string };
   /** The admin pressing the buttons, for "Send to me only". */
   meEmail: string;
+  /** Filings and diffs waiting for the evening filing-change job; null when it couldn't be read. */
+  filingQueue?: number | null;
 };
 
 type Ask = {
@@ -75,11 +77,27 @@ function jobs(weekly: JobsPanelProps["weekly"]): JobDef[] {
       detail: "Builds the pack for last Friday, then Hoot emails it. Sunday 12:00 PM ET (Supabase pg_cron), Vercel backstop 7:00 PM UTC. A test account (*.owlfund.local) alone on the list pauses the email.",
       ask: { who: `${weekly.to}`, send: "Run and email the pack", date: "Run as if today were" },
     },
+    {
+      key: "filing_changes",
+      name: "Filing changes",
+      when: "Every 10 minutes, 6 PM to midnight ET",
+      runs: "filing_changes",
+      run: runFilingChangesNow,
+      detail: "Compares each new 10-K and 10-Q of the holdings and watchlist names with the right earlier filing, labels material changes, and flags 8-K red flags. Then checks the pitches' kill criteria. No email.",
+    },
+    {
+      key: "screen",
+      name: "Monthly screen",
+      when: "First Saturday of the month",
+      runs: "screen",
+      run: runScreenNow,
+      detail: "Ranks every NYSE and Nasdaq company above $3B on value and quality from SEC data, in ten-minute pieces until done. No email, no model.",
+    },
   ];
 }
 
 /** Scheduled jobs: each with its schedule, what its last run did in words, and a way to run it. A job that emails people asks first. */
-export function JobsPanel({ canMutate, last, weekly, meEmail }: JobsPanelProps) {
+export function JobsPanel({ canMutate, last, weekly, meEmail, filingQueue }: JobsPanelProps) {
   const [asking, setAsking] = useState<JobKey | null>(null);
   const list = jobs(weekly);
   return (
@@ -120,6 +138,11 @@ export function JobsPanel({ canMutate, last, weekly, meEmail }: JobsPanelProps) 
           );
         })}
       </div>
+      {filingQueue != null && (
+        <p className="mt-2 text-caption text-muted-foreground">
+          Filing-change queue: {filingQueue === 0 ? "empty" : `${filingQueue} waiting`}.
+        </p>
+      )}
       <p className="mt-2 text-caption text-muted-foreground">Jobs that email people ask first and name the recipients.</p>
       {canMutate && (
         <details className="mt-3 text-body">

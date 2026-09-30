@@ -9,6 +9,8 @@ describe("sectionFor", () => {
     expect(sectionFor("/hoot/c1")).toBe("thread");
     expect(sectionFor("/hoot")).toBe("thread");
     expect(sectionFor("/markets")).toBe("markets");
+    expect(sectionFor("/screener")).toBe("screener");
+    expect(sectionFor("/screener/KRE")).toBe("screener");
     expect(sectionFor("/t/fund")).toBe("portfolio");
     expect(sectionFor("/t/tech")).toBe("portfolio");
     expect(sectionFor("/t/tech/risk")).toBe("portfolio");
@@ -56,6 +58,7 @@ describe("navModel: the sidebar", () => {
     expect(nav.main.map((i) => [i.key, i.href])).toEqual([
       ["portfolio", "/t/fund"],
       ["markets", "/markets"],
+      ["screener", "/screener"],
     ]);
     expect(nav.main.find((i) => i.active)?.key).toBe("portfolio");
   });
@@ -69,7 +72,7 @@ describe("navModel: the sidebar", () => {
   });
 
   it("drops the Portfolio for a member with no team yet", () => {
-    expect(navModel({ pathname: "/", scope: null, fundWide: false, seesBook: false }).main.map((i) => i.key)).toEqual(["markets"]);
+    expect(navModel({ pathname: "/", scope: null, fundWide: false, seesBook: false }).main.map((i) => i.key)).toEqual(["markets", "screener"]);
   });
 });
 
@@ -102,6 +105,7 @@ describe("destinations", () => {
       "Activity",
       "What if",
       "Markets",
+      "Screener",
       "Threads",
       "Models",
       "Sell-side calls",
@@ -114,10 +118,11 @@ describe("destinations", () => {
       "/t/tech",
       "/t/tech/what-if",
       "/markets",
+      "/screener",
       "/hoot",
       "/t/tech/models",
       "/t/tech/sell-side",
     ]);
-    expect(destinations({ scope: null, fundWide: false, seesBook: false }).map((d) => d.href)).toEqual(["/", "/markets", "/hoot"]);
+    expect(destinations({ scope: null, fundWide: false, seesBook: false }).map((d) => d.href)).toEqual(["/", "/markets", "/screener", "/hoot"]);
   });
 });

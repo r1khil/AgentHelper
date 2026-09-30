@@ -45,6 +45,7 @@ import { NeedsYou } from "@/components/app/holdings/needs-you";
 import { CoverageCard, FundPositionCard, KeyStatsCard } from "@/components/app/holdings/holding-sections";
 import { RailCard, type RailRow } from "@/components/app/holdings/rail";
 import { RailCardFallback } from "@/components/app/holdings/holding-skeleton";
+import { ScreenerCard } from "@/components/app/holdings/screener-card";
 import { SinceThesis, type SinceItem } from "@/components/app/holdings/since-thesis";
 import { ThesisPanel } from "@/components/app/holdings/thesis-panel";
 import { NotesTab, monthDay, type NoteItem } from "@/components/app/holdings/notes";
@@ -529,6 +530,9 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
             rows={next ? nextRows : undefined}
             note={next ? undefined : "None scheduled. The morning sweep adds the next report date once a provider has it."}
           />
+          <Suspense fallback={<RailCardFallback title="Screener" rows={2} />}>
+            <ScreenerCard ticker={h.ticker} />
+          </Suspense>
           <SinceThesis
             thesis={<ThesisPanel compact holdingId={h.id} thesis={h.thesis} meta={h.thesisUpdatedAt ? `updated ${monthDay(h.thesisUpdatedAt)}` : undefined} flash={flash} proposal={thesisProposal ? <ThesisProposal proposal={thesisProposal} /> : undefined} />}
             items={sinceItems}

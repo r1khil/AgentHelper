@@ -300,6 +300,23 @@ export const APP_MAP: AppMapEntry[] = [
     formerly: ["Calendar", "Earnings", "Earnings calendar", "Economic releases", "Economic calendar"],
   },
   {
+    key: "screener",
+    name: "Screener",
+    routes: ["/screener", "/screener/:ticker"],
+    access: "all",
+    summary: "monthly screen hits, filing changes, pitches, watchlist",
+    shows: [
+      "Worth a look: this month's hits for the team, ranked on cheapness and quality from SEC data (EV/EBIT, vs its own 5-year median, FCF yield, ROIC, F-score, net debt/EBITDA); the run's universe and coverage",
+      "Filing changes: what changed in the latest 10-K, 10-Q or 8-K against the right earlier filing, each with a quote and link, marked real or noise by a lead",
+      "Pitches: each pitch's intrinsic value, target, horizon, confidence, key metric and kill criteria; execs see calibration by team and cohort",
+      "Watchlist: names a team follows without owning; filing changes cover them too",
+      "A company (/screener/TICKER): the tear sheet (Hoot's, every sentence cited), the reverse DCF (the growth the price implies vs history and consensus), the value-trap checklist and the bear case",
+    ],
+    actions: ["mark a filing change real or noise", "add or remove a watchlist name", "record a pitch", "run the bear case", "rate a tear sheet"],
+    hoot: "get_filing_changes for what changed in a filing. Numbers come from code: never restate a screen metric or implied growth from memory. Nothing here is a price call.",
+    navigate: "screener",
+  },
+  {
     key: "weekly",
     name: "Weekly update",
     routes: ["/weekly", "/weekly/:week"],
