@@ -97,10 +97,16 @@ export async function loadSeries(db: Db, overrides?: { trades?: Trade[]; cashFlo
   return buildSeries(raw, { extraDays });
 }
 
-/** Symbols the price job maintains: everything ever traded, the benchmark ETFs, the risk-free rate and the factor ETFs. */
+/**
+ * Symbols the price job maintains: everything ever traded, every active holding (one added before its first trade
+ * still needs closes for its sparkline and the weekly pack), the benchmark ETFs, the risk-free rate and the factor ETFs.
+ */
 export async function ledgerSymbols(db: Db): Promise<string[]> {
-  const rows = await db.selectDistinct({ ticker: trades.ticker }).from(trades).where(isNull(trades.voidedAt));
-  return [...new Set([...rows.map((r) => r.ticker), ...benchmarkSymbols(), RISK_FREE_SYMBOL, ...FACTOR_ETFS])];
+  const [rows, active] = await Promise.all([
+    db.selectDistinct({ ticker: trades.ticker }).from(trades).where(isNull(trades.voidedAt)),
+    db.selectDistinct({ ticker: holdings.ticker }).from(holdings).where(eq(holdings.status, "active")),
+  ]);
+  return [...new Set([...rows.map((r) => r.ticker), ...active.map((r) => r.ticker), ...benchmarkSymbols(), RISK_FREE_SYMBOL, ...FACTOR_ETFS])];
 }
 
 /** Create the securities row for a ticker on first use: name, default sector and owning team. */
