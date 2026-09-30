@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, Check, Copy, Flag, Plus } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, Copy, Flag, Plus } from "lucide-react";
 import type { Source } from "@/lib/providers/types";
 import type { Turn, TurnSource } from "@/lib/agent/board";
 import { answerForCopy, savedTurnMs } from "@/lib/agent/board";
@@ -62,6 +62,8 @@ export function TurnView(props: TurnViewProps) {
   const [hover, setHover] = useState<string | null>(null);
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
   const [showTrace, setShowTrace] = useState(false);
+  // The panel folds its sources under one row so the answer is what the reader sees; a citation unfolds them.
+  const [showSources, setShowSources] = useState(false);
   const anchor = (id: string) => `src-${turn.id}-${id}`;
 
   const links = useMemo<CitationLinks>(
@@ -70,7 +72,9 @@ export function TurnView(props: TurnViewProps) {
         anchor,
         onCite: (id) => {
           setOpen(new Set([id]));
-          document.getElementById(anchor(id))?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          setShowSources(true);
+          // Once the folded list has opened.
+          requestAnimationFrame(() => document.getElementById(anchor(id))?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
         },
         onHover: setHover,
         openIds: open,
@@ -122,7 +126,9 @@ export function TurnView(props: TurnViewProps) {
           <ProposalCard key={p.toolCallId} chatId={chatId} toolCallId={p.toolCallId} proposal={p.proposal} outcome={p.outcome} compact={sm} />
         ))}
 
-        {variant === "panel" && sources.length > 0 && <SourceList rows={sources} open={open} hover={hover} onHover={setHover} anchor={anchor} />}
+        {variant === "panel" && sources.length > 0 && (
+          <SourceList turnId={turn.id} rows={sources} expanded={showSources} onExpandedChange={setShowSources} open={open} hover={hover} onHover={setHover} anchor={anchor} />
+        )}
 
         {turn.answerText && !live && pages.length > 0 && (
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -200,41 +206,72 @@ function SourceCards({ turnId, rows, open, hover, onHover, anchor }: { turnId: s
   );
 }
 
-/** The panel's sources: a numbered hairline list, title and publisher. */
-function SourceList({ rows, open, hover, onHover, anchor }: { rows: TurnSource[]; open: ReadonlySet<string>; hover: string | null; onHover: (id: string | null) => void; anchor: (id: string) => string }) {
+/** The panel's sources: one "N sources" row that unfolds to a numbered hairline list, title and publisher. */
+function SourceList({
+  turnId,
+  rows,
+  expanded,
+  onExpandedChange,
+  open,
+  hover,
+  onHover,
+  anchor,
+}: {
+  turnId: string;
+  rows: TurnSource[];
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+  open: ReadonlySet<string>;
+  hover: string | null;
+  onHover: (id: string | null) => void;
+  anchor: (id: string) => string;
+}) {
   const view = useSourceViewer();
+  const listId = `sources-${turnId}`;
   return (
-    <div className="mt-1 flex flex-col">
-      {rows.map(({ source: s, n }) => {
-        const target = resolveSource(s);
-        const unavailable = target.kind === "unavailable";
-        const title = s.title?.trim() || "Untitled source";
-        const cls = cn(
-          "flex items-baseline gap-2.5 border-t border-row py-2 text-left text-body last:border-b focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
-          (open.has(s.id) || hover === s.id) && "bg-band",
-        );
-        const inner = (
-          <>
-            <b className={cn("w-3.5 shrink-0 font-semibold", unavailable && "text-caution-foreground")}>{n}</b>
-            <span className="min-w-0 flex-1">{title}</span>
-            <span className={cn("shrink-0 text-caption", unavailable ? "font-semibold text-caution-foreground" : "text-muted-foreground")}>{unavailable ? "Unavailable" : s.publisher}</span>
-          </>
-        );
-        const common = { id: anchor(s.id), onMouseEnter: () => onHover(s.id), onMouseLeave: () => onHover(null), className: cls };
-        return target.kind === "external" ? (
-          <a key={s.id} href={target.href} target="_blank" rel="noopener noreferrer" aria-label={`[${n}] ${title} (opens in a new tab)`} {...common}>
-            {inner}
-          </a>
-        ) : target.kind === "document" ? (
-          <button key={s.id} type="button" onClick={() => view(s)} {...common}>
-            {inner}
-          </button>
-        ) : (
-          <div key={s.id} {...common}>
-            {inner}
-          </div>
-        );
-      })}
+    <div className="mt-2.5 flex flex-col">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={listId}
+        onClick={() => onExpandedChange(!expanded)}
+        className="flex items-center gap-1.5 self-start rounded-sm py-1 text-caption font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        {rows.length} {rows.length === 1 ? "source" : "sources"}
+        <ChevronRight className={cn("size-3 shrink-0 transition-transform", expanded && "rotate-90")} aria-hidden />
+      </button>
+      <div id={listId} className={cn("mt-1 flex-col", expanded ? "flex" : "hidden")}>
+        {rows.map(({ source: s, n }) => {
+          const target = resolveSource(s);
+          const unavailable = target.kind === "unavailable";
+          const title = s.title?.trim() || "Untitled source";
+          const cls = cn(
+            "flex items-baseline gap-2.5 border-t border-row py-2 text-left text-body last:border-b focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
+            (open.has(s.id) || hover === s.id) && "bg-band",
+          );
+          const inner = (
+            <>
+              <b className={cn("w-3.5 shrink-0 font-semibold", unavailable && "text-caution-foreground")}>{n}</b>
+              <span className="min-w-0 flex-1">{title}</span>
+              <span className={cn("shrink-0 text-caption", unavailable ? "font-semibold text-caution-foreground" : "text-muted-foreground")}>{unavailable ? "Unavailable" : s.publisher}</span>
+            </>
+          );
+          const common = { id: anchor(s.id), onMouseEnter: () => onHover(s.id), onMouseLeave: () => onHover(null), className: cls };
+          return target.kind === "external" ? (
+            <a key={s.id} href={target.href} target="_blank" rel="noopener noreferrer" aria-label={`[${n}] ${title} (opens in a new tab)`} {...common}>
+              {inner}
+            </a>
+          ) : target.kind === "document" ? (
+            <button key={s.id} type="button" onClick={() => view(s)} {...common}>
+              {inner}
+            </button>
+          ) : (
+            <div key={s.id} {...common}>
+              {inner}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
