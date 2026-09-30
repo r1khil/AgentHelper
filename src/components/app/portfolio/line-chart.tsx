@@ -1,11 +1,15 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo } from "react";
+import { SelectionReadout, scrubHelp, scrubStyle, useChartSelection, useScrubBindings } from "@/components/charts/interaction";
+import { tone } from "@/components/charts/primitives";
+import { intervalChange, nearestCoordinate } from "@/lib/charts/interval";
+import { fmtChangePct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 // The one hairline chart of the Portfolio pages: a line drawn edge to edge over a 220px band, no axes, no grid.
 // The stroke is green or red by whether the stretch is up or down; a replayed stretch is dashed grey. Hovering reads
-// a point off; a marker (a trade) is a small ink dot on the line.
+// a point off or dragging compares two observations; a marker (a trade) is a small ink dot on the line.
 
 export type ChartLine = {
   /** Time in ms and the value at it, oldest first. */
@@ -33,6 +37,8 @@ export function LineChart({
   formatX,
   formatY,
   joinAt,
+  valueOnly = false,
+  resetKey = "",
   className,
 }: {
   lines: ChartLine[];
@@ -43,12 +49,21 @@ export function LineChart({
   formatY: (v: number) => string;
   /** A hairline at this time: where the replay hands over to the ledger. */
   joinAt?: number;
+  /**
+   * The values move with deposits, withdrawals or a replay join (a fund's value), so an interval reads as a change in
+   * value only, never as a return.
+   */
+  valueOnly?: boolean;
+  /** Clears the selection when it changes (the chosen range), as well as when the observations start elsewhere. */
+  resetKey?: string;
   className?: string;
 }) {
-  const box = useRef<HTMLDivElement>(null);
-  const [hover, setHover] = useState<number | null>(null);
-
-  const all = useMemo(() => lines.flatMap((l) => l.points.map((p) => ({ ...p, line: l }))).sort((a, b) => a.t - b.t), [lines]);
+  const helpId = useId();
+  // Replay and ledger share their join point; inspect the ledger at that boundary.
+  const all = useMemo(() => [...new Map(lines.flatMap((line) => line.points
+    .filter((p) => Number.isFinite(p.t) && Number.isFinite(p.v))
+    .map((p) => [p.t, { ...p, line }] as const))).values()].sort((a, b) => a.t - b.t), [lines]);
+  const { selection, dispatch, bounds } = useChartSelection(`${resetKey}|${all[0]?.t}`, all.length);
   const geo = useMemo(() => {
     if (all.length < 2) return null;
     const t0 = all[0].t;
@@ -66,6 +81,12 @@ export function LineChart({
     return { x, y, t0, t1 };
   }, [all]);
 
+  const bind = useScrubBindings(all.length, selection, dispatch, (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (!geo || !rect.width) return null;
+    const pixel = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) * W;
+    return nearestCoordinate(all.map((p) => geo.x(p.t)), pixel);
+  });
   if (!geo) {
     return (
       <div className={cn("grid h-[220px] place-items-center text-body text-muted-foreground", className)} role="status">
@@ -75,20 +96,16 @@ export function LineChart({
   }
   const { x, y } = geo;
 
-  const onMove = (e: React.PointerEvent) => {
-    const r = box.current?.getBoundingClientRect();
-    if (!r || r.width === 0) return;
-    const t = geo.t0 + ((e.clientX - r.left) / r.width) * (geo.t1 - geo.t0);
-    let best = 0;
-    for (let i = 1; i < all.length; i++) if (Math.abs(all[i].t - t) < Math.abs(all[best].t - t)) best = i;
-    setHover(best);
-  };
-  const h = hover === null ? null : all[hover];
+  const h = selection.active === null ? null : all[bounds?.[1] ?? selection.active];
+  const start = bounds ? all[bounds[0]] : null;
+  const result = start && h ? intervalChange(start.v, h.v, valueOnly ? "level" : "price") : null;
+  const endpoints = bounds ?? (selection.active === null ? [] : [selection.active]);
   const pct = (n: number, of: number) => `${(n / of) * 100}%`;
 
   return (
-    <div ref={box} className={cn("relative", className)} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
-      <svg width="100%" height="220" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={label} className="block">
+    <div className={className}>
+    <div className="relative h-[220px]" style={{ touchAction: "pan-y" }}>
+      <svg width="100%" height="220" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-label={label} className="block">
         {joinAt !== undefined && <line x1={x(joinAt)} y1={0} x2={x(joinAt)} y2={H} stroke="var(--border)" strokeWidth={1} vectorEffect="non-scaling-stroke" />}
         {lines.map((l, i) => (
           <polyline
@@ -102,7 +119,17 @@ export function LineChart({
             points={l.points.map((p) => `${Math.round(x(p.t) * 10) / 10},${Math.round(y(p.v) * 10) / 10}`).join(" ")}
           />
         ))}
-        {h && <line x1={x(h.t)} y1={0} x2={x(h.t)} y2={H} stroke="var(--series-neutral)" strokeWidth={1} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />}
+        <g pointerEvents="none" aria-hidden="true">
+          {bounds && <rect x={x(all[bounds[0]].t)} y={0} width={x(all[bounds[1]].t) - x(all[bounds[0]].t)} height={H} fill="var(--series-1)" opacity={0.09} />}
+          {endpoints.map((index) => <g key={index}>
+            <line x1={x(all[index].t)} y1={0} x2={x(all[index].t)} y2={H} stroke="var(--series-neutral)" strokeWidth={1} strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+          </g>)}
+        </g>
+        <rect x={0} y={0} width={W} height={H} fill="transparent" style={scrubStyle} tabIndex={0} role="slider"
+          aria-label={`${label} date`} aria-describedby={helpId} aria-valuemin={0} aria-valuemax={all.length - 1}
+          aria-valuenow={selection.active ?? all.length - 1}
+          aria-valuetext={`${start ? `${formatX(start.t)} to ` : ""}${formatX((h ?? all.at(-1)!).t)}; ${formatY((h ?? all.at(-1)!).v)}${result ? `; change ${formatY(result.change!)}${valueOnly ? "" : `; ${fmtChangePct(result.returnPct)}`}` : ""}`}
+          className="outline-none focus-visible:stroke-ring focus-visible:stroke-2" {...bind} />
       </svg>
       {markers.map((m, i) => (
         <span
@@ -110,29 +137,23 @@ export function LineChart({
           title={m.label}
           aria-label={m.label}
           role="img"
-          className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-foreground"
+          className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-foreground"
           style={{ left: pct(x(m.t), W), top: pct(y(m.v), H) }}
         />
       ))}
-      {h && (
-        <>
-          <span aria-hidden className="pointer-events-none absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-foreground" style={{ left: pct(x(h.t), W), top: pct(y(h.v), H) }} />
-          <div
-            role="status"
-            className={cn(
-              "pointer-events-none absolute top-0 z-10 rounded-lg border bg-popover px-2.5 py-1.5 text-caption whitespace-nowrap text-popover-foreground shadow-sm",
-              x(h.t) / W > 0.7 ? "-translate-x-full" : "translate-x-2",
-            )}
-            style={{ left: pct(x(h.t), W) }}
-          >
-            <div className="font-semibold">{formatY(h.v)}</div>
-            <div className="text-muted-foreground">
-              {formatX(h.t)}
-              {h.line.note ? `, ${h.line.note}` : ""}
-            </div>
-          </div>
-        </>
-      )}
+      {endpoints.map((index) => <span key={index} aria-hidden className="pointer-events-none absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-foreground" style={{ left: pct(x(all[index].t), W), top: pct(y(all[index].v), H) }} />)}
+      {h && <SelectionReadout selected={!!bounds} onClear={() => dispatch({ type: "clear" })}
+        label={start ? `${formatX(start.t)} – ${formatX(h.t)}` : formatX(h.t)}>
+        <div className="font-semibold">{start ? `${formatY(start.v)} → ${formatY(h.v)}` : formatY(h.v)}</div>
+        {result && <div className={tone(result.change)}>{valueOnly ? `Change in value ${formatY(result.change!)}` : `Change ${formatY(result.change!)} · ${result.returnPct === null ? "Return unavailable" : fmtChangePct(result.returnPct)}`}</div>}
+        {result && valueOnly && <div className="font-sans text-caption text-muted-foreground">Includes deposits and withdrawals; not a return</div>}
+        {markers.filter((m) => m.t === h.t).map((m, i) => <div key={i} className="font-sans text-caption text-muted-foreground">{m.label}</div>)}
+        {(start?.line.note || h.line.note) && <div className="font-sans text-caption text-muted-foreground">
+          {start && start.line.note !== h.line.note ? `${start.line.note ?? "Ledger history"} → ${h.line.note ?? "Ledger history"}` : h.line.note}
+        </div>}
+      </SelectionReadout>}
+    </div>
+    <p id={helpId} className="mt-2 text-caption text-muted-foreground">{scrubHelp}</p>
     </div>
   );
 }

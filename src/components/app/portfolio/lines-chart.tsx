@@ -1,9 +1,12 @@
 "use client";
 
-import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type XAxisProps } from "recharts";
-import { ChartTooltip, tone } from "@/components/charts/primitives";
+import { Line, LineChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis, type XAxisProps } from "recharts";
+import { useId } from "react";
+import { RechartsScrubber, SelectionReadout, scrubHelp, useChartSelection } from "@/components/charts/interaction";
+import { intervalChange } from "@/lib/charts/interval";
+import { tone } from "@/components/charts/primitives";
 import { niceScale } from "@/lib/charts/ticks";
-import { fmtChangeBp } from "@/lib/format";
+import { fmtChangeBp, fmtChangePct } from "@/lib/format";
 
 // The Portfolio pages' line chart: no gridlines and no y-axis (the figures are in the hero and the hover), the fund in
 // ink, the comparison dashed or dotted grey. Green and red are for the sign of a number, never for a series.
@@ -78,45 +81,26 @@ export function LinesChart<Row extends Record<string, unknown>>({
   gap?: boolean;
   zero?: boolean;
 }) {
+  const helpId = useId();
+  // The readout heading as text for the slider; the callers' headings are formatted dates and times.
+  const labelText = (r: Row) => { const l = hoverLabel(r); return typeof l === "string" || typeof l === "number" ? String(l) : String(r[xKey]); };
+  const { selection, dispatch, bounds } = useChartSelection(rows[0]?.[xKey], rows.length);
+  const row = rows[bounds?.[1] ?? selection.active ?? rows.length - 1];
+  const first = bounds ? rows[bounds[0]] : null;
+  const changes = lines.map((l) => first ? intervalChange(first[l.key], row[l.key], "return").returnPct : null);
+  const a = bounds ? changes[0] : row?.[lines[0]?.key];
+  const b = bounds ? changes[1] : row?.[lines[1]?.key];
+  const diff = gap && typeof a === "number" && typeof b === "number" ? (a - b) * 100 : null;
   const values = rows.flatMap((r) => lines.map((l) => r[l.key] as number | null | undefined)).filter((v): v is number => typeof v === "number" && Number.isFinite(v));
   const scale = values.length ? niceScale(Math.min(0, ...values), Math.max(0, ...values), 4, { fit: "inner" }) : null;
   return (
-    <div className="w-full" style={{ height }} role="img" aria-label={ariaLabel}>
+    <div>
+    <div className="relative w-full" style={{ height, touchAction: "pan-y" }} role="group" aria-label={ariaLabel}>
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <LineChart data={rows} margin={{ top: 6, right: 2, bottom: 0, left: 2 }} accessibilityLayer={false}>
           <XAxis dataKey={xKey as string} tick={<EdgeTick format={xAxis.tickFormatter as ((v: never, i: number) => string) | undefined} />} tickLine={false} axisLine={false} padding={{ left: 0, right: 0 }} {...xAxis} />
           <YAxis hide domain={scale?.domain ?? ["auto", "auto"]} />
           {zero && <ReferenceLine y={0} stroke="var(--bench-bar)" strokeOpacity={0.55} />}
-          <Tooltip
-            cursor={{ stroke: "var(--border)" }}
-            isAnimationActive={false}
-            content={({ active, payload }) => {
-              const row = active ? (payload?.[0]?.payload as Row | undefined) : undefined;
-              if (!row) return null;
-              const a = row[lines[0]?.key] as number | null | undefined;
-              const b = lines[1] ? (row[lines[1].key] as number | null | undefined) : undefined;
-              const diff = gap && typeof a === "number" && typeof b === "number" ? (a - b) * 100 : null;
-              return (
-                <ChartTooltip label={hoverLabel(row)}>
-                  {lines.map((l) => {
-                    const v = row[l.key] as number | null | undefined;
-                    return (
-                      <div key={l.key} className="flex justify-between gap-4">
-                        <span>{l.label}</span>
-                        <span className={tone(v ?? null)}>{typeof v === "number" ? format(v) : "—"}</span>
-                      </div>
-                    );
-                  })}
-                  {diff !== null && (
-                    <div className="flex justify-between gap-4 border-t pt-1.5 text-muted-foreground">
-                      <span>Gap</span>
-                      <span className={tone(diff)}>{fmtChangeBp(diff)}</span>
-                    </div>
-                  )}
-                </ChartTooltip>
-              );
-            }}
-          />
           {/* Comparison lines first so the fund is drawn over them. */}
           {[...lines].reverse().map((l) => (
             <Line
@@ -129,13 +113,25 @@ export function LinesChart<Row extends Record<string, unknown>>({
               strokeLinecap={l.dash?.startsWith("1 ") ? "round" : "butt"}
               strokeLinejoin="round"
               dot={false}
-              activeDot={l === lines[0] ? { r: 3, strokeWidth: 0, fill: l.color } : false}
+              activeDot={false}
               connectNulls={false}
               isAnimationActive={false}
             />
           ))}
+          <RechartsScrubber rows={rows} xKey={xKey} lines={lines} selection={selection} dispatch={dispatch} label={ariaLabel} helpId={helpId}
+            valueText={row ? `${labelText(row)}; ${lines.map((l, i) => `${l.label}: ${format(row[l.key] as number | null)}${bounds ? `; interval return ${fmtChangePct(changes[i])}` : ""}`).join("; ")}` : "No observations"} />
         </LineChart>
       </ResponsiveContainer>
+      {row && selection.active !== null && <SelectionReadout selected={!!bounds} onClear={() => dispatch({ type: "clear" })}
+        label={first ? <>{hoverLabel(first)} – {hoverLabel(row)}</> : hoverLabel(row)}>
+        {lines.map((l, i) => <div key={l.key} className="flex flex-wrap justify-between gap-x-4">
+          <span>{l.label}</span><span>{first ? `${format(first[l.key] as number | null)} → ` : ""}{format(row[l.key] as number | null)}</span>
+          {bounds && <span className={tone(changes[i])}>Interval return {changes[i] === null ? "Unavailable" : fmtChangePct(changes[i])}</span>}
+        </div>)}
+        {diff !== null && <div className="border-t pt-1.5 text-muted-foreground">{bounds ? "Interval return gap" : "Gap"} <span className={tone(diff)}>{fmtChangeBp(diff)}</span></div>}
+      </SelectionReadout>}
+    </div>
+    <p id={helpId} className="mt-2 text-caption text-muted-foreground">{scrubHelp}</p>
     </div>
   );
 }

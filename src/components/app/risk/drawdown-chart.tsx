@@ -1,9 +1,12 @@
 "use client";
 
-import { Area, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ChartTooltip, exactDate, tone } from "@/components/charts/primitives";
+import { Area, ComposedChart, Line, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { exactDate, tone } from "@/components/charts/primitives";
 import { EdgeTick } from "@/components/app/portfolio/lines-chart";
-import { fmtDate, fmtPct } from "@/lib/format";
+import { useId } from "react";
+import { RechartsScrubber, SelectionReadout, scrubHelp, useChartSelection } from "@/components/charts/interaction";
+import { intervalChange } from "@/lib/charts/interval";
+import { fmtAccounting, fmtDate, fmtPct } from "@/lib/format";
 
 /** `fund` and `market` are drawdowns in percent (0 or negative). */
 export type DrawdownPoint = { date: string; fund: number; market?: number };
@@ -14,6 +17,8 @@ export type DrawdownPoint = { date: string; fund: number; market?: number };
  * day, with its depth.
  */
 export function DrawdownChart({ data, fundLabel, marketLabel = "S&P 500 (SPY)", height = 150, worstDate }: { data: DrawdownPoint[]; fundLabel: string; marketLabel?: string; height?: number; worstDate?: string | null }) {
+  const helpId = useId();
+  const { selection, dispatch, bounds } = useChartSelection(data[0]?.date, data.length);
   if (data.length < 2) return <div className="text-body text-muted-foreground">Needs at least two trading days.</div>;
   const hasMarket = data.some((d) => d.market !== undefined);
   const lows = data.flatMap((d) => [d.fund, d.market ?? 0]);
@@ -26,31 +31,37 @@ export function DrawdownChart({ data, fundLabel, marketLabel = "S&P 500 (SPY)", 
   const nearest = pick.reduce((best, d, i) => (Math.abs(data.findIndex((x) => x.date === d) - worstIdx) < Math.abs(data.findIndex((x) => x.date === pick[best]) - worstIdx) ? i : best), 0);
   const ticks = pick.map((d, i) => (i === nearest && i > 0 && i < pick.length - 1 ? worstAt : d));
   const label = (d: string) => (d === worstAt && d !== data[0].date && d !== data.at(-1)!.date ? `${fmtDate(d)}, worst ${fmtPct(worst.fund)}` : fmtDate(d));
+  const lines = [{ key: "fund", label: fundLabel, color: "var(--down-line)" }, ...(hasMarket ? [{ key: "market", label: marketLabel, color: "var(--series-neutral)" }] : [])];
+  const selected = data[bounds?.[1] ?? selection.active ?? data.length - 1];
+  const first = bounds ? data[bounds[0]] : null;
   return (
-    <div className="w-full" style={{ height }} role="img" aria-label={`${fundLabel} drawdown from the previous high; the worst was ${fmtPct(worst.fund)} on ${fmtDate(worstAt)}`}>
+    <div>
+    <div className="relative w-full" style={{ height, touchAction: "pan-y" }} role="group" aria-label={`${fundLabel} drawdown from the previous high; the worst was ${fmtPct(worst.fund)} on ${fmtDate(worstAt)}`}>
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <ComposedChart data={data} margin={{ top: 4, right: 2, bottom: 0, left: 2 }} accessibilityLayer={false}>
           <XAxis dataKey="date" ticks={ticks} interval={0} tick={<EdgeTick format={label} />} tickLine={false} axisLine={false} padding={{ left: 0, right: 0 }} />
           <YAxis hide domain={[low, 0]} />
           <ReferenceLine y={0} stroke="var(--bench-bar)" />
-          <Tooltip
-            cursor={{ stroke: "var(--border)" }}
-            isAnimationActive={false}
-            content={({ active, payload }) => {
-              const p = active ? (payload?.[0]?.payload as DrawdownPoint | undefined) : undefined;
-              if (!p) return null;
-              return (
-                <ChartTooltip label={exactDate(p.date)}>
-                  <div className="flex justify-between gap-4"><span>{fundLabel}</span><span className={tone(p.fund)}>{fmtPct(p.fund)}</span></div>
-                  {p.market !== undefined && <div className="flex justify-between gap-4"><span>{marketLabel}</span><span className={tone(p.market)}>{fmtPct(p.market)}</span></div>}
-                </ChartTooltip>
-              );
-            }}
-          />
-          <Area type="linear" dataKey="fund" stroke="var(--down-line)" fill="var(--down-fill)" fillOpacity={1} strokeWidth={2} strokeLinejoin="round" baseValue={0} isAnimationActive={false} />
-          {hasMarket && <Line type="linear" dataKey="market" stroke="var(--series-neutral)" strokeWidth={2} strokeDasharray="1 5" strokeLinecap="round" dot={false} isAnimationActive={false} />}
+          <Area type="linear" dataKey="fund" stroke="var(--down-line)" fill="var(--down-fill)" fillOpacity={1} strokeWidth={2} strokeLinejoin="round" baseValue={0} isAnimationActive={false} activeDot={false} />
+          {hasMarket && <Line type="linear" dataKey="market" stroke="var(--series-neutral)" strokeWidth={2} strokeDasharray="1 5" strokeLinecap="round" dot={false} isAnimationActive={false} activeDot={false} />}
+          <RechartsScrubber rows={data} xKey="date" lines={lines} selection={selection} dispatch={dispatch} label={`${fundLabel} drawdown`} helpId={helpId}
+            valueText={selected ? `${first ? `${exactDate(first.date)} to ` : ""}${exactDate(selected.date)}; ${lines.map((l) => `${l.label}: ${fmtPct(selected[l.key as keyof typeof selected] as number)}`).join("; ")}` : "No observations"} />
         </ComposedChart>
       </ResponsiveContainer>
+      {selected && selection.active !== null && <SelectionReadout selected={!!bounds} onClear={() => dispatch({ type: "clear" })}
+        label={first ? `${exactDate(first.date)} – ${exactDate(selected.date)}` : exactDate(selected.date)}>
+        {lines.map((l) => {
+          const a = first?.[l.key as keyof typeof first];
+          const b = selected[l.key as keyof typeof selected];
+          const result = first ? intervalChange(a, b, "level") : null;
+          return <div key={l.key}>
+            <div className="flex flex-wrap justify-between gap-x-4"><span>{l.label}</span><span>{first ? `${fmtPct(a as number)} → ` : ""}{fmtPct(b as number)}</span></div>
+            {result && <div className={tone(result.change)}>Change in drawdown {result.change === null ? "Unavailable" : fmtAccounting(result.change, 2)} percentage points</div>}
+          </div>;
+        })}
+      </SelectionReadout>}
+    </div>
+    <p id={helpId} className="mt-2 text-caption text-muted-foreground">{scrubHelp}</p>
     </div>
   );
 }
