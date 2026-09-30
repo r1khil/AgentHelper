@@ -22,12 +22,16 @@ import { Diagnostics } from "./diagnostics";
 import { JobRunsLive } from "./job-runs-live";
 import { JobsPanel, type JobsPanelProps } from "./jobs-panel";
 import { MembersPanel, type MembersPanelProps } from "./members-panel";
+import { UsagePanel } from "./usage-panel";
+import type { UsageReport } from "@/lib/usage/report";
 
 type Option = { id: string; label: string };
 
 export type AdminViewProps = {
-  /** Which tab of /admin: Members (the default) or Jobs and connections (`?tab=jobs`). The PT sheet has its own route. */
-  tab: "members" | "jobs";
+  /** Which tab of /admin: Members (the default), Usage (`?tab=usage`) or Jobs and connections (`?tab=jobs`). The PT sheet has its own route. */
+  tab: "members" | "usage" | "jobs";
+  /** Loaded only on the Usage tab. */
+  usage: UsageReport | null;
   /** Scheduled jobs and services that need a look: the count on the Jobs and connections tab. */
   attention: number;
   connections: ConnectionRow[];
@@ -74,6 +78,16 @@ export function AdminView(p: AdminViewProps) {
         <AdminHead active="members" attention={p.attention} actions={canMutate ? <MemberActions teams={p.members.teams} /> : undefined} />
         {notices}
         <MembersPanel {...p.members} />
+      </>
+    );
+  }
+
+  if (p.tab === "usage") {
+    return (
+      <>
+        <AdminHead active="usage" attention={p.attention} />
+        {notices}
+        <UsagePanel report={p.usage} />
       </>
     );
   }

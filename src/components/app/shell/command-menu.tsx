@@ -19,6 +19,7 @@ import { useHootCommand } from "../hoot/use-hoot-command";
 import { useAskHoot } from "../hoot/use-ask-hoot";
 import { pageContextFor, pageLabelFor } from "../hoot/page-context";
 import { OwlMark } from "../owl-mark";
+import { track } from "@/lib/usage/client";
 import { commandGroups, recentWhen, typedQuestionTarget, type CommandItem as Item, type CommandPage, type CommandScope } from "./command-groups";
 
 const shortDate = (iso: string) => fmtDay(iso);
@@ -129,6 +130,7 @@ export function CommandMenu({
   };
 
   const run = (item: Item) => {
+    track("palette_select", { kind: item.kind });
     switch (item.kind) {
       case "holding":
         close();

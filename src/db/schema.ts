@@ -890,3 +890,29 @@ export const etfConstituents = pgTable(
   ],
 );
 export type EtfConstituent = typeof etfConstituents.$inferSelect;
+
+/**
+ * What members do in the app (drizzle/0027_usage_events.sql): one `page_view` row per page seen, with how long it was
+ * in view and its load metrics, plus named actions and client errors. Never what anyone typed. Kept 90 days.
+ */
+export const usageEvents = pgTable(
+  "usage_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    userId: uuid("user_id").references(() => profiles.id, { onDelete: "cascade" }),
+    /** One per browser tab, so a visit's page views can be read in order. */
+    sessionId: text("session_id"),
+    /** See USAGE_EVENTS in src/lib/usage/events.ts. */
+    name: text("name").notNull(),
+    /** The page with its ids replaced: /t/:team/h/:ticker. */
+    route: text("route"),
+    /** The team slug in view (`fund` for the whole fund). */
+    team: text("team"),
+    props: jsonb("props").$type<Record<string, unknown>>().notNull().default({}),
+    /** production | preview | development, so local runs against the shared database can be left out. */
+    env: text("env").notNull().default("production"),
+  },
+  (t) => [index("usage_events_at").on(t.at), index("usage_events_name_at").on(t.name, t.at), index("usage_events_user_at").on(t.userId, t.at)],
+);
+export type UsageEvent = typeof usageEvents.$inferSelect;

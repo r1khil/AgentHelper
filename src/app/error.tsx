@@ -1,9 +1,17 @@
 "use client";
 
+import { useEffect } from "react";
+import { flushUsage, track } from "@/lib/usage/client";
 import { Button } from "@/components/ui/button";
 import { OwlMark } from "@/components/app/owl-mark";
 
 export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
+  // A render error never reaches window.onerror, so the usage tracker wouldn't see it. This screen replaces the app
+  // shell (and the tracker's flush-on-close), so send it now rather than on the next timer.
+  useEffect(() => {
+    track("client_error", { message: error.message.slice(0, 300), source: error.digest ? `boundary:${error.digest}` : "boundary" });
+    flushUsage();
+  }, [error]);
   return (
     <main className="grid min-h-screen place-items-center bg-background p-6">
       <div className="flex max-w-md flex-col items-start">

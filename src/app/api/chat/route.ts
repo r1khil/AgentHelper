@@ -12,6 +12,7 @@ import { distillTurn } from "@/lib/agent/memory/distill";
 import { usesPtSheet } from "@/lib/agent/pt-sheet-guard";
 import { ensureDriveIndexFresh } from "@/lib/jobs/drive";
 import { ensureIngested } from "@/lib/jobs/ingest";
+import { recordUsage } from "@/lib/usage/record";
 
 export const maxDuration = 300;
 
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
 
   await ensureDriveIndexFresh();
   after(() => ensureIngested());
+  after(() => recordUsage(user.id, [{ name: "hoot_ask", props: { holding: !!chat.holdingId, fund: chat.teamId === null, first: prior.length === 0 } }]));
   // Transparency mode (exec/admin preference) streams a live trace of steps and provider calls to this browser only.
   const question = asked.parts.map((p) => (p.type === "text" ? p.text : "")).join("").trim();
   const { clientStream, persisted } = await runAgentTurn({

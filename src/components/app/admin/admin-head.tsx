@@ -1,15 +1,16 @@
 import { PageHead } from "@/components/app/page-head";
 import type { TabItem } from "@/components/app/tabs";
 
-export type AdminTab = "members" | "jobs" | "pt-sheet";
+export type AdminTab = "members" | "usage" | "jobs" | "pt-sheet";
 
 /**
- * Admin's header on all three tabs: Manage / Admin, then Members, Jobs and connections (with how many need attention,
- * worded amber) and the PT sheet read. The tabs are links: Members is /admin, Jobs and connections /admin?tab=jobs.
+ * Admin's header on every tab: Manage / Admin, then Members, Usage, Jobs and connections (with how many need attention,
+ * worded amber) and the PT sheet read. The tabs are links: Members is /admin, Usage /admin?tab=usage, Jobs and connections /admin?tab=jobs.
  */
 export function AdminHead({ active, attention, asof, actions }: { active: AdminTab; attention: number; asof?: React.ReactNode; actions?: React.ReactNode }) {
   const tabs: TabItem[] = [
     { key: "members", label: "Members", href: "/admin", active: active === "members" },
+    { key: "usage", label: "Usage", href: "/admin?tab=usage", active: active === "usage" },
     {
       key: "jobs",
       label: "Jobs and connections",
