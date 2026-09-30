@@ -94,3 +94,8 @@ Hoot is the owl companion in the bottom-right corner. His face shows the state o
 He stays quietly alive without asking for attention: his eyes follow the caret while you type, glance where you click and the way you scroll, and wander when nothing is happening (`src/components/app/hoot/attention.ts`, one set of listeners for every Hoot on the page). He closes his eyes and looks away while a password is typed. Every 20 to 50 seconds of inactivity he fidgets (a shuffle, a feather ruffle, a nod when dozing). He glances over when you change pages, waves when you come back after five minutes away, hops once when something urgent turns up, and closes his eyes happily if you rest the pointer on him. Drag him, or use the panel's Move button, to switch bottom corners; the choice is kept per device. None of it runs with reduced motion or in a hidden tab.
 
 He is built from code in Blender: `scripts/blender/hoot.py` models, poses and renders him (run it through the Blender MCP addon or `Blender -b -P`), and `node scripts/blender/hoot-sprites.mjs <render dir>` turns the renders into `public/hoot/`, the eye positions and the app icons. `/dev/hoot` in development shows every pose and the live 3D version.
+
+
+## Portfolio design mock
+
+This branch includes an interactive, synthetic portfolio design proposal at `/portfolio-mock`. It works without credentials in development and keeps the production portfolio separate. Start the app with `PORTFOLIO_MOCK_PREVIEW=1 npm run dev` and open that route; without the flag, and always in production, it requires sign-in like every other page. See [the design notes, review tasks, screenshots, and validation](docs/portfolio-design-mock.md).
