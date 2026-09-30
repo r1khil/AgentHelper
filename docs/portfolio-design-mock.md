@@ -1,6 +1,6 @@
 # Portfolio design mock
 
-Open `/portfolio-mock` on this branch. Run `npm install` (or `npm ci`), then `npm run dev`; no credentials or feature flags are needed for this route. It is intentionally a public, synthetic review surface, excluded from search indexing. The exact-path proxy exception does not expose the authenticated portfolio or any API.
+Open `/portfolio-mock` on this branch. Run `npm install` (or `npm ci`), then `PORTFOLIO_MOCK_PREVIEW=1 npm run dev`; with that flag in development no credentials are needed for this route. Like the other synthetic previews, the exact-path proxy exception is development-only: in production, or without the flag, the route requires sign-in. It is excluded from search indexing and does not expose the authenticated portfolio or any API.
 
 ## Proposal
 

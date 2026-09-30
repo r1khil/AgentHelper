@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -10,11 +9,9 @@ const POLL_MS = 5 * 60 * 1000;
 /** Shows once the server reports a different build than the one this page was loaded from. */
 export function UpdateBanner({ buildId }: { buildId: string }) {
   const [stale, setStale] = useState(false);
-  const pathname = usePathname();
 
   useEffect(() => {
-    // The standalone synthetic mock works without a configured app session or any API polling.
-    if (stale || pathname === "/portfolio-mock") return;
+    if (stale) return;
     let cancelled = false;
 
     async function check() {
@@ -38,7 +35,7 @@ export function UpdateBanner({ buildId }: { buildId: string }) {
       document.removeEventListener("visibilitychange", check);
       window.removeEventListener("focus", check);
     };
-  }, [buildId, stale, pathname]);
+  }, [buildId, stale]);
 
   if (!stale) return null;
 

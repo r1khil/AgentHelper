@@ -6,8 +6,10 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_PATHS = ["/login", "/not-invited", "/auth/callback", "/auth/google/callback", "/api/cron", "/api/health", "/api/version", "/api/drive/webhook", "/api/email/inbound", "/api/openmail/webhook"];
 
 export async function proxy(request: NextRequest) {
-  // Public, self-contained design mock: synthetic fixtures only, no database or live API access.
-  if (request.nextUrl.pathname === "/portfolio-mock") return NextResponse.next({ request });
+  // Synthetic portfolio design mock, same rule: local-only behind an explicit flag, never public in production.
+  if (process.env.NODE_ENV === "development" && process.env.PORTFOLIO_MOCK_PREVIEW === "1" && request.nextUrl.pathname === "/portfolio-mock") {
+    return NextResponse.next({ request });
+  }
   // Explicit local-only, synthetic calendar preview; never bypass app or live API authentication.
   if (process.env.NODE_ENV === "development" && process.env.ECONOMIC_CALENDAR_PREVIEW === "1" &&
       ["/dev/economic-calendar", "/api/dev/economic-calendar"].includes(request.nextUrl.pathname)) {

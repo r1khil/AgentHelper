@@ -27,21 +27,40 @@ import {
   X,
 } from "lucide-react";
 import {
+  ALLOCATION_GRADIENT,
   allocationChange,
+  CASH_COLOR,
   CASH_WEIGHT,
   contribution,
+  EFFECTIVE_POSITIONS,
   fundReturn,
+  HELD_SECTORS,
   HOLDINGS,
+  INVESTED_WEIGHT,
+  LARGEST_OVERWEIGHT,
+  LARGEST_SECTOR,
   money,
   NAV,
   PERIODS,
+  SECTOR_ACTIVE_SHARE,
+  SECTOR_DIFFERENCES,
   SECTORS,
+  sectorShock,
   sectorWeight,
   signed,
+  TOP_RISK,
+  TOP_THREE,
+  topWeight,
   type Holding,
   type Period,
 } from "./data";
-import { fmtAccounting, fmtChangeBp, fmtChangePct } from "@/lib/format";
+import {
+  fmtAccounting,
+  fmtChangeBp,
+  fmtChangePct,
+  fmtChangeUsd,
+  fmtPct,
+} from "@/lib/format";
 import "./mock.css";
 
 type View =
@@ -189,11 +208,11 @@ function ReturnsChart({ period }: { period: Period }) {
       <div className="pm-chart-key">
         <span>
           <i className="pm-key-fund" />
-          Fund <b>{signed(ret)}%</b>
+          Fund <b>{fmtChangePct(ret)}</b>
         </span>
         <span>
           <i className="pm-key-bench" />
-          S&amp;P 500 <b>{signed(bench)}%</b>
+          S&amp;P 500 <b>{fmtChangePct(bench)}</b>
         </span>
         <small>Illustrative path · recorded-history layout</small>
       </div>
@@ -297,7 +316,8 @@ function Overview({
           <span>Portfolio value · Sep 29 close</span>
           <strong>{money(NAV)}</strong>
           <small>
-            12 holdings <i /> {fmtAccounting(CASH_WEIGHT, 1)}% cash
+            {HOLDINGS.length} holdings <i /> {fmtAccounting(CASH_WEIGHT, 1)}%
+            cash
           </small>
         </div>
       </div>
@@ -309,7 +329,7 @@ function Overview({
         />
         <Metric
           label="S&P 500 return"
-          value={`${signed(PERIODS[period].benchmark)}%`}
+          value={fmtChangePct(PERIODS[period].benchmark)}
           note="Same dates · total return"
         />
         <Metric
@@ -373,9 +393,10 @@ function Overview({
                 <ShieldCheck size={18} />
               </span>
               <span>
-                <strong>One position, 23% of risk</strong>
+                <strong>One position, {TOP_RISK.risk}% of risk</strong>
                 <small>
-                  NVDA is 10% of the portfolio in the sample risk model.
+                  {TOP_RISK.ticker} is {TOP_RISK.weight}% of the portfolio in
+                  the sample risk model.
                 </small>
                 <b>
                   See risk contributors <ArrowRight size={13} />
@@ -390,8 +411,16 @@ function Overview({
                 <PieChart size={18} />
               </span>
               <span>
-                <strong>Financials: 3 pp overweight</strong>
-                <small>17% of the portfolio vs 14% of the benchmark.</small>
+                <strong>
+                  {LARGEST_OVERWEIGHT.name}:{" "}
+                  {sectorWeight(LARGEST_OVERWEIGHT.name) -
+                    LARGEST_OVERWEIGHT.benchmark}{" "}
+                  pp overweight
+                </strong>
+                <small>
+                  {sectorWeight(LARGEST_OVERWEIGHT.name)}% of the portfolio vs{" "}
+                  {LARGEST_OVERWEIGHT.benchmark}% of the benchmark.
+                </small>
                 <b>
                   Explore allocation <ArrowRight size={13} />
                 </b>
@@ -400,7 +429,7 @@ function Overview({
             <div className="pm-neutral-note">
               <Check size={15} />
               <span>
-                All 12 sample holdings have prices.
+                All {HOLDINGS.length} sample holdings have prices.
                 <small>No fund limits configured in this mock.</small>
               </span>
             </div>
@@ -428,8 +457,9 @@ function Overview({
             <div>
               <strong>The last session</strong>
               <p>
-                Fund {signed(fundReturn("day"))}% vs S&amp;P 500 +0.17%. Inspect
-                contribution before drawing a conclusion about the cause.
+                Fund {fmtChangePct(fundReturn("day"))} vs S&amp;P 500{" "}
+                {fmtChangePct(PERIODS.day.benchmark)}. Inspect contribution
+                before drawing a conclusion about the cause.
               </p>
               <button
                 className="pm-text-button"
@@ -503,7 +533,7 @@ function Holdings({
     link.href = url;
     link.download = "synthetic-portfolio-holdings.csv";
     link.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
   return (
     <>
@@ -719,7 +749,7 @@ function Performance({
         />
         <Metric
           label="Benchmark return"
-          value={`${signed(PERIODS[period].benchmark)}%`}
+          value={fmtChangePct(PERIODS[period].benchmark)}
           note="S&P 500 · total return"
         />
         <Metric
@@ -848,7 +878,7 @@ function Performance({
             </tbody>
             <tfoot>
               <tr>
-                <td>Fund · including 7% cash at zero return</td>
+                <td>Fund · including {CASH_WEIGHT}% cash at zero return</td>
                 <td>100%</td>
                 <td>
                   <Pct n={ret} />
@@ -923,9 +953,12 @@ function Risk({ open }: { open: (h: Holding) => void }) {
           sub="A holding’s share of estimated total portfolio risk"
         >
           <div className="pm-risk-callout">
-            <strong>NVDA contributes 23% of risk</strong>
+            <strong>
+              {TOP_RISK.ticker} contributes {TOP_RISK.risk}% of risk
+            </strong>
             <p>
-              Its 10% portfolio weight is smaller than its estimated risk share.
+              Its {TOP_RISK.weight}% portfolio weight is smaller than its
+              estimated risk share.
             </p>
           </div>
           <div className="pm-risk-bars">
@@ -961,12 +994,12 @@ function Risk({ open }: { open: (h: Holding) => void }) {
               {
                 name: "Technology shock",
                 shock: "Technology sleeve −15%; others unchanged",
-                value: -4.65,
+                value: sectorShock("Technology", -15),
               },
               {
                 name: "Financials shock",
                 shock: "Financials sleeve −10%; others unchanged",
-                value: -1.7,
+                value: sectorShock("Financials", -10),
               },
             ].map((s) => (
               <div key={s.name}>
@@ -1053,22 +1086,22 @@ function Risk({ open }: { open: (h: Holding) => void }) {
         <div className="pm-detail-grid">
           <Metric
             label="Modeled max drawdown"
-            value="−12.4%"
+            value={fmtPct(-12.4, 1)}
             note="Current-weight replay · not actual fund drawdown"
           />
           <Metric
             label="95% expected shortfall"
-            value="−2.6%"
+            value={fmtPct(-2.6, 1)}
             note="Average loss in sample worst 5% of days"
           />
           <Metric
             label="Top three holdings"
-            value="36%"
-            note="Share of NAV · MSFT, GOOG, NVDA"
+            value={`${topWeight(3)}%`}
+            note={`Share of NAV · ${TOP_THREE.join(", ")}`}
           />
           <Metric
             label="Price coverage"
-            value="12 / 12"
+            value={`${HOLDINGS.length} / ${HOLDINGS.length}`}
             note="All sample positions · cash excluded"
           />
         </div>
@@ -1143,15 +1176,12 @@ function Risk({ open }: { open: (h: Holding) => void }) {
         <div className="pm-detail-grid">
           <Metric
             label="Top five weight"
-            value="53%"
+            value={`${topWeight(5)}%`}
             note="Concentration as a share of NAV"
           />
           <Metric
             label="Effective equity positions"
-            value={fmtAccounting(
-              93 ** 2 / HOLDINGS.reduce((sum, h) => sum + h.weight ** 2, 0),
-              1,
-            )}
+            value={fmtAccounting(EFFECTIVE_POSITIONS, 1)}
             note="Inverse sum of squared normalized equity weights"
           />
         </div>
@@ -1181,7 +1211,6 @@ function Exposure({
   navigate: (v: View) => void;
 }) {
   const [sector, setSector] = useState<string | null>(null);
-  const invested = 100 - CASH_WEIGHT;
   return (
     <>
       <PageIntro
@@ -1192,23 +1221,23 @@ function Exposure({
       <div className="pm-metric-strip">
         <Metric
           label="Invested in equities"
-          value={`${invested}%`}
-          note="7% cash · included in NAV"
+          value={`${INVESTED_WEIGHT}%`}
+          note={`${CASH_WEIGHT}% cash · included in NAV`}
         />
         <Metric
           label="Largest allocation"
-          value="31%"
-          note="Technology · 33% in benchmark"
+          value={`${sectorWeight(LARGEST_SECTOR.name)}%`}
+          note={`${LARGEST_SECTOR.name} · ${LARGEST_SECTOR.benchmark}% in benchmark`}
         />
         <Metric
           label="Largest overweight"
-          value="+3 pp"
-          note="Financials · 17% vs 14%"
+          value={`${signed(sectorWeight(LARGEST_OVERWEIGHT.name) - LARGEST_OVERWEIGHT.benchmark, 0)} pp`}
+          note={`${LARGEST_OVERWEIGHT.name} · ${sectorWeight(LARGEST_OVERWEIGHT.name)}% vs ${LARGEST_OVERWEIGHT.benchmark}%`}
         />
         <Metric
           label="Top three holdings"
-          value="36%"
-          note="MSFT, GOOG, NVDA · % of NAV"
+          value={`${topWeight(3)}%`}
+          note={`${TOP_THREE.join(", ")} · % of NAV`}
         />
       </div>
       <div className="pm-two-column">
@@ -1216,18 +1245,15 @@ function Exposure({
           <div className="pm-allocation">
             <div
               className="pm-donut"
-              style={{
-                background:
-                  "conic-gradient(#426d59 0% 31%, #8aa397 31% 54%, #b2c7bc 54% 71%, #a49d81 71% 84%, #c0bba7 84% 93%, #e5e8e4 93% 100%)",
-              }}
+              style={{ background: ALLOCATION_GRADIENT }}
             >
               <div>
-                <strong>12</strong>
+                <strong>{HOLDINGS.length}</strong>
                 <span>holdings</span>
               </div>
             </div>
             <div className="pm-allocation-key">
-              {SECTORS.filter((s) => sectorWeight(s.name)).map((s) => (
+              {HELD_SECTORS.map((s) => (
                 <button key={s.name} onClick={() => setSector(s.name)}>
                   <i style={{ background: s.color }} />
                   <span>{s.name}</span>
@@ -1235,9 +1261,9 @@ function Exposure({
                 </button>
               ))}
               <div>
-                <i style={{ background: "#e5e8e4" }} />
+                <i style={{ background: CASH_COLOR }} />
                 <span>Cash</span>
-                <strong>7%</strong>
+                <strong>{CASH_WEIGHT}%</strong>
               </div>
             </div>
           </div>
@@ -1343,22 +1369,20 @@ function Exposure({
         <div className="pm-detail-grid">
           <Metric
             label="Sector-level active share"
-            value="14%"
+            value={`${SECTOR_ACTIVE_SHARE}%`}
             note="Half the absolute weight differences, including cash"
           />
           <Metric
             label="Effective equity positions"
-            value={fmtAccounting(
-              93 ** 2 / HOLDINGS.reduce((sum, h) => sum + h.weight ** 2, 0),
-              1,
-            )}
-            note="12 names; normalized invested weights"
+            value={fmtAccounting(EFFECTIVE_POSITIONS, 1)}
+            note={`${HOLDINGS.length} names; normalized invested weights`}
           />
         </div>
         <p>
-          Sector-level active share = ½ × (2 + 2 + 3 + 2 + 0 + 12 + 7) = 14%.
-          Cash is 7% in the fund and 0% in the equity benchmark. This grouped
-          fixture is not stock-level active share.
+          Sector-level active share = ½ × ({SECTOR_DIFFERENCES.join(" + ")}) ={" "}
+          {SECTOR_ACTIVE_SHARE}%. Cash is {CASH_WEIGHT}% in the fund and 0% in
+          the equity benchmark. This grouped fixture is not stock-level active
+          share.
         </p>
       </Working>
       <Working title="Factor exposure and ETF look-through">
@@ -1553,14 +1577,14 @@ function Scenarios({ initialTicker }: { initialTicker: string }) {
                           <tr key={h.ticker}>
                             <td>{h.ticker}</td>
                             <td>{h.weight}%</td>
-                            <td>{h.nextWeight}%</td>
+                            <td>{fmtAccounting(h.nextWeight, 2)}%</td>
                             <td>{signed(h.nextWeight - h.weight, 1)} pp</td>
                           </tr>
                         ))}
                       <tr>
                         <td>Cash</td>
                         <td>{CASH_WEIGHT}%</td>
-                        <td>{applied.cash}%</td>
+                        <td>{fmtAccounting(applied.cash, 2)}%</td>
                         <td>{signed(applied.cash - CASH_WEIGHT, 1)} pp</td>
                       </tr>
                       <tr>
@@ -1608,22 +1632,22 @@ function Scenarios({ initialTicker }: { initialTicker: string }) {
           <div className="pm-metric-strip">
             <Metric
               label="Technology allocation"
-              value="31%"
+              value={`${sectorWeight("Technology")}%`}
               note="Current portfolio"
             />
             <Metric
               label="Applied shock"
-              value="−15%"
+              value={fmtPct(-15, 0)}
               note="Technology holdings only"
             />
             <Metric
               label="Portfolio impact"
-              value={<span className="pm-down">−4.65%</span>}
-              note="31% × −15%"
+              value={<Pct n={sectorShock("Technology", -15)} />}
+              note={`${sectorWeight("Technology")}% × ${fmtPct(-15, 0)}`}
             />
             <Metric
               label="Estimated dollar change"
-              value={money(-NAV * 0.0465)}
+              value={money((NAV * sectorShock("Technology", -15)) / 100)}
               note="No correlation or second-order effects"
             />
           </div>
@@ -1632,7 +1656,7 @@ function Scenarios({ initialTicker }: { initialTicker: string }) {
               {HOLDINGS.filter((h) => h.sector === "Technology")
                 .map(
                   (h) =>
-                    `${h.ticker}: ${h.weight}% × −15% = ${signed(h.weight * -0.15)}% of NAV`,
+                    `${h.ticker}: ${h.weight}% × ${fmtPct(-15, 0)} = ${fmtChangePct(h.weight * -0.15)} of NAV`,
                 )
                 .join("; ")}
               . Cash and all other holdings remain flat. This is a defined
@@ -1731,7 +1755,7 @@ function Scenarios({ initialTicker }: { initialTicker: string }) {
                   <tr>
                     <td>{ticker}</td>
                     <td>{current.weight}%</td>
-                    <td>{result.ok ? Number(target) : "—"}%</td>
+                    <td>{result.ok ? `${Number(target)}%` : "—"}</td>
                     <td>Not run</td>
                   </tr>
                 </tbody>
@@ -1869,10 +1893,7 @@ function Activity() {
                   </small>
                 </span>
                 <span className="pm-event-type">{e.type}</span>
-                <strong>
-                  {e.cash < 0 ? "−" : "+"}
-                  {money(Math.abs(e.cash), 2)}
-                </strong>
+                <strong>{fmtChangeUsd(e.cash)}</strong>
                 <ChevronDown size={16} />
               </summary>
               <div className="pm-event-detail">
@@ -1984,8 +2005,8 @@ function HoldingDialog({
           </div>
           <Working title="Show the contribution calculation">
             <p>
-              {holding.weight}% weight × {signed(holding.day)}% daily return ={" "}
-              {signed(contribution(holding, "day"), 2)} basis points of
+              {holding.weight}% weight × {fmtChangePct(holding.day)} daily
+              return = {signed(contribution(holding, "day"), 2)} basis points of
               portfolio return. Dollar contribution using constant sample NAV:{" "}
               {money((NAV * contribution(holding, "day")) / 10000, 2)}.
             </p>
@@ -2067,6 +2088,8 @@ function HelpDialog({ open, close }: { open: boolean; close: () => void }) {
 export function PortfolioMock() {
   const [view, setView] = useState<View>("Overview");
   const [scenarioTicker, setScenarioTicker] = useState("NVDA");
+  // Bumped on every "Explore a scenario" so Scenarios restarts on that holding's resize even if the ticker is unchanged.
+  const [scenarioRun, setScenarioRun] = useState(0);
   const searchFocusPending = useRef(false);
   useEffect(() => {
     if (view === "Holdings" && searchFocusPending.current) {
@@ -2187,12 +2210,13 @@ export function PortfolioMock() {
           <button
             className="pm-text-button"
             onClick={() => {
+              // Already on Holdings: focus now. Otherwise the effect focuses the search once Holdings renders.
+              const input = document.querySelector<HTMLInputElement>(
+                'input[aria-label="Search holdings"]',
+              );
+              if (input) input.focus();
+              else searchFocusPending.current = true;
               go("Holdings");
-              document
-                .querySelector<HTMLInputElement>(
-                  'input[aria-label="Search holdings"]',
-                )
-                ?.focus();
             }}
           >
             <Search size={15} />
@@ -2242,7 +2266,10 @@ export function PortfolioMock() {
             <Activity />
           )}
           <div hidden={view !== "Scenarios"}>
-            <Scenarios key={scenarioTicker} initialTicker={scenarioTicker} />
+            <Scenarios
+              key={`${scenarioTicker}:${scenarioRun}`}
+              initialTicker={scenarioTicker}
+            />
           </div>
         </main>
         <footer className="pm-footer">
@@ -2261,6 +2288,7 @@ export function PortfolioMock() {
         navigate={go}
         explore={(ticker) => {
           setScenarioTicker(ticker);
+          setScenarioRun((n) => n + 1);
           go("Scenarios");
         }}
       />

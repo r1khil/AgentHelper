@@ -204,6 +204,52 @@ export const sectorWeight = (name: string) =>
 export const money = fmtUsd;
 export const signed = fmtChangeMoney;
 
+/* Figures the views quote, derived from the fixtures above so they never contradict the tables. */
+export const INVESTED_WEIGHT = 100 - CASH_WEIGHT;
+const BY_WEIGHT = [...HOLDINGS].sort((a, b) => b.weight - a.weight);
+export const topWeight = (n: number) =>
+  BY_WEIGHT.slice(0, n).reduce((s, h) => s + h.weight, 0);
+export const TOP_THREE = BY_WEIGHT.slice(0, 3).map((h) => h.ticker);
+export const EFFECTIVE_POSITIONS =
+  INVESTED_WEIGHT ** 2 / HOLDINGS.reduce((s, h) => s + h.weight ** 2, 0);
+export const TOP_RISK = HOLDINGS.reduce((a, h) => (h.risk > a.risk ? h : a));
+export const HELD_SECTORS = SECTORS.filter((s) => sectorWeight(s.name));
+export const LARGEST_SECTOR = HELD_SECTORS.reduce((a, s) =>
+  sectorWeight(s.name) > sectorWeight(a.name) ? s : a,
+);
+export const LARGEST_OVERWEIGHT = SECTORS.reduce((a, s) =>
+  sectorWeight(s.name) - s.benchmark > sectorWeight(a.name) - a.benchmark
+    ? s
+    : a,
+);
+/** Half the absolute sector differences, cash counted against a 0% benchmark weight. */
+export const SECTOR_DIFFERENCES = [
+  ...SECTORS.map((s) => Math.abs(sectorWeight(s.name) - s.benchmark)),
+  CASH_WEIGHT,
+];
+export const SECTOR_ACTIVE_SHARE =
+  SECTOR_DIFFERENCES.reduce((s, d) => s + d, 0) / 2;
+export const CASH_COLOR = "#e5e8e4";
+/** Donut stops: held sectors in order, then cash. */
+export const ALLOCATION_GRADIENT = `conic-gradient(${[
+  ...HELD_SECTORS.map((s) => ({
+    color: s.color,
+    weight: sectorWeight(s.name),
+  })),
+  { color: CASH_COLOR, weight: CASH_WEIGHT },
+]
+  .reduce<{ at: number; stops: string[] }>(
+    ({ at, stops }, { color, weight }) => ({
+      at: at + weight,
+      stops: [...stops, `${color} ${at}% ${at + weight}%`],
+    }),
+    { at: 0, stops: [] },
+  )
+  .stops.join(", ")})`;
+/** A sleeve shock in percent of NAV: sector weight × shock. */
+export const sectorShock = (name: string, shockPct: number) =>
+  (sectorWeight(name) * shockPct) / 100;
+
 /** Allocation arithmetic only. Risk and forward returns require the real engines and are not estimated by this mock. */
 export function allocationChange(
   ticker: string,

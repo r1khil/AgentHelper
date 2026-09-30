@@ -98,4 +98,4 @@ He is built from code in Blender: `scripts/blender/hoot.py` models, poses and re
 
 ## Portfolio design mock
 
-This branch includes an interactive, synthetic portfolio design proposal at `/portfolio-mock`. It works without credentials and keeps the production portfolio separate. Start the app with `npm run dev` and open that route. See [the design notes, review tasks, screenshots, and validation](docs/portfolio-design-mock.md).
+This branch includes an interactive, synthetic portfolio design proposal at `/portfolio-mock`. It works without credentials in development and keeps the production portfolio separate. Start the app with `PORTFOLIO_MOCK_PREVIEW=1 npm run dev` and open that route; without the flag, and always in production, it requires sign-in like every other page. See [the design notes, review tasks, screenshots, and validation](docs/portfolio-design-mock.md).
