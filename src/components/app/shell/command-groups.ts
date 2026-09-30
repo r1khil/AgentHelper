@@ -75,7 +75,6 @@ export const FORMER_NAMES: { name: string; page: string; hint: string; label?: s
   { name: "Conversations", page: "Threads", hint: "Every conversation with Hoot" },
   { name: "Hoot", page: "Home", hint: "Ask Hoot here. Every thread is in the sidebar" },
   { name: "Team page", page: "Portfolio", hint: "A team's page is the Portfolio filtered to the team" },
-  { name: "Movements", page: "Write-ups", hint: "Movement write-ups. Each holding's are on its Write-ups tab" },
   { name: "Attribution", page: "Performance", hint: "Attribution is the Portfolio's Performance view" },
   { name: "Daily performance", page: "Performance", label: "Performance today", query: "?period=today", hint: "Today's return and what drove it, live" },
   { name: "Backtesting", page: "What if", hint: "Backtesting is the Portfolio's What if view" },
@@ -168,12 +167,12 @@ export function commandGroups({ query, holdings, pages, scopes, teamSlug, scopeS
     const tabs = (Object.keys(HOLDING_TABS) as HoldingTab[]).filter((t) => (rest.length ? rest.some((w) => normalize(HOLDING_TABS[t]).split(" ").some((x) => x.startsWith(w))) : t === "threads" || t === "earnings"));
     for (const t of tabs) {
       const hint =
-        t === "earnings" ? (top.nextReport ? `${shortDate(top.nextReport)}${top.nextReportEstimated ? " est." : ""}` : "No report scheduled") : t === "threads" ? "Hoot's conversations about this holding" : t === "write-ups" && top.openMovement ? "A write-up is open" : undefined;
+        t === "earnings" ? (top.nextReport ? `${shortDate(top.nextReport)}${top.nextReportEstimated ? " est." : ""}` : "No report scheduled") : t === "threads" ? "Hoot's conversations about this holding" : undefined;
       go.push({ kind: "page", id: `go:${t}:${top.ticker}`, page: { label: `${top.ticker} ${HOLDING_TABS[t].toLowerCase()}`, href: holdingHref(scopeSlug, top.teamSlug, top.ticker, `?tab=${t}`), hint } });
       if (rest.length) named.add(`go:${t}:${top.ticker}`);
     }
   }
-  // A page's own name first, then an old name (Movements, Backtesting) unless it opens a page already named. An old
+  // A page's own name first, then an old name (Attribution, Backtesting) unless it opens a page already named. An old
   // name that opens a view of a page ("daily": Performance for today) beats the page itself.
   const direct = pages.filter((p) => namesPage(q, p));
   const former = formerPages(q, pages).filter((f) => !direct.some((p) => p.href === f.href));

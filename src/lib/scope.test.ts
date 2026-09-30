@@ -6,7 +6,6 @@ import {
   holdingHref,
   isFundBookPath,
   modelHref,
-  movementHref,
   pathScope,
   resolveScope,
   scopedHref,
@@ -50,14 +49,13 @@ describe("scoped hrefs", () => {
     expect(earningsHref("tech", "tech", "e1")).toBe("/t/tech/earnings/e1");
     expect(earningsHref("consumer", "tech", "e1")).toBe("/t/tech/earnings/e1");
   });
-  it("builds holding, board, movement, model and call links the same way", () => {
+  it("builds holding, board, model and call links the same way", () => {
     expect(holdingHref("fund", "tech", "TSM")).toBe("/t/fund/h/TSM");
     expect(holdingHref("fund", "tech", "TSM", "?tab=earnings")).toBe("/t/fund/h/TSM?tab=earnings");
     expect(holdingHref("consumer", "consumer", "BRK.B")).toBe("/t/consumer/h/BRK.B");
     expect(boardHref("fund", "tech", "TSM")).toBe("/t/fund/h/TSM?tab=threads");
     expect(boardHref("consumer", "tech", "TSM")).toBe("/t/tech/h/TSM?tab=threads");
     expect(boardHref("tech", "tech", "TSM", "c1")).toBe("/hoot/c1");
-    expect(movementHref("fund", "tech", "m1")).toBe("/t/fund/movements/m1");
     expect(modelHref("consumer", "tech", "x1")).toBe("/t/tech/models/x1");
     expect(sellSideHref(null, "consumer", "s1")).toBe("/t/consumer/sell-side/s1");
   });

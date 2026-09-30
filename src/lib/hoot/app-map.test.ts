@@ -63,12 +63,11 @@ describe("pageForPath", () => {
     expect(pageForPath("/t/fund/what-if")?.entry.key).toBe("what_if");
     expect(pageForPath("/markets")?.entry.key).toBe("markets");
     expect(pageForPath("/hoot/c1")?.entry.key).toBe("thread");
-    expect(pageForPath("/t/tech/movements/abc")).toMatchObject({ entry: { key: "write_up" }, params: { id: "abc" } });
+    expect(pageForPath("/t/tech/movements/abc")).toBeNull();
     // Addresses from before the five screens map to where they redirect.
     expect(pageForPath("/attribution/ledger")?.entry.key).toBe("activity");
     expect(pageForPath("/attribution?period=ytd")?.entry.key).toBe("performance");
     expect(pageForPath("/t/tech/daily")?.entry.key).toBe("performance");
-    expect(pageForPath("/t/tech/movements")?.entry.key).toBe("write_ups");
     expect(pageForPath("/hoot")?.entry.key).toBe("threads");
     expect(pageForPath("/t/tech/agent")?.entry.key).toBe("home");
     expect(pageForPath("/t/tech/agent/h/NVDA")).toMatchObject({ entry: { key: "holding" }, params: { ticker: "NVDA" } });
@@ -82,9 +81,6 @@ describe("appPageContext", () => {
     const block = appPageContext("/t/fig/h/AXP");
     expect(block).toContain("It is Holding: everything about one holding");
     expect(block).toContain('read "this company", "it" and "the stock" as AXP');
-  });
-  it("explains the movement rule on a write-up", () => {
-    expect(appPageContext("/t/tech/movements/m1")).toContain("400 bp or more");
   });
 });
 
@@ -100,7 +96,6 @@ describe("explainApp", () => {
   });
   it("finds a page by what it used to be called", () => {
     expect(explainApp({ page: "Backtesting", role: "exec" }).page?.key).toBe("what_if");
-    expect(explainApp({ page: "Movements", role: "exec" }).page?.key).toBe("write_ups");
     expect(explainApp({ page: "research", role: "exec" }).page?.key).toBe("threads");
     expect(explainApp({ page: "economic calendar", role: "exec" }).page?.key).toBe("markets");
     expect(explainApp({ page: "attribution", role: "exec" }).page?.key).toBe("performance");

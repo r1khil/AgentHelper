@@ -21,6 +21,9 @@ const config: NextConfig = {
       to("/t/:team/agent/h/:ticker", "/hoot/:chat", { has: [{ type: "query", key: "chat", value: "(?<chat>.+)" }] }),
       to("/t/:team/agent/h/:ticker", "/t/:team/h/:ticker?tab=threads"),
       to("/t/:team/agent/:chat((?!h$)[^/]+)", "/hoot/:chat"),
+      // Movement write-ups were removed; alert and reminder emails linked here.
+      to("/t/:team/movements", "/t/:team"),
+      to("/t/:team/movements/:id", "/t/:team"),
     ];
   },
   async headers() {

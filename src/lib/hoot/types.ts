@@ -4,7 +4,7 @@ import type { TourRecord } from "@/lib/tour/types";
 
 export type HootMood = "idle" | "thinking" | "alert" | "wave" | "concerned" | "happy" | "sleepy";
 
-export type NudgeKind = "movement" | "earnings" | "sell_side" | "proposal" | "weekly" | "changelog" | "tip";
+export type NudgeKind = "earnings" | "sell_side" | "proposal" | "weekly" | "changelog" | "tip";
 
 export type HootNudge = {
   /** Stable per piece of content, so a dismissal sticks until something new happens. */

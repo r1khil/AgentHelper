@@ -2,13 +2,13 @@ import Link from "next/link";
 import { fmtDayMonth } from "@/lib/format";
 import { OwlMark } from "@/components/app/owl-mark";
 
-/** Something recorded since the thesis: Hoot's own note from a thread (his words, in serif), or the team's write-up. */
+/** Something recorded since the thesis: Hoot's own note from a thread (his words, in serif). */
 export type SinceItem = { key: string; by: "hoot" | "team"; text: string; label: string; at: Date | string; href?: string };
 
 /**
  * The rail's last section: the team's thesis (`thesis`, editable), then what has been recorded since it, newest first.
  * There is no Hoot summary of "what changed" in the app, so this shows the real entries instead: Hoot's research-log
- * notes from threads about the holding and the team's latest write-up, each linking to where it came from.
+ * notes from threads about the holding, each linking to where it came from.
  */
 export function SinceThesis({ thesis, items }: { thesis: React.ReactNode; items: SinceItem[] }) {
   return (
@@ -37,7 +37,7 @@ export function SinceThesis({ thesis, items }: { thesis: React.ReactNode; items:
           ))}
         </ol>
       ) : (
-        <p className="mt-4 text-caption text-muted-foreground">Nothing recorded since. Hoot&apos;s notes from threads about this holding and the team&apos;s write-ups show here as they come in.</p>
+        <p className="mt-4 text-caption text-muted-foreground">Nothing recorded since. Hoot&apos;s notes from threads about this holding show here as they come in.</p>
       )}
     </section>
   );

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { MOVEMENT_THRESHOLD_PP } from "./constants";
 import { ONBOARDING_STEPS, TOUR_CARDS, completeOnboardingSchema, parseCompleteOnboarding } from "./onboarding";
 
 describe("completeOnboardingSchema", () => {
@@ -37,8 +36,8 @@ describe("onboarding copy", () => {
     expect(ONBOARDING_STEPS.map((s) => s.id)).toEqual(["welcome", "name", "tour", "boundary"]);
   });
 
-  it("states the movement threshold from constants", () => {
-    const movements = TOUR_CARDS.find((c) => c.id === "movements");
-    expect(movements?.body).toContain(`${MOVEMENT_THRESHOLD_PP * 100} bp (${MOVEMENT_THRESHOLD_PP} percentage points)`);
+  it("keeps the tour short and off retired features", () => {
+    expect(TOUR_CARDS.map((c) => c.id)).toEqual(["hoot", "holdings", "earnings"]);
+    for (const c of TOUR_CARDS) expect(c.body).not.toMatch(/movement|write-?up/i);
   });
 });

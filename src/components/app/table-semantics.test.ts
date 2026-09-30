@@ -118,7 +118,7 @@ const holdingRow = (ticker: string, company: string, flags: { label: string; det
 describe("div grids read as tables", () => {
   it("Holdings: header row and a row per holding, ticker row headers, the flag's reason under its label", () => {
     const rows = [
-      { ...holdingRow("NVDA", "NVIDIA Corporation", [{ label: "Write-up overdue", detail: "Moved (430 bp) on Sep 25", tone: "hoot" }, { label: "Report soon", tone: "neutral" }]) },
+      { ...holdingRow("NVDA", "NVIDIA Corporation", [{ label: "Expectations due Mon, Oct 5", detail: "Lock them before the report", tone: "caution" }, { label: "Report soon", tone: "neutral" }]) },
       holdingRow("AAPL", "AAPL"),
       holdingRow("XOM", "Exxon Mobil"),
     ];
@@ -133,7 +133,7 @@ describe("div grids read as tables", () => {
     }
     const html = render(h(HoldingsTable, { rows }));
     expect(html).toContain("Day versus S&amp;P 500, basis points");
-    expect(html).toContain("Moved (430 bp) on Sep 25");
+    expect(html).toContain("Lock them before the report");
     expect(html).toContain("Also: Report soon");
   });
 

@@ -7,7 +7,6 @@ import { useTheme } from "next-themes";
 import {
   ChartColumn,
   ChartPie,
-  Activity,
   Gauge,
   CalendarDays,
   CalendarRange,
@@ -145,7 +144,6 @@ function SidebarBody({ user, teams, signOut, dock }: Props & { dock?: React.Reac
     : [];
   const markets: NavLink[] = base
     ? [
-        { href: `${base}/movements`, label: "Movements", icon: Activity },
         { href: "/markets", label: "Markets", icon: CalendarDays },
       ]
     : [];

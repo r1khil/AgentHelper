@@ -5,12 +5,12 @@ import { fmtDate, fmtDateTime } from "@/lib/format";
 // and the tests agree: a failed job or a service that needs someone is amber ("needs attention"), everything else is grey.
 
 /** `job_runs.job` names the Scheduled jobs and Connections rows show a last run for. */
-export const TRACKED_JOBS = ["close", "prices", "daily_brief", "morning", "weekly", "drive_sync", "filings_sync"] as const;
+export const TRACKED_JOBS = ["prices", "daily_brief", "morning", "weekly", "drive_sync", "filings_sync"] as const;
 
 /** A job's latest run, as the Scheduled jobs list shows it. */
 export type JobLastRun = { startedAt: string; finishedAt: string | null; ok: boolean | null; summary: Record<string, unknown> };
 
-export type JobKey = "close" | "prices" | "brief" | "morning" | "bellwethers" | "prep" | "weekly";
+export type JobKey = "prices" | "brief" | "morning" | "bellwethers" | "prep" | "weekly";
 
 /** A run with no finish after this long died with its function (jobs stop at 300s); it will never record an end. */
 export const ABANDONED_AFTER_MS = 15 * 60_000;
@@ -24,11 +24,8 @@ export function jobResult(key: JobKey, r: JobLastRun | null | undefined, now = D
   const when = fmtDateTime(r.startedAt);
   if (!r.finishedAt) return stillRunning(r, now) ? { text: `Running since ${when}`, attention: false } : { text: `${when} · didn't finish (timed out)`, attention: true };
   if (r.ok === false) return { text: `${when} · failed`, attention: true };
-  const s = r.summary as { status?: string; created?: unknown[]; reminders?: number; updated?: unknown[]; email?: { status?: string } };
+  const s = r.summary as { status?: string; updated?: unknown[]; email?: { status?: string } };
   if (s.status === "skipped") return { text: `${when} · skipped`, attention: false };
-  const n = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
-  if (key === "close") return { text: `${when} · ${n(s.created?.length ?? 0, "movement")} opened`, attention: false };
-  if (key === "morning" && s.reminders !== undefined) return { text: `${when} · ${n(s.reminders, "reminder")}`, attention: false };
   if (key === "prices" && s.updated) return { text: `${when} · ${s.updated.length} holdings`, attention: false };
   if (key === "weekly") return s.email?.status === "sent" ? { text: `${when} · built and sent`, attention: false } : { text: `${when} · built, not sent`, attention: true };
   return { text: `${when} · ok`, attention: false };
@@ -119,7 +116,7 @@ export function connectionRows(p: ConnectionInput, now = Date.now()): Connection
 
 /** How many scheduled jobs and services need a look: the count on the Jobs and connections tab. */
 export function attentionCount(last: Record<string, JobLastRun | null>, connections: ConnectionRow[]): number {
-  const jobs: [JobKey, string][] = [["close", "close"], ["prices", "prices"], ["brief", "daily_brief"], ["morning", "morning"], ["weekly", "weekly"]];
+  const jobs: [JobKey, string][] = [["prices", "prices"], ["brief", "daily_brief"], ["morning", "morning"], ["weekly", "weekly"]];
   const failing = jobs.filter(([key, run]) => jobResult(key, last[run]).attention).length;
   return failing + connections.filter((c) => c.attention).length;
 }

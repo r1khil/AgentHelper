@@ -34,8 +34,8 @@ export const CORE = [
 export const TIERS = {
   /** The Fund's own numbers: attribution, today's performance, risk and exposure, backtests. */
   book: ["get_attribution", "get_daily_performance", "get_portfolio_risk", "run_backtest"],
-  /** The app's own pages: movements, the earnings list, the economic calendar, the ledger, to-dos, what's new. */
-  workspace: ["get_movements", "get_upcoming_earnings", "get_economic_calendar", "get_ledger", "get_my_todos", "get_whats_new"],
+  /** The app's own pages: the earnings list, the economic calendar, the ledger, to-dos, what's new. */
+  workspace: ["get_upcoming_earnings", "get_economic_calendar", "get_ledger", "get_my_todos", "get_whats_new"],
   macro: ["get_macro_series", "get_market_odds"],
   /** Who owns and trades the stock, what the Street expects, and how it compares with peers. */
   ownership: ["get_insider_transactions", "get_institutional_holders", "get_analyst_estimates", "compare_peers", "get_peer_moves"],
@@ -53,7 +53,7 @@ export type Tier = keyof typeof TIERS;
 /** What each tier is for, in find_tools' catalog. */
 export const TIER_LABELS: Record<Tier, string> = {
   book: "the Fund's or a team's own numbers: today's performance vs the benchmark, attribution over a period, risk, backtests",
-  workspace: "the app's pages: movements and write-ups, upcoming earnings, the economic calendar, the trade ledger, to-dos, what's new",
+  workspace: "the app's pages: upcoming earnings, the economic calendar, the trade ledger, to-dos, what's new",
   macro: "macro data (FRED series) and prediction-market odds",
   ownership: "insiders, institutional holders, analyst estimates, peer comparisons, the rest of the book's moves",
   web: "web search and reading any URL",
@@ -107,7 +107,7 @@ const WORDS: Record<Tier, RegExp> = {
       .join("|"),
   ),
   workspace:
-    /\b(?:movements?|write-?ups?|overdue|earnings|reports? (?:soon|next|this|in the)|who reports|reporting|prep packs?|economic (?:calendar|releases?|data|events?)|releases? (?:are )?out|this week'?s (?:data|releases?)|ledger|trades?|traded|bought|buy|sold|sell|purchas\w*|cost basis|cash (?:movements?|flows? in)|to-?dos?|to do|need to do|my (?:tasks|deadlines|list)|due|deadlines?|what'?s new|what changed|changelog|release notes|new features?|in the app)\b/,
+    /\b(?:overdue|earnings|reports? (?:soon|next|this|in the)|who reports|reporting|prep packs?|economic (?:calendar|releases?|data|events?)|releases? (?:are )?out|this week'?s (?:data|releases?)|ledger|trades?|traded|bought|buy|sold|sell|purchas\w*|cost basis|cash (?:movements?|flows? in)|to-?dos?|to do|need to do|my (?:tasks|deadlines|list)|due|deadlines?|what'?s new|what changed|changelog|release notes|new features?|in the app)\b/,
   macro:
     /\b(?:macro\w*|fed|fomc|federal reserve|rates?|rate (?:hike|cut)s?|interest rates?|treasur\w*|yields?|curve|inflation|cpi|pce|ppi|jobs report|payrolls?|nfp|unemployment|jobless|gdp|recession|vix|oil|crude|brent|wti|dollar|dxy|credit spreads?|spreads?|kalshi|polymarket|odds|probabilit\w*|chances?|betting|traders (?:expect|price|bet)|priced in|election|shutdown|tariffs?|economic\w*|economy)\b/,
   ownership:
@@ -132,7 +132,6 @@ const PAGE_TIERS: Record<string, Tier[]> = {
   exposure: ["book"],
   what_if: ["book"],
   write_up: ["workspace"],
-  write_ups: ["workspace"],
   sell_side: ["transcripts"],
   markets: ["workspace", "macro"],
   earnings_report: ["workspace", "transcripts"],

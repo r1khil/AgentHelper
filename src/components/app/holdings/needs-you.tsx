@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import type { NeedRow } from "./attention";
 
 /**
- * What this holding is waiting on, in an amber notice under the ask box: the status word (red once a write-up is a day
- * late, amber otherwise), what it is, and one ink action that opens it. Nothing at all when nothing waits.
+ * What this holding is waiting on, in an amber notice under the ask box: the status word (red once it is late, amber
+ * otherwise), what it is, and one ink action that opens it. Nothing at all when nothing waits.
  */
 export function NeedsYou({ rows }: { rows: NeedRow[] }) {
   if (!rows.length) return null;

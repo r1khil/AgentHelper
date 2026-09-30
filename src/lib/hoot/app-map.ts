@@ -1,7 +1,6 @@
 // Hoot's map of the app: every page, what it shows, who can open it, what its terms mean and how Hoot answers
 // questions about it. Pure and client-safe. The page list is tied to the sidebar's destinations and to the page files
 // by tests, so a page added to the app without an entry here fails CI instead of leaving Hoot unaware of it.
-import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
 import { PREP_BUILD_TRADING_DAYS } from "@/lib/earnings-calendar";
 import { PERIOD_KEYS, PERIOD_LABELS } from "@/lib/attribution/periods";
 import { STRESS_WINDOWS } from "@/lib/risk/stress";
@@ -9,7 +8,6 @@ import { VAR_LEVEL } from "@/lib/risk/model";
 import type { AppPage } from "./app-actions";
 
 // Numbers and labels come from the code that computes them, so the map can't drift from the pages.
-const RULE_BP = `${Math.round(MOVEMENT_THRESHOLD_PP * 100)} bp`;
 const PERIODS = PERIOD_KEYS.filter((k) => k !== "custom" && k !== "itd").map((k) => PERIOD_LABELS[k]).join(", ");
 const STRESS = STRESS_WINDOWS.map((w) => w.label).join(", ");
 const VAR_PCT = `${Math.round(VAR_LEVEL * 100)}%`;
@@ -39,7 +37,7 @@ export type AppMapEntry = {
   hoot?: string;
   /** The `navigate` page that opens it. */
   navigate?: AppPage;
-  /** What members called it before the five screens, so "where did Movements go?" finds it. */
+  /** What members called it before the five screens, so "where did Backtesting go?" finds it. */
   formerly?: string[];
 };
 
@@ -55,7 +53,7 @@ export const APP_MAP: AppMapEntry[] = [
       "New: Home, to ask Hoot a new question; Portfolio (the whole fund for execs and admins, the member's team otherwise); Markets",
       "Threads: recent conversations with Hoot, general and about a holding, newest first; All threads lists every one",
       "Account menu (name and role): What's new and Admin for execs and admins, theme, Hoot in the corner, replay the tour, sign out",
-      "The bell: what needs the member (write-ups due or overdue, expectations to set, model values and sell-side briefs to review, the weekly pack), each with a link",
+      "The bell: what needs the member (expectations to set, model values and sell-side briefs to review, the weekly pack), each with a link",
     ],
     formerly: ["Menu", "Rail"],
   },
@@ -207,45 +205,17 @@ export const APP_MAP: AppMapEntry[] = [
     name: "Holding",
     routes: ["/t/:team/h/:ticker", "/t/:team/agent/h/:ticker"],
     access: "all",
-    summary: "everything about one holding: price and chart, its own ask box, what's due, and tabs for its threads, write-ups, model, filings and notes, and earnings",
+    summary: "everything about one holding: price and chart, its own ask box, what's due, and tabs for its threads, model, filings and notes, and earnings",
     shows: [
       "Portfolio / TICKER; Upload model, Record trade (execs and admins); company, exchange and team; price and today's move; chart",
-      "Ask about TICKER, with suggested questions; open write-ups and other things due on it, most urgent first",
-      "Tabs: All (everything, newest first), Threads (Hoot's conversations about it), Write-ups (major movements), Model (the Excel model and values to approve), Filings & notes (SEC filings, documents, sell-side calls, team notes), Earnings (past and next reports, expectations, prep pack)",
+      "Ask about TICKER, with suggested questions; things due on it, most urgent first",
+      "Tabs: All (everything, newest first), Threads (Hoot's conversations about it), Model (the Excel model and values to approve), Filings & notes (SEC filings, documents, sell-side calls, team notes), Earnings (past and next reports, expectations, prep pack)",
       "Right rail: the team's thesis (and any proposed update to review); Fund position for those who see the book (Market value, Weight, Today, Total gain, Team, Lead); Next report (Date, Time, EPS estimate, Expectations)",
     ],
-    actions: ["ask Hoot about it", "write up a movement", "upload a model", "edit the thesis or add a note", "record a trade (execs and admins)"],
+    actions: ["ask Hoot about it", "upload a model", "edit the thesis or add a note", "record a trade (execs and admins)"],
     hoot: 'The page is about one company: treat "this company", "it" and "the stock" as that ticker.',
     navigate: "holding",
     formerly: ["Holding page", "Research board", "Holding research board"],
-  },
-  {
-    key: "write_up",
-    name: "Movement write-up",
-    routes: ["/t/:team/movements/:id"],
-    access: "all",
-    summary: `one major movement (a holding moved ${RULE_BP} or more against the S&P 500) and the team's write-up of why; listed on the holding's Write-ups tab, open ones also in the bell`,
-    shows: [
-      `Opened when a holding's daily return differs from the S&P 500's by ${RULE_BP} or more on official closes; due noon the next trading day; checked nightly after the close`,
-      "The movement: bp vs the S&P 500, the stock's and the S&P's move, team, due, status (Overdue, In progress, Open, Completed, Data problem)",
-      "Team update: the write-up anyone on the team can draft; Hoot's feedback on the draft (Unsupported, Missing, Alternative, Thesis, Question)",
-      "Evidence Hoot gathered (possible catalysts, not the explanation): prices, news, SEC filings, peer moves the same session, calendar, company releases",
-    ],
-    actions: ["save a draft", "mark complete / reopen", "ask Hoot for feedback on the draft", "re-gather evidence", "cite evidence in the draft"],
-    hoot: "Explain the evidence and the rule; never write the team update. Feedback on a draft is allowed.",
-    formerly: ["Movement"],
-  },
-  {
-    key: "write_ups",
-    name: "Write-ups",
-    routes: ["/t/:team/movements"],
-    access: "all",
-    summary: `every major movement in the scope (a holding moved ${RULE_BP} or more against the S&P 500) and its write-up; each holding's are on its Write-ups tab`,
-    shows: ["Movements: ticker, bp vs the S&P 500, status (Overdue, In progress, Open, Completed, Data problem), session date, due"],
-    actions: ["open a write-up"],
-    hoot: "get_movements lists them; explain the evidence and the rule, never write the team update.",
-    navigate: "write_ups",
-    formerly: ["Movements"],
   },
   {
     key: "models",
@@ -337,7 +307,7 @@ export const APP_MAP: AppMapEntry[] = [
     summary: "the Sunday update pack for Aadi: the week's performance, performers, highlights, agenda, email (a button on the Portfolio's header)",
     shows: [
       "Week ended, the Fund's week vs the S&P 500; the pack builds every Sunday at 12:00 New York",
-      "Tabs: Summary (top and worst 3, highlights, why they moved, movements opened, process updates, next week), Email, Highlights (AUM, YTD, SPXTR YTD, deck chart), Agenda, Checks",
+      "Tabs: Summary (top and worst 3, highlights, why they moved, process updates, next week), Email, Highlights (AUM, YTD, SPXTR YTD, deck chart), Agenda, Checks",
     ],
     actions: ["build or rebuild the pack", "refresh from the PT sheet", "edit fields", "lock or reopen", "send the email"],
     navigate: "weekly",
@@ -358,7 +328,7 @@ export const APP_MAP: AppMapEntry[] = [
     routes: ["/admin"],
     access: "fund",
     summary: "members, invitations, scheduled jobs and connections; admins change them, execs view (in the account menu)",
-    shows: ["Members: role, team, sign-in, last active; invitations", "Jobs and connections: close check (5:00 PM ET, opens movements), prices, evening brief, morning sweep, bellwethers, prep packs, weekly pack; weekly email recipients; Drive; research agent model; external tools (MCP)"],
+    shows: ["Members: role, team, sign-in, last active; invitations", "Jobs and connections: prices (5:00 PM ET), evening brief, morning sweep, bellwethers, prep packs, weekly pack; weekly email recipients; Drive; research agent model; external tools (MCP)"],
     navigate: "admin",
   },
   {
@@ -373,7 +343,6 @@ export const APP_MAP: AppMapEntry[] = [
 
 /** Words on the app's pages a student may not know, as the pages themselves explain them. */
 export const GLOSSARY: Record<string, string> = {
-  [`${RULE_BP} rule`]: `A holding opens a major-movement investigation when its daily return differs from the S&P 500's by ${RULE_BP} (${MOVEMENT_THRESHOLD_PP} percentage points) or more, on official closes, either direction. The team's update is due noon the next trading day.`,
   "active return": "The portfolio's return minus the benchmark's.",
   "sector benchmark": "The S&P 500's sector weights applied to the 11 Select Sector SPDR ETFs; a team's benchmark is the ETFs of its own sectors.",
   allocation: "The part of the gap to the benchmark from sector bets: being over- or underweight a sector that did well or badly. Holding cash shows up here. Shown as Sector weights (or Weights).",
@@ -398,7 +367,6 @@ export const GLOSSARY: Record<string, string> = {
   tilt: "A sector's weight in the portfolio minus its weight in the benchmark: over- or underweight, in bp.",
   "factor sensitivity": "How much the portfolio has moved with a factor (market, size, value, momentum, rates, dollar, oil) from a regression on past returns; not statistically clear when |t| < 2.",
   sleeve: "A team's slice of the Fund, treated as its own portfolio (scaled to 100%, no cash).",
-  "write-up": "The team update on a major movement: what happened and what the evidence supports. The analyst writes it; Hoot can give feedback.",
   expectations: "Before an earnings report, what the analyst expects, key questions and what would change the thesis. Locks on the report date.",
   reflection: "After an earnings report, what happened against what the analyst expected.",
   "prep pack": `Hoot's cited earnings prep: last quarter's numbers, guidance, what changed in filings and the sell-side, and questions to watch. Builds ${PREP_WHEN}.`,
@@ -453,7 +421,7 @@ export function canOpenPage(access: PageAccess, role: string): boolean | "own te
 }
 
 /** Lists across a scope, reached from a holding's tabs and ⌘K: one line between them in Hoot's prompt. */
-const LISTS = new Set(["threads", "write_ups", "models", "sell_side"]);
+const LISTS = new Set(["threads", "models", "sell_side"]);
 
 /** One line per screen for Hoot's prompt, and where the old pages went; the detail is one explain_app call away. */
 export function appMapPromptBlock(): string {
@@ -461,8 +429,8 @@ export function appMapPromptBlock(): string {
     ...APP_MAP.filter((e) => (e.navigate && !LISTS.has(e.key)) || e.key === "sidebar" || e.key === "thread").map(
       (e) => `- ${e.name}${e.access === "all" ? "" : e.access === "book" ? " (leads, execs, admins)" : " (execs, admins)"}: ${e.summary}`,
     ),
-    "- All threads, Write-ups, Models, Sell-side calls: every conversation, and the lists behind each holding's tabs across the scope",
-    "- Gone as pages: Research is Home and All threads; a holding's movements, model, calls and earnings prep are tabs on its page; Earnings and Economic releases are Markets; Attribution and Daily are Performance; Backtesting is What if.",
+    "- All threads, Models, Sell-side calls: every conversation, and the lists behind each holding's tabs across the scope",
+    "- Gone as pages: Research is Home and All threads; a holding's model, calls and earnings prep are tabs on its page; movement write-ups no longer exist; Earnings and Economic releases are Markets; Attribution and Daily are Performance; Backtesting is What if.",
   ].join("\n");
 }
 
@@ -494,7 +462,7 @@ export function explainApp(q: { page?: string; term?: string; role: string }): {
     const byPath = p.startsWith("/") ? pageForPath(p)?.entry : undefined;
     const n = norm(p).replace(/ page$/, "");
     const named = (name: string) => norm(name) === n || norm(name).startsWith(n) || (n.length > 3 && norm(name).includes(n));
-    // Today's names first, then what a page used to be called ("Movements" is now a holding's write-ups).
+    // Today's names first, then what a page used to be called ("Backtesting" is now What if).
     const entry =
       byPath ??
       APP_MAP.find((e) => e.key === n.replace(/ /g, "_") || named(e.name)) ??

@@ -38,7 +38,7 @@ export function HootOnPage() {
   return null;
 }
 
-/** Set the companion's resting mood from page state, e.g. `concerned` while a write-up is overdue. */
+/** Set the companion's resting mood from page state, e.g. `concerned` while something is overdue. */
 export function HootMoodFor({ mood }: { mood: HootMood | null }) {
   useEffect(() => {
     pageMood = mood;

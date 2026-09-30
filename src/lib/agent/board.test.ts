@@ -113,8 +113,8 @@ describe("marketFigure", () => {
     expect(marketFigure(rows[1])).toBeNull();
   });
   it("renders the latest relative move", () => {
-    const row = { n: 1, cited: 0, source: src("yr-1"), data: { sessions: [{ date: "2026-09-18", holdingReturnPct: -4.81, spxReturnPct: -0.62, relativePp: -4.19, qualifies: true }] } };
-    expect(marketFigure(row)).toEqual({ big: "(419 bp)", tone: "down", sub: "(4.81%) vs (0.62%) · 400 bp rule met · Fri, Sep 18" });
+    const row = { n: 1, cited: 0, source: src("yr-1"), data: { sessions: [{ date: "2026-09-18", holdingReturnPct: -4.81, spxReturnPct: -0.62, relativePp: -4.19 }] } };
+    expect(marketFigure(row)).toEqual({ big: "(419 bp)", tone: "down", sub: "(4.81%) vs (0.62%) · Fri, Sep 18" });
   });
 });
 

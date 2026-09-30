@@ -1,7 +1,7 @@
 import "server-only";
-import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
-import { holdings, movements, profiles, teams, type WeeklyUpdate } from "@/db/schema";
+import { holdings, profiles, teams, type WeeklyUpdate } from "@/db/schema";
 import { loadAttributionSeries } from "@/lib/attribution/load";
 import { indexReturn } from "@/lib/attribution/view";
 import { SECTOR_LABELS } from "@/lib/attribution/sectors";
@@ -9,7 +9,7 @@ import { listBellwethers } from "@/lib/earnings";
 import { composeWeeklyEmail, weeklyEmailRecipients } from "@/lib/weekly/email";
 import { packStatus } from "@/lib/weekly/status";
 import { getPack, listPacks, normalizeAgenda, packFigures } from "@/lib/weekly/store";
-import { agendaWeek, priceWindow, reviewWeek } from "@/lib/weekly/weeks";
+import { agendaWeek, priceWindow } from "@/lib/weekly/weeks";
 import type { EmailView, PackListItem, WeeklyPackProps, WeekStats } from "@/components/app/weekly/types";
 
 /** The packs list on the left: newest first, with what happened to each. */
@@ -43,22 +43,11 @@ async function recipientNames(emails: string[]): Promise<{ names: Record<string,
 
 /**
  * The week's headline figures: the Fund's and the S&P 500's price return over the same Monday-close-to-Friday-close
- * window the performers use, and the movements the close check opened that week. Null where the data isn't there.
+ * window the performers use. Null where the data isn't there.
  */
 async function weekStats(weekEnding: string): Promise<WeekStats> {
   const window = priceWindow(weekEnding);
-  const review = reviewWeek(weekEnding);
-  const [opened, series] = await Promise.all([
-    db
-      .select({ ticker: holdings.ticker, sessionDate: movements.sessionDate, relativePp: movements.relativeMovePp })
-      .from(movements)
-      .innerJoin(holdings, eq(holdings.id, movements.holdingId))
-      .where(and(gte(movements.sessionDate, review.from), lte(movements.sessionDate, review.to)))
-      .orderBy(asc(movements.sessionDate), asc(holdings.ticker))
-      .then((r) => r.map((m) => ({ ticker: m.ticker, sessionDate: m.sessionDate, relativePp: m.relativePp === null ? null : Number(m.relativePp) })))
-      .catch(() => null),
-    loadAttributionSeries().catch(() => null),
-  ]);
+  const series = await loadAttributionSeries().catch(() => null);
   let fund: number | null = null;
   let spx: number | null = null;
   if (series) {
@@ -66,7 +55,7 @@ async function weekStats(weekEnding: string): Promise<WeekStats> {
     if (days.length && days.at(-1)!.date === window.end) fund = days.reduce((g, d) => g * (1 + d.ret), 1) - 1;
     spx = indexReturn(series, window);
   }
-  return { fund, spx, movementsOpened: opened === null ? null : opened.length, movements: opened ?? [], window };
+  return { fund, spx, window };
 }
 
 /** Everything the pack view needs, or null when the week has no pack. */

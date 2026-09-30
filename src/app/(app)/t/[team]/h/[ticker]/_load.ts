@@ -1,34 +1,12 @@
 import "server-only";
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
-import { modelMappings, modelProposals, movements, profiles, sellSideCalls } from "@/db/schema";
+import { modelMappings, modelProposals, profiles, sellSideCalls } from "@/db/schema";
 
 /*
- * What the holding page needs beyond lib/holdings' loadHoldingActivity: the fields the old Movements, Models and
+ * What the holding page needs beyond lib/holdings' loadHoldingActivity: the fields the old Models and
  * Sell-side lists showed for each row, for this one holding only.
  */
-
-/** Every write-up on the holding, newest session first, with who finished it and how much evidence Hoot gathered. */
-export async function listHoldingMovements(holdingId: string) {
-  return db
-    .select({
-      id: movements.id,
-      sessionDate: movements.sessionDate,
-      status: movements.status,
-      dueAt: movements.dueAt,
-      relativeMovePp: movements.relativeMovePp,
-      dataQuality: movements.dataQuality,
-      updateText: movements.updateText,
-      completedAt: movements.completedAt,
-      completedByName: profiles.fullName,
-      evidence: sql<number>`(select count(*) from evidence_items e where e.movement_id = ${movements.id})`.mapWith(Number),
-    })
-    .from(movements)
-    .leftJoin(profiles, eq(profiles.id, movements.completedBy))
-    .where(eq(movements.holdingId, holdingId))
-    .orderBy(desc(movements.sessionDate))
-    .limit(60);
-}
 
 /** The team's sell-side calls on this ticker (the way sellSideSummary counts them), newest first, with who recorded each. */
 export async function listHoldingCalls(teamId: string, ticker: string) {

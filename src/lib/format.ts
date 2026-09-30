@@ -8,7 +8,7 @@ import { DateTime } from "luxon";
  * and a value that rounds to zero is never negative. Levels (a weight, a price, a value) carry no sign; a change (a
  * return, a gain, a move against the benchmark) is written with a plus when it is up: "+0.39%", "+12 bp", "(1.42%)"
  * (the fmtChange* helpers). Returns and weights are in percent; relative figures (fund vs benchmark, contribution,
- * active weight, a movement's move against the S&P) are in basis points, always written "bp". Direction is also shown
+ * active weight, a holding's move against the S&P) are in basis points, always written "bp". Direction is also shown
  * by color, which callers choose separately.
  *
  * Dates have one format per level of detail, all in New York time: "Mon, Sep 28" for a day this year, "Sep 28, 2026"

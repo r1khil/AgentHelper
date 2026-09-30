@@ -11,7 +11,6 @@ const holding = (ticker: string, company: string, team = "Technology", teamSlug 
   weightPct: 3,
   nextReport: null,
   nextReportEstimated: false,
-  openMovement: false,
 });
 
 const base: CommandInput = {
@@ -39,7 +38,6 @@ describe("⌘K Enter rule", () => {
   });
 
   it("opens where a page from before the five screens went, and says so", () => {
-    expect(enter("movements")).toMatchObject({ kind: "page", page: { label: "Write-ups", href: "/t/tech/movements" } });
     expect(enter("sell side")).toMatchObject({ kind: "page", page: { label: "Sell-side calls", href: "/t/tech/sell-side" } });
     expect(enter("models")).toMatchObject({ kind: "page", page: { label: "Models", href: "/t/tech/models" } });
     expect(enter("attrib")).toMatchObject({ kind: "page", page: { label: "Performance", href: "/t/tech/performance" } });
@@ -57,8 +55,7 @@ describe("⌘K Enter rule", () => {
     expect(enter("research")).toMatchObject({ kind: "page", page: { label: "All threads", href: "/hoot" } });
     expect(enter("chats")).toMatchObject({ kind: "page", page: { label: "All threads" } });
     expect(enter("threads")).toMatchObject({ kind: "page", page: { label: "All threads" } });
-    expect(enter("movement")).toMatchObject({ kind: "page", page: { label: "Write-ups" } });
-    expect(formerPages("moveme", base.pages)).toMatchObject([{ label: "Write-ups", hint: expect.stringMatching(/Write-ups tab/) }]);
+    expect(formerPages("backt", base.pages)).toMatchObject([{ label: "What if", hint: expect.stringMatching(/What if view/) }]);
     expect(enter("analyzer")).toMatchObject({ kind: "page", page: { label: "Sell-side calls" } });
     expect(enter("changelog")).toMatchObject({ kind: "page", page: { label: "What's new" } });
     const fund = destinations({ scope: "fund", fundWide: true, seesBook: true });
@@ -78,9 +75,9 @@ describe("⌘K Enter rule", () => {
   });
 
   it("keeps asking Hoot on the list, right after what the query names", () => {
-    const groups = run("movement");
+    const groups = run("backtest");
     expect(groups.map((g) => g.label)).toEqual(["Go to", "Ask Hoot"]);
-    expect(groups[1].items[0]).toMatchObject({ kind: "ask", text: "movement" });
+    expect(groups[1].items[0]).toMatchObject({ kind: "ask", text: "backtest" });
   });
 
   it("opens a holding for its ticker, or the start of it", () => {
@@ -90,7 +87,7 @@ describe("⌘K Enter rule", () => {
   });
 
   it("puts a holding's ticker ahead of a page it also starts", () => {
-    // "mo" is Altria's ticker and the start of Movements and Models (the Portfolio now).
+    // "mo" is Altria's ticker and the start of Models.
     expect(enter("mo")).toMatchObject({ kind: "holding", holding: { ticker: "MO" } });
     expect(labels("mo")[1]).toBe("Go to");
   });
@@ -102,7 +99,6 @@ describe("⌘K Enter rule", () => {
     const tabs = (query: string) => run(query).flatMap((g) => g.items.flatMap((i) => (i.kind === "page" && i.id.startsWith("go:") ? [`${i.page.label} ${i.page.href}`] : [])));
     expect(tabs("nvda")).toEqual(["NVDA threads /t/tech/h/NVDA?tab=threads", "NVDA earnings /t/tech/h/NVDA?tab=earnings"]);
     expect(tabs("nvda model")).toEqual(["NVDA model /t/tech/h/NVDA?tab=model"]);
-    expect(tabs("nvda write")).toEqual(["NVDA write-ups /t/tech/h/NVDA?tab=write-ups"]);
     expect(tabs("nvda filings")).toEqual(["NVDA filings & notes /t/tech/h/NVDA?tab=filings"]);
     // In the scope in view: the fund shows every team's holdings.
     expect(tabs("mo").map((t) => t.split(" ").pop())).toEqual(["/t/staples/h/MO?tab=threads", "/t/staples/h/MO?tab=earnings"]);

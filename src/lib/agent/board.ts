@@ -1,6 +1,5 @@
 import type { UIMessage } from "ai";
 import type { Source } from "@/lib/providers/types";
-import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
 import { DateTime } from "luxon";
 import { fmtBp, fmtDay, fmtDayMonth, fmtMoney, fmtPct, fmtTime } from "@/lib/format";
 import { NY } from "@/lib/providers/calendar";
@@ -128,7 +127,6 @@ const KIND_LABELS: Record<string, string> = {
   get_attribution: "Reading the Fund's attribution",
   get_daily_performance: "Reading today's performance",
   run_backtest: "Running a backtest",
-  get_movements: "Reading the movement write-ups",
   get_upcoming_earnings: "Checking which holdings report soon",
   get_economic_calendar: "Checking the economic calendar",
   get_ledger: "Reading the trade ledger",
@@ -182,7 +180,6 @@ export function marketFigure(row: TurnSource): MarketFigure | null {
     const rel = last.relativePp;
     const sub = [
       typeof last.holdingReturnPct === "number" && typeof last.spxReturnPct === "number" ? `${fmtPct(last.holdingReturnPct)} vs ${fmtPct(last.spxReturnPct)}` : null,
-      `${fmtBp(MOVEMENT_THRESHOLD_PP * 100)} rule ${last.qualifies ? "met" : "not met"}`,
       typeof last.date === "string" ? fmtDay(last.date) : null,
     ]
       .filter(Boolean)

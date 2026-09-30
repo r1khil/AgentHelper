@@ -53,7 +53,7 @@ export function ThesisPanel({ holdingId, thesis, meta, flash, proposal, compact 
       ) : text ? (
         <p className={cn("mt-1.5 text-pretty whitespace-pre-wrap", compact ? "text-body leading-relaxed text-ink-2" : "text-emph")}>{text}</p>
       ) : (
-        <p className="mt-1.5 text-body text-muted-foreground">No thesis written yet. Write why the team owns it; Hoot checks movement updates and earnings reflections against it.</p>
+        <p className="mt-1.5 text-body text-muted-foreground">No thesis written yet. Write why the team owns it; Hoot checks earnings reflections against it.</p>
       )}
     </section>
   );

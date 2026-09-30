@@ -36,7 +36,7 @@ export const WHATS_NEW_TOUR: Tour = {
           kind: "info",
           target: '[data-tour="sidebar"]',
           title: "Five screens, one sidebar",
-          body: "Home to ask me, a thread for each answer, a page for each holding, the Portfolio and Markets. The old pages moved onto the screen they were about: Movements, Models and Sell-side calls onto each holding, Attribution, Risk and Backtesting onto the Portfolio, the calendars onto Markets.",
+          body: "Home to ask me, a thread for each answer, a page for each holding, the Portfolio and Markets. The old pages moved onto the screen they were about: Models and Sell-side calls onto each holding, Attribution, Risk and Backtesting onto the Portfolio, the calendars onto Markets.",
         },
         {
           id: "command",
@@ -68,9 +68,9 @@ export const WHATS_NEW_TOUR: Tour = {
           kind: "info",
           target: '[data-tour="bell"]',
           title: "What needs you",
-          what: "Write-ups due or overdue, expectations to set before earnings, model values and call briefs to review, and the weekly pack, most urgent first.",
+          what: "Expectations to set before earnings, model values and call briefs to review, and the weekly pack, most urgent first.",
           how: "Click a line to deal with it. Each holding's page shows its own too.",
-          source: "The app's own records: open movements, the earnings calendar, uploaded models, recorded calls and the weekly pack.",
+          source: "The app's own records: the earnings calendar, uploaded models, recorded calls and the weekly pack.",
           ifMissing: "skip",
         },
       ],
@@ -123,7 +123,6 @@ export const WHATS_NEW_TOUR: Tour = {
           title: "Everything about it, in tabs",
           points: [
             { label: "Threads", text: "your conversations with me about it. This was its research board." },
-            { label: "Write-ups", text: "its major movements and the team's write-ups." },
             { label: "Model", text: "the Excel model and values from new filings to approve." },
             { label: "Filings & notes", text: "SEC filings, the team's documents and notes, and sell-side calls." },
             { label: "Earnings", text: "the next report, expectations and the prep pack." },

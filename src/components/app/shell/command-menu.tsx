@@ -393,7 +393,6 @@ function HoldingPreview({ holding: h }: { holding: CommandHolding }) {
     ["Weight", h.weightPct != null ? `${fmtPct(h.weightPct, 1)} of NAV` : "—"],
     ["vs S&P, last session", q?.relativePp != null ? fmtChangeBp(ppToBp(q.relativePp)) : "—", q?.relativePp == null ? undefined : q.relativePp >= 0 ? "text-up" : "text-down"],
     ["Next report", h.nextReport ? `${shortDate(h.nextReport)}${h.nextReportEstimated ? " (est.)" : ""}` : "—"],
-    ["Open items", h.openMovement ? "Movement write-up open" : "None", h.openMovement ? "font-semibold text-caution-foreground" : undefined],
   ];
   return (
     <div>

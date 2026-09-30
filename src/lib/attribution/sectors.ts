@@ -45,7 +45,7 @@ export const ETF_BY_SECTOR: Record<GicsSector, string> = {
 
 /** Fund whose published sector weights seed the sector benchmark, and whose closes define valuation days. */
 export const BENCHMARK_REFERENCE = "SPY";
-/** The index the headline comparison is made against, on a price-return basis like the major-movement rule. */
+/** The index the headline comparison is made against, on a price-return basis. */
 export const INDEX_REFERENCE = "^GSPC";
 export const INDEX_LABEL = "S&P 500";
 

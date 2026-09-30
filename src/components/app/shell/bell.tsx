@@ -20,8 +20,6 @@ export function nudgeTag(n: HootNudge): { word: string; className: string } {
   switch (n.kind) {
     case "sell_side":
       return n.id.endsWith(":error") ? { word: "Failed", className: "text-caution-foreground" } : { word: "Ready", className: "text-muted-foreground" };
-    case "movement":
-      return { word: "Due", className: "text-muted-foreground" };
     case "earnings":
       return { word: n.id.endsWith(":expectations") ? "Due" : "Soon", className: "text-muted-foreground" };
     case "proposal":
@@ -36,7 +34,7 @@ export function nudgeTag(n: HootNudge): { word: string; className: string } {
 }
 
 /**
- * Hoot's list of what needs you (overdue write-ups, reviews, reports to prepare), fetched from /api/hoot once the page
+ * Hoot's list of what needs you (expectations due, reviews, reports to prepare), fetched from /api/hoot once the page
  * is idle and every five minutes after. Shared by the bell and anything else that counts the same things.
  */
 function useNeedsYou() {

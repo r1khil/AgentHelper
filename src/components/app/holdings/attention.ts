@@ -1,14 +1,13 @@
 import { DateTime } from "luxon";
 import { previousTradingDay } from "@/lib/providers/calendar";
-import { fmtChangeBp, fmtDay, fmtDayMonth, fmtTime } from "@/lib/format";
+import { fmtDay, fmtDayMonth } from "@/lib/format";
 import type { PillTone } from "@/components/app/panel";
 
-/** A "Needs attention" pill on the Holdings list. Pink only for an overdue write-up (hot); caution for due/missing. */
+/** A "Needs attention" pill on the Holdings list: caution for something due, neutral for something to review. */
 export type AttentionFlag = { tone: Extract<PillTone, "hoot" | "caution" | "neutral">; label: string; /** A grey line under the label: why, or what to do. */ detail?: string; href?: string };
 
 /** The subset of `HoldingSignals` (src/lib/holdings.ts) the flags are derived from; plain data, no server imports. */
 export type AttentionInput = {
-  openMovement: { id: string; dueAt: Date | null; sessionDate?: string; /** Its move against the S&P 500, in percentage points. */ relativeMovePp?: number | null } | null;
   nextReport: { id: string; reportDate: string; reportHour: string | null; locked: boolean } | null;
   modelUpdates: number;
   thesisProposed: boolean;
@@ -34,20 +33,12 @@ export function expectationsDue(reportDate: string, reportHour: string | null) {
 }
 
 /**
- * Everything waiting on a holding, most urgent first: an overdue write-up, a write-up due, expectations due for a
- * report within two weeks, model values to review, a proposed thesis.
+ * Everything waiting on a holding, most urgent first: expectations due for a report within two weeks, model values
+ * to review, a proposed thesis.
  */
 export function attentionFlags(s: AttentionInput, ctx: { teamSlug: string; ticker: string; today: string; now: number }): AttentionFlag[] {
   const out: AttentionFlag[] = [];
   const base = `/t/${ctx.teamSlug}`;
-  if (s.openMovement) {
-    const due = s.openMovement.dueAt;
-    const href = `${base}/movements/${s.openMovement.id}`;
-    const { relativeMovePp, sessionDate } = s.openMovement;
-    const moved = relativeMovePp != null && sessionDate ? `Moved ${fmtChangeBp(relativeMovePp * 100)} on ${fmtDayMonth(sessionDate)}` : undefined;
-    if (due && due.getTime() < ctx.now) out.push({ tone: "hoot", label: "Write-up overdue", detail: moved, href });
-    else out.push({ tone: "caution", label: due ? `Write-up due ${fmtDay(due)}` : "Write-up open", detail: moved, href });
-  }
   if (s.nextReport && !s.nextReport.locked && reportsWithin(s.nextReport.reportDate, ctx.today)) {
     out.push({ tone: "caution", label: `Expectations due ${shortDate(expectationsDue(s.nextReport.reportDate, s.nextReport.reportHour))}`, detail: "Lock them before the report", href: `${base}/earnings/${s.nextReport.id}` });
   }
@@ -71,41 +62,17 @@ export type NeedRow = {
 
 /** What the holding page knows about each thing that can wait on the team. Plain data, no server imports. */
 export type NeedsInput = {
-  moves: { id: string; sessionDate: string; status: string; dueAt: Date | null; relativeMovePp: number | null; dataQuality: string | null; evidence: number; drafted: boolean }[];
   nextReport: { id: string; reportDate: string; reportHour: string | null; fiscalPeriod: string | null; locked: boolean; drafted: boolean } | null;
   models: { id: string; fileName: string; version: number; toDecide: number }[];
   thesisProposed: boolean;
 };
 
-/** "4 days overdue", "1 hour overdue", "12 minutes overdue": the largest whole unit, in words. */
-export function overdueWords(dueAt: Date, now: number) {
-  const minutes = Math.max(1, Math.floor((now - dueAt.getTime()) / 60_000));
-  const [n, unit] = minutes >= 1440 ? [Math.floor(minutes / 1440), "day"] : minutes >= 60 ? [Math.floor(minutes / 60), "hour"] : [minutes, "minute"];
-  return `${n} ${unit}${n === 1 ? "" : "s"} overdue`;
-}
-
 /**
- * Everything waiting on one holding, for the notice on its page: every unfinished write-up (the most overdue first),
- * expectations for a report within two weeks, model values to decide, and a proposed thesis. Unlike `attentionFlags`
+ * Everything waiting on one holding, for the notice on its page: expectations for a report within two weeks, model values to decide, and a proposed thesis. Unlike `attentionFlags`
  * (one flag per kind for the Portfolio's rows) it lists each item with its own action.
  */
 export function holdingNeeds(s: NeedsInput, ctx: { base: string; today: string; now: number }): NeedRow[] {
   const out: NeedRow[] = [];
-  const open = s.moves.filter((m) => m.status !== "completed").sort((a, b) => (a.dueAt?.getTime() ?? Infinity) - (b.dueAt?.getTime() ?? Infinity));
-  for (const m of open) {
-    const bp = m.relativeMovePp == null ? null : m.relativeMovePp * 100;
-    const late = m.dueAt && m.dueAt.getTime() < ctx.now;
-    const status = m.dataQuality ? "Data problem" : late ? overdueWords(m.dueAt!, ctx.now) : m.dueAt ? `Due ${fmtDayMonth(m.dueAt)}, ${fmtTime(m.dueAt)}` : "Open";
-    out.push({
-      key: `move-${m.id}`,
-      status,
-      tone: late && !m.dataQuality ? "overdue" : "caution",
-      title: `Movement write-up for ${bp == null || m.dataQuality ? "the move" : fmtChangeBp(bp)} on ${fmtDayMonth(m.sessionDate)}`,
-      detail: m.dataQuality ? m.dataQuality : m.drafted ? "A draft is started" : m.evidence > 0 ? `Hoot gathered ${m.evidence} ${m.evidence === 1 ? "source" : "sources"}` : undefined,
-      action: m.drafted ? "Finish" : m.dataQuality ? "Open" : "Write it",
-      href: `${ctx.base}/movements/${m.id}`,
-    });
-  }
   const r = s.nextReport;
   if (r && !r.locked && reportsWithin(r.reportDate, ctx.today)) {
     const due = expectationsDue(r.reportDate, r.reportHour);

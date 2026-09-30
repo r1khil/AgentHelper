@@ -1,13 +1,9 @@
 import "server-only";
-import { and, eq, isNull, lt, ne, sql } from "drizzle-orm";
-import { DateTime } from "luxon";
+import { and, eq, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { holdings, jobRuns, movements, teams } from "@/db/schema";
-import { NY, todayNY } from "@/lib/providers/calendar";
-import { gatherMovementEvidence } from "./evidence";
-import { queueNotification, sendPendingNotifications } from "./notify";
-import { teamRecipients } from "./recipients";
-import type { Recipient } from "./recipients-rule";
+import { jobRuns } from "@/db/schema";
+import { todayNY } from "@/lib/providers/calendar";
+import { sendPendingNotifications } from "./notify";
 import { refreshEarningsCalendar } from "./earnings";
 import { backfillIndustries, refreshBellwethers } from "./bellwethers";
 import { ensureDriveWatch, runDriveSync } from "./drive";
@@ -17,14 +13,10 @@ import { purgeExpiredMemories } from "@/lib/agent/memory/store";
 import { prepEarnings } from "./earnings-prep";
 import { syncFilings } from "./filings";
 import { runPricesJob } from "./prices";
-import { fmtDateTime, fmtDay, fmtTime } from "@/lib/format";
 import { ABANDONED_AFTER_MS } from "@/components/app/admin/status";
 
 export type MorningJobResult = {
   date: string;
-  evidenceFinished: number;
-  reminders: number;
-  overdue: number;
   earnings: Record<string, unknown>;
   bellwethers: Record<string, unknown>;
   email: Record<string, number>;
@@ -47,7 +39,7 @@ const FILINGS_RESERVE_MS = 45_000;
 const MIN_STEP_MS = 20_000;
 
 
-/** Morning sweep: finish pending evidence, remind, flag overdue, refresh earnings, retry email. */
+/** Morning sweep: refresh earnings, catch up closes, retry email, prep packs, Drive and filings. */
 export async function runMorningJob(opts: { notify?: boolean } = {}): Promise<MorningJobResult> {
   const t0 = Date.now();
   const left = () => MORNING_BUDGET_MS - (Date.now() - t0);
@@ -55,69 +47,9 @@ export async function runMorningJob(opts: { notify?: boolean } = {}): Promise<Mo
   const [jobRow] = await db.insert(jobRuns).values({ job: "morning" }).returning({ id: jobRuns.id });
   const progress = createJobReporter(jobRow.id);
   const date = todayNY();
-  const result: MorningJobResult = { date, evidenceFinished: 0, reminders: 0, overdue: 0, earnings: {}, bellwethers: {}, email: {}, drive: {}, filings: {}, memories: {}, prep: {}, prices: {} };
+  const result: MorningJobResult = { date, earnings: {}, bellwethers: {}, email: {}, drive: {}, filings: {}, memories: {}, prep: {}, prices: {} };
 
-  const pending = await db.select({ id: movements.id }).from(movements).where(and(eq(movements.evidenceStatus, "pending"), ne(movements.status, "completed"))).limit(20);
-  progress.step("finish pending evidence", { movements: pending.length });
-  for (const [i, p] of pending.entries()) {
-    try {
-      await gatherMovementEvidence(p.id);
-      result.evidenceFinished++;
-      progress.item("evidence", i + 1, pending.length, { movementId: p.id });
-    } catch (e) {
-      progress.item("evidence", i + 1, pending.length, { movementId: p.id, error: e instanceof Error ? e.message : String(e) });
-      // stays pending
-    }
-  }
-
-  const now = DateTime.now().setZone(NY);
-  const open = await db
-    .select({ m: movements, h: holdings, teamSlug: teams.slug })
-    .from(movements)
-    .innerJoin(holdings, eq(holdings.id, movements.holdingId))
-    .innerJoin(teams, eq(teams.id, holdings.teamId))
-    .where(and(ne(movements.status, "completed"), isNull(movements.dataQuality)));
-  progress.step("reminders and overdue", { open: open.length });
-
-  // A write-up belongs to its team: reminders go to the team's leads, or its members when it has none.
-  const byTeam = new Map<string, Recipient[]>();
-  for (const { m, h, teamSlug } of open) {
-    if (!m.dueAt) continue;
-    const due = DateTime.fromJSDate(m.dueAt).setZone(NY);
-    const link = `${process.env.APP_URL ?? ""}/t/${teamSlug}/movements/${m.id}`;
-    if (!byTeam.has(h.teamId)) byTeam.set(h.teamId, await teamRecipients(h.teamId));
-    const recipients = opts.notify === false ? [] : byTeam.get(h.teamId)!;
-    const isDueToday = due.hasSame(now, "day");
-    if (isDueToday && now < due) {
-      for (const r of recipients) {
-        const q = await queueNotification({
-          kind: "reminder",
-          recipientId: r.id,
-          recipientEmail: r.email,
-          refId: m.id,
-          dedupeKey: `reminder:${m.id}:${r.id}`,
-          subject: `Reminder: ${h.ticker} movement update due ${fmtTime(m.dueAt)} today`,
-          body: `The ${h.ticker} major-movement update for ${fmtDay(m.sessionDate)} is due at ${fmtTime(m.dueAt)} today.\n\nWorkspace: ${link}`,
-        });
-        if (q) result.reminders++;
-      }
-    } else if (now > due) {
-      for (const r of recipients) {
-        const q = await queueNotification({
-          kind: "overdue",
-          recipientId: r.id,
-          recipientEmail: r.email,
-          refId: m.id,
-          dedupeKey: `overdue:${m.id}:${r.id}`,
-          subject: `Overdue: ${h.ticker} movement update (${fmtDay(m.sessionDate)})`,
-          body: `The ${h.ticker} major-movement update for ${fmtDay(m.sessionDate)} was due ${fmtDateTime(m.dueAt)} and is still open.\n\nWorkspace: ${link}`,
-        });
-        if (q) result.overdue++;
-      }
-    }
-  }
-
-  progress.step("refresh earnings calendar", { reminders: result.reminders, overdue: result.overdue });
+  progress.step("refresh earnings calendar");
   try {
     result.earnings = await refreshEarningsCalendar();
   } catch (e) {
@@ -200,7 +132,7 @@ export async function runMorningJob(opts: { notify?: boolean } = {}): Promise<Mo
     progress.warn("filings sync failed", { error: result.filings.error });
   }
 
-  progress.step("finished", { evidenceFinished: result.evidenceFinished, reminders: result.reminders, overdue: result.overdue });
+  progress.step("finished");
   await progress.close();
   await db.update(jobRuns).set({ finishedAt: new Date(), ok: true, summary: result as unknown as Record<string, unknown> }).where(eq(jobRuns.id, jobRow.id));
   return result;

@@ -90,7 +90,7 @@ export async function TeamPositions({ scope, filter }: { scope: TeamOnly; filter
       spark: closes.get(h.ticker) ?? [],
       nextReport: next ? `${fmtDayMonth(next.reportDate)}${next.estimated ? " (est.)" : ""}` : null,
       flags: attentionFlags(
-        { openMovement: s?.openMovement ?? null, nextReport: next, modelUpdates: s?.modelUpdates ?? 0, thesisProposed: s?.thesisProposed ?? false },
+        { nextReport: next, modelUpdates: s?.modelUpdates ?? 0, thesisProposed: s?.thesisProposed ?? false },
         { teamSlug: scopeFor(slug, team.slug), ticker: h.ticker, today, now },
       ),
       reporting: reportsWithin(next?.reportDate, today),
@@ -140,7 +140,7 @@ export async function TeamPositions({ scope, filter }: { scope: TeamOnly; filter
       <HoldingsToolbar basePath={`/t/${slug}`} active={filter} counts={counts} aside={marketLine} />
       {rows.length === 0 ? (
         <EmptyState title="No holdings yet" hoot="wave" className="mt-4">
-          Add the tickers this team covers. Each one gets live prices, filings, news, and movement alerts.
+          Add the tickers this team covers. Each one gets live prices, filings, and news.
         </EmptyState>
       ) : (
         <Suspense fallback={<HoldingsTable rows={shown} empty={emptyText} showWeight={false} />}>

@@ -1,7 +1,7 @@
 import "server-only";
-import { and, asc, count, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { earnings, holdingNotes, holdingProposals, holdings, modelProposals, models, movements, profiles } from "@/db/schema";
+import { earnings, holdingNotes, holdingProposals, holdings, modelProposals, models, profiles } from "@/db/schema";
 import { inTeams, type TeamIds } from "@/lib/team-filter";
 
 export async function listTeamHoldings(teamId: TeamIds, status: "active" | "exited" | "all" = "active") {
@@ -71,8 +71,6 @@ export async function listRecentCloses(tickers: string[], n = 6): Promise<Map<st
 
 /** What each holding has waiting on it, for the Holdings list's "Needs attention" column and filter chips. */
 export type HoldingSignals = {
-  /** The newest unfinished movement write-up. */
-  openMovement: { id: string; sessionDate: string; dueAt: Date | null; /** Its move against the S&P 500, in percentage points. */ relativeMovePp: number | null } | null;
   /** The soonest upcoming report on or after `today`. */
   nextReport: { id: string; reportDate: string; reportHour: string | null; estimated: boolean; locked: boolean } | null;
   /** Model values waiting for an analyst to approve or reject. */
@@ -81,17 +79,11 @@ export type HoldingSignals = {
   thesisProposed: boolean;
 };
 
-/** Small indexed queries in parallel: open movements, upcoming reports, pending model values and thesis proposals. */
+/** Small indexed queries in parallel: upcoming reports, pending model values and thesis proposals. */
 export async function listHoldingSignals(holdingIds: string[], today: string): Promise<Map<string, HoldingSignals>> {
   const out = new Map<string, HoldingSignals>();
   if (!holdingIds.length) return out;
-  const [moves, reports, modelRows, thesisRows] = await Promise.all([
-    db
-      .select({ id: movements.id, holdingId: movements.holdingId, sessionDate: movements.sessionDate, dueAt: movements.dueAt, relativeMovePp: movements.relativeMovePp })
-      .from(movements)
-      .where(and(inArray(movements.holdingId, holdingIds), ne(movements.status, "completed")))
-      // The oldest unfinished write-up first: it's the one due soonest, or already overdue.
-      .orderBy(asc(movements.sessionDate)),
+  const [reports, modelRows, thesisRows] = await Promise.all([
     db
       .select({ id: earnings.id, holdingId: earnings.holdingId, reportDate: earnings.reportDate, reportHour: earnings.reportHour, dateStatus: earnings.dateStatus, preLockedAt: earnings.preLockedAt })
       .from(earnings)
@@ -110,13 +102,9 @@ export async function listHoldingSignals(holdingIds: string[], today: string): P
   ]);
   const get = (id: string) => {
     let s = out.get(id);
-    if (!s) out.set(id, (s = { openMovement: null, nextReport: null, modelUpdates: 0, thesisProposed: false }));
+    if (!s) out.set(id, (s = { nextReport: null, modelUpdates: 0, thesisProposed: false }));
     return s;
   };
-  for (const m of moves) {
-    const s = get(m.holdingId);
-    if (!s.openMovement) s.openMovement = { id: m.id, sessionDate: m.sessionDate, dueAt: m.dueAt, relativeMovePp: m.relativeMovePp === null ? null : Number(m.relativeMovePp) };
-  }
   for (const r of reports) {
     const s = get(r.holdingId);
     if (!s.nextReport) s.nextReport = { id: r.id, reportDate: r.reportDate, reportHour: r.reportHour, estimated: r.dateStatus === "estimated", locked: !!r.preLockedAt };
@@ -126,16 +114,10 @@ export async function listHoldingSignals(holdingIds: string[], today: string): P
   return out;
 }
 
-/** One holding's earnings (newest first), movements and uploaded models, for the holding page's glance list and tabs. */
+/** One holding's earnings (newest first) and uploaded models, for the holding page's glance list and tabs. */
 export async function loadHoldingActivity(holdingId: string) {
-  const [reports, moves, modelRows] = await Promise.all([
+  const [reports, modelRows] = await Promise.all([
     db.select().from(earnings).where(eq(earnings.holdingId, holdingId)).orderBy(desc(earnings.reportDate)).limit(24),
-    db
-      .select({ id: movements.id, sessionDate: movements.sessionDate, status: movements.status, dueAt: movements.dueAt, relativeMovePp: movements.relativeMovePp })
-      .from(movements)
-      .where(eq(movements.holdingId, holdingId))
-      .orderBy(desc(movements.sessionDate))
-      .limit(20),
     db
       .select({
         id: models.id,
@@ -151,5 +133,5 @@ export async function loadHoldingActivity(holdingId: string) {
       .orderBy(desc(models.version))
       .limit(10),
   ]);
-  return { reports, moves, models: modelRows };
+  return { reports, models: modelRows };
 }

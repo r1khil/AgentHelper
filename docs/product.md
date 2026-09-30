@@ -10,12 +10,10 @@ The agent gathers evidence, explains concepts, lists sourced possible catalysts,
 
 ## Teams and roles
 
-Six sector teams: Consumer & Communication Services, Information Technology, Industrials, Commodities, Healthcare, FIG. Roles: associate analyst, lead analyst (team-wide management; receives the team's movement and prep-pack email), exec and admin (all teams; admin manages members).
+Six sector teams: Consumer & Communication Services, Information Technology, Industrials, Commodities, Healthcare, FIG. Roles: associate analyst, lead analyst (team-wide management; receives the team's prep-pack email), exec and admin (all teams; admin manages members).
 
 ## Rules
 
-- Major movement: absolute difference between a holding's daily return and the S&P 500's daily return of at least 4.0 percentage points, using official closes. Inclusive boundary. Missing or stale data is a visible data-quality problem, never a silent skip or a proxy.
-- Write-ups belong to the whole team that holds the stock: anyone on it can write and complete one, and the movement records who did. Deadline: noon America/New_York on the next trading day. The alert, one reminder before and one overdue notice after go to the team's lead analysts, or to everyone on the team when it has no lead.
 - Sources: filings, company releases and XBRL first; news second. Every factual claim in the agent's output carries a source id returned by a tool.
 - Earnings: expectations lock at the report date so the reflection is honest. Actuals are extracted only from the release and XBRL, with missing items shown as missing.
 - Historicals: the student maps the anchor period and writes the rationale; proposals are pure data (no LLM); ambiguous cases (YTD-only, restatements, unit mismatch, missing concept) become exceptions; approved values are written into a new file version by patching cell XML, so formulas, formatting and charts survive; formula cells are never written.

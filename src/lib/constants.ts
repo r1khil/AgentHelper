@@ -2,7 +2,6 @@ import type { Role } from "@/db/schema";
 
 export const APP_NAME = "The Owl's Nest";
 export const TEST_ACCOUNT_DOMAIN = "accounts.owlfund.local";
-export const MOVEMENT_THRESHOLD_PP = 4.0;
 /** Reserved team slug: `/t/fund/...` shows every team at once. Exec/admin only, and their default scope. */
 export const FUND_SCOPE_SLUG = "fund";
 /** Set to "collapsed" while the member has the sidebar hidden, so the server renders the shell without it. */

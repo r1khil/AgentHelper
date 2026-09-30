@@ -5,7 +5,7 @@ import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
-import { holdingNotes, holdings, movements, teams } from "@/db/schema";
+import { holdingNotes, holdings, teams } from "@/db/schema";
 import { getDailyBars, getEarningsDate, getEstimates, getHolders, getQuote, getQuotes, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { getInsiderTransactions, TRANSACTION_CODES } from "@/lib/providers/edgar-form4";
 import { fetchWebPage, safeWebUrl } from "@/lib/agent/web";
@@ -14,7 +14,7 @@ import { conceptFacts, extractItem, filingUrlForFact, getCompanyFacts, getFiling
 import { resolveKeyFinancials, searchConcepts, type KeyFinancials } from "@/lib/agent/financials";
 import { finnhubConfigured, getCompanyNews, getEarningsCalendar } from "@/lib/providers/finnhub";
 import { NY } from "@/lib/providers/calendar";
-import { relativeMovePp } from "@/lib/movement/math";
+import { relativeMovePp } from "@/lib/returns";
 import { sourceId, type Source } from "@/lib/providers/types";
 import { DriveNotConnected, driveConfigured } from "@/lib/drive/auth";
 import { documentLabel } from "@/lib/drive/labels";
@@ -253,7 +253,7 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
     }),
 
     get_relative_moves: tool({
-      description: "Daily return of a ticker minus the S&P 500 daily return, in percentage points, for recent sessions. Flags sessions that meet the Fund's 4 pp rule.",
+      description: "Daily return of a ticker minus the S&P 500 daily return, in percentage points, for recent sessions.",
       inputSchema: z.object({ ticker: tickerArg, days: z.number().int().min(1).max(60).default(10) }),
       execute: async ({ ticker, days }): Promise<ToolResult<unknown>> => {
         try {
@@ -274,7 +274,6 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
               holdingReturnPct: +((h[i].close / h[i - 1].close - 1) * 100).toFixed(2),
               spxReturnPct: +((sc / sp - 1) * 100).toFixed(2),
               relativePp: +rel.toFixed(2),
-              qualifies: Math.abs(+rel.toFixed(4)) >= 4,
             });
           }
           const source = src("yr", `${t} vs S&P 500 daily returns (Yahoo Finance)`, `https://finance.yahoo.com/quote/${encodeURIComponent(t)}/history/`, "Yahoo Finance");
@@ -528,7 +527,7 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
     }),
 
     get_team_context: tool({
-      description: "The team's current holdings, theses, recent notes, and open movement investigations from the workspace database. In a fund-wide conversation: without a ticker, every team's holdings with their team in one call; with a ticker, that holding's detail.",
+      description: "The team's current holdings, theses and recent notes from the workspace database. In a fund-wide conversation: without a ticker, every team's holdings with their team in one call; with a ticker, that holding's detail.",
       inputSchema: z.object({ ticker: tickerArg.optional().describe("Limit to one holding") }),
       execute: async ({ ticker }): Promise<ToolResult<unknown>> => {
         const rows = await db
@@ -540,7 +539,7 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
         // The whole Fund is too many holdings to detail one by one: list them, and detail the one asked for.
         if (!ctx.teamId && !ticker)
           return {
-            data: { holdings: rows.map((r) => ({ ticker: r.h.ticker, company: r.h.companyName, team: r.team, thesis: r.h.thesis?.slice(0, 300) ?? null })), note: "Fund-wide: pass a ticker for its notes, movements and documents." },
+            data: { holdings: rows.map((r) => ({ ticker: r.h.ticker, company: r.h.companyName, team: r.team, thesis: r.h.thesis?.slice(0, 300) ?? null })), note: "Fund-wide: pass a ticker for its notes and documents." },
             sources: [],
           };
         const driveOn = driveConfigured();
@@ -548,7 +547,6 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
         const out = [];
         for (const r of subset) {
           const notes = await db.select().from(holdingNotes).where(eq(holdingNotes.holdingId, r.h.id)).orderBy(desc(holdingNotes.createdAt)).limit(5);
-          const mv = await db.select().from(movements).where(eq(movements.holdingId, r.h.id)).orderBy(desc(movements.sessionDate)).limit(5);
           const files = driveOn ? await listHoldingFiles(r.h.id, 10).catch(() => []) : [];
           const filings = await listHoldingFilings(r.h.id, 6).catch(() => []);
           const pendingThesis = (await listPendingProposals(r.h.id).catch(() => [])).find((p) => p.field === "thesis");
@@ -560,7 +558,6 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
             thesisUpdatedAt: r.h.thesisUpdatedAt,
             pendingThesisProposal: pendingThesis ? { fileName: pendingThesis.sourceFileName, note: "Extracted by the app from the initiating report; awaiting analyst review. Not the recorded thesis." } : null,
             notes: notes.map((n) => ({ at: n.createdAt, body: n.body })),
-            movements: mv.map((m) => ({ sessionDate: m.sessionDate, relativePp: m.relativeMovePp, status: m.status, update: m.updateText })),
             driveFiles: files.map((f) => {
               const s = driveSource(f);
               sources.push(s);

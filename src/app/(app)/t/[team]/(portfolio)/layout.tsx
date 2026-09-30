@@ -124,7 +124,7 @@ export default async function PortfolioLayout({ children, params }: { children: 
       )}
       {team && (
         <Suspense fallback={<RailCardSkeleton rows={4} label={`Loading ${team.name}`} />}>
-          <TeamCard team={team} scopeSlug={slug} today={today} />
+          <TeamCard team={team} today={today} />
         </Suspense>
       )}
     </>

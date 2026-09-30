@@ -1,14 +1,13 @@
 import "server-only";
 import { tool } from "ai";
 import { z } from "zod";
-import { count, desc, gte, inArray } from "drizzle-orm";
+import { desc, gte } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
-import { changelogEntries, evidenceItems, teams } from "@/db/schema";
+import { changelogEntries, teams } from "@/db/schema";
 import type { CurrentUser } from "@/lib/auth";
 import { isFundWide } from "@/lib/roles";
-import { FUND_SCOPE_SLUG, MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
-import { listTeamMovements } from "@/lib/movements";
+import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { listTeamEarnings, type Actuals } from "@/lib/earnings";
 import { expectationsState, prepPackWord } from "@/lib/earnings-calendar";
 import { getEconomicCalendar } from "@/lib/economic-calendar/service";
@@ -20,7 +19,7 @@ import { loadHootFeedFor } from "@/lib/hoot/feed";
 import { isOverdue as nudgeOverdue, listNudges, needsSentence, nudgeWhen } from "@/lib/today";
 import { NY, todayNY } from "@/lib/providers/calendar";
 import { sourceId, type Source } from "@/lib/providers/types";
-import { fmtBp, fmtCurrency, fmtDate, fmtDateTime, fmtDay, fmtNumber, fmtPct, fmtTime, fmtUsd, ppToBp } from "@/lib/format";
+import { fmtCurrency, fmtDate, fmtDateTime, fmtDay, fmtNumber, fmtTime, fmtUsd } from "@/lib/format";
 import type { ToolResult } from "./tools";
 import {
   earningsWindow,
@@ -28,10 +27,7 @@ import {
   IMPORTANCE_FILTERS,
   importanceWord,
   LEDGER_KINDS,
-  MOVEMENT_FILTERS,
-  movementOverdue,
   pickEconomicEvents,
-  pickMovements,
   reportTiming,
   resolveWorkspaceScope,
   signedFlow,
@@ -47,7 +43,7 @@ const fail = (e: unknown): ToolResult<null> => ({ data: null, sources: [], error
 const teamArg = z.string().optional().describe("Team slug or name, or 'fund' for every team (execs and admins); defaults to this chat's team");
 
 /**
- * Read-only views of the workspace pages Hoot could not see: Movements, the Earnings calendar, Economic releases,
+ * Read-only views of the workspace pages Hoot could not see: the Earnings calendar, Economic releases,
  * Activity (the trade ledger), Home's to-do list and the Changelog. Each applies its page's access rule for the member.
  */
 export function makeWorkspaceTools(ctx: { viewer: CurrentUser; teamId: string | null }) {
@@ -57,83 +53,6 @@ export function makeWorkspaceTools(ctx: { viewer: CurrentUser; teamId: string | 
   const chatSlug = async () => (ctx.teamId ? ((await teamRows()).find((t) => t.id === ctx.teamId)?.slug ?? FUND_SCOPE_SLUG) : FUND_SCOPE_SLUG);
 
   return {
-    get_movements: tool({
-      description: `Major-movement investigations from the Movements page: sessions where a holding's return differed from the S&P 500's by at least ${MOVEMENT_THRESHOLD_PP * 100} bp. Each with the move (bp), status, due time and whether it is overdue, who completed it, the evidence gathered, and the team's write-up text when there is one. Use it for which movements are open, overdue or done, across a team or the Fund.`,
-      inputSchema: z.object({
-        team: teamArg,
-        ticker: z.string().optional().describe("Only this holding"),
-        status: z.enum(MOVEMENT_FILTERS).default("unfinished").describe("unfinished = open or in progress (what the team still owes); overdue; open; in_progress; completed; all"),
-        limit: z.number().int().min(1).max(30).default(10),
-      }),
-      execute: async ({ team, ticker, status, limit }): Promise<ToolResult<unknown>> => {
-        try {
-          const scope = resolveWorkspaceScope(await teamRows(), viewer, ctx.teamId, team, "movements");
-          const t = Date.now();
-          const rows = (await listTeamMovements(scope.teamIds)).map(({ m, h, completedByName }) => ({ m, h, completedByName, ticker: h.ticker, status: m.status, dueAt: m.dueAt }));
-          const picked = pickMovements(rows, { ticker, status, limit, now: t });
-          const ids = picked.rows.map((r) => r.m.id);
-          const evidence = ids.length
-            ? await db.select({ movementId: evidenceItems.movementId, kind: evidenceItems.kind, n: count() }).from(evidenceItems).where(inArray(evidenceItems.movementId, ids)).groupBy(evidenceItems.movementId, evidenceItems.kind)
-            : [];
-          const sources: Source[] = [];
-          const movements = picked.rows.map(({ m, h, completedByName }) => {
-            const rel = ppToBp(num(m.relativeMovePp));
-            const overdue = movementOverdue(m, t);
-            const kinds = Object.fromEntries(evidence.filter((e) => e.movementId === m.id).map((e) => [e.kind, e.n]));
-            const items = Object.values(kinds).reduce((s, n) => s + n, 0);
-            const state =
-              m.status === "completed"
-                ? `completed${m.completedAt ? ` ${fmtDay(m.completedAt)}` : ""}${completedByName ? ` by ${completedByName}` : ""}`
-                : `${overdue ? "overdue" : m.status === "in_progress" ? "in progress" : "open"}${m.dueAt ? `, ${overdue ? "was due" : "due"} ${fmtDateTime(m.dueAt)}` : ""}`;
-            const move = m.dataQuality
-              ? `no move calculated (data problem: ${m.dataQuality})`
-              : `${fmtBp(rel)} vs the S&P 500 (${h.ticker} ${fmtPct(num(m.holdingReturnPct))}, S&P 500 ${fmtPct(num(m.spxReturnPct))})`;
-            const source: Source = {
-              id: sourceId("mvt", m.id),
-              title: `${h.ticker} movement · ${fmtDay(m.sessionDate)} · ${m.dataQuality ? "data problem" : fmtBp(rel)}`,
-              url: appUrl(`/t/${scope.slug}/movements/${m.id}`),
-              publisher: "Owl Fund movements",
-              publishedAt: m.sessionDate,
-              retrievedAt: now(),
-              sourceType: "Movement investigation",
-              excerpt: `${h.ticker} on ${fmtDay(m.sessionDate)}: ${move}; ${state}; ${m.updateText?.trim() ? "write-up written" : "no write-up yet"}; ${items} evidence item${items === 1 ? "" : "s"}.`,
-            };
-            sources.push(source);
-            return {
-              ticker: h.ticker,
-              company: h.companyName,
-              ...(scope.fund ? { team: scope.teamById.get(h.teamId)?.name ?? null } : {}),
-              sessionDate: m.sessionDate,
-              relativeMoveBp: rel === null ? null : Math.round(rel),
-              holdingReturnPct: num(m.holdingReturnPct),
-              sp500ReturnPct: num(m.spxReturnPct),
-              ...(m.dataQuality ? { dataProblem: m.dataQuality } : {}),
-              status: m.status,
-              overdue,
-              dueAt: m.dueAt?.toISOString() ?? null,
-              ...(m.status === "completed" ? { completedBy: completedByName, completedAt: m.completedAt?.toISOString() ?? null } : {}),
-              evidence: { ready: m.evidenceStatus === "ready", items, byKind: kinds },
-              writeUp: m.updateText?.trim() ? clip(m.updateText.trim(), 1500) : null,
-              sourceId: source.id,
-            };
-          });
-          const unfinished = rows.filter((r) => r.status !== "completed");
-          return {
-            data: {
-              scope: scope.label,
-              rule: `A movement is logged when a holding's daily return differs from the S&P 500's by at least ${MOVEMENT_THRESHOLD_PP * 100} bp (official closes); the write-up belongs to the holding's whole team.`,
-              totals: { unfinished: unfinished.length, overdue: unfinished.filter((r) => movementOverdue(r, t)).length, completed: rows.length - unfinished.length },
-              matched: picked.matched,
-              movements,
-            },
-            sources,
-          };
-        } catch (e) {
-          return fail(e);
-        }
-      },
-    }),
-
     get_upcoming_earnings: tool({
       description:
         "The Earnings calendar page for a team or the Fund: holdings reporting in the next N days (date, confirmed or estimated, before the open or after the close, fiscal period, consensus EPS and revenue, whether the team's expectations are locked, whether Hoot's prep pack is built) and reports just in (with the actuals the app gathered). Use it for which of our holdings report soon; get_earnings_calendar is one outside ticker's next date.",
@@ -360,7 +279,7 @@ export function makeWorkspaceTools(ctx: { viewer: CurrentUser; teamId: string | 
 
     get_my_todos: tool({
       description:
-        "What needs this member now, as Home's 'Needs you' list shows it: movement write-ups due or overdue, reports coming up, sell-side briefs ready, thesis and model proposals to review, the weekly pack, each with when it is due. Use it for what do I need to do, what's due, or what's on my plate.",
+        "What needs this member now, as Home's 'Needs you' list shows it: reports coming up and expectations due, sell-side briefs ready, thesis and model proposals to review, the weekly pack, each with when it is due. Use it for what do I need to do, what's due, or what's on my plate.",
       inputSchema: z.object({}),
       execute: async (): Promise<ToolResult<unknown>> => {
         try {

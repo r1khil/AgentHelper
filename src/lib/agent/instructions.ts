@@ -1,11 +1,9 @@
 import "server-only";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { holdingNotes, holdings, movements, teams } from "@/db/schema";
+import { holdingNotes, holdings, teams } from "@/db/schema";
 import { listPendingProposals } from "@/lib/holdings";
 import { summaryToPromptLines } from "@/lib/drive/summary";
-import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
-import { fmtBp } from "@/lib/format";
 import { documentLabel } from "@/lib/drive/labels";
 import { driveStatus, listHoldingFiles, type DriveFileMeta } from "@/lib/drive/index";
 import { listHoldingFilings, type FilingDoc } from "@/lib/documents/index";
@@ -75,13 +73,6 @@ export async function buildInstructions(teamId: string | null, opts: { holdingId
     .innerJoin(teams, eq(teams.id, holdings.teamId))
     .where(and(onTeam, eq(holdings.status, "active")))
     .orderBy(holdings.ticker);
-  const open = await db
-    .select({ m: movements, ticker: holdings.ticker })
-    .from(movements)
-    .innerJoin(holdings, eq(holdings.id, movements.holdingId))
-    .where(and(onTeam, ne(movements.status, "completed")))
-    .orderBy(desc(movements.sessionDate))
-    .limit(teamId ? 10 : 20);
   const allTeams = await db.select({ slug: teams.slug, name: teams.name }).from(teams).orderBy(teams.name);
   const drive = await driveStatus().catch(() => null);
   const driveOn = Boolean(drive?.connected && drive.rootFolderId && !drive.needsReconnect);
@@ -115,9 +106,6 @@ export async function buildInstructions(teamId: string | null, opts: { holdingId
         .map((r) => `- ${r.h.ticker} (${r.h.companyName}${teamId ? "" : `; ${r.teamName}`})${r.h.thesis ? ` — thesis: ${r.h.thesis.slice(0, thesisChars).replace(/\s+/g, " ")}` : ""}`)
         .join("\n")
     : "- (no holdings yet)";
-  const openList = open.length
-    ? open.map((o) => `- ${o.ticker} on ${o.m.sessionDate}: ${o.m.relativeMovePp === null ? "?" : fmtBp(Number(o.m.relativeMovePp) * 100)} vs S&P, status ${o.m.status}`).join("\n")
-    : "- (none)";
   const driveLine = !drive?.configured
     ? "Analyst Drive: not configured on this deployment."
     : !drive.connected || !drive.rootFolderId
@@ -151,7 +139,7 @@ CITATIONS (required):
 - Prefer primary sources: SEC filings and company releases over news. Note publication dates when timing matters.
 - Before saying the team has nothing on file for a holding, check find_documents (and the document list below when the chat is pinned). The thesis field in the workspace is often blank while the initiating coverage report in the Drive is not.
 - If a tool errors or returns nothing, say so; do not fill the gap from memory. Your training data is stale for anything market-related.
-- Facts from the team's own workspace (theses, notes, open investigations) need no citation token; say "per the team's notes" instead.
+- Facts from the team's own workspace (theses, notes) need no citation token; say "per the team's notes" instead.
 - Facts from the research log below carry their original [src:ID] tokens; reuse those tokens when you rely on one, and re-verify any figure whose evidence date predates the latest filing period before presenting it.
 
 TOOL PLAYBOOK (follow it; each tool call costs a step and you have about ten):
@@ -161,12 +149,11 @@ ${(opts.purpose ?? "chat") === "chat" ? `- Each step offers only the tools this 
 - Price moves: get_relative_moves (already computes the move versus the S&P 500), get_price_history for context, get_peer_moves for the rest of the book.
 - Statistics no other tool computes (regressions, correlations, custom screens, scenario math): run_python when it is available, with its inputs loaded through its datasets argument, never typed in; cite computed numbers with its Computation source.
 - What happened: get_news for the window, get_filings with forms ["8-K"] for company announcements, get_earnings_calendar for the next report.
-- Team context (thesis, notes, open movement investigations): get_team_context.
-${opts.workspaceTools ? `- Movement write-ups across a team or the Fund (which are open, overdue or done, due when, the evidence and any write-up text): get_movements (each holding's Write-ups tab, open ones in the bell). get_team_context stays the way into one holding's notes and history.
-- Which of our holdings report soon, confirmed or estimated, and whether the prep pack is built, or what just reported: get_upcoming_earnings (Markets, and each holding's Earnings tab), one call for the whole team. get_earnings_calendar is for a single ticker, including ones we don't hold.
+- Team context (thesis, notes): get_team_context.
+${opts.workspaceTools ? `- Which of our holdings report soon, confirmed or estimated, and whether the prep pack is built, or what just reported: get_upcoming_earnings (Markets, and each holding's Earnings tab), one call for the whole team. get_earnings_calendar is for a single ticker, including ones we don't hold.
 - What is on the economic calendar (a week of releases, consensus, prior, actuals, market odds): get_economic_calendar (Markets); pass search for one release such as CPI.
 - When the Fund bought or sold something, at what price, and cash movements: get_ledger, the Activity page's ledger (execs and admins). It is the record of trades, never a performance figure.
-- What this member needs to do (write-ups due, reports coming, reviews waiting): get_my_todos, Home's list. Give each item with when it is due.
+- What this member needs to do (expectations due, reports coming, reviews waiting): get_my_todos, Home's list. Give each item with when it is due.
 - What changed in the app: get_whats_new, the Changelog (execs and admins).
 ` : ""}- Saved sell-side calls: find_call_transcripts, then read_call_transcript; cite their returned sources.
 - What traders are betting on a macro, policy or company event (a Fed decision, CPI, recession, a shutdown): get_market_odds (Kalshi and Polymarket). Report its odds as market-implied probabilities with their volume, never as consensus, and show both venues when they differ.
@@ -199,7 +186,7 @@ ANSWER FORMAT (fit the shape to the question; a colleague on the desk, not a rep
 - Precision fits the size of the thing: returns to two decimals, bp to one. Never show a before and after that print the same; say the difference directly ("lowers the return by under 0.1 bp, too small to change the reported 0.52%"). An effect under 0.1 bp is "under 0.1 bp", with the reason it's small.
 - State an assumption you had to make in one clause and answer; don't ask first and don't list the alternatives. The member can ask for another version.
 - When something the question needs could not be retrieved, end with "Not retrieved:" listing it. Otherwise leave it out, and leave out closing boilerplate ("If you meant something else…", "Let me know if…"). A research or earnings answer may end with one or two questions the analyst might look into.
-- Plain English, no filler, no summary of what you did. Write figures the way the app shows them: accounting style, a negative in parentheses such as (0.29%) or (40 bp), no plus sign on a positive. Returns and weights are in %; a move against the S&P 500, active return and contributions are in basis points, written bp (tools report some of these in percentage points: 1 pp = 100 bp). The Fund's major-movement rule is an absolute difference of at least ${MOVEMENT_THRESHOLD_PP * 100} bp between a holding's daily return and the S&P 500's daily return, using official closes.
+- Plain English, no filler, no summary of what you did. Write figures the way the app shows them: accounting style, a negative in parentheses such as (0.29%) or (40 bp), no plus sign on a positive. Returns and weights are in %; a move against the S&P 500, active return and contributions are in basis points, written bp (tools report some of these in percentage points: 1 pp = 100 bp).
 
 ${opts.portfolioTools && (opts.purpose ?? "chat") === "chat" ? `THE APP (The Owl's Nest; the member may ask how it works, where something is, or what a page or term means: answer from explain_app, which needs no citation token, and offer to open the page with navigate):
 ${appMapPromptBlock()}
@@ -211,10 +198,7 @@ ${webLine}
 ${teamsLine(allTeams)}
 
 ${teamId ? "Holdings" : "The Fund's holdings (ticker, company and team; answer which team holds what, and how many, from this list without a lookup)"}:
-${holdingsList}
-
-Open movement investigations:
-${openList}${fundNotes}${pinned}${external}${opts.page ? pageContextBlock(opts.page) : ""}`;
+${holdingsList}${fundNotes}${pinned}${external}${opts.page ? pageContextBlock(opts.page) : ""}`;
 }
 
 /**

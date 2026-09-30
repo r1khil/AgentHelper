@@ -23,11 +23,9 @@ describe("turnPageLinks", () => {
     expect(turnPageLinks([tool("run_backtest", {})], null)).toEqual([{ label: "What if", href: "/t/fund/what-if" }]);
   });
 
-  it("opens where write-ups and the calendars live now", () => {
-    expect(turnPageLinks([tool("get_movements", { team: "tech" })], "healthcare")).toEqual([{ label: "Write-ups", href: "/t/tech/movements" }]);
+  it("opens where the calendars live now", () => {
     expect(turnPageLinks([tool("get_upcoming_earnings", { days: 14 })], "healthcare")).toEqual([{ label: "Markets", href: "/markets" }]);
     expect(turnPageLinks([tool("get_upcoming_earnings", {}), tool("get_economic_calendar", { from: "2026-09-28" })], null)).toEqual([{ label: "Markets", href: "/markets" }]);
-    expect(turnPageLinks([tool("get_movements", { team: "Healthcare" })], "tech")).toEqual([]);
   });
 
   it("links the fund's own pages at their one address", () => {

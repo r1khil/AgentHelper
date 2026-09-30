@@ -48,7 +48,7 @@ describe("resolveNavigation", () => {
     expect(go(resolveNavigation({ page: "risk", lookback: "2y" }, { ...exec, path: "/t/fund/performance" }))).toBe("/t/fund/risk?lookback=2y (Risk)");
     // A page from before the five screens still counts as the fund's.
     expect(go(resolveNavigation({ page: "risk" }, { ...exec, path: "/attribution" }))).toBe("/t/fund/risk (Risk)");
-    expect(go(resolveNavigation({ page: "risk" }, { ...exec, path: "/t/healthcare/movements/m1" }))).toBe("/t/healthcare/risk (Risk for Healthcare)");
+    expect(go(resolveNavigation({ page: "risk" }, { ...exec, path: "/t/healthcare/models/m1" }))).toBe("/t/healthcare/risk (Risk for Healthcare)");
     expect(go(resolveNavigation({ page: "markets" }, analyst))).toBe("/markets (Markets)");
   });
 
@@ -69,14 +69,11 @@ describe("resolveNavigation", () => {
     expect(go(resolveNavigation({ page: "activity" }, { ...exec, path: "/t/fig/risk" }))).toBe("/t/fund/activity (Activity)");
     expect(go(resolveNavigation({ page: "research" }, analyst))).toBe("/hoot (All threads)");
     expect(go(resolveNavigation({ page: "economic_calendar" }, exec))).toBe("/markets (Markets)");
-    expect(go(resolveNavigation({ page: "movements" }, analyst))).toBe("/t/tech/movements (Write-ups for Information Technology)");
     expect(go(resolveNavigation({ page: "earnings" }, analyst))).toBe("/markets (Markets)");
     expect(go(resolveNavigation({ page: "earnings", team: "tech" }, exec))).toBe("/markets?team=tech (Markets for Information Technology)");
   });
 
   it("opens a holding's tab for a list about one holding, and the list across the scope without one", () => {
-    expect(go(resolveNavigation({ page: "movements", ticker: "avgo" }, analyst))).toBe("/t/tech/h/AVGO?tab=write-ups (AVGO, Write-ups)");
-    expect(go(resolveNavigation({ page: "write_ups", ticker: "avgo" }, analyst))).toBe("/t/tech/h/AVGO?tab=write-ups (AVGO, Write-ups)");
     expect(go(resolveNavigation({ page: "sell_side", ticker: "AVGO" }, analyst))).toBe("/t/tech/h/AVGO?tab=filings (AVGO, Filings & notes)");
     expect(go(resolveNavigation({ page: "models", ticker: "AVGO" }, analyst))).toBe("/t/tech/h/AVGO?tab=model (AVGO, Model)");
     expect(go(resolveNavigation({ page: "threads", ticker: "AVGO" }, analyst))).toBe("/t/tech/h/AVGO?tab=threads (AVGO, Threads)");

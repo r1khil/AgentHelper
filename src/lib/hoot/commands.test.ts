@@ -15,7 +15,7 @@ describe("Hoot UI commands", () => {
     ["Can you take me to the economic calendar?", "Markets"], ["go to earnings", "Markets"], ["open markets", "Markets"],
     ["go to backtesting", "What if"], ["open what if", "What if"], ["open the attribution page", "Performance"], ["navigate to the weekly update section", "Weekly update"],
     ["take me to research", "Threads"], ["go to conversations", "Threads"], ["open the agent page", "Threads"], ["open all threads", "Threads"], ["open hoot", "Home"],
-    ["go to movements", "Write-ups"], ["open write-ups", "Write-ups"], ["open models", "Models"], ["go to the ledger", "Activity"], ["open what's new", "Changelog"],
+    ["open models", "Models"], ["go to the ledger", "Activity"], ["open what's new", "Changelog"],
     ["take me to the portfolio", "Portfolio"], ["open portfolio", "Portfolio"],
   ])("recognizes %s", (text, destination) => expect(parseHootCommand(text)).toEqual({ kind: "navigate", destination }));
 

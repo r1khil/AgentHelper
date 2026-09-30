@@ -1,47 +1,23 @@
-import Link from "next/link";
 import type { Team } from "@/db/schema";
-import { fmtDateTime, fmtDayMonth } from "@/lib/format";
+import { fmtDayMonth } from "@/lib/format";
 import { listHoldingSignals, listTeamHoldings, listTeamMembers } from "@/lib/holdings";
-import { movementHref, scopeFor } from "@/lib/scope";
 import { cn } from "@/lib/utils";
 
 /**
  * A team's facts, in the Positions rail when the scope is one team (what its page's strip used to show): who leads it
- * and gets its emails, who is on it, the write-ups it owes, and its next report.
+ * and gets its emails, who is on it, and its next report.
  */
-export async function TeamCard({ team, scopeSlug, today }: { team: Team; scopeSlug: string; today: string }) {
+export async function TeamCard({ team, today }: { team: Team; today: string }) {
   const rows = await listTeamHoldings(team.id);
   const [signals, members] = await Promise.all([listHoldingSignals(rows.map((r) => r.h.id), today), listTeamMembers(team.id)]);
-  const now = nowMs();
   const leads = members.filter((m) => m.role === "lead_analyst");
   const associates = members.filter((m) => m.role === "associate_analyst");
-  const open = [...signals.values()].flatMap((s) => (s.openMovement ? [s.openMovement] : []));
-  const overdue = open.filter((m) => m.dueAt && m.dueAt.getTime() < now);
-  const soonest = [...open].filter((m) => m.dueAt).sort((a, b) => a.dueAt!.getTime() - b.dueAt!.getTime())[0];
-  const soonestTicker = soonest ? rows.find((r) => signals.get(r.h.id)?.openMovement?.id === soonest.id)?.h.ticker : undefined;
   const reports = [...signals.entries()].flatMap(([id, s]) => (s.nextReport ? [{ ticker: rows.find((r) => r.h.id === id)?.h.ticker ?? "", ...s.nextReport }] : [])).sort((a, b) => a.reportDate.localeCompare(b.reportDate));
   const next = reports[0];
 
   const facts: { label: string; value: React.ReactNode; note?: React.ReactNode; tone?: "down" }[] = [
-    { label: "Leads", value: leads.length ? leads.map((l) => l.fullName).join(", ") : "None", note: leads.length ? "Get the movement and prep emails" : "No lead yet, so every member gets the movement and prep emails" },
+    { label: "Leads", value: leads.length ? leads.map((l) => l.fullName).join(", ") : "None", note: leads.length ? "Get the prep emails" : "No lead yet, so every member gets the prep emails" },
     { label: "Members", value: members.length, note: associates.length ? `${associates.length} associate ${associates.length === 1 ? "analyst" : "analysts"}` : leads.length ? "Leads only" : undefined },
-    {
-      label: "Open write-ups",
-      value:
-        soonest && soonestTicker ? (
-          <Link href={movementHref(scopeSlug, scopeFor(scopeSlug, team.slug), soonest.id)} className="hover:underline">
-            {overdue.length ? `${overdue.length} overdue` : `${open.length} open`}
-          </Link>
-        ) : overdue.length ? (
-          `${overdue.length} overdue`
-        ) : open.length ? (
-          `${open.length} open`
-        ) : (
-          "None open"
-        ),
-      tone: overdue.length ? "down" : undefined,
-      note: soonest && soonestTicker ? `${soonestTicker}, due ${fmtDateTime(soonest.dueAt!)}` : "Nothing owed",
-    },
     { label: "Next report", value: next ? `${next.ticker}, ${fmtDayMonth(next.reportDate)}` : "None scheduled", note: next ? (next.estimated ? "Estimated date" : "Confirmed date") : "Dates refresh every morning" },
   ];
 
@@ -65,7 +41,3 @@ export async function TeamCard({ team, scopeSlug, today }: { team: Team; scopeSl
   );
 }
 
-/** Read once per request; a helper so the render stays free of impure calls. */
-function nowMs() {
-  return Date.now();
-}

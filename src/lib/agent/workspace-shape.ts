@@ -14,7 +14,7 @@ export type WorkspaceScope = { slug: string; label: string; teamIds: string[]; t
 const FUND_WORDS = new Set([FUND_SCOPE_SLUG, "whole fund", "the fund", "all", "all teams"]);
 
 /**
- * The scope a Movements or Earnings question is about, under those pages' rule: a team's page for its members, execs
+ * The scope an Earnings question is about, under that page's rule: a team's page for its members, execs
  * and admins; the whole Fund for execs and admins. `asked` is a team slug or name, or "fund"; left out, it is the
  * chat's team, or the whole Fund in a fund-wide chat.
  */
@@ -28,34 +28,6 @@ export function resolveWorkspaceScope(all: ScopeTeam[], viewer: Pick<Profile, "r
   if (!team) throw new Error(`No team matches "${asked}". Teams: ${all.map((t) => t.slug).join(", ")}${isFundWide(viewer) ? `, or "${FUND_SCOPE_SLUG}" for every team` : ""}.`);
   if (!canAccessTeam(viewer, team.id)) throw new Error(`${team.name}'s ${what} are visible to that team, execs and admins only.`);
   return { slug: team.slug, label: team.name, teamIds: [team.id], teamById: new Map([[team.id, team]]), fund: false };
-}
-
-/* ------------------------------------------------------------------------------------------------ movements */
-
-export const MOVEMENT_FILTERS = ["unfinished", "overdue", "open", "in_progress", "completed", "all"] as const;
-export type MovementFilter = (typeof MOVEMENT_FILTERS)[number];
-type MovementStatus = "open" | "in_progress" | "completed";
-
-/** The Movements page's rule: an unfinished write-up past its due time. */
-export function movementOverdue(m: { status: MovementStatus; dueAt: Date | null }, now: number) {
-  return m.status !== "completed" && !!m.dueAt && m.dueAt.getTime() < now;
-}
-
-/**
- * The movements that match, in the page's order (unfinished first, newest session first), and how many matched
- * before `limit`. "unfinished" is open or in progress, as the page counts what a team still owes.
- */
-export function pickMovements<T extends { ticker: string; status: MovementStatus; dueAt: Date | null }>(rows: T[], o: { ticker?: string; status: MovementFilter; limit: number; now: number }) {
-  const t = o.ticker?.trim().toUpperCase();
-  const keep = (m: T) => {
-    if (t && m.ticker !== t) return false;
-    if (o.status === "all") return true;
-    if (o.status === "unfinished") return m.status !== "completed";
-    if (o.status === "overdue") return movementOverdue(m, o.now);
-    return m.status === o.status;
-  };
-  const matched = rows.filter(keep);
-  return { rows: matched.slice(0, o.limit), matched: matched.length };
 }
 
 /* ------------------------------------------------------------------------------------------------- earnings */

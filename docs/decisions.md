@@ -89,3 +89,11 @@ The hourly worker runs 12–22 UTC weekdays, covering the proposed Eastern deadl
 - Rationale and evidence: the team, not one analyst, is accountable for a holding, and owners were never set up in practice. Emailing only the leads by default keeps within OpenMail's 20 cold sends a day; the fallback covers a team whose lead isn't in the app yet.
 - Known limits: the `holdings.owner_id` and `movements.owner_id` columns stay in the database with their old values; the app no longer reads or writes them.
 - Supersedes: the Ownership row of the 2026-09-10 baseline, the "owners" part of its Context row, and the "owner and lead" recipients of its Deadlines row.
+
+## Movement write-ups removed — 2026-09-29
+
+- Decision: remove major-movement write-ups from the app.
+- Owner / approver: Rikhil Sharma.
+- Chosen behavior: no nightly close check, no Movements page or holding Write-ups tab, no movement alerts, reminders or overdue emails, no write-up nudges in Hoot's feed or on Home, and no get_movements tool. Prices still update from the 5:00 pm prices job; get_relative_moves still reports a holding's move against the S&P 500, without a threshold flag. Drive documents typed "Major movement" are still indexed and searchable.
+- Known limits: the `movements`, `movement_runs` and `evidence_items` tables and the `movement_alert`, `reminder` and `overdue` notification kinds stay in the database with their old rows; the app no longer reads or writes movements. Earnings evidence still uses `evidence_items`.
+- Supersedes: the Movement, Deadlines and movement part of the Proactivity rows of the 2026-09-10 baseline, and "Team-owned write-ups — 2026-09-28" for movements.

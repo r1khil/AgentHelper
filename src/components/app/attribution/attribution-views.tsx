@@ -157,7 +157,7 @@ export function FundAttributionView({
       </div>
       <HoldingsSection holdings={result.holdings} teams={teams} basePath={view.basePath} queryString={view.queryString} showAll={showAll} />
       <HowNote>
-        The headline comparison is against the S&amp;P 500 index on a price-return basis, the same as the major-movement rule. Allocation and selection are Brinson-Fachler by GICS sector, daily, linked day to day with Carino so the
+        The headline comparison is against the S&amp;P 500 index on a price-return basis. Allocation and selection are Brinson-Fachler by GICS sector, daily, linked day to day with Carino so the
         effects add up to the gap. &quot;Weights&quot; is allocation; &quot;Picks&quot; is selection including the overlap of the two. The benchmark is the saved S&amp;P 500 sector weights applied to Select Sector SPDR total
         returns{weightsAsOf ? ` (weights as of ${fmtDate(weightsAsOf)})` : ""}. Fund dividends reinvest on the ex-date.
         {transparency && " Transparency mode is on: select a sector row to see the daily working and the stored rows behind it."}
