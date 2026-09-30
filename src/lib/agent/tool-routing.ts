@@ -99,7 +99,8 @@ export const FOLLOW_UPS: Record<string, readonly string[]> = {
 const WORDS: Record<Tier, RegExp> = {
   book: new RegExp(
     [
-      /\b(?:perform\w*|attribution|allocation|selection|interaction|brinson|under ?perform\w*|out ?perform\w*|detract\w*|contribut\w*|p&l|pnl|ytd|year to date|since inception|returns?)\b/,
+      // perf* catches "perfomrance" and "perf"; preform* the other common slip.
+      /\b(?:perf(?!ect)\w*|preform\w*|attribution|allocation|selection|interaction|brinson|under ?perform\w*|out ?perform\w*|detract\w*|contribut\w*|p&l|pnl|ytd|year to date|since inception|returns?)\b/,
       /\b(?:risk(?! factor)|volatil\w*|beta|tracking error|value at risk|var|drawdown|stress(?:ed)? test\w*|stress|crisis|concentrat\w*|exposure|exposed|active share|weight\w*|overweight\w*|underweight\w*|sector bets?|factor (?:exposures?|sensitivit\w*|betas?|tilts?|loadings?)|diversif\w*)\b/,
       /\b(?:backtest\w*|back-test\w*|scenario|what[- ]if|hypothetical\w*|if (?:we|the fund) (?:had )?(?:held|bought|sold|added|trimmed))\b/,
       /\b(?:our (?:fund|portfolio|book|performance|returns?|sleeve)|(?:the|our) (?:fund|portfolio|book)(?:'s)? (?:up|down|doing|did|return\w*|perform\w*))\b/,
