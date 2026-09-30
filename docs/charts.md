@@ -9,7 +9,7 @@ The app uses Recharts 3.10.1 with the existing theme tokens. No new runtime depe
 - `src/lib/charts/selection.ts`: interval selection state, endpoint ordering, and raw-value interval calculations.
 - `src/lib/charts/series.ts`: normalization, exact-date alignment, calendar ranges, return rebasing, and nearest-observation lookup. These functions do not depend on React or a chart library.
 
-`PriceChart` uses the full shared system. `CumulativeActiveChart` uses the same renderer for both executive and team attribution, with the page's existing period selector remaining authoritative. That selector shares the range-control primitives, hides presets that would clamp to inception, and bounds custom date inputs to the available history. Attribution links continue to navigate the whole report so the chart, tables, and headline metrics stay consistent. `SectorEffectsChart` keeps its signed, stacked categorical bars and shares the tooltip, legend, grid treatment, and typography. A time scrubber would not be meaningful for its sector axis.
+`PriceChart` supports interval selection in its compact view as well as the full shared system. `CumulativeActiveChart` uses the same renderer for both executive and team attribution, with the page's existing period selector remaining authoritative. That selector shares the range-control primitives, hides presets that would clamp to inception, and bounds custom date inputs to the available history. Attribution links continue to navigate the whole report so the chart, tables, and headline metrics stay consistent. `SectorEffectsChart` keeps its signed, stacked categorical bars and shares the tooltip, legend, grid treatment, and typography. A time scrubber would not be meaningful for its sector axis.
 
 ## Data and calculations
 
@@ -44,7 +44,7 @@ Reviewed on September 19, 2026:
 
 The implementation follows the requested interaction patterns using the app's own theme and components. No proprietary source or brand styling was copied.
 
-## Validation
+## Original shared-chart validation (September 19, 2026)
 
 - `npm test`: 269 tests pass, including interval state transitions, reverse selection, release/cancellation, keyboard extension, raw-endpoint calculations, benchmark comparison, zero/missing baselines, and cumulative-index compounding.
 - `npm run lint`, `npm run typecheck`, and `npm run build` pass.
@@ -52,3 +52,45 @@ The implementation follows the requested interaction patterns using the app's ow
 - Authenticated live-provider pages and physical-device touch gestures were not exercised.
 
 The original visuals commit is `c105569`. This follow-up incorporates main through `f2b1fe5`, including earnings-document labels and research citations. Those changes were reviewed for interactions; the shared chart changes do not alter document labels, source resolution, chat rendering, or provider retrieval. Their tests pass in the combined application. A fresh fetch before publishing found no additional main commits.
+
+
+## Compact-chart interactions (September 30, 2026)
+
+The fund/team overview and holding-price SVG charts, compact Price vs S&P 500, intraday performance, attribution,
+backtesting comparison lines, drawdown, stress paths, and full comparison charts now share captured pointer and
+keyboard bindings in `src/components/charts/interaction.tsx`. Recharts overlays use the public `ZIndexLayer` above
+line/area layers so pressing directly on a series reaches the interaction surface.
+
+Press and drag selects two actual observations in either direction. Both endpoints have crosshairs/markers and a
+shaded interval. The readout retains both dates, values, and interval changes after release; Clear selection or Escape
+resets it. Preset/data changes discard stale indices, including when a previous array is later reused. Arrow keys and
+Home/End inspect observations; holding Shift extends a selection. Touch-action is set on the HTML chart container:
+horizontal gestures select an interval, while vertical gestures can scroll and cancel an unfinished selection.
+
+Raw prices/fund levels use `100 * (end / start - 1)`. Cumulative percent returns use
+`100 * ((100 + end) / (100 + start) - 1)`; interval return gaps remain basis points. Drawdown compares the actual
+levels in **percentage points**, never as an investment return. Missing/nonfinite values and nonpositive return
+baselines stay unavailable. Plot values, ranges, and line segments are unchanged by inspection.
+
+The overview preserves dashed replay versus ledger history and discloses a replay-to-ledger selection in the
+readout. The shared join timestamp is inspected once, with ledger precedence. Holding trade markers remain visible,
+with their original trade descriptions included in the inspected observation. The interaction does not make replay
+values realized portfolio history.
+
+Run `npm run test:charts:browser` (Chrome installed) for the isolated synthetic integration app. It renders the actual
+production chart adapters without adding a public preview route or changing authentication. It covers forward/reverse
+mouse drags, line hit testing, capture outside the plot, exact endpoint/compounded-return math, missing benchmarks,
+keyboard extension/reset, preset/data reset, trade/replay disclosures, browser touch drag, vertical scrolling,
+mobile dark mode/reduced motion, and browser errors. Physical-device touch and authenticated live-provider pages
+are not covered.
+
+Integration review: the branch began at main `72d477a`, then incorporated `b9c0154` (#201, weekly email index closes).
+All eight changed files were reviewed: the CNBC provider and SPXTR/SVX/SGX close assembly/email changes do not modify
+chart adapters, interaction state, or their input contracts. Their parser, assembly, and email tests are included in
+the combined full-suite run. The existing sell-side test failure at `src/lib/sell-side/generate.test.ts:71` also reproduces
+on a clean archive of `72d477a`; this chart change does not modify that test, generator, SDK, or provider configuration.
+The PR remains draft pending that validation failure and collaborator approval.
+
+Final validation on the combined branch: `npm run test:charts:browser`, `npm run lint`, `npm run typecheck`,
+`npm run build -- --webpack`, and `git diff --check` pass. `npm test` reports 2,015 passed and one pre-existing
+sell-side failure (2,016 total); all six new interval/hit-testing tests and the main #201 tests pass.

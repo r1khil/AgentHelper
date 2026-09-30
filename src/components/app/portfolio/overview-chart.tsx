@@ -63,7 +63,7 @@ export function OverviewChart({ points, dayBase, inception, note, team, subject 
     <div className="flex flex-col">
       <div className="mt-[22px]">
         {view ? (
-          <LineChart lines={view.lines} label={label} joinAt={view.joinAt} formatX={view.formatX} formatY={(v) => fmtUsd(v)} />
+          <LineChart resetKey={range} lines={view.lines} label={label} joinAt={view.joinAt} valueOnly={range !== "1D"} formatX={view.formatX} formatY={(v) => fmtUsd(v)} />
         ) : (
           <div className="grid h-[220px] place-items-center text-body text-muted-foreground" role="status">
             {range === "1D" ? (day.status === "error" ? <span className="text-caution-foreground">The day&rsquo;s path could not be loaded just now.</span> : day.status === "loading" ? "Loading the day’s path…" : "No prices yet today.") : "Not enough history to draw a line yet."}

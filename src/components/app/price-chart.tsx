@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useId, useMemo, useState } from "react";
+import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { PerformanceChart } from "@/components/charts/performance-chart";
-import { ChartTooltip, TimeRangeSelector, chartGrid, chartTick, exactDate, tone, valueAxis } from "@/components/charts/primitives";
-import { fmtCurrency, fmtPct } from "@/lib/format";
+import { TimeRangeSelector, chartGrid, chartTick, exactDate, tone, valueAxis } from "@/components/charts/primitives";
+import { fmtAccounting, fmtCurrency, fmtPct } from "@/lib/format";
 import { availableRanges, normalizeObservations, performance, selectRange, type Observation, type TimeRange } from "@/lib/charts/series";
+import { RechartsScrubber, SelectionReadout, scrubHelp, useChartSelection } from "@/components/charts/interaction";
+import { intervalChange } from "@/lib/charts/interval";
 import { cn } from "@/lib/utils";
 
 const COMPACT_RANGES: TimeRange[] = ["1M", "3M", "6M", "1Y"];
@@ -27,7 +29,13 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
   const [detailed, setDetailed] = useState(false);
   const points = useMemo(() => performance(selectRange(observations, range)), [observations, range]);
   const plotted = useMemo(() => points.map((p) => ({ time: p.time, date: p.date, holding: p.returns.holding, benchmark: p.returns.benchmark, price: p.values.holding })), [points]);
+  const helpId = useId();
+  const { selection, dispatch, bounds } = useChartSelection(`${range}|${points[0]?.date}`, points.length);
+  // The header legend keeps the whole range's return; `end` follows the hover or the selection's later endpoint.
   const last = points.at(-1);
+  const end = points[bounds?.[1] ?? selection.active ?? points.length - 1];
+  const first = bounds ? points[bounds[0]] : null;
+  const chartLines = [{ key: "holding", color: HOLDING }, { key: "benchmark", color: BENCH }];
   const ticks = useMemo(() => pickTicks(points.map((p) => ({ time: p.time, date: p.date }))), [points]);
   // Both lines are rebased to 0% at the range's first close, so the axis is the return; the tooltip gives the price.
   const axis = useMemo(() => valueAxis(plotted.flatMap((p) => [p.holding, p.benchmark]), fmtPct), [plotted]);
@@ -43,7 +51,7 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
           </>
         )}
         <span className="flex-1" />
-        <button type="button" onClick={() => setDetailed((d) => !d)} className="text-body text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring" aria-pressed={detailed}>
+        <button type="button" onClick={() => { dispatch({ type: "clear" }); setDetailed((d) => !d); }} className="text-body text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring" aria-pressed={detailed}>
           {detailed ? "Simple view" : "Compare dates"}
         </button>
         {!detailed && options.length > 1 && (
@@ -67,7 +75,8 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
           No overlapping price history is available for this comparison yet.
         </p>
       ) : (
-        <div className="mt-2.5 h-[200px] w-full">
+        <div className="mt-2.5">
+          <div className="relative h-[200px] w-full" style={{ touchAction: "pan-y" }}>
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <LineChart data={plotted} margin={{ top: 6, right: 4, bottom: 0, left: 0 }} accessibilityLayer={false}>
               {/* Gridlines only at the labelled returns, not the plot's unlabelled top and bottom edges. */}
@@ -87,33 +96,25 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
               <YAxis tick={chartTick} tickLine={false} axisLine={false} {...axis} />
               {/* The 0% start both lines are rebased to. */}
               <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeOpacity={0.4} />
-              <Tooltip
-                cursor={{ stroke: "var(--muted-foreground)", strokeDasharray: "3 3" }}
-                isAnimationActive={false}
-                content={({ active, payload }) => {
-                  const p = active ? (payload?.[0]?.payload as (typeof plotted)[number] | undefined) : undefined;
-                  if (!p) return null;
-                  return (
-                    <ChartTooltip label={exactDate(p.date)}>
-                      <div className="flex justify-between gap-4">
-                        <span>{ticker}</span>
-                        <span>
-                          {p.price != null ? `${fmtCurrency(p.price, currency)} · ` : ""}
-                          <span className={tone(p.holding ?? null)}>{fmtPct(p.holding)}</span>
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-4">
-                        <span>S&amp;P 500</span>
-                        <span className={tone(p.benchmark ?? null)}>{fmtPct(p.benchmark)}</span>
-                      </div>
-                    </ChartTooltip>
-                  );
-                }}
-              />
               <Line type="linear" dataKey="benchmark" stroke={BENCH} strokeWidth={1.5} dot={false} activeDot={false} isAnimationActive={false} connectNulls={false} />
-              <Line type="linear" dataKey="holding" stroke={HOLDING} strokeWidth={2} dot={false} activeDot={{ r: 3, strokeWidth: 0 }} isAnimationActive={false} connectNulls={false} />
+              <Line type="linear" dataKey="holding" stroke={HOLDING} strokeWidth={2} dot={false} activeDot={false} isAnimationActive={false} connectNulls={false} />
+              <RechartsScrubber rows={plotted} xKey="time" lines={chartLines} selection={selection} dispatch={dispatch} label={`${ticker} versus S&P 500`} helpId={helpId}
+                valueText={`${first ? `${exactDate(first.date)} to ` : ""}${exactDate(end.date)}; ${ticker}: ${fmtCurrency(end.values.holding, currency)}; S&P 500: ${fmtPct(end.returns.benchmark)}`} />
             </LineChart>
           </ResponsiveContainer>
+          {selection.active !== null && end && <SelectionReadout selected={!!bounds} onClear={() => dispatch({ type: "clear" })}
+            label={first ? `${exactDate(first.date)} – ${exactDate(end.date)}` : exactDate(end.date)}>
+            {[{ key: "holding", label: ticker }, { key: "benchmark", label: "S&P 500" }].map((l) => {
+              const result = first ? intervalChange(first.values[l.key], end.values[l.key], "price") : null;
+              const amount = (v: number | null) => v == null ? "Unavailable" : l.key === "holding" ? fmtCurrency(v, currency) : `${fmtAccounting(v, 2)} pts`;
+              return <div key={l.key}>
+                <div className="flex flex-wrap justify-between gap-x-4"><span>{l.label}</span><span>{first ? `${amount(first.values[l.key])} → ` : ""}{amount(end.values[l.key])}</span></div>
+                <div className={tone(result ? result.returnPct : end.returns[l.key])}>{result ? `Change ${amount(result.change)} · interval return ` : "Period return "}{(result ? result.returnPct : end.returns[l.key]) == null ? "Unavailable" : fmtPct((result ? result.returnPct : end.returns[l.key])!)}</div>
+              </div>;
+            })}
+          </SelectionReadout>}
+          </div>
+          <p id={helpId} className="mt-2 text-caption text-muted-foreground">{scrubHelp}</p>
         </div>
       )}
     </section>

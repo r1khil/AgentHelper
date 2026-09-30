@@ -33,7 +33,8 @@
     "smoke:email-reply": "tsx --conditions=react-server scripts/smoke-email-reply.ts",
     "smoke:fred": "tsx --conditions=react-server --tsconfig ./tsconfig.json scripts/smoke-fred.ts",
     "smoke:prediction-markets": "tsx --conditions=react-server scripts/smoke-prediction-markets.ts",
-    "test:sell-side:browser": "node tests/sell-side/run.mjs"
+    "test:sell-side:browser": "node tests/sell-side/run.mjs",
+    "test:charts:browser": "node tests/charts/run.mjs"
   },
   "dependencies": {
     "@ai-sdk/mcp": "^2.0.52",
