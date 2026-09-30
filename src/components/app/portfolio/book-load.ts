@@ -99,8 +99,12 @@ export const loadTeamBookView = cache(async (teamId: string, name: string): Prom
   const { loaded, base, session } = live;
   const days = loaded.series.portfolio;
   const value = positions.reduce((s, p) => s + p.value, 0);
-  const dayPnl = positions.reduce((s, p) => s + p.dayPnl, 0);
-  const dayBase = value - dayPnl;
+  // Today off the session's own rows, so a position the team closed today still counts (live.positions keeps only what is held).
+  const mine = (ticker: string) => loaded.series.meta.get(ticker)?.teamId === teamId;
+  const lastDay = days.at(-1);
+  const todays = lastDay ? lastDay.positions.filter((p) => mine(p.ticker)) : [];
+  const dayPnl = lastDay ? todays.reduce((s, p) => s + p.pnl, 0) : positions.reduce((s, p) => s + p.dayPnl, 0);
+  const dayBase = lastDay ? todays.reduce((s, p) => s + p.weight * (lastDay.navStart + lastDay.extFlow), 0) : value - dayPnl;
 
   // Today: the sleeve's own return (weights at the open), against its sectors when it has them.
   let dayPct = dayBase > 0 ? (dayPnl / dayBase) * 100 : 0;
@@ -131,7 +135,6 @@ export const loadTeamBookView = cache(async (teamId: string, name: string): Prom
   }
 
   // The sleeve's value each day from the ledger, from the first day it held anything.
-  const mine = (ticker: string) => loaded.series.meta.get(ticker)?.teamId === teamId;
   const ledger = days.map((d) => ({ date: d.date, value: d.positions.reduce((s, p) => s + (mine(p.ticker) ? p.valueEnd : 0), 0) }));
   const first = ledger.findIndex((p) => p.value > 0);
   let chart: ChartPoint[] = first < 0 ? [] : ledger.slice(first).map((p) => ({ ...p, replay: false }));

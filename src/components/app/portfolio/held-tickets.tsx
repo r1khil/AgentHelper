@@ -120,7 +120,7 @@ function Held({ t, today, positions }: { t: HeldTicket; today: string; positions
           </Button>
         </div>
       </div>
-      <TradeDialog today={today} positions={positions} trigger={false} open={editing} onOpenChange={setEditing} defaults={defaults} title="Edit and record this ticket" description="Change anything the broker confirmation says differently, then record it. It goes into the ledger as executed." />
+      <TradeDialog today={today} positions={positions} trigger={false} open={editing} onOpenChange={setEditing} defaults={defaults} onRecorded={() => void rejectTicket(t.id)} title="Edit and record this ticket" description="Change anything the broker confirmation says differently, then record it. It goes into the ledger as executed." />
     </div>
   );
 }

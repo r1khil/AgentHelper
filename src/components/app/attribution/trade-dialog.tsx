@@ -30,6 +30,7 @@ export function TradeDialog({
   trigger = true,
   title = "Record a trade",
   description = "Enter it as executed. Splits and reinvested dividends are applied automatically.",
+  onRecorded,
 }: {
   today: string;
   positions: { ticker: string; shares: number }[];
@@ -40,6 +41,8 @@ export function TradeDialog({
   trigger?: boolean;
   title?: string;
   description?: string;
+  /** Called once the trade is in the ledger. */
+  onRecorded?: () => void;
 }) {
   const [innerOpen, setInnerOpen] = useState(false);
   const open = controlledOpen ?? innerOpen;
@@ -52,6 +55,7 @@ export function TradeDialog({
     const result = await recordTrade(prev, fd);
     if (result.ok) {
       toast.success(result.message ?? "Recorded");
+      onRecorded?.();
       setOpen(false);
       setTicker(defaults?.ticker ?? "");
     } else {
