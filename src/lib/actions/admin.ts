@@ -10,7 +10,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { ROLES } from "@/lib/constants";
 import { createPasswordAccount, passwordAccountSchema } from "@/lib/members";
-import { AGENT_MODELS, AGENT_MODEL_SETTING, isAgentModelId } from "@/lib/agent/model";
+import { AGENT_BACKUP_MODEL_SETTING, AGENT_MODEL_SETTING, agentModelLabel, isAgentModelId } from "@/lib/agent/model";
 import { EMBEDDING_MODEL_SETTING, RERANK_MODEL_SETTING, embeddingLabel, isEmbeddingModelId, isRerankModelId, rerankLabel } from "@/lib/agent/retrieval-models";
 import { ensureEmbeddingIndex } from "@/lib/documents/search";
 import { setSetting } from "@/lib/settings";
@@ -111,11 +111,16 @@ export async function resetTestPassword(fd: FormData) {
 
 export async function setAgentModel(fd: FormData) {
   const me = await requireAdmin();
-  const id = String(fd.get("model") ?? "");
-  if (!isAgentModelId(id)) backJobs("Pick one of the listed models", false);
-  await setSetting(AGENT_MODEL_SETTING, id, me.id);
+  const primary = String(fd.get("model") ?? "");
+  const backup = String(fd.get("backup") ?? "");
+  if (!isAgentModelId(primary) || !isAgentModelId(backup)) backJobs("Pick one of the listed models", false);
+  await setSetting(AGENT_MODEL_SETTING, primary, me.id);
+  await setSetting(AGENT_BACKUP_MODEL_SETTING, backup, me.id);
   revalidatePath("/admin");
-  backJobs(`Research agent switched to ${AGENT_MODELS.find((m) => m.id === id)?.label ?? id}`, true);
+  backJobs(
+    primary === backup ? `Hoot switched to ${agentModelLabel(primary)} with no backup` : `Hoot switched to ${agentModelLabel(primary)}, backup ${agentModelLabel(backup)}`,
+    true,
+  );
 }
 
 /** Switching the embedding model requeues every document; the partial HNSW index for the model is created up front. */

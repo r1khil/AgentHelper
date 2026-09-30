@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/db/client", () => ({ db: {} }));
-vi.mock("./model", () => ({ AGENT_MODELS: [{ id: "a" }], agentModelId: async () => "a", chatModel: (id: string) => ({ id, modelId: id, provider: "mock" }) }));
+vi.mock("./model", () => ({ AGENT_MODELS: [{ id: "a" }], agentModelId: async () => "a", agentBackupModelId: async () => "a", chatModel: (id: string) => ({ id, modelId: id, provider: "mock" }) }));
 vi.mock("./mcp", () => ({ loadMcpTools: async () => ({ tools: {}, servers: [], instructions: [] }) }));
 vi.mock("./instructions", () => ({ buildInstructions: async () => "SYS" }));
 vi.mock("@/lib/pt-sheet/read", () => ({ ptSheetConfigured: () => true, readPtSheet: vi.fn() }));

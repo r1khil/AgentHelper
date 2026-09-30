@@ -27,6 +27,8 @@ import type { UsageReport } from "@/lib/usage/report";
 
 type Option = { id: string; label: string };
 
+const modelOption = (m: Option & { price: string }) => (m.price === "free" ? m.label : `${m.label}, ${m.price}`);
+
 export type AdminViewProps = {
   /** Which tab of /admin: Members (the default), Usage (`?tab=usage`) or Jobs and connections (`?tab=jobs`). The PT sheet has its own route. */
   tab: "members" | "usage" | "jobs";
@@ -47,7 +49,7 @@ export type AdminViewProps = {
   drive: DriveStatus;
   driveUnmatched: string[];
   filings: { lastSync: string | null; lastRun: { ok: boolean | null; at: string; finishedAt: string | null } | null };
-  agent: { id: string; label: string | null; options: Option[] };
+  agent: { id: string; backupId: string; options: (Option & { price: string })[] };
   /** The model that writes the Changelog's summaries. */
   changelogModel: string;
   retrieval: {
@@ -267,26 +269,37 @@ export function AdminView(p: AdminViewProps) {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Panel id="agent" variant="plain" className="scroll-mt-20">
-            <PanelHeader title="Research agent" aside={p.services.agent ? `using ${p.agent.label ?? p.agent.id}` : "set OPENROUTER_API_KEY"} />
-            <form action={setAgentModel} className="grid gap-2 py-3">
-              <Label htmlFor="agent-model">Model</Label>
-              <div className="flex flex-wrap items-center gap-2">
-                <NativeSelect id="agent-model" name="model" defaultValue={p.agent.id} className="w-72" disabled={!canMutate}>
+            <PanelHeader title="Research agent" aside={p.services.agent ? `using ${p.agent.options.find((m) => m.id === p.agent.id)?.label ?? p.agent.id}` : "set AI_GATEWAY_API_KEY"} />
+            <form action={setAgentModel} className="grid gap-3 py-3">
+              <div className="grid gap-2">
+                <Label htmlFor="agent-model">Primary model</Label>
+                <NativeSelect id="agent-model" name="model" defaultValue={p.agent.id} className="w-80" disabled={!canMutate}>
                   {p.agent.options.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.label}
+                      {modelOption(m)}
                     </option>
                   ))}
-                  {!p.agent.label && <option value={p.agent.id}>{p.agent.id} (from environment)</option>}
                 </NativeSelect>
-                {canMutate && (
-                  <Button type="submit" variant="secondary">
-                    Save
-                  </Button>
-                )}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="agent-backup">Backup model</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <NativeSelect id="agent-backup" name="backup" defaultValue={p.agent.backupId} className="w-80" disabled={!canMutate}>
+                    {p.agent.options.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {modelOption(m)}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                  {canMutate && (
+                    <Button type="submit" variant="secondary">
+                      Save
+                    </Button>
+                  )}
+                </div>
               </div>
               <p className="text-body text-muted-foreground">
-                Applies to the next chat turn, draft feedback, earnings extraction, research-log distillation, and earnings prep packs. GPT-6 Luna and Muse Spark are paid (about half a cent to a cent a chat turn). If one is rate-limited or unavailable, the request goes to the other.
+                Hoot runs on the Vercel AI Gateway. The primary answers chat turns, draft feedback, earnings extraction, research-log distillation, earnings prep packs and the daily brief. If it is rate-limited or unavailable, the request goes to the backup; pick the same model twice for no backup. Prices are per million input / output tokens.
               </p>
               <p className="text-body text-muted-foreground">
                 Changelog summaries are written by <span className="font-mono">{p.changelogModel}</span> (set with CHANGELOG_MODEL).

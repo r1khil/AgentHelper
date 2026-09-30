@@ -3,7 +3,7 @@ import { isStepCount, type LanguageModel, type ModelMessage, type ToolChoice, ty
 import type { LanguageModelV4 } from "@ai-sdk/provider";
 import type { Source } from "@/lib/providers/types";
 import type { TraceSink } from "@/lib/trace/context";
-import { AGENT_MODELS, agentModelId, chatModel } from "./model";
+import { agentBackupModelId, agentModelId, chatModel } from "./model";
 import { buildInstructions } from "./instructions";
 import { makeTools } from "./tools";
 import { instrumentTools } from "./trace";
@@ -89,9 +89,9 @@ export type AgentDefinition = {
   repairToolCall: typeof repairToolCall;
 };
 
-/** Primary first, then the rest of the admin list, so a rate-limited free model hands off to another. */
-export function fallbackOrder(primary: string): string[] {
-  return [primary, ...AGENT_MODELS.map((m) => m.id).filter((id) => id !== primary)];
+/** Primary first, then the admin's backup, so a rate-limited free model hands off to another. */
+export function fallbackOrder(primary: string, backup: string): string[] {
+  return [...new Set([primary, backup])];
 }
 
 export const FINAL_STEP_NUDGE = `Your research budget for this question is used up. Write the final answer now from the evidence you already have, with citations, and list under "Not retrieved" anything you could not get.`;
@@ -119,8 +119,8 @@ export function prepareAgentStep(instructions: string, finalNudge = FINAL_STEP_N
  */
 /** The admin's model wrapped with the fallback chain; shared by chat turns, repair, distillation and jobs. */
 export async function agentModelWithFallback(sink?: TraceSink | null): Promise<{ modelId: string; model: LanguageModel }> {
-  const primary = await agentModelId();
-  const model = withModelFallback(fallbackOrder(primary), (id) => chatModel(id) as unknown as LanguageModelV4, (e) => sink?.emit({ t: "model.fallback", ...e }));
+  const [primary, backup] = await Promise.all([agentModelId(), agentBackupModelId()]);
+  const model = withModelFallback(fallbackOrder(primary, backup), (id) => chatModel(id) as unknown as LanguageModelV4, (e) => sink?.emit({ t: "model.fallback", ...e }));
   return { modelId: primary, model };
 }
 

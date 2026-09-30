@@ -3,7 +3,7 @@ import type { ModelMessage } from "ai";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/db/client", () => ({ db: {} }));
-vi.mock("./model", () => ({ AGENT_MODELS: [{ id: "a" }, { id: "b" }, { id: "c" }], agentModelId: async () => "b", chatModel: (id: string) => ({ id, modelId: id, provider: "mock" }) }));
+vi.mock("./model", () => ({ AGENT_MODELS: [{ id: "a" }, { id: "b" }, { id: "c" }], agentModelId: async () => "b", agentBackupModelId: async () => "c", chatModel: (id: string) => ({ id, modelId: id, provider: "mock" }) }));
 vi.mock("./mcp", () => ({ loadMcpTools: async () => ({ tools: {}, servers: [], instructions: [] }) }));
 vi.mock("@/lib/pt-sheet/read", () => ({ ptSheetConfigured: () => true, readPtSheet: vi.fn() }));
 vi.mock("./instructions", () => ({ buildInstructions: async () => "SYS" }));
@@ -13,9 +13,9 @@ import { buildAgentDefinition, fallbackOrder, FINAL_STEP, FINAL_STEP_NUDGE, KEEP
 import { PT_SHEET_MODEL_ID } from "./pt-sheet-guard";
 
 describe("fallbackOrder", () => {
-  it("puts the admin's choice first and keeps the rest in list order", () => {
-    expect(fallbackOrder("b")).toEqual(["b", "a", "c"]);
-    expect(fallbackOrder("zzz")).toEqual(["zzz", "a", "b", "c"]);
+  it("puts the admin's primary first and the backup second", () => {
+    expect(fallbackOrder("b", "c")).toEqual(["b", "c"]);
+    expect(fallbackOrder("b", "b")).toEqual(["b"]);
   });
 });
 

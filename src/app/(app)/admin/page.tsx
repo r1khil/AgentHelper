@@ -9,7 +9,7 @@ import { getSetting } from "@/lib/settings";
 import { WEEKLY_EMAIL_DEFAULT, WEEKLY_RECIPIENTS_SETTING } from "@/lib/weekly/email";
 import { changelogModelId } from "@/lib/changelog/summarize";
 import { mcpBudgets } from "@/lib/agent/mcp-budget";
-import { AGENT_MODELS, agentModelId } from "@/lib/agent/model";
+import { AGENT_MODELS, agentBackupModelId, agentModelId } from "@/lib/agent/model";
 import type { JobRunView } from "@/app/api/admin/job-runs/route";
 import { AdminView } from "@/components/app/admin/admin-view";
 import { loadAdminStatus } from "./status";
@@ -58,9 +58,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     lastActivity(),
   ]);
   const { drive, mcp, last, driveUnmatched, services, filings, retrievalStats: retrieval, connections, attention } = status;
-  const [mcpBudget, changelogModel] = await Promise.all([
+  const [mcpBudget, changelogModel, backupModelId] = await Promise.all([
     mcpBudgets(mcp.map((m) => m.name)).catch(() => ({}) as Awaited<ReturnType<typeof mcpBudgets>>),
     changelogModelId(),
+    agentBackupModelId(),
   ]);
 
   const runs: JobRunView[] = runRows.map((r) => ({
@@ -73,7 +74,6 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     current: r.progress.at(-1) ?? null,
     progress: transparency ? r.progress : null,
   }));
-  const currentModel = AGENT_MODELS.find((m) => m.id === currentModelId);
   const embedModel = EMBEDDING_MODELS.find((m) => m.id === embedId);
   const embedDims = (() => {
     try {
@@ -132,7 +132,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       drive={drive}
       driveUnmatched={driveUnmatched}
       filings={filings}
-      agent={{ id: currentModelId, label: currentModel?.label ?? null, options: AGENT_MODELS.map((m) => ({ id: m.id, label: m.label })) }}
+      agent={{ id: currentModelId, backupId: backupModelId, options: AGENT_MODELS.map((m) => ({ id: m.id, label: m.label, price: m.price })) }}
       changelogModel={changelogModel}
       retrieval={{
         configured: embeddingConfigured(),

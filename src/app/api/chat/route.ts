@@ -19,7 +19,7 @@ export const maxDuration = 300;
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
-  if (!agentConfigured()) return new Response("Agent is not configured (OPENROUTER_API_KEY)", { status: 503 });
+  if (!agentConfigured()) return new Response("Agent is not configured (AI_GATEWAY_API_KEY)", { status: 503 });
 
   const body = (await req.json()) as { chatId?: string; message?: UIMessage };
   if (!body.chatId || !body.message) return new Response("Bad request", { status: 400 });

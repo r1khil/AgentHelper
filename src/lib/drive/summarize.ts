@@ -6,7 +6,7 @@ import { parseSummaryJson, summaryInput, summaryInstructions, type DocSummary } 
 
 /** A cheaper model can be set for summaries; by default they use the chat model. */
 export async function summaryModelId(): Promise<string> {
-  return process.env.OPENROUTER_SUMMARY_MODEL || (await agentModelId());
+  return process.env.SUMMARY_MODEL || (await agentModelId());
 }
 
 /**
