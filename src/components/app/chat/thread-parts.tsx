@@ -11,8 +11,9 @@ import { pageContextLabel, type PageContext } from "@/lib/agent/page-context";
 import { workedFor } from "@/lib/agent/board";
 import { isToolPart, summarizeActivity, toolDone, toolFailed, toolName, type Part, type ToolPart } from "@/lib/agent/turn";
 import { OwlMark } from "@/components/app/owl-mark";
+import { DictateButton } from "@/components/app/hoot/dictate-button";
 import { FetchRows, latestLabel, StepDivider, TraceHeader, type TraceView } from "./trace-panel";
-import { COMPOSER_SHADOW } from "./styles";
+import { COMPOSER_SHADOW, composerButtonSize } from "./styles";
 
 // The pieces every research conversation is built from (a Hoot thread, a holding's board, the answer panel, a
 // sell-side call's chat): Hoot's face and what he did, the member's question, the question box, the source rows.
@@ -415,6 +416,7 @@ export function Composer({
       ) : hint ? (
         <span className="min-w-0 truncate text-caption text-muted-foreground">{hint}</span>
       ) : null}
+      <DictateButton value={value} onChange={onChange} disabled={disabled} size={pill ? "round" : thread ? "lg" : "sm"} />
       {streaming && onStop ? (
         <button
           type="button"
@@ -422,7 +424,7 @@ export function Composer({
           disabled={stopping}
           aria-label={stopping ? "Stopping" : "Stop"}
           title={stopping ? "Stopping…" : "Stop Hoot. He keeps what he has written so far."}
-          className={cn("grid shrink-0 place-items-center bg-secondary hover:bg-border disabled:opacity-60", pill ? "size-9 rounded-full" : thread ? "size-[34px] rounded-lg" : "size-[30px] rounded-[7px]")}
+          className={cn("grid shrink-0 place-items-center bg-secondary hover:bg-border disabled:opacity-60", composerButtonSize(pill ? "round" : thread ? "lg" : "sm"))}
         >
           <span className="size-2.5 rounded-sm bg-foreground" />
         </button>
@@ -449,7 +451,7 @@ export function SendButton({ disabled, label = "Send", size = "lg" }: { disabled
       aria-label={label}
       className={cn(
         "grid shrink-0 place-items-center bg-primary text-primary-foreground transition-opacity hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-40",
-        size === "round" ? "size-9 rounded-full" : size === "lg" ? "size-[34px] rounded-lg" : "size-[30px] rounded-[7px]",
+        composerButtonSize(size),
       )}
     >
       <ArrowUp className={size === "sm" ? "size-3.5" : size === "lg" ? "size-[15px]" : "size-4"} strokeWidth={size === "round" ? 2.4 : 2} aria-hidden />
