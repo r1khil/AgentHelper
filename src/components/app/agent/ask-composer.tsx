@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useId, useRef, useState, type Rea
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SendButton } from "@/components/app/chat/thread-parts";
+import { DictateButton } from "@/components/app/hoot/dictate-button";
 import { cn } from "@/lib/utils";
 import { useStartChat } from "./use-start-chat";
 
@@ -19,10 +20,10 @@ const AskBoxContext = createContext<{ ask: (q: string) => void; disabled: boolea
 
 /**
  * The big question box on Home: one raised card (the surface fill, a hairline border, 16px corners) holding a 15px
- * textarea, the scope ("Whole fund ▾"), an optional holding to pin the question to, a note about where Hoot looks and
- * the round send. Enter asks; Shift+Enter is a new line. `questions` sit under a hairline inside the same card (see
- * AskQuestions) and ask at once, filed under the scope picked above them. Starter questions from Hoot's tour arrive as
- * a `hoot:fill-ask` event and land in the box to edit before sending.
+ * textarea, the scope ("Whole fund ▾"), an optional holding to pin the question to, a note about where Hoot looks, the
+ * mic (DictateButton) and the round send. Enter asks; Shift+Enter is a new line. `questions` sit under a hairline inside
+ * the same card (see AskQuestions) and ask at once, filed under the scope picked above them. Starter questions from
+ * Hoot's tour arrive as a `hoot:fill-ask` event and land in the box to edit before sending.
  */
 export function AskComposer({
   scopes,
@@ -109,6 +110,7 @@ export function AskComposer({
         {holdings && holdings.length > 0 && <HoldingChip holdings={holdings} value={pinned} onChange={setPinned} />}
         {note && <span className="min-w-0 truncate pl-1 text-caption text-muted-foreground">{asking ? "Opening a thread…" : note}</span>}
         <span className="flex-1" />
+        <DictateButton value={text} onChange={setText} disabled={asking || !configured} size="round" />
         <SendButton disabled={!text.trim() || asking || !configured} label="Ask" size="round" />
       </div>
       {error && (

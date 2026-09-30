@@ -117,8 +117,19 @@ describe("activeToolsFor", () => {
       "are we green today?",
       "what's our active return this month?",
       "how much alpha did tech add?",
+      // Production 2026-09-30, typo and all: routed to the web tier only, so Hoot opened the page instead of answering.
+      "what is going on with today's perfomrance",
+      "how's today's perf looking",
+      "todays preformance?",
     ])
       expect(route(q), q).toContain("get_daily_performance");
+    expect(route("perfect, thanks", { seesBook: false })).not.toContain("get_daily_performance");
+  });
+
+  it("always offers navigate, so a bare 'yes' to Hoot's offer to open a page, or 'now tech', can open it", async () => {
+    available = await allRegisteredTools();
+    for (const q of ["yes please", "sure", "now tech", "same for healthcare", "go home", "can I see the tech holdings?"])
+      expect(route(q, { seesBook: false, priorTools: ["get_attribution"] }), q).toContain("navigate");
   });
 
   it("offers what find_tools turned on, but never a change or retired tool", async () => {

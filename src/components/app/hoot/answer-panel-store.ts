@@ -14,6 +14,10 @@ export type AnswerPanelState = {
   context: string;
   /** A conversation already under way, when the panel opens on one (a new question starts empty). */
   messages?: UIMessage[];
+  /** Hoot is still answering (the panel catches up until he's done). */
+  running?: boolean;
+  /** The page it belongs to, when it opens ahead of a navigation there; otherwise the page it opened on. */
+  at?: string;
   /** Bumps each time a question opens the panel, so a second question in the same chat is noticed. */
   seq: number;
 } | null;
@@ -30,6 +34,11 @@ const subscribe = (l: () => void) => {
 export function openAnswerPanel(next: Omit<NonNullable<AnswerPanelState>, "seq">) {
   state = { ...next, seq: ++seq };
   emit();
+}
+
+/** The panel's state outside React: what a Hoot action carries along when it opens a page. */
+export function answerPanelState(): AnswerPanelState {
+  return state;
 }
 
 export function closeAnswerPanel() {

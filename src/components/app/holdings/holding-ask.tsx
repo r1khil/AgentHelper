@@ -8,6 +8,7 @@ import { createHoldingChat } from "@/lib/actions/chats";
 import { leaveHootQuestion } from "@/components/app/hoot/handoff";
 import { pageContextFor } from "@/components/app/hoot/page-context";
 import { useHootCommand } from "@/components/app/hoot/use-hoot-command";
+import { DictateButton } from "@/components/app/hoot/dictate-button";
 
 /**
  * "Ask anything about META…": a question here starts a new thread pinned to this holding (the research board's own
@@ -76,6 +77,7 @@ export function HoldingAsk({ teamId, holdingId, ticker, suggestions, configured 
             </button>
           ))}
         </div>
+        <DictateButton value={draft} onChange={setDraft} disabled={disabled} size="round" className="size-[34px]" />
         <button
           type="button"
           aria-label={asking ? "Opening a thread" : "Send"}
