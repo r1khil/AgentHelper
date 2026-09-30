@@ -22,7 +22,7 @@ async function drag(section, from = 0.01, to = 0.99, outside = false) {
   await expect(
     section.getByRole("button", { name: "Clear selection" }),
   ).toBeVisible();
-  return section.getByRole("status");
+  return section.locator("[data-chart-readout]");
 }
 try {
   await page.goto("http://127.0.0.1:4322", { waitUntil: "networkidle" });
@@ -74,10 +74,10 @@ try {
       ).toBe(true);
     }
     await drag(section);
-    const forward = await section.getByRole("status").innerText();
+    const forward = await section.locator("[data-chart-readout]").innerText();
     await section.getByRole("button", { name: "Clear selection" }).click();
     await drag(section, 0.99, 0.01);
-    expect(await section.getByRole("status").innerText()).toBe(forward);
+    expect(await section.locator("[data-chart-readout]").innerText()).toBe(forward);
     await section.getByRole("slider").press("Escape");
     await expect(
       section.getByRole("button", { name: "Clear selection" }),
@@ -86,8 +86,8 @@ try {
   }
   const overview = page.locator("#overview");
   await drag(overview, 0.01, 1.5, true);
-  await expect(overview.getByRole("status")).toContainText("$100.00 → $120.00");
-  await expect(overview.getByRole("status")).toContainText(
+  await expect(overview.locator("[data-chart-readout]")).toContainText("$100.00 → $120.00");
+  await expect(overview.locator("[data-chart-readout]")).toContainText(
     "today's weights replayed → Ledger history",
   );
   await overview.screenshot({
@@ -100,7 +100,7 @@ try {
   await overview.getByRole("button", { name: "1D", exact: true }).click();
   await expect(overview.getByRole("slider")).toBeVisible();
   await drag(overview);
-  await expect(overview.getByRole("status")).toContainText("five-minute steps");
+  await expect(overview.locator("[data-chart-readout]")).toContainText("five-minute steps");
   console.log(
     "PASS overview: outside capture, replay disclosure, range and daily API response",
   );
@@ -109,7 +109,7 @@ try {
   await holding.getByRole("slider").press("Home");
   await holding.getByRole("slider").press("ArrowRight");
   await holding.getByRole("slider").press("ArrowRight");
-  await expect(holding.getByRole("status")).toContainText("Bought 2");
+  await expect(holding.locator("[data-chart-readout]")).toContainText("Bought 2");
   await holding.getByRole("slider").press("Shift+End");
   await expect(
     holding.getByRole("button", { name: "Clear selection" }),
@@ -126,11 +126,11 @@ try {
 
   const comparison = page.locator("#comparison");
   await drag(comparison, 0.25, 0.5);
-  await expect(comparison.getByRole("status")).toContainText(
+  await expect(comparison.locator("[data-chart-readout]")).toContainText(
     "Interval return +10.00%",
   );
-  await expect(comparison.getByRole("status")).toContainText("Unavailable");
-  await expect(comparison.getByRole("status")).not.toContainText(
+  await expect(comparison.locator("[data-chart-readout]")).toContainText("Unavailable");
+  await expect(comparison.locator("[data-chart-readout]")).not.toContainText(
     "Interval return gap",
   );
   await comparison.getByRole("button", { name: "Replace data" }).click();
@@ -157,10 +157,10 @@ try {
 
   const drawdown = page.locator("#drawdown");
   await drag(drawdown, 0.25, 0.5);
-  await expect(drawdown.getByRole("status")).toContainText(
+  await expect(drawdown.locator("[data-chart-readout]")).toContainText(
     "Change in drawdown 5.00 percentage points",
   );
-  await expect(drawdown.getByRole("status")).not.toContainText(
+  await expect(drawdown.locator("[data-chart-readout]")).not.toContainText(
     "Interval return",
   );
   await drawdown.screenshot({
@@ -169,7 +169,7 @@ try {
 
   const zero = page.locator("#zero");
   await drag(zero);
-  await expect(zero.getByRole("status")).toContainText("Return unavailable");
+  await expect(zero.locator("[data-chart-readout]")).toContainText("Return unavailable");
   const slider = zero.getByRole("slider");
   await slider.press("Escape");
   const box = await slider.boundingBox();

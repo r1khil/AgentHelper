@@ -26,28 +26,42 @@ import {
 import { nearestCoordinate } from "@/lib/charts/interval";
 import { ChartTooltip } from "./primitives";
 
-/** Associate selection with the exact supplied data, so new ranges/data cannot retain stale indices. */
-export function useChartSelection(source: unknown) {
+/**
+ * Selection over `count` observations, reset when `resetKey` (a primitive such as the first observation's date) changes.
+ * Keyed by value rather than array identity, so a caller that rebuilds its rows on every render keeps the selection.
+ */
+export function useChartSelection(resetKey: unknown, count: number) {
   const [state, send] = useReducer(
     (
-      state: { source: unknown; selection: Selection },
-      action: { source: unknown; action: SelectionAction },
-    ) => ({
-      source: action.source,
-      selection: selectionReducer(
-        state.source === action.source ? state.selection : emptySelection,
+      state: { key: unknown; selection: Selection },
+      action: { key: unknown; action: SelectionAction },
+    ) => {
+      const same = Object.is(state.key, action.key);
+      const selection = selectionReducer(
+        same ? state.selection : emptySelection,
         action.action,
-      ),
-    }),
-    { source, selection: emptySelection },
+      );
+      // Returning the same state lets React skip the re-render when the nearest observation has not changed.
+      return same && selection === state.selection
+        ? state
+        : { key: action.key, selection };
+    },
+    { key: resetKey, selection: emptySelection },
   );
-  // Discard the previous selection even if the caller later reuses an earlier data array.
-  if (state.source !== source) send({ source, action: { type: "clear" } });
+  if (!Object.is(state.key, resetKey))
+    send({ key: resetKey, action: { type: "clear" } });
   const dispatch = useCallback(
-    (action: SelectionAction) => send({ source, action }),
-    [source],
+    (action: SelectionAction) => send({ key: resetKey, action }),
+    [resetKey],
   );
-  const selection = state.source === source ? state.selection : emptySelection;
+  const current = Object.is(state.key, resetKey)
+    ? state.selection
+    : emptySelection;
+  // Fewer observations under the same key (a shorter reload) cannot keep indices past the end.
+  const selection =
+    (current.active ?? 0) < count && (current.anchor ?? 0) < count
+      ? current
+      : emptySelection;
   return { selection, dispatch, bounds: selectionBounds(selection) };
 }
 
@@ -164,9 +178,10 @@ export function SelectionReadout({
   onClear: () => void;
 }) {
   return (
+    // Not a live region: the slider's aria-valuetext already carries these values, so announcing both would repeat them.
     <div
       className="pointer-events-none absolute right-2 top-2 z-10 max-w-[calc(100%-1rem)]"
-      role="status"
+      data-chart-readout
     >
       <ChartTooltip label={label}>
         {children}

@@ -82,7 +82,9 @@ export function LinesChart<Row extends Record<string, unknown>>({
   zero?: boolean;
 }) {
   const helpId = useId();
-  const { selection, dispatch, bounds } = useChartSelection(rows);
+  // The readout heading as text for the slider; the callers' headings are formatted dates and times.
+  const labelText = (r: Row) => { const l = hoverLabel(r); return typeof l === "string" || typeof l === "number" ? String(l) : String(r[xKey]); };
+  const { selection, dispatch, bounds } = useChartSelection(rows[0]?.[xKey], rows.length);
   const row = rows[bounds?.[1] ?? selection.active ?? rows.length - 1];
   const first = bounds ? rows[bounds[0]] : null;
   const changes = lines.map((l) => first ? intervalChange(first[l.key], row[l.key], "return").returnPct : null);
@@ -93,7 +95,7 @@ export function LinesChart<Row extends Record<string, unknown>>({
   const scale = values.length ? niceScale(Math.min(0, ...values), Math.max(0, ...values), 4, { fit: "inner" }) : null;
   return (
     <div>
-    <div className="relative w-full" style={{ height, touchAction: "pan-y" }} aria-label={ariaLabel}>
+    <div className="relative w-full" style={{ height, touchAction: "pan-y" }} role="group" aria-label={ariaLabel}>
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <LineChart data={rows} margin={{ top: 6, right: 2, bottom: 0, left: 2 }} accessibilityLayer={false}>
           <XAxis dataKey={xKey as string} tick={<EdgeTick format={xAxis.tickFormatter as ((v: never, i: number) => string) | undefined} />} tickLine={false} axisLine={false} padding={{ left: 0, right: 0 }} {...xAxis} />
@@ -117,7 +119,7 @@ export function LinesChart<Row extends Record<string, unknown>>({
             />
           ))}
           <RechartsScrubber rows={rows} xKey={xKey} lines={lines} selection={selection} dispatch={dispatch} label={ariaLabel} helpId={helpId}
-            valueText={row ? `${String(row[xKey])}; ${lines.map((l, i) => `${l.label}: ${format(row[l.key] as number | null)}${bounds ? `; interval return ${fmtChangePct(changes[i])}` : ""}`).join("; ")}` : "No observations"} />
+            valueText={row ? `${labelText(row)}; ${lines.map((l, i) => `${l.label}: ${format(row[l.key] as number | null)}${bounds ? `; interval return ${fmtChangePct(changes[i])}` : ""}`).join("; ")}` : "No observations"} />
         </LineChart>
       </ResponsiveContainer>
       {row && selection.active !== null && <SelectionReadout selected={!!bounds} onClear={() => dispatch({ type: "clear" })}

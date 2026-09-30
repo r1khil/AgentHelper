@@ -2,6 +2,7 @@
 
 import { useId, useMemo } from "react";
 import { SelectionReadout, scrubHelp, scrubStyle, useChartSelection, useScrubBindings } from "@/components/charts/interaction";
+import { tone } from "@/components/charts/primitives";
 import { intervalChange, nearestCoordinate } from "@/lib/charts/interval";
 import { fmtChangePct } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,8 @@ export function LineChart({
   formatX,
   formatY,
   joinAt,
+  valueOnly = false,
+  resetKey = "",
   className,
 }: {
   lines: ChartLine[];
@@ -46,14 +49,21 @@ export function LineChart({
   formatY: (v: number) => string;
   /** A hairline at this time: where the replay hands over to the ledger. */
   joinAt?: number;
+  /**
+   * The values move with deposits, withdrawals or a replay join (a fund's value), so an interval reads as a change in
+   * value only, never as a return.
+   */
+  valueOnly?: boolean;
+  /** Clears the selection when it changes (the chosen range), as well as when the observations start elsewhere. */
+  resetKey?: string;
   className?: string;
 }) {
   const helpId = useId();
-  const { selection, dispatch, bounds } = useChartSelection(lines);
   // Replay and ledger share their join point; inspect the ledger at that boundary.
   const all = useMemo(() => [...new Map(lines.flatMap((line) => line.points
     .filter((p) => Number.isFinite(p.t) && Number.isFinite(p.v))
     .map((p) => [p.t, { ...p, line }] as const))).values()].sort((a, b) => a.t - b.t), [lines]);
+  const { selection, dispatch, bounds } = useChartSelection(`${resetKey}|${all[0]?.t}`, all.length);
   const geo = useMemo(() => {
     if (all.length < 2) return null;
     const t0 = all[0].t;
@@ -88,7 +98,7 @@ export function LineChart({
 
   const h = selection.active === null ? null : all[bounds?.[1] ?? selection.active];
   const start = bounds ? all[bounds[0]] : null;
-  const result = start && h ? intervalChange(start.v, h.v, "price") : null;
+  const result = start && h ? intervalChange(start.v, h.v, valueOnly ? "level" : "price") : null;
   const endpoints = bounds ?? (selection.active === null ? [] : [selection.active]);
   const pct = (n: number, of: number) => `${(n / of) * 100}%`;
 
@@ -118,7 +128,7 @@ export function LineChart({
         <rect x={0} y={0} width={W} height={H} fill="transparent" style={scrubStyle} tabIndex={0} role="slider"
           aria-label={`${label} date`} aria-describedby={helpId} aria-valuemin={0} aria-valuemax={all.length - 1}
           aria-valuenow={selection.active ?? all.length - 1}
-          aria-valuetext={`${start ? `${formatX(start.t)} to ` : ""}${formatX((h ?? all.at(-1)!).t)}; ${formatY((h ?? all.at(-1)!).v)}${result ? `; change ${formatY(result.change!)}; ${fmtChangePct(result.returnPct)}` : ""}`}
+          aria-valuetext={`${start ? `${formatX(start.t)} to ` : ""}${formatX((h ?? all.at(-1)!).t)}; ${formatY((h ?? all.at(-1)!).v)}${result ? `; change ${formatY(result.change!)}${valueOnly ? "" : `; ${fmtChangePct(result.returnPct)}`}` : ""}`}
           className="outline-none focus-visible:stroke-ring focus-visible:stroke-2" {...bind} />
       </svg>
       {markers.map((m, i) => (
@@ -135,7 +145,8 @@ export function LineChart({
       {h && <SelectionReadout selected={!!bounds} onClear={() => dispatch({ type: "clear" })}
         label={start ? `${formatX(start.t)} – ${formatX(h.t)}` : formatX(h.t)}>
         <div className="font-semibold">{start ? `${formatY(start.v)} → ${formatY(h.v)}` : formatY(h.v)}</div>
-        {result && <div className={result.change! < 0 ? "text-down" : "text-up"}>Change {formatY(result.change!)} · {result.returnPct === null ? "Return unavailable" : fmtChangePct(result.returnPct)}</div>}
+        {result && <div className={tone(result.change)}>{valueOnly ? `Change in value ${formatY(result.change!)}` : `Change ${formatY(result.change!)} · ${result.returnPct === null ? "Return unavailable" : fmtChangePct(result.returnPct)}`}</div>}
+        {result && valueOnly && <div className="font-sans text-caption text-muted-foreground">Includes deposits and withdrawals; not a return</div>}
         {markers.filter((m) => m.t === h.t).map((m, i) => <div key={i} className="font-sans text-caption text-muted-foreground">{m.label}</div>)}
         {(start?.line.note || h.line.note) && <div className="font-sans text-caption text-muted-foreground">
           {start && start.line.note !== h.line.note ? `${start.line.note ?? "Ledger history"} → ${h.line.note ?? "Ledger history"}` : h.line.note}

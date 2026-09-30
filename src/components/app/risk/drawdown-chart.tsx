@@ -18,7 +18,7 @@ export type DrawdownPoint = { date: string; fund: number; market?: number };
  */
 export function DrawdownChart({ data, fundLabel, marketLabel = "S&P 500 (SPY)", height = 150, worstDate }: { data: DrawdownPoint[]; fundLabel: string; marketLabel?: string; height?: number; worstDate?: string | null }) {
   const helpId = useId();
-  const { selection, dispatch, bounds } = useChartSelection(data);
+  const { selection, dispatch, bounds } = useChartSelection(data[0]?.date, data.length);
   if (data.length < 2) return <div className="text-body text-muted-foreground">Needs at least two trading days.</div>;
   const hasMarket = data.some((d) => d.market !== undefined);
   const lows = data.flatMap((d) => [d.fund, d.market ?? 0]);
@@ -36,7 +36,7 @@ export function DrawdownChart({ data, fundLabel, marketLabel = "S&P 500 (SPY)", 
   const first = bounds ? data[bounds[0]] : null;
   return (
     <div>
-    <div className="relative w-full" style={{ height, touchAction: "pan-y" }} aria-label={`${fundLabel} drawdown from the previous high; the worst was ${fmtPct(worst.fund)} on ${fmtDate(worstAt)}`}>
+    <div className="relative w-full" style={{ height, touchAction: "pan-y" }} role="group" aria-label={`${fundLabel} drawdown from the previous high; the worst was ${fmtPct(worst.fund)} on ${fmtDate(worstAt)}`}>
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <ComposedChart data={data} margin={{ top: 4, right: 2, bottom: 0, left: 2 }} accessibilityLayer={false}>
           <XAxis dataKey="date" ticks={ticks} interval={0} tick={<EdgeTick format={label} />} tickLine={false} axisLine={false} padding={{ left: 0, right: 0 }} />

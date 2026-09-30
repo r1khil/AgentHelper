@@ -12,7 +12,7 @@ export type StressPathPoint = { date: string; fund: number; market: number; benc
 /** Cumulative return through a stress window: today's portfolio held from the first close, the S&P 500 and the sector benchmark. */
 export function StressPathChart({ data, fundLabel, benchmarkLabel }: { data: StressPathPoint[]; fundLabel: string; benchmarkLabel: string }) {
   const helpId = useId();
-  const { selection, dispatch, bounds } = useChartSelection(data);
+  const { selection, dispatch, bounds } = useChartSelection(data[0]?.date, data.length);
   const hasBench = data.some((d) => d.benchmark !== null);
   const plotted = data.map((d) => ({ date: d.date, fund: d.fund * 100, market: d.market * 100, benchmark: d.benchmark === null ? null : d.benchmark * 100 }));
   // Round ticks over every line, always including the 0% start.
@@ -22,7 +22,7 @@ export function StressPathChart({ data, fundLabel, benchmarkLabel }: { data: Str
   const first = bounds ? plotted[bounds[0]] : null;
   return (
     <div>
-      <div className="relative h-52 w-full" style={{ touchAction: "pan-y" }} aria-label={`${fundLabel}, S&P 500 and sector benchmark cumulative return through the window`}>
+      <div className="relative h-52 w-full" style={{ touchAction: "pan-y" }} role="group" aria-label={`${fundLabel}, S&P 500 and sector benchmark cumulative return through the window`}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={plotted} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} accessibilityLayer={false}>
             <CartesianGrid vertical={false} stroke={chartGrid} syncWithTicks />

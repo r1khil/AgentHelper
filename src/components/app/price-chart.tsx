@@ -30,8 +30,10 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
   const points = useMemo(() => performance(selectRange(observations, range)), [observations, range]);
   const plotted = useMemo(() => points.map((p) => ({ time: p.time, date: p.date, holding: p.returns.holding, benchmark: p.returns.benchmark, price: p.values.holding })), [points]);
   const helpId = useId();
-  const { selection, dispatch, bounds } = useChartSelection(points);
-  const last = points[bounds?.[1] ?? selection.active ?? points.length - 1];
+  const { selection, dispatch, bounds } = useChartSelection(`${range}|${points[0]?.date}`, points.length);
+  // The header legend keeps the whole range's return; `end` follows the hover or the selection's later endpoint.
+  const last = points.at(-1);
+  const end = points[bounds?.[1] ?? selection.active ?? points.length - 1];
   const first = bounds ? points[bounds[0]] : null;
   const chartLines = [{ key: "holding", color: HOLDING }, { key: "benchmark", color: BENCH }];
   const ticks = useMemo(() => pickTicks(points.map((p) => ({ time: p.time, date: p.date }))), [points]);
@@ -53,7 +55,7 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
           {detailed ? "Simple view" : "Compare dates"}
         </button>
         {!detailed && options.length > 1 && (
-          <TimeRangeSelector ranges={options} value={range} onChange={(next) => { dispatch({ type: "clear" }); setRange(next); }} />
+          <TimeRangeSelector ranges={options} value={range} onChange={setRange} />
         )}
       </div>
       {detailed ? (
@@ -97,17 +99,17 @@ export function PriceChart({ data, ticker, currency, className }: { data: Observ
               <Line type="linear" dataKey="benchmark" stroke={BENCH} strokeWidth={1.5} dot={false} activeDot={false} isAnimationActive={false} connectNulls={false} />
               <Line type="linear" dataKey="holding" stroke={HOLDING} strokeWidth={2} dot={false} activeDot={false} isAnimationActive={false} connectNulls={false} />
               <RechartsScrubber rows={plotted} xKey="time" lines={chartLines} selection={selection} dispatch={dispatch} label={`${ticker} versus S&P 500`} helpId={helpId}
-                valueText={`${first ? `${exactDate(first.date)} to ` : ""}${exactDate(last.date)}; ${ticker}: ${fmtCurrency(last.values.holding, currency)}; S&P 500: ${fmtPct(last.returns.benchmark)}`} />
+                valueText={`${first ? `${exactDate(first.date)} to ` : ""}${exactDate(end.date)}; ${ticker}: ${fmtCurrency(end.values.holding, currency)}; S&P 500: ${fmtPct(end.returns.benchmark)}`} />
             </LineChart>
           </ResponsiveContainer>
-          {selection.active !== null && last && <SelectionReadout selected={!!bounds} onClear={() => dispatch({ type: "clear" })}
-            label={first ? `${exactDate(first.date)} – ${exactDate(last.date)}` : exactDate(last.date)}>
+          {selection.active !== null && end && <SelectionReadout selected={!!bounds} onClear={() => dispatch({ type: "clear" })}
+            label={first ? `${exactDate(first.date)} – ${exactDate(end.date)}` : exactDate(end.date)}>
             {[{ key: "holding", label: ticker }, { key: "benchmark", label: "S&P 500" }].map((l) => {
-              const result = first ? intervalChange(first.values[l.key], last.values[l.key], "price") : null;
+              const result = first ? intervalChange(first.values[l.key], end.values[l.key], "price") : null;
               const amount = (v: number | null) => v == null ? "Unavailable" : l.key === "holding" ? fmtCurrency(v, currency) : `${fmtAccounting(v, 2)} pts`;
               return <div key={l.key}>
-                <div className="flex flex-wrap justify-between gap-x-4"><span>{l.label}</span><span>{first ? `${amount(first.values[l.key])} → ` : ""}{amount(last.values[l.key])}</span></div>
-                <div className={tone(result ? result.returnPct : last.returns[l.key])}>{result ? `Change ${amount(result.change)} · interval return ` : "Period return "}{(result ? result.returnPct : last.returns[l.key]) == null ? "Unavailable" : fmtPct((result ? result.returnPct : last.returns[l.key])!)}</div>
+                <div className="flex flex-wrap justify-between gap-x-4"><span>{l.label}</span><span>{first ? `${amount(first.values[l.key])} → ` : ""}{amount(end.values[l.key])}</span></div>
+                <div className={tone(result ? result.returnPct : end.returns[l.key])}>{result ? `Change ${amount(result.change)} · interval return ` : "Period return "}{(result ? result.returnPct : end.returns[l.key]) == null ? "Unavailable" : fmtPct((result ? result.returnPct : end.returns[l.key])!)}</div>
               </div>;
             })}
           </SelectionReadout>}

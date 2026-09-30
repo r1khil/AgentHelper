@@ -303,7 +303,7 @@ function ChartSession({
         </ResponsiveContainer>
         {active !== null && (
           <div
-            role="status"
+            data-chart-readout
             className={`pointer-events-none absolute top-2 z-10 max-w-[calc(100%-4rem)] ${active < points.length / 2 ? "right-3" : "left-16"}`}
           >
             <ChartTooltip
