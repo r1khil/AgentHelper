@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { filingChanges, flags, holdings, watchlist } from "@/db/schema";
 import { requireUser, type CurrentUser } from "@/lib/auth";
@@ -32,6 +32,11 @@ export async function setFilingChangeVerdict(id: string, verdict: "real" | "nois
     .update(filingChanges)
     .set(verdict ? { verdict, verdictBy: user.id, verdictAt: new Date() } : { verdict: null, verdictBy: null, verdictAt: null })
     .where(eq(filingChanges.id, id));
+  // A verdict resolves the change's flag (off the bell, out of the checklist's unresolved count); clearing it reopens it.
+  await db
+    .update(flags)
+    .set(verdict ? { dismissedBy: user.id, dismissedAt: new Date() } : { dismissedBy: null, dismissedAt: null })
+    .where(and(eq(flags.sourceId, id), inArray(flags.kind, ["filing_change", "filing_8k"])));
   revalidatePath("/screener", "layout");
   return { ok: true };
 }

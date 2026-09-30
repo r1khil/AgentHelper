@@ -74,8 +74,17 @@ export async function writeTearSheet(hit: Pick<ScreenHit, "id" | "ticker" | "cik
   const [existing] = await db.select().from(tearSheets).where(and(eq(tearSheets.ticker, hit.ticker), eq(tearSheets.sourceAccession, input.accession)));
   if (existing && !opts.force) return existing;
   const prompt = `COMPANY: ${hit.companyName} (${hit.ticker})\n\nSOURCES:\n${sourcesBlock(input.sources)}`;
-  const { text, model } = await (opts.generate ?? defaultGenerate)(prompt);
-  const { body, held } = checkTearSheet(text, input.sources);
+  let checked: { body: TearSheetBody | null; held: string | null };
+  let model: string | null = null;
+  try {
+    const out = await (opts.generate ?? defaultGenerate)(prompt);
+    model = out.model;
+    checked = checkTearSheet(out.text, input.sources);
+  } catch (e) {
+    // Stored as held, so the monthly pass doesn't retry it every ten minutes; "Try again" rewrites it.
+    checked = { body: null, held: `Hoot couldn't write it: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300) };
+  }
+  const { body, held } = checked;
   const values = {
     screenHitId: hit.id,
     ticker: hit.ticker,
@@ -101,6 +110,29 @@ async function defaultGenerate(prompt: string) {
   // Reasoning spends output tokens before the JSON; a generous budget keeps the answer from being cut off.
   const { text } = await generateText({ model, instructions: INSTRUCTIONS, prompt, reasoning: "low", maxOutputTokens: 4000, maxRetries: 1 });
   return { text, model: modelId };
+}
+
+/**
+ * The monthly pass (Module 2): each team's top-five hits of the latest run without a tear sheet yet get one, a few per
+ * call until the budget is spent. The screen's cron calls it once a run is done; a sheet that fails is stored as held.
+ */
+export async function writePendingTearSheets(hits: ScreenHit[], budgetMs: number): Promise<{ written: number; remaining: number }> {
+  const started = Date.now();
+  const top = hits.filter((h) => h.teamId && h.teamRank !== null && h.teamRank <= 5);
+  if (!top.length) return { written: 0, remaining: 0 };
+  const done = new Set((await db.select({ id: tearSheets.screenHitId }).from(tearSheets).where(inArray(tearSheets.screenHitId, top.map((h) => h.id)))).map((r) => r.id));
+  const pending = top.filter((h) => !done.has(h.id));
+  let written = 0;
+  // A sheet takes a minute or so (two filings fetched, one model call); don't start one without that left.
+  for (const h of pending) {
+    if (Date.now() - started > budgetMs - 90_000) break;
+    try {
+      if (await writeTearSheet(h)) written++;
+    } catch (e) {
+      console.error(`[tear-sheets] ${h.ticker}:`, e);
+    }
+  }
+  return { written, remaining: pending.length - written };
 }
 
 /** The newest tear sheet per ticker. */

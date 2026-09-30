@@ -41,7 +41,7 @@ export async function metricReadings(ticker: string, cik: string | null): Promis
   if (!id) return out;
   const facts = await getCompanyFacts(id).catch(() => null);
   if (!facts) return out;
-  const q = resolveKeyFinancials(facts, "quarter", 5);
+  const q = resolveKeyFinancials(facts, "quarter", 8);
   const a = resolveKeyFinancials(facts, "annual", 2);
   const latest = q.rows[0]?.values.revenue ? q.rows[0] : a.rows[0];
   if (latest) {
@@ -52,11 +52,24 @@ export async function metricReadings(ticker: string, cik: string | null): Promis
       if (latest.values.netIncome) out.net_margin = { value: (latest.values.netIncome.value / rev) * 100, asOf: latest.end };
     }
   }
-  const yearAgo = latest === q.rows[0] ? q.rows[4] : a.rows[1];
+  // The same quarter a year earlier, by date: fiscal Q4 is rarely tagged as a quarter, so the fifth row back isn't it.
+  const yearAgo = latest === q.rows[0] ? q.rows.find((r) => Math.abs(daysBetween(r.end, latest.end) - 365) <= 20) : a.rows[1];
   const now = latest?.values.revenue?.value;
   const then = yearAgo?.values.revenue?.value;
   if (now && then) out.revenue_growth = { value: (now / then - 1) * 100, asOf: latest!.end };
   return out;
+}
+
+const daysBetween = (from: string, to: string) => (Date.parse(to) - Date.parse(from)) / 86_400_000;
+
+/** The close on (or the last session before) the pitch date; today's quote for a pitch dated today. */
+async function priceOn(ticker: string, day: string): Promise<number | null> {
+  if (day >= todayNY()) return (await getQuote(ticker).catch(() => null))?.price ?? null;
+  const from = new Date(Date.parse(day) - 10 * 86_400_000).toISOString().slice(0, 10);
+  const bars = await getBarsRange(ticker, from, day)
+    .then((r) => r.bars)
+    .catch(() => []);
+  return bars.at(-1)?.close ?? null;
 }
 
 export type NewPitch = {
@@ -74,7 +87,7 @@ export type NewPitch = {
 };
 
 export async function insertPitch(p: NewPitch): Promise<PitchView> {
-  const quote = await getQuote(p.ticker).catch(() => null);
+  const price = await priceOn(p.ticker, p.pitchedOn);
   const [row] = await db
     .insert(pitchEstimates)
     .values({
@@ -82,7 +95,7 @@ export async function insertPitch(p: NewPitch): Promise<PitchView> {
       teamId: p.teamId,
       cohort: p.cohort,
       pitchedOn: p.pitchedOn,
-      priceAtPitch: quote?.price ? String(quote.price) : null,
+      priceAtPitch: price ? String(price) : null,
       intrinsicValue: String(p.intrinsicValue),
       priceTarget: String(p.priceTarget),
       horizonMonths: p.horizonMonths,

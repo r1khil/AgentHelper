@@ -157,13 +157,20 @@ export async function advanceScreen(run: { runDate: string; storagePath: string;
 
   if (cp.stage === "rank") {
     const outcome = await rankStage(run, deps, await loadUniverse());
-    await deps.store.put(p.results, { hits: outcome.hits, coverage: outcome.coverage, params: outcome.params });
+    await deps.store.put(p.results, outcome);
     // The per-frame objects are only working sets; the merged results stay.
     const stale = await deps.store.list(p.frames);
     if (stale.length) await deps.store.remove(stale);
     deps.log.step("rank", { hits: outcome.hits.length, universe: outcome.universeSize });
     await save({ ...cp, stage: "done" });
     return { checkpoint: cp, outcome };
+  }
+  // Ranked on an earlier call whose hits never landed (the write failed or the function was killed): hand the saved
+  // outcome back so the caller can finish the run instead of leaving it running forever.
+  if (cp.stage === "done") {
+    const saved = await deps.store.get<RankOutcome>(p.results);
+    if (!saved) throw new Error("The run's results file is missing from Storage");
+    return { checkpoint: cp, outcome: saved };
   }
   return { checkpoint: cp };
 }

@@ -116,7 +116,12 @@ export async function writeTearSheetAction(hitId: string): Promise<ActionResult>
   if (!hit) return fail("That screen hit is gone.");
   if (hit.teamId ? !canManageTeam(user, hit.teamId) : user.role !== "exec" && user.role !== "admin") return fail(TEAM_ONLY);
   if (!agentConfigured()) return fail("Hoot isn't set up on this deployment.");
-  const sheet = await writeTearSheet(hit, { force: true });
+  let sheet;
+  try {
+    sheet = await writeTearSheet(hit, { force: true });
+  } catch (e) {
+    return fail(`Couldn't read ${hit.ticker}'s filings: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300));
+  }
   page(hit.ticker);
   if (!sheet) return fail(`No 10-K to write from for ${hit.ticker}.`);
   return sheet.status === "shown" ? { ok: true } : fail(`Held back: ${sheet.heldReason}`);

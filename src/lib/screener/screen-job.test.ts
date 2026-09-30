@@ -147,11 +147,18 @@ describe("advanceScreen", () => {
     expect(h.mem.has("runs/t/results.json")).toBe(true);
   });
 
-  it("does nothing more once done", async () => {
+  it("hands back the saved outcome when a run ranked earlier but its hits never landed", async () => {
     const h = harness();
+    const saved = { hits: [], coverage: { evEbit: 0.9 }, universeSize: 12, params: {} };
+    await h.deps.store.put("runs/t/results.json", saved);
     const r = await advanceScreen({ runDate: RUN_DATE, storagePath: "runs/t", checkpoint: { conceptsDone: [], pricesDone: 0, stage: "done" } }, h.deps, 60_000);
-    expect(r).toEqual({ checkpoint: { conceptsDone: [], pricesDone: 0, stage: "done" } });
+    expect(r).toEqual({ checkpoint: { conceptsDone: [], pricesDone: 0, stage: "done" }, outcome: saved });
     expect(h.fetched).toEqual([]);
+  });
+
+  it("fails loudly when a done run's results are missing", async () => {
+    const h = harness();
+    await expect(advanceScreen({ runDate: RUN_DATE, storagePath: "runs/t", checkpoint: { conceptsDone: [], pricesDone: 0, stage: "done" } }, h.deps, 60_000)).rejects.toThrow(/results file is missing/);
   });
 
   it("fails loudly when the universe file is missing mid-run", async () => {
