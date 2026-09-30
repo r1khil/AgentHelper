@@ -2,6 +2,9 @@ import { APICallError, type LanguageModelV4 } from "@ai-sdk/provider";
 
 export type FallbackEvent = { from: string; to: string; error: string };
 
+/** An HTTP status worth trying on the next model. 402: out of gateway credits for a paid model; a free backup still answers. */
+export const isFallbackStatus = (s: number) => s === 429 || s === 408 || s === 404 || s === 402 || s >= 500;
+
 /**
  * Rate limits, upstream outages, dropped connections and a model that no longer exists are worth trying on the next
  * model; bad requests are not. A withdrawn free variant answers 404 (Ling's on OpenRouter, 2026-09-28).
@@ -9,10 +12,8 @@ export type FallbackEvent = { from: string; to: string; error: string };
 export function isFallbackError(e: unknown): boolean {
   if (APICallError.isInstance(e)) {
     const s = e.statusCode;
-    // 402: out of gateway credits for a paid model; a free backup still answers.
-    if (s === 429 || s === 408 || s === 404 || s === 402) return true;
-    if (s !== undefined && s >= 500) return true;
-    return s === undefined && e.isRetryable;
+    if (s !== undefined) return isFallbackStatus(s);
+    return e.isRetryable;
   }
   if (e instanceof TypeError && /fetch failed|network|ECONNRESET|ETIMEDOUT/i.test(e.message)) return true;
   return false;
