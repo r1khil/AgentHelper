@@ -1,7 +1,8 @@
 "use client";
 
 // Where Hoot is paying attention, shared by every Hoot on the page (one set of listeners, however many owls).
-// In order: the text field you're typing in (he follows the caret), where you just clicked, which way you're
+// In order: the text field you're typing in (he follows the caret; an empty box nobody has typed in lately, like
+// Home's autofocused ask box, doesn't hold his gaze), where you just clicked, which way you're
 // scrolling, your pointer, and when nothing is happening, an occasional look around. It only ever moves his eyes
 // and posture; nothing here makes him speak or move across the page.
 
@@ -17,6 +18,7 @@ const REST: Attention = { target: { kind: "rest" }, secret: false };
 const POINTER_MS = 5000;
 const CLICK_MS = 900;
 const SCROLL_MS = 700;
+const TYPING_MS = 2500;
 
 let state: Attention = REST;
 const listeners = new Set<(a: Attention) => void>();
@@ -39,6 +41,7 @@ function start() {
   const pointer = { x: 0, y: 0, at: -Infinity };
   const click = { x: 0, y: 0, at: -Infinity };
   const scroll = { dir: 0, at: -Infinity };
+  let typedAt = -Infinity;
   let wander = { x: 0, y: 0, until: 0, next: performance.now() + 4000 };
   const scrollTops = new WeakMap<EventTarget, number>();
   let frame = 0;
@@ -48,14 +51,13 @@ function start() {
     const now = performance.now();
     const el = document.activeElement;
     let next: Attention;
-    if (textField(el)) {
+    const field = textField(el) ? el : null;
+    const len = !field ? 0 : "value" in field ? String((field as HTMLInputElement).value).length : (field.textContent?.length ?? 0);
+    const secret = field instanceof HTMLInputElement && field.type === "password";
+    if (field && (secret || len > 0 || now - typedAt < TYPING_MS)) {
       // Roughly where the caret is: he reads along as you type.
-      const r = el.getBoundingClientRect();
-      const len = "value" in el ? String((el as HTMLInputElement).value).length : (el.textContent?.length ?? 0);
-      next = {
-        target: { kind: "point", x: r.left + Math.min(r.width - 6, 12 + len * 7), y: r.top + Math.min(r.height / 2, 16) },
-        secret: el instanceof HTMLInputElement && el.type === "password",
-      };
+      const r = field.getBoundingClientRect();
+      next = { target: { kind: "point", x: r.left + Math.min(r.width - 6, 12 + len * 7), y: r.top + Math.min(r.height / 2, 16) }, secret };
     } else if (now - click.at < CLICK_MS) {
       next = { target: { kind: "point", x: click.x, y: click.y }, secret: false };
     } else if (now - scroll.at < SCROLL_MS) {
@@ -95,6 +97,10 @@ function start() {
     click.at = performance.now();
     soon();
   };
+  const onInput = () => {
+    typedAt = performance.now();
+    soon();
+  };
   // Capture phase so scrolling inside a panel (the research board, a table) counts too.
   const onScroll = (e: Event) => {
     const t = e.target === document ? document.scrollingElement : (e.target as Element | null);
@@ -113,7 +119,7 @@ function start() {
   document.addEventListener("scroll", onScroll, { passive: true, capture: true });
   document.addEventListener("focusin", soon);
   document.addEventListener("focusout", soon);
-  document.addEventListener("input", soon, true);
+  document.addEventListener("input", onInput, true);
   // Timed sources (a click glance wearing off, the next look around) need a slow tick. Paused while hidden.
   let tick = window.setInterval(compute, 250);
   const onVisibility = () => {
@@ -130,7 +136,7 @@ function start() {
     document.removeEventListener("scroll", onScroll, { capture: true });
     document.removeEventListener("focusin", soon);
     document.removeEventListener("focusout", soon);
-    document.removeEventListener("input", soon, true);
+    document.removeEventListener("input", onInput, true);
     document.removeEventListener("visibilitychange", onVisibility);
     state = REST;
   };
