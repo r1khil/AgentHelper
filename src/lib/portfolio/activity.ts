@@ -178,12 +178,14 @@ export type ActivitySummary = { since: string | null; trades: number; bought: nu
 /** The totals over the recorded (not voided) entries, for the line above the history. */
 export function summarizeActivity(input: { trades: TradeIn[]; flows: FlowIn[]; dividends: DividendIn[] }, since: string | null): ActivitySummary {
   const live = input.trades.filter((t) => !t.voided && t.kind === "trade");
+  // The same opening cash buildActivity folds into the snapshot: "Opening balance" on an opening date.
+  const openingDates = new Set(input.trades.filter((t) => t.kind === "opening").map((t) => t.date));
   return {
     since,
     trades: live.length,
     bought: live.filter((t) => t.side === "buy").reduce((s, t) => s + t.shares * t.price, 0),
     sold: live.filter((t) => t.side === "sell").reduce((s, t) => s + t.shares * t.price, 0),
-    deposits: input.flows.filter((f) => !f.voided && !(f.note === "Opening balance")).reduce((s, f) => s + (f.kind === "deposit" ? f.amount : f.kind === "withdrawal" ? -f.amount : 0), 0),
+    deposits: input.flows.filter((f) => !f.voided && !(f.note === "Opening balance" && openingDates.has(f.date))).reduce((s, f) => s + (f.kind === "deposit" ? f.amount : f.kind === "withdrawal" ? -f.amount : 0), 0),
     dividends: input.dividends.length,
   };
 }
