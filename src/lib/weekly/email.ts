@@ -5,6 +5,7 @@ import { profiles, weeklyUpdates } from "@/db/schema";
 import { deliverEmail, emailConfigured } from "@/lib/jobs/notify";
 import { getSetting } from "@/lib/settings";
 import { isTestAddress, parseRecipients, splitRecipients, weeklyEmailSubject, weeklyEmailText } from "./email-text";
+import { loadWeekIndexCloses } from "./indexes";
 import { getPack, noteSource, normalizeAgenda, packFigures } from "./store";
 
 /** Optional override: a comma or newline separated list of addresses, the first in To and the rest in CC. */
@@ -26,6 +27,8 @@ async function firstName(email: string): Promise<string | null> {
 export async function composeWeeklyEmail(weekEnding: string, to: string | null): Promise<{ subject: string; text: string } | null> {
   const pack = await getPack(weekEnding);
   if (!pack) return null;
+  // Past weeks' closes don't change, so they're looked up as the email is written rather than stored with the pack.
+  const [indexCloses, toName] = await Promise.all([loadWeekIndexCloses(weekEnding), to ? firstName(to) : null]);
   return {
     subject: weeklyEmailSubject(weekEnding),
     text: weeklyEmailText({
@@ -35,7 +38,8 @@ export async function composeWeeklyEmail(weekEnding: string, to: string | null):
       agenda: normalizeAgenda(pack.agenda),
       lastWeekAgenda: pack.lastWeekAgenda ? normalizeAgenda(pack.lastWeekAgenda) : null,
       sources: pack.sources ?? {},
-      toName: to ? await firstName(to) : null,
+      indexCloses,
+      toName,
     }),
   };
 }

@@ -1,6 +1,7 @@
 import { agendaLine, agendaLines, figureLines, itemsToLines, performerLine } from "./format";
 import { AGENDA_LABELS, AGENDA_SECTIONS, type WeeklyAgenda, type WeeklyFigures, type WeeklyPerformers, type WeeklySources } from "./types";
 import { DateTime } from "luxon";
+import { indexCloseLines, type WeekIndexCloses } from "./index-closes";
 import { packTitle } from "./weeks";
 
 /**
@@ -15,6 +16,8 @@ export type WeeklyEmailInput = {
   agenda: WeeklyAgenda;
   lastWeekAgenda: WeeklyAgenda | null;
   sources: WeeklySources;
+  /** The week's SPXTR, SVX and SGX closes for the YTD chart; null when they weren't looked up. */
+  indexCloses?: WeekIndexCloses | null;
   /** First name of the person in To, when the app knows it. */
   toName?: string | null;
 };
@@ -57,7 +60,7 @@ const STEP_LABELS: Record<string, string> = {
 };
 
 /** What to look at before pasting: steps that failed, figures that aren't this week's, and the performers' own notes. */
-export function weeklyChecks(input: Pick<WeeklyEmailInput, "figures" | "performers" | "sources">): string[] {
+export function weeklyChecks(input: Pick<WeeklyEmailInput, "figures" | "performers" | "sources" | "indexCloses">): string[] {
   const out: string[] = [];
   for (const [step, entry] of Object.entries(input.sources)) {
     // Only the build's own steps: the email's delivery record isn't something to check in the deck.
@@ -74,6 +77,7 @@ export function weeklyChecks(input: Pick<WeeklyEmailInput, "figures" | "performe
     out.push(...(input.performers.checks ?? []));
     if (input.performers.missing.length) out.push(`No Monday and Friday closes for ${input.performers.missing.join(", ")}; they're left out of the top and worst 3.`);
   }
+  out.push(...(input.indexCloses?.problems ?? []));
   return out;
 }
 
@@ -117,10 +121,11 @@ export function weeklyEmailText(input: WeeklyEmailInput): string {
     heading("YTD Performance chart"),
     "Not included: paste it from the price target sheet as usual.",
     "",
+    ...indexSection(input.indexCloses),
     heading("Checks"),
     ...(checks.length ? checks.map((c) => `- ${c}`) : ["Nothing to flag."]),
     "",
-    sourcesLine(p),
+    sourcesLine(p, Boolean(input.indexCloses?.days.length)),
     "Please double check figures for accuracy.",
     "",
     "Feel free to reply with any questions.",
@@ -131,9 +136,15 @@ export function weeklyEmailText(input: WeeklyEmailInput): string {
   return lines.join("\n");
 }
 
-function sourcesLine(p: WeeklyPerformers | null): string {
+function sourcesLine(p: WeeklyPerformers | null, indexes: boolean): string {
   const movers = p?.source === "sheet" ? `the PT sheet's "% 1 Week"` : "the app's Monday and Friday closes";
-  return `Where this comes from: highlights from the PT sheet's 2025 Time-Weighted Returns tab; top and worst 3 from ${movers}; earnings for holdings from the sheet's Price Targets tab, plus sector bellwethers and the week's largest reporters (worth $10B or more, from Finnhub and Yahoo); market news from the economic calendar; process updates from the fund's semester calendar in Drive.`;
+  return `Where this comes from: highlights from the PT sheet's 2025 Time-Weighted Returns tab; top and worst 3 from ${movers}; earnings for holdings from the sheet's Price Targets tab, plus sector bellwethers and the week's largest reporters (worth $10B or more, from Finnhub and Yahoo); market news from the economic calendar; process updates from the fund's semester calendar in Drive${indexes ? "; S&P closes from Yahoo (SPXTR) and CNBC (SVX, SGX)" : ""}.`;
+}
+
+/** The week's closes for the chart's S&P lines, one row per trading day, tab-separated so they paste into a sheet. */
+function indexSection(data: WeekIndexCloses | null | undefined): string[] {
+  if (!data?.days.length) return [];
+  return [heading("S&P closes (SPXTR, SVX, SGX)"), ...indexCloseLines(data), ""];
 }
 
 /** Hoot's notes on the movers, each with the headline it rests on. Omitted when there are none. */
