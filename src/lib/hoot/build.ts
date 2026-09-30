@@ -19,6 +19,8 @@ export type NudgeInput = {
   /** This week's pack while it is not Sent yet. */
   weeklyPack: { weekEnding: string; state: "draft" | "scheduled" | "failed" } | null;
   latestChangelog: { prNumber: number; headline: string; mergedAt: Date } | null;
+  /** Open red flags (Screener › filing changes) on names the member's teams hold or watch. */
+  flags?: { id: string; kind: string; title: string; href: string | null; ticker: string; createdAt: Date }[];
   dismissed: Record<string, string>;
 };
 
@@ -100,6 +102,21 @@ export function buildNudges(i: NudgeInput): HootNudge[] {
       failed: { ...base, id: `weekly:${weekEnding}:failed`, mood: "concerned", title: "This week's update pack failed to send", detail: "The Email tab says why. Send it again from there." },
     };
     out.push(byState[state]);
+  }
+
+  for (const f of i.flags ?? []) {
+    // An 8-K item code (auditor change, restatement) is rarer and more urgent than a labeled text change.
+    const eightK = f.kind === "filing_8k";
+    out.push({
+      id: `flag:${f.id}`,
+      kind: "flag",
+      priority: eightK ? 4 : 5,
+      mood: "concerned",
+      href: f.href ?? `/screener/${encodeURIComponent(f.ticker)}`,
+      at: f.createdAt.toISOString(),
+      title: f.title,
+      detail: eightK ? "Flagged from the 8-K's item code. Read the filing on the Screener." : "Compared with the earlier filing. Mark it real or noise on the Screener.",
+    });
   }
 
   if (i.latestChangelog && i.now.getTime() - i.latestChangelog.mergedAt.getTime() < 14 * DAY) {

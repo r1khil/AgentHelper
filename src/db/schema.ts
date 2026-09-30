@@ -916,3 +916,224 @@ export const usageEvents = pgTable(
   (t) => [index("usage_events_at").on(t.at), index("usage_events_name_at").on(t.name, t.at), index("usage_events_user_at").on(t.userId, t.at)],
 );
 export type UsageEvent = typeof usageEvents.$inferSelect;
+
+// ── Screener (drizzle/0028_screener.sql): the whole-market screen, filing-change flags, tear sheets, the bear case and
+// the calibration log. Numbers come from code over SEC data; the model only labels diffs and writes cited prose. ──
+
+/** Names a team follows without owning (Screener › Watchlist); filing changes cover them as well as holdings. */
+export const watchlist = pgTable(
+  "watchlist",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+    ticker: text("ticker").notNull(),
+    companyName: text("company_name").notNull(),
+    /** From SEC's ticker file when added; null for a name that isn't an SEC registrant. */
+    cik: text("cik"),
+    addedBy: uuid("added_by").references(() => profiles.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("watchlist_team_ticker").on(t.teamId, t.ticker)],
+);
+export type WatchlistRow = typeof watchlist.$inferSelect;
+
+/** Where a resumable screen run is: the concepts fetched so far and the prices fetched so far. */
+export type ScreenCheckpoint = { conceptsDone: string[]; pricesDone: number; stage: "universe" | "frames" | "prices" | "rank" | "done" };
+
+/** One monthly screen (Module 1). The per-concept working sets live in Supabase Storage under `storagePath`. */
+export const screenRuns = pgTable("screen_runs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  runDate: date("run_date").notNull(),
+  /** running | done | failed */
+  status: text("status").notNull().default("running"),
+  universeSize: integer("universe_size"),
+  params: jsonb("params").$type<Record<string, unknown>>().notNull().default({}),
+  storagePath: text("storage_path").notNull(),
+  checkpoint: jsonb("checkpoint").$type<ScreenCheckpoint>().notNull().default({ conceptsDone: [], pricesDone: 0, stage: "universe" }),
+  /** Share of the universe each metric resolved for (0..1); a metric under 0.8 is left out of the ranking. */
+  coverage: jsonb("coverage").$type<Record<string, number>>().notNull().default({}),
+  jobRunId: uuid("job_run_id").references(() => jobRuns.id, { onDelete: "set null" }),
+  error: text("error"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+});
+export type ScreenRun = typeof screenRuns.$inferSelect;
+
+/** The top 100 names of a run (kept for paper tracking); each team sees its own top five. */
+export const screenHits = pgTable(
+  "screen_hits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id").notNull().references(() => screenRuns.id, { onDelete: "cascade" }),
+    ticker: text("ticker").notNull(),
+    cik: text("cik").notNull(),
+    companyName: text("company_name").notNull(),
+    /** value | garp */
+    track: text("track").notNull(),
+    sic: text("sic"),
+    sector: gicsSectorEnum("sector"),
+    /** The team whose sectors cover it (team_sectors); null when no team covers the sector. */
+    teamId: uuid("team_id").references(() => teams.id, { onDelete: "set null" }),
+    /** See ScreenMetrics in src/lib/screener/metrics.ts. */
+    metrics: jsonb("metrics").$type<Record<string, number | null>>().notNull(),
+    periodEnd: date("period_end"),
+    rank: integer("rank").notNull(),
+    /** Rank within its team's sectors (1..n); the team sees 1..5. */
+    teamRank: integer("team_rank"),
+    price: numeric("price", { precision: 18, scale: 6 }),
+    marketCap: numeric("market_cap", { precision: 20, scale: 2 }),
+    accessions: jsonb("accessions").$type<string[]>().notNull().default([]),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("screen_hits_run_ticker").on(t.runId, t.ticker), index("screen_hits_team").on(t.teamId, t.runId)],
+);
+export type ScreenHit = typeof screenHits.$inferSelect;
+
+export type Citation = { n: number; url: string; label: string; quote?: string };
+/** One sentence of Hoot's, with the sources it rests on (numbers into `citations`) and, when it quotes, the quote. */
+export type CitedSentence = { text: string; cites: number[]; quote?: string };
+/**
+ * A tear sheet's prose. "Why it screens cheap" is the screen hit's metrics, drawn by code on the page, so it is not
+ * here: the model never retypes a number.
+ */
+export type TearSheetBody = { business: CitedSentence[]; mightDeserve: CitedSentence[]; questions: (CitedSentence & { section: string })[] };
+
+/** Hoot's one-page tear sheet on a screen hit (Module 2); held back when any claim is uncited or a quote fails. */
+export const tearSheets = pgTable(
+  "tear_sheets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    screenHitId: uuid("screen_hit_id").references(() => screenHits.id, { onDelete: "set null" }),
+    ticker: text("ticker").notNull(),
+    sourceAccession: text("source_accession").notNull(),
+    body: jsonb("body").$type<TearSheetBody>(),
+    citations: jsonb("citations").$type<Citation[]>().notNull().default([]),
+    /** shown | held */
+    status: text("status").notNull(),
+    heldReason: text("held_reason"),
+    model: text("model"),
+    /** useful | not_useful, one rating per sheet (the lead who read it). */
+    rating: text("rating"),
+    ratedBy: uuid("rated_by").references(() => profiles.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("tear_sheets_ticker_accession").on(t.ticker, t.sourceAccession)],
+);
+export type TearSheet = typeof tearSheets.$inferSelect;
+
+export type ChangeDiff = { added: string[]; removed: string[]; numbersChanged: { before: string; after: string }[] };
+
+/** One material change between a filing and the right earlier one (Module 3), or one 8-K item code. */
+export const filingChanges = pgTable(
+  "filing_changes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ticker: text("ticker").notNull(),
+    cik: text("cik").notNull(),
+    form: text("form").notNull(),
+    accession: text("accession").notNull(),
+    priorAccession: text("prior_accession"),
+    filedAt: date("filed_at").notNull(),
+    /** "1A", "7", "2", … or "8-K 4.01". */
+    item: text("item").notNull(),
+    /** text (the model labels a diff) | 8k (code only). */
+    kind: text("kind").notNull(),
+    /** See CHANGE_LABELS in src/lib/screener/filing-changes/labels.ts; null until labeled. */
+    label: text("label"),
+    summary: text("summary"),
+    quote: text("quote"),
+    filingUrl: text("filing_url").notNull(),
+    /** Share of masked sentences added or removed (0..1); null for 8-K flags. */
+    changeScore: numeric("change_score", { precision: 6, scale: 4 }),
+    diff: jsonb("diff").$type<ChangeDiff>(),
+    /** queued | labeled | dropped */
+    status: text("status").notNull().default("queued"),
+    /** Priority in the queue: 1A first, then MD&A, then the rest. */
+    priority: smallint("priority").notNull().default(3),
+    verdict: text("verdict"),
+    verdictBy: uuid("verdict_by").references(() => profiles.id, { onDelete: "set null" }),
+    verdictAt: timestamp("verdict_at", { withTimezone: true }),
+    dismissedBy: uuid("dismissed_by").references(() => profiles.id, { onDelete: "set null" }),
+    error: text("error"),
+    ...timestamps,
+  },
+  (t) => [
+    index("filing_changes_ticker").on(t.ticker, t.filedAt),
+    index("filing_changes_queue").on(t.status, t.priority, t.createdAt),
+    uniqueIndex("filing_changes_dedupe").on(t.accession, t.item, t.label),
+  ],
+);
+export type FilingChange = typeof filingChanges.$inferSelect;
+
+/** The feed Home's bell and holding pages read: one row per red flag, from filing changes or kill criteria. */
+export const flags = pgTable(
+  "flags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ticker: text("ticker").notNull(),
+    /** filing_change | filing_8k | kill_criterion */
+    kind: text("kind").notNull(),
+    /** The filing_changes or pitch_estimates row behind it. */
+    sourceId: uuid("source_id").notNull(),
+    title: text("title").notNull(),
+    href: text("href"),
+    dismissedBy: uuid("dismissed_by").references(() => profiles.id, { onDelete: "set null" }),
+    dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("flags_kind_source").on(t.kind, t.sourceId), index("flags_open").on(t.ticker, t.createdAt)],
+);
+export type Flag = typeof flags.$inferSelect;
+
+export type CheckStatus = "pass" | "watch" | "fail" | "no_data";
+export type ChecklistItem = { key: string; label: string; status: CheckStatus; detail: string };
+export type BearPoint = { title: string; body: CitedSentence[]; response?: string; respondedBy?: string; respondedAt?: string };
+
+/** Hoot arguing against a buy (Module 6): the value-trap checklist from code and three cited bear points. */
+export const bearCases = pgTable("bear_cases", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ticker: text("ticker").notNull(),
+  teamId: uuid("team_id").references(() => teams.id, { onDelete: "set null" }),
+  /** The pitch it answers, once there is one. */
+  pitchId: uuid("pitch_id"),
+  pitch: text("pitch"),
+  checklist: jsonb("checklist").$type<ChecklistItem[]>().notNull(),
+  memo: jsonb("memo").$type<BearPoint[]>().notNull().default([]),
+  citations: jsonb("citations").$type<Citation[]>().notNull().default([]),
+  /** ready | held | failed */
+  status: text("status").notNull(),
+  heldReason: text("held_reason"),
+  model: text("model"),
+  createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
+  ...timestamps,
+});
+export type BearCase = typeof bearCases.$inferSelect;
+
+export type KillCriterion = { metric?: string; op?: "<" | "<=" | ">" | ">="; threshold?: number; text: string; lastChecked?: string; tripped?: boolean };
+export type PitchOutcome = { scoredAt: string; priceAtHorizon: number | null; hitTarget: boolean | null; keyMetricMet: boolean | null; valueGapPct: number | null };
+
+/** What a team estimated at pitch time and what would prove it wrong (Module 7). */
+export const pitchEstimates = pgTable(
+  "pitch_estimates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ticker: text("ticker").notNull(),
+    teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+    /** The semester of the pitch: "Fall 2026". */
+    cohort: text("cohort").notNull(),
+    pitchedOn: date("pitched_on").notNull(),
+    priceAtPitch: numeric("price_at_pitch", { precision: 18, scale: 6 }),
+    intrinsicValue: numeric("intrinsic_value", { precision: 18, scale: 4 }).notNull(),
+    priceTarget: numeric("price_target", { precision: 18, scale: 4 }).notNull(),
+    horizonMonths: smallint("horizon_months").notNull(),
+    /** 50 | 70 | 90 */
+    confidence: smallint("confidence").notNull(),
+    keyMetric: text("key_metric").notNull(),
+    killCriteria: jsonb("kill_criteria").$type<KillCriterion[]>().notNull().default([]),
+    outcome: jsonb("outcome").$type<PitchOutcome>(),
+    createdBy: uuid("created_by").references(() => profiles.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [index("pitch_estimates_team").on(t.teamId, t.pitchedOn)],
+);
+export type PitchEstimate = typeof pitchEstimates.$inferSelect;

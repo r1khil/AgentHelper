@@ -12,6 +12,8 @@ import { prepEarnings } from "@/lib/jobs/earnings-prep";
 import { syncFilings } from "@/lib/jobs/filings";
 import { runIngest } from "@/lib/jobs/ingest";
 import { runWeeklyJob } from "@/lib/weekly/job";
+import { runFilingChangesJob } from "@/lib/screener/filing-changes/job";
+import { continueScreenRun, currentRun, startScreenRun } from "@/lib/screener/runs";
 
 /**
  * A job that emails people asks first (the Admin page's confirmation) and posts `send`: "none" runs it without sending
@@ -115,4 +117,22 @@ export async function runDailyBriefNow(fd: FormData) {
   revalidatePath("/admin");
   const failed = Object.keys(s.failed);
   redirect(`/admin?tab=jobs&${a.status === "failed" && s.status !== "ok" ? "error" : "ok"}=${encodeURIComponent(`Daily brief ${a.sessionDate}: analysis ${a.status}${a.reason ? ` (${a.reason})` : ""}; email ${s.status}${s.reason ? ` (${s.reason})` : ""}, ${s.analysis}, sent to ${s.sent.join(", ") || "nobody"}${failed.length ? `; failed ${failed.join(", ")}` : ""}`)}`);
+}
+
+/** Starts this month's screen now (or continues one in progress). It keeps going every ten minutes until done; no email. */
+export async function runScreenNow() {
+  await requireAdmin();
+  const running = await currentRun();
+  if (!running) await startScreenRun({ reason: "admin" });
+  after(() => continueScreenRun({ budgetMs: 230_000 }).then(() => undefined));
+  revalidatePath("/admin");
+  redirect(`/admin?tab=jobs&ok=${encodeURIComponent(running ? "Screen: continuing the run in progress." : "Screen started. It reads SEC data in ten-minute pieces; hits show on the Screener when it finishes.")}`);
+}
+
+/** Runs the evening filing-change job now: lists new filings, compares and labels what it can in four minutes. No email. */
+export async function runFilingChangesNow() {
+  await requireAdmin();
+  const r = await runFilingChangesJob({ budgetMs: 240_000, reason: "admin" });
+  revalidatePath("/admin");
+  redirect(`/admin?tab=jobs&${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Filing changes: ${r.status}${r.reason ? ` (${r.reason})` : ""}; compared ${r.compared}, labeled ${r.labeled}, flagged ${r.flagged}${r.remaining ? `; ${r.remaining} still waiting` : ""}`)}`);
 }

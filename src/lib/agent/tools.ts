@@ -34,6 +34,11 @@ import { newestEvidenceDate } from "@/lib/agent/memory/distill";
 import { isPtSheetSource } from "@/lib/agent/pt-sheet-guard";
 import { EARNINGS_DOC_TYPES, effectiveDate, passageCoverage, type EarningsDocType } from "@/lib/agent/doc-recency";
 import { coherentDocFilters } from "@/lib/agent/doc-filters";
+import { listFilingChanges } from "@/lib/screener/filing-changes/store";
+import { METRIC_DEFS } from "@/lib/screener/metrics";
+import { loadReverseDcf } from "@/lib/screener/reverse-dcf";
+import { latestScreen } from "@/lib/screener/runs";
+import { loadValueTrapChecklist } from "@/lib/screener/value-trap";
 
 export type ToolResult<T> = { data: T; sources: Source[]; error?: string };
 
@@ -773,6 +778,102 @@ export function makeTools(ctx: { teamId: string | null; holdingId?: string | nul
             },
             sources,
           };
+        } catch (e) {
+          return fail(e, null);
+        }
+      },
+    }),
+
+    get_filing_changes: tool({
+      description:
+        "What changed in a company's recent 10-K and 10-Q filings compared with the right earlier filing, as found by the Screener's evening filing-change detector (holdings and watchlist names only): new risk factors, sections removed or cut back, critical accounting estimates, non-GAAP drift, customer concentration, controls (material weakness) and liquidity, each with the Item, a one-line summary, a verbatim quote and the filing link; plus 8-K red flags from item codes (auditor change, non-reliance/restatement, debt acceleration, impairment). verdict is the lead's call (real or noise) when made. Newest filing first.",
+      inputSchema: z.object({ ticker: tickerArg, limit: z.number().int().min(1).max(30).default(10) }),
+      execute: async ({ ticker, limit }): Promise<ToolResult<unknown>> => {
+        try {
+          const t = ticker.toUpperCase();
+          const rows = await listFilingChanges({ tickers: [t], limit });
+          const byUrl = new Map<string, Source>();
+          const changes = rows.map((r) => {
+            let s = byUrl.get(r.filingUrl);
+            if (!s) {
+              s = { ...src("sec", `${t} ${r.form} filed ${r.filedAt}`, r.filingUrl, "SEC EDGAR", r.filedAt), sourceType: "SEC filing", excerpt: r.quote?.slice(0, 360) || r.summary || undefined };
+              byUrl.set(r.filingUrl, s);
+              filingSources.set(r.filingUrl, s);
+            }
+            return { label: r.label, labelText: r.labelText, form: r.form, item: r.item, summary: r.summary, quote: r.quote, filingUrl: r.filingUrl, filedAt: r.filedAt, verdict: r.verdict, sourceId: s.id };
+          });
+          const note = changes.length
+            ? "Each quote was checked word for word against the filing. Cite the filing's sourceId; a change the lead marked noise is not a red flag."
+            : `No labeled filing changes for ${t}. The detector covers only holdings and watchlist names, and only filings since it started running; use get_filings and read_filing to read a filing directly.`;
+          return { data: { ticker: t, changes, note }, sources: [...byUrl.values()] };
+        } catch (e) {
+          return fail(e, null);
+        }
+      },
+    }),
+
+    get_screen_hits: tool({
+      description:
+        "The Screener's latest monthly whole-market screen (NYSE and Nasdaq above $3B; banks, insurers, REITs, MLPs and SPACs left out), ranked on cheapness and quality computed in code from SEC XBRL: each hit's rank overall and within its team's sectors, track (value or garp), sector, period end and metrics (fractions for percentages; evEbitVsMedian under 1 is cheaper than its own 5-year history). Give a team's name or slug for its top five, or a ticker to see whether it screened. Numbers only: never restate them from memory, and nothing here is a price call.",
+      inputSchema: z.object({ team: z.string().optional().describe("Team name or slug; omit for the top of the whole screen"), ticker: tickerArg.optional(), limit: z.number().int().min(1).max(25).default(10) }),
+      execute: async ({ team, ticker, limit }): Promise<ToolResult<unknown>> => {
+        try {
+          const screen = await latestScreen();
+          if (!screen) return { data: { note: "No screen has finished yet; it runs on the first Saturday of each month." }, sources: [] };
+          let hits = screen.hits;
+          if (ticker) hits = hits.filter((h) => h.ticker === ticker.toUpperCase());
+          else if (team) {
+            const [t] = await db.select().from(teams).where(eq(teams.slug, team.toLowerCase()));
+            const byName = t ?? (await db.select().from(teams)).find((x) => x.name.toLowerCase() === team.toLowerCase());
+            if (!byName) return { data: { note: `No team called ${team}.` }, sources: [] };
+            hits = hits.filter((h) => h.teamId === byName.id && h.teamRank !== null).sort((a, b) => a.teamRank! - b.teamRank!);
+          }
+          const source = { ...src("sec", `Owl Fund screen of ${screen.run.runDate} (SEC XBRL)`, "https://data.sec.gov/api/xbrl/frames/", "SEC EDGAR", screen.run.runDate), sourceType: "SEC filing" };
+          return {
+            data: {
+              runDate: screen.run.runDate,
+              universe: screen.run.universeSize,
+              metricDefinitions: METRIC_DEFS.map((d) => ({ key: d.key, label: d.label, help: d.help })),
+              hits: hits.slice(0, limit).map((h) => ({ ticker: h.ticker, company: h.companyName, rank: h.rank, teamRank: h.teamRank, track: h.track, sector: h.sector, periodEnd: h.periodEnd, metrics: h.metrics, page: `/screener/${h.ticker}` })),
+              note: ticker && !hits.length ? `${ticker.toUpperCase()} is not among this run's top 100.` : "Link a hit's page for its tear sheet, reverse DCF and bear case.",
+              sourceId: source.id,
+            },
+            sources: [source],
+          };
+        } catch (e) {
+          return fail(e, null);
+        }
+      },
+    }),
+
+    get_reverse_dcf: tool({
+      description:
+        "The Screener's reverse DCF for a company: the five-year revenue growth today's price implies (growth fading to 2.5% over years 6-10, ROIC fading toward max(r + 2 points, ROIC/2)), beside its 5- and 10-year historical revenue CAGR and next-year consensus, with a sensitivity across 8-12% discount rates with the ROIC fade on and off. All figures are fractions computed in code from SEC XBRL and market data; status not_meaningful means after-tax EBIT is not positive or ROIC is at or below the discount rate, so the price can't be read as a growth expectation.",
+      inputSchema: z.object({ ticker: tickerArg }),
+      execute: async ({ ticker }): Promise<ToolResult<unknown>> => {
+        try {
+          const t = ticker.toUpperCase();
+          const { cik } = await cikFor(t);
+          const r = await loadReverseDcf(t, cik);
+          const source = { ...src("sec", `${t} company facts (SEC XBRL)`, `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik.padStart(10, "0")}.json`, "SEC EDGAR", r.asOf), sourceType: "SEC filing" };
+          return { data: { ticker: t, ...r, page: `/screener/${t}?tab=dcf`, sourceId: source.id }, sources: [source] };
+        } catch (e) {
+          return fail(e, null);
+        }
+      },
+    }),
+
+    get_value_trap_checklist: tool({
+      description:
+        "The Screener's value-trap checklist for a company, computed in code from SEC XBRL, Form 4 and the filing-change detector: ROIC and gross-margin trends, cash conversion, receivables and inventory against revenue, capitalized costs, goodwill, debt-funded buybacks, interest coverage, debt maturities, stock-comp dilution, Beneish M (watch only), officers' open-market selling (10b5-1 sales excluded) and open filing flags. Each is pass, watch, fail or no_data (inputs missing, never a pass).",
+      inputSchema: z.object({ ticker: tickerArg }),
+      execute: async ({ ticker }): Promise<ToolResult<unknown>> => {
+        try {
+          const t = ticker.toUpperCase();
+          const { cik } = await cikFor(t);
+          const checklist = await loadValueTrapChecklist(t, cik);
+          const source = { ...src("sec", `${t} company facts and Form 4 (SEC)`, `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik.padStart(10, "0")}.json`, "SEC EDGAR"), sourceType: "SEC filing" };
+          return { data: { ticker: t, checklist, page: `/screener/${t}?tab=bear`, sourceId: source.id }, sources: [source] };
         } catch (e) {
           return fail(e, null);
         }

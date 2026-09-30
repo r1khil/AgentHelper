@@ -2,11 +2,12 @@ import "server-only";
 import { and, count, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
-import { changelogEntries, earnings, holdingProposals, holdings, modelProposals, models, sellSideCalls, teams, type Team } from "@/db/schema";
+import { changelogEntries, earnings, holdingProposals, holdings, modelProposals, models, sellSideCalls, teams, watchlist, type Team } from "@/db/schema";
 import type { CurrentUser } from "@/lib/auth";
 import { canManageTeam, isFundWide } from "@/lib/roles";
 import { isTradingDay, nextTradingDay, NY, todayNY } from "@/lib/providers/calendar";
 import { latestPackStatus } from "@/lib/weekly/latest";
+import { listOpenFlags } from "@/lib/screener/filing-changes/store";
 import { buildNudges } from "./build";
 import type { HootFeed } from "./types";
 
@@ -16,6 +17,16 @@ export function marketOpen(now: Date) {
   if (!isTradingDay(t.toISODate()!)) return false;
   const minutes = t.hour * 60 + t.minute;
   return minutes >= 9 * 60 + 30 && minutes < 16 * 60;
+}
+
+/** Open red flags on the names these teams hold or watch, newest first. */
+async function teamFlags(teamIds: string[]) {
+  const [held, watched] = await Promise.all([
+    db.select({ ticker: holdings.ticker }).from(holdings).where(and(inArray(holdings.teamId, teamIds), eq(holdings.status, "active"))),
+    db.select({ ticker: watchlist.ticker }).from(watchlist).where(inArray(watchlist.teamId, teamIds)),
+  ]);
+  const tickers = [...new Set([...held, ...watched].map((r) => r.ticker.toUpperCase()))];
+  return tickers.length ? listOpenFlags({ tickers, limit: 10 }) : [];
 }
 
 /**
@@ -39,7 +50,7 @@ export async function loadHootFeedFor(user: CurrentUser, { teamList, scope }: { 
   const dismissed = user.hoot?.dismissed ?? {};
   const none = Promise.resolve([] as never[]);
 
-  const [upcoming, mySellSide, thesis, modelRows, weekly, changelog] = await Promise.all([
+  const [upcoming, mySellSide, thesis, modelRows, weekly, changelog, openFlags] = await Promise.all([
     teamIds.length
       ? db
           .select({ e: earnings, ticker: holdings.ticker, teamId: holdings.teamId, teamSlug: teams.slug })
@@ -81,6 +92,7 @@ export async function loadHootFeedFor(user: CurrentUser, { teamList, scope }: { 
     fundWide
       ? db.select({ prNumber: changelogEntries.prNumber, headline: changelogEntries.headline, mergedAt: changelogEntries.mergedAt }).from(changelogEntries).orderBy(desc(changelogEntries.mergedAt)).limit(1)
       : none,
+    teamIds.length ? teamFlags(teamIds).catch(() => []) : none,
   ]);
 
   const nudges = buildNudges({
@@ -96,6 +108,7 @@ export async function loadHootFeedFor(user: CurrentUser, { teamList, scope }: { 
     // Only this week's pack (Fri to Mon), and only until it is Sent.
     weeklyPack: weekly && weekly.state !== "sent" && weekly.weekEnding >= DateTime.fromISO(today).minus({ days: 3 }).toISODate()! ? { weekEnding: weekly.weekEnding, state: weekly.state } : null,
     latestChangelog: changelog[0] ?? null,
+    flags: openFlags,
     dismissed,
   });
   const seenTips = Object.keys(dismissed).filter((k) => k.startsWith("tip:"));

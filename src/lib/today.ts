@@ -200,6 +200,7 @@ export function nudgeWhen(n: NudgeLike, now: Date = new Date()): string {
     const week = n.id.split(":")[1];
     return week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? `Week to ${fmtDay(week, now)}` : "This week";
   }
+  if (n.kind === "flag") return n.at ? `Since ${sinceStamp(n.at, now)}` : "New";
   if (n.kind === "changelog") {
     if (n.at) return `Since ${sinceStamp(n.at, now)}`;
     const pr = n.id.split(":")[1];
@@ -221,6 +222,8 @@ export function nudgeAction(n: NudgeLike): string {
       return "Review pack";
     case "changelog":
       return "See what's new";
+    case "flag":
+      return "Review";
     default:
       return "Open";
   }

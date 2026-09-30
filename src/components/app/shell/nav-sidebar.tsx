@@ -16,7 +16,7 @@ const noSubscribe = () => () => {};
 
 /**
  * The sidebar, Perplexity-style: the owl and name with Search (⌘K) and hide, New (Home's ask box; ⌘J asks from
- * anywhere), the two places (Portfolio and Markets), then Threads, the conversations with Hoot, newest first (the
+ * anywhere), the three places (Portfolio, Markets and the Screener), then Threads, the conversations with Hoot, newest first (the
  * label opens all of them). The footer is who you are (the
  * account menu: what's new, Admin, preferences) and the bell with what needs you. Hidden links let Hoot open any page
  * or scope by name ("take me to risk").
@@ -158,6 +158,11 @@ const ICONS: Partial<Record<NavItem["key"], React.ReactNode>> = {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className="mx-[3px]">
       <rect x="3" y="5" width="18" height="16" rx="2" />
       <path d="M3 10h18M8 3v4M16 3v4" />
+    </svg>
+  ),
+  screener: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className="mx-[3px]">
+      <path d="M4 5h16l-6 7.5V19l-4 1.5v-8Z" />
     </svg>
   ),
 };

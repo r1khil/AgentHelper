@@ -19,6 +19,7 @@ export const APP_PAGES = {
   activity: "Activity",
   what_if: "What if",
   markets: "Markets",
+  screener: "Screener",
   threads: "Threads",
   models: "Models",
   sell_side: "Sell-side calls",

@@ -4,8 +4,8 @@
 // lives on the holding it is about.
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 
-/** Where a page sits. The sidebar marks Portfolio and Markets; the rest are reached from them or from the account menu. */
-export type NavKey = "home" | "thread" | "portfolio" | "markets" | "holding" | "weekly" | "changelog" | "admin";
+/** Where a page sits. The sidebar marks Portfolio, Markets and the Screener; the rest are reached from them or from the account menu. */
+export type NavKey = "home" | "thread" | "portfolio" | "markets" | "screener" | "holding" | "weekly" | "changelog" | "admin";
 
 export type NavTab = { key: string; label: string; href: string; active: boolean };
 export type NavItem = { key: NavKey; label: string; href: string; active: boolean };
@@ -41,6 +41,7 @@ const TITLES: Record<NavKey, string> = {
   thread: "Thread",
   portfolio: "Portfolio",
   markets: "Markets",
+  screener: "Screener",
   holding: "Portfolio",
   weekly: "Weekly update",
   changelog: "What's new",
@@ -86,6 +87,7 @@ export function sectionFor(pathname: string): NavKey | null {
   if (pathname === "/") return "home";
   if (/^\/hoot(\/|$)/.test(pathname)) return "thread";
   if (/^\/markets(\/|$)/.test(pathname)) return "markets";
+  if (/^\/screener(\/|$)/.test(pathname)) return "screener";
   // Backtesting from before the five screens, until its redirect moves to next.config.
   if (/^\/backtesting(\/|$)/.test(pathname)) return "portfolio";
   if (/^\/weekly(\/|$)/.test(pathname)) return "weekly";
@@ -134,6 +136,7 @@ export function navModel({ pathname, scope, home = scope, fundWide }: NavInput):
     // The Weekly update and a holding sit under Portfolio.
     item("portfolio", portfolioHref(home, fundWide), section === "portfolio" || section === "holding" || section === "weekly"),
     item("markets", "/markets", section === "markets"),
+    item("screener", "/screener", section === "screener"),
   ].filter((x): x is NavItem => !!x);
 
   const back = backFor(pathname, base);
@@ -169,6 +172,7 @@ export function destinations({ scope, fundWide, seesBook }: Omit<NavInput, "path
     for (const v of views) out.push({ label: v.key === "positions" ? "Portfolio" : v.label, href: v.href, ...hint[v.key] });
   }
   out.push({ label: "Markets", hoot: "Markets", href: "/markets", hint: "Earnings and economic releases on one schedule", keywords: "calendar earnings economic macro cpi jobs reports" });
+  out.push({ label: "Screener", hoot: "Screener", href: "/screener", hint: "This month's screen, filing changes and pitches", keywords: "screen value garp watchlist filings tear sheet dcf bear case kill criteria calibration" });
   out.push({ label: "All threads", hoot: "Threads", href: "/hoot", hint: "Every conversation with Hoot", keywords: "research chats conversations history" });
   // The lists behind a holding's tabs, across the scope.
   if (base) {
