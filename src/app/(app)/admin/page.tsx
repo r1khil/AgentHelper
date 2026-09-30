@@ -13,6 +13,7 @@ import { AGENT_MODELS, agentModelId } from "@/lib/agent/model";
 import type { JobRunView } from "@/app/api/admin/job-runs/route";
 import { AdminView } from "@/components/app/admin/admin-view";
 import { loadAdminStatus } from "./status";
+import { loadUsageReport } from "@/lib/usage/report";
 
 export const metadata: Metadata = { title: "Admin" };
 // Jobs started from this page run inside its server actions; give them the same budget as the cron routes.
@@ -82,7 +83,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     }
   })();
   const weeklyTo = weeklyRecipients?.trim() || `${WEEKLY_EMAIL_DEFAULT.join(", ")} (default)`;
-  const activeTab = tab === "jobs" ? "jobs" : "members";
+  const activeTab = tab === "jobs" ? "jobs" : tab === "usage" ? "usage" : "members";
+  const usage = activeTab === "usage" ? await loadUsageReport() : null;
   // A roster sorted by role enum order puts associates first; the design leads with the fund-wide roles.
   const roleOrder = { admin: 0, exec: 1, lead_analyst: 2, associate_analyst: 3 } as const;
   const sortedMembers = [...members].sort((a, b) => roleOrder[a.p.role] - roleOrder[b.p.role] || a.p.fullName.localeCompare(b.p.fullName));
@@ -90,6 +92,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   return (
     <AdminView
       tab={activeTab}
+      usage={usage}
       attention={attention}
       connections={connections}
       meEmail={me.email}

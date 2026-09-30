@@ -18,6 +18,8 @@ import { CommandMenu } from "./command-menu";
 import { NavSidebar, scopeLinks } from "./nav-sidebar";
 import { ScopeProvider, useRememberedScope, useScopeSwitchNotice } from "./scope-context";
 import { ShellProvider } from "./shell-context";
+import { UsageTracker } from "../usage-tracker";
+import { track } from "@/lib/usage/client";
 
 export type BacktestingLayout = "new" | "classic";
 
@@ -99,6 +101,7 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
   const openPalette = useCallback(
     (mode: "ask" | "search") => {
       setPalette(mode);
+      track("palette_open", { mode, via: "click" });
       if (homeSlug) void load(homeSlug);
     },
     [homeSlug, load],
@@ -112,7 +115,10 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
       if (!k && !j) return;
       e.preventDefault();
       const mode = j ? "ask" : "search";
-      setPalette((open) => (open === mode ? null : mode));
+      setPalette((open) => {
+        if (open !== mode) track("palette_open", { mode, via: "shortcut" });
+        return open === mode ? null : mode;
+      });
       if (homeSlug) void load(homeSlug);
     };
     window.addEventListener("keydown", onKey);
@@ -160,6 +166,7 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
             </main>
             {command}
             {corner}
+            <UsageTracker />
           </div>
         </ShellProvider>
       </ScopeProvider>
@@ -197,6 +204,7 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
           </div>
           {command}
           {corner}
+          <UsageTracker />
         </div>
       </ShellProvider>
     </ScopeProvider>
@@ -209,7 +217,10 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
  */
 function useSidebarCollapsed(initial: boolean) {
   const [collapsed, setCollapsed] = useState(initial);
+  const first = useRef(true);
   useEffect(() => {
+    if (first.current) first.current = false;
+    else track("sidebar_toggle", { collapsed });
     document.cookie = `${SIDEBAR_COOKIE}=${collapsed ? "collapsed" : "open"}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
   }, [collapsed]);
   useEffect(() => {
