@@ -8,7 +8,7 @@ import { pageContextBlock, type PageContext } from "./page-context";
 // eval case. The full tool set stays registered, so history that used a tool outside the active set still converts,
 // and a call to a registered tool outside the set makes that tool active from the next step on.
 
-/** Always on: the everyday research lookups, the theme and the app's map. */
+/** Always on: the everyday research lookups and operating the app. */
 export const CORE = [
   "get_quote",
   "get_price_history",
@@ -24,6 +24,7 @@ export const CORE = [
   "get_earnings_calendar",
   "recall",
   "remember",
+  "navigate",
   "set_theme",
   "explain_app",
   "find_tools",
@@ -79,21 +80,6 @@ export const RETIRED = ["list_filing_documents", "search_financial_concepts"] as
  * same check, so it can never widen that gate.
  */
 export const WRITE = PROPOSAL_TOOLS;
-
-/**
- * Opening a page moves the member off the chat while the answer is still streaming, so navigate is offered only when
- * the latest message asks to go somewhere (asksToNavigate). A question ("what's going on with today's performance")
- * is answered in the chat. Production 2026-09-30: that question opened Performance and the answer landed out of view.
- */
-export const NAV = ["navigate"] as const;
-
-// open/go to/take me/pull up/switch to…, "where do I find", or a page or tab named outright. "The open" is the market's.
-const NAVIGATE_WORDS =
-  /\b(?:(?<!\bthe )opens?(?! interest| positions?| orders?)|go (?:to|back)|goto|take me|bring (?:me|up)|pull (?:up|it up)|navigate|jump (?:to|over)|head (?:to|over)|switch (?:to|me|over|back)|change (?:to|me to)|filter to|show me (?:the )?[\w&']+(?: [\w&']+)? (?:sector|team)|where (?:do|can) (?:i|we) (?:find|see|get)|where(?:'s| is| are) the \w+ (?:page|tab)|(?:page|tab|screen)s?)\b/;
-
-export function asksToNavigate(question: string): boolean {
-  return NAVIGATE_WORDS.test(normalize(question));
-}
 
 /** Once a tool has run, what it usually leads to. */
 export const FOLLOW_UPS: Record<string, readonly string[]> = {
@@ -192,7 +178,7 @@ export type RoutingInput = {
   mcpServers?: readonly McpServerRef[];
 };
 
-const native = new Set<string>([...CORE, ...Object.values(TIERS).flat(), ...NAV, ...RETIRED, ...WRITE]);
+const native = new Set<string>([...CORE, ...Object.values(TIERS).flat(), ...RETIRED, ...WRITE]);
 
 /** Curly quotes straightened and lowercased, so "what’s" matches "what's". */
 const normalize = (s: string) => s.toLowerCase().replace(/[’‘]/g, "'").replace(/[“”]/g, '"');
@@ -242,19 +228,15 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 export function activeToolsFor(input: RoutingInput): string[] {
   const available = new Set(input.availableTools);
   const on = new Set<string>(CORE);
-  const nav = asksToNavigate(input.question);
-  if (nav) for (const t of NAV) on.add(t);
   for (const tier of tiersFor(input)) for (const t of TIERS[tier]) on.add(t);
   for (const t of toolsNamedOnPage(input.page, input.availableTools)) on.add(t);
-  // Never a retired tool, a change tool or navigate: those follow only the latest message's own request.
-  for (const t of input.priorTools ?? []) if (requestable(t)) on.add(t);
+  // Never a retired tool, and never a change tool: those follow only the latest message's own request.
+  for (const t of input.priorTools ?? []) if (!(RETIRED as readonly string[]).includes(t) && !(WRITE as readonly string[]).includes(t)) on.add(t);
   for (const t of mcpToolsFor(input.question, input.availableTools, input.mcpServers ?? [])) on.add(t);
   for (const t of proposalToolsFor(input.question)) on.add(t);
   for (const t of input.requestedTools ?? []) if (requestable(t)) on.add(t);
   if (input.stepNumber > 0) {
     for (const t of input.usedTools ?? []) {
-      // A navigate call nobody asked for failed (not offered); it isn't retried on the next step.
-      if (!nav && (NAV as readonly string[]).includes(t)) continue;
       on.add(t);
       for (const f of FOLLOW_UPS[t] ?? []) on.add(f);
     }
@@ -262,8 +244,8 @@ export function activeToolsFor(input: RoutingInput): string[] {
   return input.availableTools.filter((t) => on.has(t) && available.has(t));
 }
 
-/** find_tools can turn on anything registered except a retired tool, a change tool or navigate (those follow the member's own words). */
-const requestable = (name: string) => ![...RETIRED, ...WRITE, ...NAV].includes(name as never);
+/** find_tools can turn on anything registered except a retired tool or a change tool (those follow the member's own words). */
+const requestable = (name: string) => !(RETIRED as readonly string[]).includes(name) && !(WRITE as readonly string[]).includes(name);
 
 /**
  * The tools find_tools can turn on: every registered tool outside CORE, by tier, then any admin-registered (MCP) ones.

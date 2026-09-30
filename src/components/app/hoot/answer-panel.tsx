@@ -22,15 +22,16 @@ const icon = "grid size-[30px] place-items-center rounded-md text-ink-2 transiti
 export function HootAnswerPanel({ holdings }: { holdings: CommandHolding[] }) {
   const panel = useAnswerPanel();
   const pathname = usePathname();
-  // Leaving the page it was asked about closes it: its chip would no longer be true.
-  const opened = useRef<string | null>(null);
+  // Leaving the page it was asked about closes it: its chip would no longer be true. A panel Hoot opened ahead of his
+  // own navigation belongs to the page he is opening.
+  const opened = useRef<{ seq: number; path: string } | null>(null);
   useEffect(() => {
     if (!panel) {
       opened.current = null;
       return;
     }
-    if (opened.current === null) opened.current = pathname;
-    else if (opened.current !== pathname) closeAnswerPanel();
+    if (opened.current?.seq !== panel.seq) opened.current = { seq: panel.seq, path: panel.at ?? pathname };
+    else if (opened.current.path !== pathname) closeAnswerPanel();
   }, [panel, pathname]);
   if (!panel) return null;
   return <Panel key={`${panel.chatId}:${panel.seq}`} panel={panel} holdings={holdings} />;
@@ -43,7 +44,7 @@ function Panel({ panel, holdings }: { panel: NonNullable<AnswerPanelState>; hold
     return () => cancelAnimationFrame(id);
   }, []);
 
-  const conv = useConversation({ chatId: panel.chatId, initialMessages: panel.messages ?? [], initialRunStatus: "idle", transparency: false });
+  const conv = useConversation({ chatId: panel.chatId, initialMessages: panel.messages ?? [], initialRunStatus: panel.running ? "running" : "idle", transparency: false });
   const related = useRelated(panel.chatId, conv.turns.length > 0 && !conv.busy && !!conv.turns[conv.turns.length - 1]?.answerText, conv.turns.length);
   const targets = useMemo<PinTarget[]>(() => holdings.map((h) => ({ ticker: h.ticker, company: h.company, teamSlug: h.teamSlug, team: h.team })), [holdings]);
 

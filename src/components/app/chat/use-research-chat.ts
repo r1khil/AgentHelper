@@ -105,8 +105,8 @@ export function useResearchChat({
   seen.current ??= seenActions(initialMessages);
   useEffect(() => {
     const fresh = takeNewActions(messages, seen.current!);
-    if (streaming) for (const action of fresh) applyAction(action);
-  }, [messages, streaming, applyAction]);
+    if (streaming) for (const action of fresh) applyAction(action, { chatId, messages });
+  }, [messages, streaming, applyAction, chatId]);
 
   // How long each question this page asked took, for "Worked for 12s" until the saved answer carries its own time.
   // Keyed by the question's message id, which is also the turn's id.
