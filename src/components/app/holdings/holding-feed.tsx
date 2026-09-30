@@ -4,7 +4,7 @@ import { readableTitle } from "@/lib/format";
 
 export type FeedItem = {
   key: string;
-  /** "Thread", "Write-up", "Model", "10-Q", "News"… a grey word on the left. */
+  /** "Thread", "Model", "10-Q", "News"… a grey word on the left. */
   kind: string;
   title: React.ReactNode;
   /** The grey line under the title: who, what state, where it came from. */

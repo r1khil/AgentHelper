@@ -19,7 +19,7 @@ import { HomeGreeting, HomeTopLine } from "./greeting";
 const QUESTIONS = 3;
 const ASK_LABEL = "Ask about today";
 
-const LEARNING_BOUNDARY = "Hoot finds and cites the evidence. The analysis and the write-ups stay yours.";
+const LEARNING_BOUNDARY = "Hoot finds and cites the evidence. The analysis stays yours.";
 
 /**
  * Home: a place to ask. The market's state in the top corner, Hoot's face and the greeting, one sentence on the book,

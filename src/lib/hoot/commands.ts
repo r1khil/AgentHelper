@@ -14,7 +14,6 @@ const destinations: Record<string, string> = {
   "what if": "What if", backtesting: "What if", backtest: "What if",
   markets: "Markets", market: "Markets", earnings: "Markets", calendar: "Markets", "earnings calendar": "Markets", "economic calendar": "Markets", "economic releases": "Markets",
   threads: "Threads", "all threads": "Threads", research: "Threads", chat: "Threads", chats: "Threads", conversations: "Threads", agent: "Threads", boards: "Threads", "research boards": "Threads",
-  "write ups": "Write-ups", writeups: "Write-ups", movements: "Write-ups",
   models: "Models", "sell side": "Sell-side calls", "sell side calls": "Sell-side calls", "sell side analyzer": "Sell-side calls",
   "weekly update": "Weekly update", changelog: "Changelog", "what's new": "Changelog", admin: "Admin", administration: "Admin",
 };

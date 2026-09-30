@@ -1,6 +1,6 @@
 // Client-safe: the sidebar's places, the page header's default breadcrumb, and the Portfolio's views, worked out from
 // the URL. The app is five screens: Home (ask), a Thread (one answer), a Holding, the Portfolio and Markets. Threads
-// are listed in the sidebar; everything else a page used to be (movements, models, sell-side calls, earnings prep)
+// are listed in the sidebar; everything else a page used to be (models, sell-side calls, earnings prep)
 // lives on the holding it is about.
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 
@@ -97,8 +97,7 @@ export function sectionFor(pathname: string): NavKey | null {
   switch (m[1]) {
     case "h":
       return "holding";
-    // One write-up, model, call or report belongs to its holding; the old lists were the Portfolio's and Markets'.
-    case "movements":
+    // One model, call or report belongs to its holding; the old lists were the Portfolio's and Markets'.
     case "models":
     case "sell-side":
       return m[2] ? "holding" : "portfolio";
@@ -111,11 +110,11 @@ export function sectionFor(pathname: string): NavKey | null {
   }
 }
 
-/** Where a page about one holding (or one of its write-ups, models, calls or reports) goes up to: the Portfolio in its scope. */
+/** Where a page about one holding (or one of its models, calls or reports) goes up to: the Portfolio in its scope. */
 export function backFor(pathname: string, base: string | null): NavBack | null {
   if (/^\/admin\/pt-sheet\/?$/.test(pathname)) return { label: "Admin", href: "/admin" };
   if (!base) return null;
-  if (/^\/t\/[^/]+\/(h|movements|models|sell-side|earnings)\/[^/]+/.test(pathname)) return { label: TITLES.portfolio, href: base };
+  if (/^\/t\/[^/]+\/(h|models|sell-side|earnings)\/[^/]+/.test(pathname)) return { label: TITLES.portfolio, href: base };
   return null;
 }
 
@@ -174,7 +173,6 @@ export function destinations({ scope, fundWide, seesBook }: Omit<NavInput, "path
   // The lists behind a holding's tabs, across the scope.
   if (base) {
     out.push(
-      { label: "Write-ups", hoot: "Write-ups", href: `${base}/movements`, hint: "Major movements and the team's write-ups", keywords: "movements movement investigations overdue" },
       { label: "Models", hoot: "Models", href: `${base}/models`, hint: "Excel models and values to approve", keywords: "model xbrl spreadsheet" },
       { label: "Sell-side calls", hoot: "Sell-side calls", href: `${base}/sell-side`, hint: "Recorded broker calls and Hoot's briefs", keywords: "calls broker analyzer transcripts" },
     );

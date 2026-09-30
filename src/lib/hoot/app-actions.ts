@@ -20,7 +20,6 @@ export const APP_PAGES = {
   what_if: "What if",
   markets: "Markets",
   threads: "Threads",
-  write_ups: "Write-ups",
   models: "Models",
   sell_side: "Sell-side calls",
   weekly: "Weekly update",
@@ -30,11 +29,11 @@ export const APP_PAGES = {
 type CurrentPage = keyof typeof APP_PAGES;
 
 /** A holding page's tabs besides All (`?tab=`), and what the page calls them. */
-export const HOLDING_TABS = { threads: "Threads", "write-ups": "Write-ups", model: "Model", filings: "Filings & notes", earnings: "Earnings" } as const;
+export const HOLDING_TABS = { threads: "Threads", model: "Model", filings: "Filings & notes", earnings: "Earnings" } as const;
 export type HoldingTab = keyof typeof HOLDING_TABS;
 
-/** Lists across a scope whose one holding's share is a tab on that holding: "AVGO's write-ups" is AVGO's Write-ups tab. */
-const TICKER_TABS: Partial<Record<CurrentPage, HoldingTab>> = { threads: "threads", write_ups: "write-ups", models: "model", sell_side: "filings" };
+/** Lists across a scope whose one holding's share is a tab on that holding: "AVGO's models" is AVGO's Model tab. */
+const TICKER_TABS: Partial<Record<CurrentPage, HoldingTab>> = { threads: "threads", models: "model", sell_side: "filings" };
 
 /**
  * Pages from before the five screens, still understood when a member or the model names one: each opens where its
@@ -43,7 +42,6 @@ const TICKER_TABS: Partial<Record<CurrentPage, HoldingTab>> = { threads: "thread
 export const FORMER_PAGES = {
   team: { page: "portfolio" },
   research: { page: "threads" },
-  movements: { page: "write_ups" },
   earnings: { page: "markets", tab: "earnings" },
   economic_calendar: { page: "markets" },
   attribution: { page: "performance" },
@@ -166,7 +164,7 @@ export function resolveNavigation(req: NavigateRequest, ctx: NavigateContext): {
   const fundWide = fundWideRole(ctx.viewer.role);
   const former: { page: CurrentPage; tab?: HoldingTab; today?: true } | null = req.page in FORMER_PAGES ? FORMER_PAGES[req.page as FormerPage] : null;
   const page: CurrentPage = former?.page ?? (req.page as CurrentPage);
-  // "AVGO's write-ups" is AVGO's Write-ups tab.
+  // "AVGO's models" is AVGO's Model tab.
   const tickerTab = former?.tab ?? TICKER_TABS[page];
   const tab = req.page === "holding" ? req.tab : req.ticker && tickerTab ? tickerTab : undefined;
   if (req.page === "holding" || tab) {

@@ -10,7 +10,7 @@ import { getBarsRange, SPX_SYMBOL } from "@/lib/providers/yahoo";
 import { listFilings } from "@/lib/providers/edgar";
 import { finnhubConfigured, getCompanyNews } from "@/lib/providers/finnhub";
 import { NY, todayNY } from "@/lib/providers/calendar";
-import { fmtBp, fmtChangeBp, fmtChangeMoney, fmtChangePair, fmtCurrency, fmtDay, fmtDayMonth, fmtTime, ppToBp, relativeTime } from "@/lib/format";
+import { fmtChangeBp, fmtChangeMoney, fmtChangePair, fmtCurrency, fmtDay, fmtDayMonth, fmtTime, ppToBp, relativeTime } from "@/lib/format";
 import { canManageTeam, isFundWide } from "@/lib/auth";
 import { effectiveRunStatus, listHoldingChats } from "@/lib/chats";
 import { documentLabel } from "@/lib/drive/labels";
@@ -21,7 +21,6 @@ import { agentConfigured } from "@/lib/agent/model";
 import { listHoldingMemories } from "@/lib/agent/memory/store";
 import type { MemoryEntry } from "@/lib/agent/memory/prompt";
 import { expectationsState, expectationsWord, prepPackWord } from "@/lib/earnings-calendar";
-import { MOVEMENT_THRESHOLD_PP } from "@/lib/constants";
 import { sellSideHref } from "@/lib/scope";
 import { alignPrices } from "@/lib/charts/series";
 import { DocumentUploadForm } from "@/components/app/document-upload-form";
@@ -51,11 +50,11 @@ import { ThesisPanel } from "@/components/app/holdings/thesis-panel";
 import { NotesTab, monthDay, type NoteItem } from "@/components/app/holdings/notes";
 import { FeedList, TabSection, type FeedItem } from "@/components/app/holdings/holding-feed";
 import { DocumentsList, EarningsTab, type EarningsRow } from "@/components/app/holdings/tab-panels";
-import { holdingNeeds, overdueWords } from "@/components/app/holdings/attention";
-import { listHoldingCalls, listHoldingMovements, modelCounts } from "./_load";
+import { holdingNeeds } from "@/components/app/holdings/attention";
+import { listHoldingCalls, modelCounts } from "./_load";
 
 const MATERIAL_FORMS = ["10-K", "10-K/A", "10-Q", "10-Q/A", "8-K", "8-K/A", "20-F", "6-K", "DEF 14A", "S-1", "424B4"];
-const TABS = ["all", "threads", "write-ups", "model", "filings", "earnings"] as const;
+const TABS = ["all", "threads", "model", "filings", "earnings"] as const;
 type Tab = (typeof TABS)[number];
 /** The old holding page's tabs, and where each one's content lives now. */
 const OLD_TABS: Record<string, Tab> = { overview: "all", research: "threads", documents: "filings", notes: "filings", earnings: "earnings" };
@@ -68,8 +67,8 @@ export async function generateMetadata({ params }: { params: Promise<{ ticker: s
 
 /**
  * One holding: its name and price over the chart, a box to ask Hoot about it, what it is waiting on, and everything
- * about it in tabs (threads, write-ups, model, filings and notes, earnings), with the fund's position, the next report
- * and what has happened since the thesis in the rail. Research's holding board, Movements, Models, Sell-side calls and
+ * about it in tabs (threads, model, filings and notes, earnings), with the fund's position, the next report
+ * and what has happened since the thesis in the rail. Research's holding board, Models, Sell-side calls and
  * the earnings prep all fold in here.
  */
 export default async function HoldingPage({ params, searchParams }: { params: Promise<{ team: string; ticker: string }>; searchParams: Promise<{ error?: string; tab?: string }> }) {
@@ -92,7 +91,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
   const wantsFeeds = tab === "all" || tab === "filings";
   const { since, today: newsToday } = newsWindow();
   const none = Promise.resolve([] as never[]);
-  const [members, notes, market, bars, spxBars, marks, securityLine, filings, news, drive, docs, proposals, indexedFilings, activity, chats, memories, moves, calls] = await Promise.all([
+  const [members, notes, market, bars, spxBars, marks, securityLine, filings, news, drive, docs, proposals, indexedFilings, activity, chats, memories, calls] = await Promise.all([
     listTeamMembers(team.id),
     listNotes(h.id),
     marketSnapshot([h.ticker]),
@@ -111,7 +110,6 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
     loadHoldingActivity(h.id),
     listHoldingChats(h.id, { fundWide }).catch(() => []),
     listHoldingMemories(h.id).catch(() => [] as MemoryEntry[]),
-    listHoldingMovements(h.id),
     listHoldingCalls(team.id, h.ticker).catch(() => []),
   ]);
   const counts = await modelCounts(activity.models.map((m) => m.id));
@@ -161,7 +159,6 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
   // ── What waits on the team ──
   const needs = holdingNeeds(
     {
-      moves: moves.map((mv) => ({ id: mv.id, sessionDate: mv.sessionDate, status: mv.status, dueAt: mv.dueAt, relativeMovePp: num(mv.relativeMovePp), dataQuality: mv.dataQuality, evidence: mv.evidence, drafted: mv.status === "in_progress" || !!mv.updateText?.trim() })),
       nextReport: next ? { id: next.id, reportDate: next.reportDate, reportHour: next.reportHour, fiscalPeriod: next.fiscalPeriod, locked: !!next.preLockedAt, drafted: !!next.expectations?.trim() } : null,
       models: activity.models.map((mm) => ({ id: mm.id, fileName: mm.fileName, version: mm.version, toDecide: toDecide(mm.id) })),
       thesisProposed: !!thesisProposal,
@@ -181,29 +178,6 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
       tone: running ? "caution" : null,
       href: `/hoot/${c.id}`,
       at: c.updatedAt.getTime(),
-    };
-  });
-
-  const writeUpItems: FeedItem[] = moves.map((mv) => {
-    const rel = ppToBp(mv.relativeMovePp);
-    const done = mv.status === "completed";
-    const late = !done && mv.dueAt && mv.dueAt.getTime() < now;
-    const words = mv.updateText?.trim() ? mv.updateText.trim().split(/\s+/).length : 0;
-    return {
-      key: `move-${mv.id}`,
-      kind: "Write-up",
-      title: `Movement ${mv.dataQuality ? "" : `${fmtChangeBp(rel)} `}on ${fmtDayMonth(mv.sessionDate)}`,
-      sub: done
-        ? `Completed${mv.completedByName ? ` by ${mv.completedByName}` : ""}${mv.completedAt ? `, ${fmtDay(mv.completedAt)}` : ""}`
-        : mv.dataQuality
-          ? `Data problem: ${mv.dataQuality}`
-          : words
-            ? `Draft, ${words} ${words === 1 ? "word" : "words"}`
-            : `Not started${mv.evidence ? `, Hoot gathered ${mv.evidence} ${mv.evidence === 1 ? "source" : "sources"}` : ""}`,
-      when: done ? "Completed" : mv.dataQuality ? "Data problem" : late ? overdueWords(mv.dueAt!, now) : mv.dueAt ? `Due ${fmtDayMonth(mv.dueAt)}, ${fmtTime(mv.dueAt)}` : "Open",
-      tone: done ? null : late && !mv.dataQuality ? "overdue" : "caution",
-      href: `${base}/movements/${mv.id}`,
-      at: noon(mv.sessionDate),
     };
   });
 
@@ -300,17 +274,15 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
     };
   });
 
-  const allItems = [...threadItems, ...writeUpItems, ...(modelItems.length || !h.cik ? modelItems : [noModel]), ...indexedItems, ...edgarItems.filter((f) => !alsoIndexed.has(f.key)), ...docItems, ...callItems, ...noteFeed, ...reportItems]
+  const allItems = [...threadItems, ...(modelItems.length || !h.cik ? modelItems : [noModel]), ...indexedItems, ...edgarItems.filter((f) => !alsoIndexed.has(f.key)), ...docItems, ...callItems, ...noteFeed, ...reportItems]
     .sort((a, b) => b.at - a.at)
     .slice(0, 40);
 
   // ── Tabs ──
   const openModelValues = activity.models.reduce((n, mm) => n + toDecide(mm.id), 0);
-  const overdueMoves = needs.some((n) => n.tone === "overdue");
   const tabs = [
     { key: "all" as const, label: "All" },
     { key: "threads" as const, label: "Threads", count: chats.length || undefined },
-    { key: "write-ups" as const, label: "Write-ups", count: moves.length || undefined, hot: moves.some((mv) => mv.status !== "completed"), overdue: overdueMoves },
     { key: "model" as const, label: "Model", count: openModelValues || undefined, hot: openModelValues > 0 },
     { key: "filings" as const, label: "Filings & notes" },
     { key: "earnings" as const, label: "Earnings", count: next ? fmtDayMonth(next.reportDate) : undefined },
@@ -321,7 +293,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
     {
       k: "Team",
       v: team.name,
-      title: leadNames.length ? `The whole team covers it. Movement alerts go to its ${leadNames.length > 1 ? "leads" : "lead"}, ${leadNames.join(", ")}.` : "The whole team covers it. It has no lead analyst yet, so movement alerts go to everyone on it.",
+      title: leadNames.length ? `The whole team covers it. Its ${leadNames.length > 1 ? "leads are" : "lead is"} ${leadNames.join(", ")}.` : "The whole team covers it. It has no lead analyst yet.",
     },
     { k: leadNames.length > 1 ? "Leads" : "Lead", v: leadNames.length ? leadNames.join(", ") : "None yet", tone: leadNames.length ? null : "muted" },
   ];
@@ -338,22 +310,19 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
       ]
     : [];
 
-  // What has been recorded since the thesis: Hoot's notes from threads about the holding, and the team's latest write-up.
+  // What has been recorded since the thesis: Hoot's notes from threads about the holding.
   const thesisAt = h.thesisUpdatedAt?.getTime() ?? 0;
   const hootNotes = memories.filter((mm) => mm.kind === "log" && Date.parse(mm.createdAt) >= thesisAt).slice(0, 2);
-  const lastWriteUp = moves.find((mv) => mv.status === "completed" && mv.updateText?.trim() && (mv.completedAt?.getTime() ?? 0) >= thesisAt);
   const sinceItems: SinceItem[] = [
     ...hootNotes.map((mm): SinceItem => ({ key: mm.id, by: "hoot", text: mm.body, label: mm.meta?.chatId ? "Hoot, from a thread" : "Hoot", at: mm.createdAt, href: mm.meta?.chatId ? `/hoot/${mm.meta.chatId}` : undefined })),
-    ...(lastWriteUp ? [{ key: lastWriteUp.id, by: "team" as const, text: clip(lastWriteUp.updateText!.trim(), 320), label: `Write-up on the ${fmtDayMonth(lastWriteUp.sessionDate)} move`, at: lastWriteUp.completedAt ?? lastWriteUp.sessionDate, href: `${base}/movements/${lastWriteUp.id}` }] : []),
   ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 
   // The chips under the ask box: Hoot's own follow-ups from the research log when there are some, else three built
-  // from what the page knows (the latest move, filing and report).
-  const lastMove = moves[0];
+  // from what the page knows (the latest filing and report).
   const lastFiling = indexedFilings[0]?.form ?? filings[0]?.form;
   const t = h.ticker;
   const suggestions = holdingSuggestions(memories, () => [
-    lastMove ? `What moved ${t} on ${fmtDayMonth(lastMove.sessionDate)}?` : `What moved ${t} today?`,
+    `What moved ${t} today?`,
     lastFiling ? `Summarise the latest ${lastFiling}` : "Summarise the latest filing",
     next ? `What to watch in the ${next.fiscalPeriod ? `${next.fiscalPeriod} ` : ""}report?` : `What's on file about ${t}?`,
   ]);
@@ -414,7 +383,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
           <div className="flex min-w-0 flex-col pt-1">
             {tab === "all" && (
               <>
-                <FeedList label={`Everything on ${h.ticker}`} items={allItems} empty={`Nothing on ${h.ticker} yet. Threads, write-ups, models, filings and reports show here as they come in.`} />
+                <FeedList label={`Everything on ${h.ticker}`} items={allItems} empty={`Nothing on ${h.ticker} yet. Threads, models, filings and reports show here as they come in.`} />
                 <div className="mt-8">
                   <PriceChart data={alignPrices(bars.filter((b) => b.date >= historyStart(1)), spxBars)} ticker={h.ticker} currency={q?.currency} />
                 </div>
@@ -423,20 +392,10 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
 
             {tab === "threads" && (
               <>
-                <FeedList label={`Threads about ${h.ticker}`} items={threadItems} empty={`No threads about ${h.ticker} yet. Ask above; threads started from a movement or an earnings prep pack show here too.`} />
+                <FeedList label={`Threads about ${h.ticker}`} items={threadItems} empty={`No threads about ${h.ticker} yet. Ask above; threads started from an earnings prep pack show here too.`} />
                 <div className="mt-8 max-w-[560px]">
                   <ResearchMemory ticker={h.ticker} entries={memories} canManage={manage} />
                 </div>
-              </>
-            )}
-
-            {tab === "write-ups" && (
-              <>
-                <FeedList label={`Write-ups on ${h.ticker}`} items={writeUpItems} empty={`No movements on ${h.ticker} yet. The close check runs every trading day; a qualifying move opens a write-up here with evidence attached.`} />
-                <p className="mt-3 text-caption text-muted-foreground">
-                  A write-up opens when the holding&apos;s daily return differs from the S&amp;P 500&apos;s by {fmtBp(MOVEMENT_THRESHOLD_PP * 100)} or more, on official closes. It is due noon the next trading day, and anyone on {team.name} can write it.
-                </p>
-                <AllLink href={`${base}/movements`}>All write-ups</AllLink>
               </>
             )}
 
@@ -582,7 +541,7 @@ export default async function HoldingPage({ params, searchParams }: { params: Pr
   );
 }
 
-/** A quiet link at the end of a tab to the whole list its rows come from (every holding's write-ups, models, calls). */
+/** A quiet link at the end of a tab to the whole list its rows come from (every holding's models, calls). */
 function AllLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <Link href={href} className="mt-3 inline-block self-start text-body text-muted-foreground hover:text-foreground hover:underline">
@@ -591,12 +550,10 @@ function AllLink({ href, children }: { href: string; children: React.ReactNode }
   );
 }
 
-const num = (v: string | null) => (v === null || v === "" ? null : Number(v));
 const noon = (iso: string) => Date.parse(`${iso}T12:00:00Z`);
 /** A status word inside a sentence: "Not started" → "not started", keeping a month's capital ("Builds Oct 21" → "builds Oct 21"). */
 const lowerFirst = (s: string) => (s ? s[0].toLowerCase() + s.slice(1) : s);
 const capitalise = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
-const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n).replace(/\s+\S*$/, "")}…` : s);
 
 /** A sell-side call's state in a word, amber while it is working or needs a retry. */
 function callStatus(status: string): { text: string; caution: boolean } {

@@ -8,7 +8,7 @@ import type { PageContext } from "../page-context";
  *
  * Tags: `portfolio` (needs the Fund's own numbers), `research` (filings, news, documents), `boundary` (the learning
  * boundary: Hoot gathers evidence, the analyst writes), `control` (asks Hoot to operate the app with its navigate and
- * set_theme tools), `workspace` (the app's own pages: movements, earnings, economic releases, the ledger, to-dos, the
+ * set_theme tools), `workspace` (the app's own pages: earnings, economic releases, the ledger, to-dos, the
  * changelog), `write` (asks Hoot to change the member's data: he may only propose a card they confirm; the eval never
  * confirms one, so nothing is written).
  */
@@ -231,7 +231,7 @@ export const EVAL_CASES: EvalCase[] = [
     expect: { calls: ["run_python"], maxToolCalls: 5 },
   },
 
-  // The workspace's own pages (Movements, Earnings, Economic releases, Activity, Home, Changelog): one lookup for the
+  // The workspace's own pages (Earnings, Economic releases, Activity, Home, Changelog): one lookup for the
   // list, never one per ticker, the web, or a price lookup standing in for the ledger.
   {
     id: "earnings-next-two-weeks",
@@ -291,20 +291,6 @@ export const EVAL_CASES: EvalCase[] = [
     tags: ["workspace"],
     expect: { calls: ["get_whats_new"], notCalls: ["search_web", "read_url"], maxToolCalls: 2, maxErrors: 0 },
   },
-  {
-    id: "movements-open-team",
-    question: "which movements are still open for my team?",
-    as: "associate",
-    tags: ["workspace"],
-    expect: { calls: ["get_movements"], notCalls: ["get_relative_moves", "search_web"], maxToolCalls: 2, maxErrors: 0 },
-  },
-  {
-    id: "movements-overdue-fund",
-    question: "Which movement write-ups are overdue across the fund?",
-    as: "exec",
-    tags: ["workspace"],
-    expect: { calls: ["get_movements"], notCalls: ["get_relative_moves", "search_web"], maxToolCalls: 2, maxErrors: 0, answer: [/overdue/i] },
-  },
 
   // The learning boundary.
   {
@@ -324,15 +310,6 @@ export const EVAL_CASES: EvalCase[] = [
   },
 
   // Knowing the app: what a page shows, where things are, what its terms mean, and where the member is asking from.
-  {
-    id: "app-explain-movements",
-    question: "i dont understand what this page is saying",
-    as: "associate",
-    page: { kind: "page", path: "/t/tech/movements/00000000-0000-0000-0000-000000000000", title: "AVGO movement" },
-    tags: ["app"],
-    expect: { maxToolCalls: 3, answer: [/400 ?bp|4 percentage points|4 pp/i, /write[- ]?up|update/i], answerNot: [CANT] },
-    note: "The Risk version of this question worked because Risk publishes its context; a movement write-up doesn't.",
-  },
   {
     id: "app-where-weekly",
     question: "where do I find the weekly update for Aadi?",
@@ -392,15 +369,6 @@ export const EVAL_CASES: EvalCase[] = [
     tags: ["control"],
     expect: { calls: ["navigate"], notCalls: ["get_attribution"], maxToolCalls: 1, maxErrors: 0, href: /^\/t\/fund\/performance\?period=ytd$/ },
     note: "A 'show me' request opens the page; it doesn't research.",
-  },
-  {
-    id: "control-old-page-name",
-    question: "take me to AVGO's movements",
-    as: "exec",
-    page: { kind: "page", path: "/t/fund", title: "Portfolio" },
-    tags: ["control"],
-    expect: { calls: ["navigate"], maxToolCalls: 1, maxErrors: 0, answerNot: [CANT], href: /^\/t\/fund\/h\/AVGO\?tab=write-ups$/ },
-    note: "Movements stopped being a page on Sep 29, 2026: a holding's write-ups are its Write-ups tab.",
   },
   {
     id: "control-backtest-what-if",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { runBellwethersNow, runCloseNow, runDailyBriefNow, runEarningsPrepNow, runMorningNow, runPricesNow, runWeeklyNow } from "@/lib/actions/jobs";
+import { runBellwethersNow, runDailyBriefNow, runEarningsPrepNow, runMorningNow, runPricesNow, runWeeklyNow } from "@/lib/actions/jobs";
 import { setWeeklyRecipients } from "@/lib/actions/admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,27 +32,12 @@ type Ask = {
   toMe?: boolean;
   /** Extra fields in the confirmation. */
   date?: string;
-  force?: boolean;
 };
 type JobDef = { key: JobKey; name: string; when: string; run: (fd: FormData) => Promise<void>; runs?: string; detail?: string; ask?: Ask };
 
 function jobs(weekly: JobsPanelProps["weekly"]): JobDef[] {
   const brief = DAILY_BRIEF_RECIPIENTS;
   return [
-    {
-      key: "close",
-      name: "Close check",
-      when: "Weekdays 5:00 PM ET · opens movements",
-      runs: "close",
-      run: runCloseNow,
-      detail: "Supabase pg_cron at 5:00 PM ET, with a 7:00 PM ET Vercel backstop. Opens a movement for any holding that moved 400 bp or more against the S&P 500.",
-      ask: {
-        who: "the leads of each team whose holding moves 400 bp or more against the S&P 500 (its members when a team has no lead). Nothing goes out if no new movement opens",
-        send: "Run and email leads",
-        date: "Session date",
-        force: true,
-      },
-    },
     { key: "prices", name: "Price history", when: "Weekdays 5:00 PM ET", runs: "prices", run: runPricesNow, detail: "Attribution closes, dividends and splits. Vercel backstop at 7:30 PM ET." },
     {
       key: "brief",
@@ -60,7 +45,7 @@ function jobs(weekly: JobsPanelProps["weekly"]): JobDef[] {
       when: "Weekdays 5:05 PM ET · emails the fund",
       runs: "daily_brief",
       run: runDailyBriefNow,
-      detail: "Prices and close check at 5:00 PM ET, Hoot's analysis at 5:05 PM ET, email at 5:15 PM ET. If the email fails it is retried every 15 minutes until midnight, and admins are emailed once it is late.",
+      detail: "Prices at 5:00 PM ET, Hoot's analysis at 5:05 PM ET, email at 5:15 PM ET. If the email fails it is retried every 15 minutes until midnight, and admins are emailed once it is late.",
       ask: { who: `${brief.length} people: ${brief.map((r) => r.name).join(", ")}`, send: `Send to ${brief.length} people`, toMe: true, date: "Session date" },
     },
     {
@@ -69,8 +54,8 @@ function jobs(weekly: JobsPanelProps["weekly"]): JobDef[] {
       when: "Weekdays 10:00 AM ET · emails leads",
       runs: "morning",
       run: runMorningNow,
-      detail: "Reminders, earnings, evidence, sector bellwethers, earnings prep packs, the SEC filings index and a full Drive crawl.",
-      ask: { who: "the leads of teams with a write-up due today or overdue, and of teams with a new earnings prep pack (their members when a team has no lead)", send: "Run and email leads" },
+      detail: "Earnings, sector bellwethers, earnings prep packs, the SEC filings index and a full Drive crawl.",
+      ask: { who: "the leads of teams with a new earnings prep pack (their members when a team has no lead)", send: "Run and email leads" },
     },
     { key: "bellwethers", name: "Sector bellwethers", when: "Inside the morning sweep · ETF constituents, report dates", run: runBellwethersNow, detail: "ETF constituents, earnings dates and industries." },
     {
@@ -165,21 +150,12 @@ function ConfirmRun({ id, job, ask, meEmail, onCancel }: { id: string; job: JobD
       <span className="leading-5">
         <b className="font-semibold">This can email {ask.who}</b> <span className="text-ink-2">via OpenMail. Test accounts never get it.</span>
       </span>
-      {(ask.date || ask.force) && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          {ask.date && (
-            <span className="flex items-center gap-2">
-              <Label htmlFor={`${id}-date`}>{ask.date}</Label>
-              <Input id={`${id}-date`} name="date" type="date" className="w-44" />
-              <span className="text-caption text-muted-foreground">Empty means today</span>
-            </span>
-          )}
-          {ask.force && (
-            <label className="flex items-center gap-2 text-ink-2">
-              <input type="checkbox" name="force" className="size-3.5" /> Re-run even if this session already completed
-            </label>
-          )}
-        </div>
+      {ask.date && (
+        <span className="flex items-center gap-2">
+          <Label htmlFor={`${id}-date`}>{ask.date}</Label>
+          <Input id={`${id}-date`} name="date" type="date" className="w-44" />
+          <span className="text-caption text-muted-foreground">Empty means today</span>
+        </span>
       )}
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button type="button" size="sm" variant="secondary" onClick={onCancel}>

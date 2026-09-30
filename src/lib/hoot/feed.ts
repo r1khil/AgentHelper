@@ -1,8 +1,8 @@
 import "server-only";
-import { and, asc, count, desc, eq, gte, inArray, isNull, lte, ne } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
-import { changelogEntries, earnings, holdingProposals, holdings, modelProposals, models, movements, sellSideCalls, teams, type Team } from "@/db/schema";
+import { changelogEntries, earnings, holdingProposals, holdings, modelProposals, models, sellSideCalls, teams, type Team } from "@/db/schema";
 import type { CurrentUser } from "@/lib/auth";
 import { canManageTeam, isFundWide } from "@/lib/roles";
 import { isTradingDay, nextTradingDay, NY, todayNY } from "@/lib/providers/calendar";
@@ -33,37 +33,13 @@ export async function loadHootFeedFor(user: CurrentUser, { teamList, scope }: { 
     soon.push(d);
   }
   const teamIds = teamList.map((t) => t.id);
-  // A write-up belongs to the whole team that holds the stock, so a member's own are their team's. Rows the close
-  // check logged for a data problem aren't write-ups (no move was calculated); the reminder emails skip them too.
   const ownTeamId = user.teamId;
-  // Other teams this member runs: a lead runs only their own; an exec or admin runs every team.
-  const managedOthers = teamList.filter((t) => t.id !== ownTeamId && canManageTeam(user, t.id)).map((t) => t.id);
   const managed = teamList.filter((t) => canManageTeam(user, t.id)).map((t) => t.id);
   const fundWide = isFundWide(user);
   const dismissed = user.hoot?.dismissed ?? {};
   const none = Promise.resolve([] as never[]);
 
-  const [myMovements, teamMovements, upcoming, mySellSide, thesis, modelRows, weekly, changelog] = await Promise.all([
-    ownTeamId
-      ? db
-          .select({ id: movements.id, ticker: holdings.ticker, teamSlug: teams.slug, dueAt: movements.dueAt, sessionDate: movements.sessionDate })
-          .from(movements)
-          .innerJoin(holdings, eq(holdings.id, movements.holdingId))
-          .innerJoin(teams, eq(teams.id, holdings.teamId))
-          .where(and(eq(holdings.teamId, ownTeamId), ne(movements.status, "completed"), isNull(movements.dataQuality)))
-          .orderBy(asc(movements.dueAt))
-          .limit(10)
-      : none,
-    managedOthers.length
-      ? db
-          .select({ id: movements.id, ticker: holdings.ticker, teamSlug: teams.slug, teamName: teams.name, dueAt: movements.dueAt, sessionDate: movements.sessionDate })
-          .from(movements)
-          .innerJoin(holdings, eq(holdings.id, movements.holdingId))
-          .innerJoin(teams, eq(teams.id, holdings.teamId))
-          .where(and(inArray(holdings.teamId, managedOthers), ne(movements.status, "completed"), isNull(movements.dataQuality)))
-          .orderBy(asc(movements.dueAt))
-          .limit(20)
-      : none,
+  const [upcoming, mySellSide, thesis, modelRows, weekly, changelog] = await Promise.all([
     teamIds.length
       ? db
           .select({ e: earnings, ticker: holdings.ticker, teamId: holdings.teamId, teamSlug: teams.slug })
@@ -113,8 +89,6 @@ export async function loadHootFeedFor(user: CurrentUser, { teamList, scope }: { 
     now,
     today,
     soon,
-    myMovements,
-    teamMovements,
     earnings: upcoming.map((r) => ({ id: r.e.id, ticker: r.ticker, teamSlug: r.teamSlug, reportDate: r.e.reportDate, reportHour: r.e.reportHour, expectationsLocked: !!r.e.preLockedAt, mine: !!ownTeamId && r.teamId === ownTeamId })),
     mySellSide,
     thesisProposals: thesis,

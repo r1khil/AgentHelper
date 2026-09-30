@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { runCloseJob } from "@/lib/jobs/close";
 import { runMorningJob } from "@/lib/jobs/morning";
 import { runPricesJob } from "@/lib/jobs/prices";
 import { runDailyBriefAnalysis, sendDailyBrief } from "@/lib/jobs/daily-brief";
@@ -21,20 +20,11 @@ import { runWeeklyJob } from "@/lib/weekly/job";
  */
 const sendChoice = (fd: FormData | undefined) => String(fd?.get("send") ?? "none");
 
-export async function runCloseNow(fd: FormData) {
-  await requireAdmin();
-  const date = String(fd.get("date") ?? "").trim() || undefined;
-  const force = fd.get("force") === "on";
-  const r = await runCloseJob({ sessionDate: date, force, notify: sendChoice(fd) === "list" });
-  revalidatePath("/admin");
-  redirect(`/admin?tab=jobs&${r.status === "failed" ? "error" : "ok"}=${encodeURIComponent(`Close job ${r.sessionDate}: ${r.status}${r.reason ? ` (${r.reason})` : ""}; qualified ${r.qualified.join(", ") || "none"}; created ${r.created.length}`)}`);
-}
-
 export async function runMorningNow(fd?: FormData) {
   await requireAdmin();
   const r = await runMorningJob({ notify: sendChoice(fd) === "list" });
   revalidatePath("/admin");
-  redirect(`/admin?tab=jobs&ok=${encodeURIComponent(`Morning job: evidence ${r.evidenceFinished}, reminders ${r.reminders}, overdue ${r.overdue}, email ${JSON.stringify(r.email)}`)}`);
+  redirect(`/admin?tab=jobs&ok=${encodeURIComponent(`Morning job: email ${JSON.stringify(r.email)}`)}`);
 }
 
 export async function runPricesNow() {

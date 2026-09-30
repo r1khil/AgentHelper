@@ -57,7 +57,7 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
   const scope = current === "fund" ? ("fund" as const) : team ? { slug: team.slug } : null;
   const scopeSlug = current === "fund" ? FUND_SCOPE_SLUG : (team?.slug ?? null);
 
-  // The sidebar's Research, Movements, Models and Calendar open on the whole fund for execs and admins, and on the
+  // The sidebar's Research, Models and Calendar open on the whole fund for execs and admins, and on the
   // member's own team for everyone else, whatever page they're on.
   const ownTeam = teams.find((t) => t.id === user.teamId) ?? teams[0] ?? null;
   const home = fundWide ? ("fund" as const) : ownTeam ? { slug: ownTeam.slug } : null;

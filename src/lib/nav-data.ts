@@ -1,8 +1,8 @@
 import "server-only";
-import { and, asc, count, eq, gte, inArray, ne } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray } from "drizzle-orm";
 import { DateTime } from "luxon";
 import { db } from "@/db/client";
-import { earnings, holdings, modelProposals, models, movements, sellSideCalls } from "@/db/schema";
+import { earnings, holdings, modelProposals, models, sellSideCalls } from "@/db/schema";
 import { canManageTeam, isFundWide, listAccessibleTeams, type CurrentUser } from "@/lib/auth";
 import { FUND_SCOPE_SLUG } from "@/lib/constants";
 import { todayNY } from "@/lib/providers/calendar";
@@ -22,7 +22,6 @@ export type CommandHolding = {
   weightPct: number | null;
   nextReport: string | null;
   nextReportEstimated: boolean;
-  openMovement: boolean;
 };
 
 /** A sidebar badge in words: "1 overdue" (red), "4 to decide" (grey). */
@@ -33,7 +32,7 @@ export type RecentChat = { title: string; href: string; at: string; ticker?: str
 
 export type NavData = {
   counts: Record<string, TabCount>;
-  badges: Partial<Record<"movements" | "models", NavBadge>>;
+  badges: Partial<Record<"models", NavBadge>>;
   holdings: CommandHolding[];
   /** The three newest, for ⌘J. */
   recent: RecentChat[];
@@ -58,17 +57,12 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
   const lastWeek = DateTime.now().minus({ days: 7 }).toJSDate();
 
   const viewer = { fundWide: isFundWide(user) };
-  const [rows, openMoves, proposals, calls, reports, weekly, general, pinned] = await Promise.all([
+  const [rows, proposals, calls, reports, weekly, general, pinned] = await Promise.all([
     db
       .select({ ticker: holdings.ticker, company: holdings.companyName, teamId: holdings.teamId, weightPct: holdings.weightPct })
       .from(holdings)
       .where(and(inArray(holdings.teamId, teamIds), eq(holdings.status, "active")))
       .orderBy(asc(holdings.ticker)),
-    db
-      .select({ ticker: holdings.ticker, dueAt: movements.dueAt })
-      .from(movements)
-      .innerJoin(holdings, eq(holdings.id, movements.holdingId))
-      .where(and(inArray(holdings.teamId, teamIds), ne(movements.status, "completed"))),
     db
       .select({ n: count() })
       .from(modelProposals)
@@ -103,21 +97,15 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
   const teamById = new Map(inScope.map((t) => [t.id, t]));
   const next = new Map<string, { date: string; estimated: boolean }>();
   for (const r of reports) if (!next.has(r.ticker)) next.set(r.ticker, { date: r.reportDate, estimated: r.dateStatus === "estimated" });
-  const moving = new Set(openMoves.map((m) => m.ticker));
-  const overdueCount = openMoves.filter((m) => m.dueAt && m.dueAt.getTime() < Date.now()).length;
-  const overdue = overdueCount > 0;
 
   const counts: Record<string, TabCount> = {};
   counts.holdings = { value: String(rows.length) };
-  if (openMoves.length) counts.movements = { value: String(openMoves.length), hot: true, overdue };
   if (proposals[0]?.n) counts.models = { value: String(proposals[0].n) };
   if (calls[0]?.n) counts["sell-side"] = { value: String(calls[0].n), hot: true };
   // The newest pack's status, in the words the Weekly page uses; nothing once it is Sent.
   if (weekly && weekly.state !== "sent") counts.weekly = { value: PACK_STATUS_LABELS[weekly.state], hot: true };
 
   const badges: NavData["badges"] = {};
-  if (overdueCount) badges.movements = { label: `${overdueCount} overdue`, hot: true };
-  else if (openMoves.length) badges.movements = { label: `${openMoves.length} open` };
   if (proposals[0]?.n) badges.models = { label: `${proposals[0].n} to decide` };
 
   return {
@@ -137,7 +125,6 @@ export async function loadNavData(user: CurrentUser, scope: string): Promise<Nav
         weightPct: r.weightPct == null || !(isFundWide(user) || canManageTeam(user, r.teamId)) ? null : Number(r.weightPct),
         nextReport: n?.date ?? null,
         nextReportEstimated: n?.estimated ?? false,
-        openMovement: moving.has(r.ticker),
       };
     }),
   };

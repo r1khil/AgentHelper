@@ -54,8 +54,6 @@ export const boardHref = (current: string | null | undefined, owner: string, tic
   chatId ? `/hoot/${encodeURIComponent(chatId)}` : holdingHref(current, owner, ticker, "?tab=threads");
 /** One report's earnings page. */
 export const earningsHref = (current: string | null | undefined, owner: string, id: string) => scopedHref(current, owner, `/earnings/${id}`);
-/** One movement write-up. */
-export const movementHref = (current: string | null | undefined, owner: string, id: string) => scopedHref(current, owner, `/movements/${id}`);
 /** One model. */
 export const modelHref = (current: string | null | undefined, owner: string, id: string) => scopedHref(current, owner, `/models/${id}`);
 /** One sell-side call. */

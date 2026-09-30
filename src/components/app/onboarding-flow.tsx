@@ -90,7 +90,7 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
             <>
               <h1 className="mt-1 text-hero font-bold tracking-[-0.035em]">Welcome to Owl Fund</h1>
               <p className="mt-2.5 text-title leading-[27px] font-normal text-ink-3">
-                A quick setup before you reach the workspace. It takes about a minute. Hoot, your research companion, sits in the corner of every page, and ⌘J opens him.
+                Three short steps, then you&apos;re in.
               </p>
               <dl className="mt-7 grid grid-cols-3 gap-8 border-t pt-4">
                 <Fact label="Role">{user.roleLabel}</Fact>
@@ -98,7 +98,7 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
                 <Fact label="Sign-in">{user.signIn}</Fact>
               </dl>
               {!user.teamName && !user.fundWide && (
-                <p className="mt-4 text-body text-ink-2">A fund admin assigns you to a sector team. Until then you can finish setup and wait on Today.</p>
+                <p className="mt-4 text-body text-ink-2">An admin will add you to a sector team. You can finish setup now.</p>
               )}
               <div className="mt-6 flex gap-2">
                 <Button type="button" className="h-[38px] px-[18px]" onClick={() => setStep(1)}>
@@ -111,7 +111,7 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
           {current.id === "name" && (
             <>
               <h1 className="mt-1 text-hero font-bold tracking-[-0.035em]">Your name</h1>
-              <p className="mt-2.5 text-title leading-[27px] font-normal text-ink-3">How you appear to your team on holdings, movements and notes.</p>
+              <p className="mt-2.5 text-title leading-[27px] font-normal text-ink-3">Shown to your team on notes and threads.</p>
               <div className="mt-7 flex max-w-[360px] flex-col gap-1">
                 <Label htmlFor="ob-name" className="text-caption font-normal text-ink-2">
                   Full name
@@ -139,8 +139,7 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
 
           {current.id === "tour" && (
             <>
-              <h1 className="mt-1 text-hero font-bold tracking-[-0.035em]">How the workspace works</h1>
-              <p className="mt-2.5 text-title leading-[27px] font-normal text-ink-3">Four things you will use most.</p>
+              <h1 className="mt-1 text-hero font-bold tracking-[-0.035em]">How it works</h1>
               <div className="mt-7 border-t">
                 {TOUR_CARDS.map((c) => (
                   <div key={c.id} className="border-b border-row py-3">
@@ -172,14 +171,14 @@ export function OnboardingFlow({ user }: { user: OnboardingUser }) {
               </div>
               <Label htmlFor="ob-ack" className="mt-7 items-center gap-2.5 text-emph leading-snug font-medium">
                 <Checkbox id="ob-ack" checked={acknowledged} onCheckedChange={(c) => setAcknowledged(c === true)} />
-                <span>I understand: Hoot gathers the evidence, and I write the interpretation.</span>
+                <span>I understand that Hoot gathers evidence and I write the analysis.</span>
               </Label>
               <div className="mt-6 flex gap-2">
                 <Button type="button" variant="secondary" className="h-[38px] px-3.5" onClick={() => setStep(2)} disabled={pending}>
                   Back
                 </Button>
                 <Button type="submit" className="h-[38px] px-[18px]" disabled={!acknowledged || pending}>
-                  {pending ? "Saving…" : "Enter the workspace"}
+                  {pending ? "Saving…" : "Finish"}
                 </Button>
               </div>
             </form>

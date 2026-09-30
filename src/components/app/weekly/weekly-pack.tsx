@@ -18,7 +18,7 @@ import { carriedFigureKeys, deriveRelative, parseFigureInput } from "@/lib/weekl
 import { AGENDA_LABELS, AGENDA_SECTIONS, type AgendaItem, type Performer, type WeeklyFigures } from "@/lib/weekly/types";
 import type { PackStatus } from "@/lib/weekly/status";
 import { weekRangeLabel } from "@/lib/weekly/weeks";
-import { fmtChangeBp, fmtChangePct, fmtDateTime, fmtDay, fmtDayMonth, ppToBp } from "@/lib/format";
+import { fmtChangeBp, fmtChangePct, fmtDateTime, fmtDay, fmtDayMonth } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { OwlMark } from "@/components/app/owl-mark";
 import type { EmailView, WeeklyPackProps } from "./types";
@@ -200,23 +200,7 @@ function SummaryGrid(props: WeeklyPackProps & { highlights: string[]; onPreview:
         </Section>
       )}
 
-      <div className="grid grid-cols-3 gap-10">
-        <Section title="Movements opened" aside={props.stats.movementsOpened === null ? "unavailable" : undefined}>
-          {props.stats.movements.length === 0 ? (
-            <Row>
-              <span className="text-muted-foreground">{props.stats.movementsOpened === null ? "Movements could not be read." : "The close check opened none."}</span>
-            </Row>
-          ) : (
-            props.stats.movements.map((m) => (
-              <Row key={`${m.ticker}-${m.sessionDate}`}>
-                <span>
-                  <b className="font-semibold">{m.ticker}</b> <span className="text-muted-foreground">{fmtDayMonth(m.sessionDate)}</span>
-                </span>
-                <Chg value={ppToBp(m.relativePp)} bp />
-              </Row>
-            ))
-          )}
-        </Section>
+      <div className="grid grid-cols-2 gap-10">
         <NextWeek {...props} />
         <Section title="Process updates" copy={agendaLine(AGENDA_LABELS.processUpdates, props.agenda.processUpdates)}>
           {props.agenda.processUpdates.length === 0 ? (

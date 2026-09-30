@@ -16,15 +16,15 @@ const input = (over: object = {}) => ({
 
 describe("jobResult", () => {
   it("says what the last run did, and asks for a look at a failure", () => {
-    expect(jobResult("close", run({ summary: { created: ["THC"] } }))).toEqual({ text: "Fri, Sep 25, 4:20 PM ET · 1 movement opened", attention: false });
+    expect(jobResult("prices", run({ summary: { updated: ["THC", "KRE"] } }))).toEqual({ text: "Fri, Sep 25, 4:20 PM ET · 2 holdings", attention: false });
     expect(jobResult("prices", run({ ok: false }))).toMatchObject({ text: "Fri, Sep 25, 4:20 PM ET · failed", attention: true });
     expect(jobResult("weekly", run({ summary: { email: { status: "held" } } }))).toMatchObject({ text: expect.stringContaining("built, not sent"), attention: true });
     expect(jobResult("weekly", run({ summary: { email: { status: "sent" } } })).attention).toBe(false);
   });
   it("is not a failure to have not run, or to run with the sweep", () => {
-    expect(jobResult("close", null)).toEqual({ text: "No runs yet", attention: false });
+    expect(jobResult("prices", null)).toEqual({ text: "No runs yet", attention: false });
     expect(jobResult("prep", null)).toEqual({ text: "Runs with the morning sweep", attention: false });
-    expect(jobResult("close", run({ finishedAt: null }), Date.parse("2026-09-25T20:25:00Z"))).toEqual({ text: "Running since Fri, Sep 25, 4:20 PM ET", attention: false });
+    expect(jobResult("prices", run({ finishedAt: null }), Date.parse("2026-09-25T20:25:00Z"))).toEqual({ text: "Running since Fri, Sep 25, 4:20 PM ET", attention: false });
   });
   it("reads a run that never finished as timed out, not running all day", () => {
     expect(jobResult("morning", run({ finishedAt: null, ok: null }), Date.parse("2026-09-25T22:30:00Z"))).toEqual({ text: "Fri, Sep 25, 4:20 PM ET · didn't finish (timed out)", attention: true });
@@ -40,7 +40,7 @@ describe("connectionRows and attentionCount", () => {
   it("counts a Drive that needs reconnecting, and a failed job", () => {
     const rows = connectionRows(input({ drive: drive({ needsReconnect: true }) }));
     expect(rows[0]).toMatchObject({ key: "drive", line: "Reconnect needed", attention: true });
-    expect(attentionCount({ close: run({ ok: false }), prices: run() }, rows)).toBe(2);
+    expect(attentionCount({ weekly: run({ ok: false }), prices: run() }, rows)).toBe(2);
   });
   it("says how far the filings index is complete and how the last run ended", () => {
     const now = Date.parse("2026-09-29T22:30:00Z");

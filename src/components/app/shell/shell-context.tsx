@@ -9,7 +9,7 @@ import type { NavBadge, TabCount } from "@/lib/nav-data";
 export type ShellState = {
   nav: NavModel;
   counts: Record<string, TabCount>;
-  badges: Partial<Record<"movements" | "models", NavBadge>>;
+  badges: Partial<Record<"models", NavBadge>>;
   teams: Team[];
   /** The scope in view: the whole fund, a team, or none (no team yet). */
   current: Team | "fund" | null;

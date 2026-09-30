@@ -62,10 +62,10 @@ export function teamSlugFromPath(pathname: string) {
 
 /**
  * Hoot's corner button is on every page except those with their own ask box (one Hoot per screen): Home, a thread,
- * the Portfolio's Positions and a holding, and a movement write-up (which asks him for feedback in place).
+ * the Portfolio's Positions and a holding.
  */
 export function companionHiddenOn(pathname: string) {
-  return pathname === "/" || /^\/hoot(\/|$)/.test(pathname) || /^\/t\/[^/]+\/?$/.test(pathname) || /^\/t\/[^/]+\/(agent|h|movements)(\/|$)/.test(pathname);
+  return pathname === "/" || /^\/hoot(\/|$)/.test(pathname) || /^\/t\/[^/]+\/?$/.test(pathname) || /^\/t\/[^/]+\/(agent|h)(\/|$)/.test(pathname);
 }
 
 type Tip = { id: string; match: RegExp; title: string; detail: string };
@@ -74,9 +74,8 @@ type Tip = { id: string; match: RegExp; title: string; detail: string };
 // who read it once doesn't get it again.
 const TIPS: Tip[] = [
   { id: "tip:today", match: /^\/$/, title: "Hi, I'm Hoot!", detail: "Ask me anything in the box. On any other page, press ⌘J to ask about what's on it." },
-  { id: "tip:portfolio", match: /^\/t\/[^/]+$/, title: "Every holding has its own page", detail: "Open a row for its threads, write-ups, model, filings and earnings in one place." },
+  { id: "tip:portfolio", match: /^\/t\/[^/]+$/, title: "Every holding has its own page", detail: "Open a row for its threads, model, filings and earnings in one place." },
   { id: "tip:holding", match: /^\/t\/[^/]+\/h\/[^/]+$/, title: "Ask about this holding", detail: "Use the box under the price: the question goes to this ticker, and the thread lands on its Threads tab." },
-  { id: "tip:movements", match: /^\/t\/[^/]+\/movements$/, title: "Write-ups", detail: "A holding lands here when it moves 400 bp or more against the S&P 500. Anyone on the team can write up why, by noon the next trading day." },
   { id: "tip:markets", match: /^\/markets$/, title: "Markets", detail: `Our holdings' reports and the economic releases on one schedule. Write down expectations before a report; the prep pack builds ${PREP_BUILD_TRADING_DAYS} trading days ahead.` },
   { id: "tip:sell-side", match: /^\/t\/[^/]+\/sell-side$/, title: "Sell-side calls", detail: "Record a call, and you'll get a transcript, a brief and cross-checks against your team's files. I'll tell you when it's ready." },
   { id: "tip:models", match: /^\/t\/[^/]+\/models$/, title: "Models", detail: "Upload a model and map its cells. New filings are proposed as updates for you to approve, never written silently." },
@@ -146,13 +145,6 @@ export function suggestionsFor(pathname: string, ticker: string | null): string[
       "What did my scenario change, and which holdings drove the difference?",
       "What would today's weights have returned against SPY over the last year?",
       "What would doubling our largest position have done over the last six months?",
-    ];
-  }
-  if (/\/movements/.test(pathname)) {
-    return [
-      "Which of our holdings moved most versus the S&P 500 this week, and what news is in the window?",
-      "What filings or news could explain today's biggest move in our holdings?",
-      "Summarize the open movement investigations and what evidence each is missing.",
     ];
   }
   return [

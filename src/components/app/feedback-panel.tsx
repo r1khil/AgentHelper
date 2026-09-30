@@ -2,7 +2,7 @@ import type { Feedback } from "@/db/schema";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-// Hoot's flags on a student's draft (movement update, earnings reflection). It lists what he noticed and never
+// Hoot's flags on a student's draft (an earnings reflection). It lists what he noticed and never
 // rewrites the text: the learning boundary in docs/product.md. A section of the page, not a card: a title, one line
 // on what the flags are, then a row per flag with its kind in the left column.
 const FLAGS: { key: keyof Pick<Feedback, "unsupported" | "missing" | "alternatives" | "contradictions" | "questions">; label: string; title: string; tone: string }[] = [

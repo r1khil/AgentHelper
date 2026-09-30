@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildNudges, type NudgeInput } from "./build";
 import { companionHiddenOn, pickBubble, pruneDismissed, restingMood, suggestionsFor, tickerFromPath, tipFor } from "./policy";
-import { BUBBLE_MAX_PRIORITY, type HootNudge } from "./types";
+import type { HootNudge } from "./types";
 
 // Tuesday 2026-09-22, 14:00 New York.
 const NOW = new Date("2026-09-22T18:00:00Z");
@@ -10,8 +10,6 @@ const input = (over: Partial<NudgeInput> = {}): NudgeInput => ({
   now: NOW,
   today: "2026-09-22",
   soon: ["2026-09-23", "2026-09-24", "2026-09-25", "2026-09-28"],
-  myMovements: [],
-  teamMovements: [],
   earnings: [],
   mySellSide: [],
   thesisProposals: [],
@@ -25,56 +23,13 @@ const input = (over: Partial<NudgeInput> = {}): NudgeInput => ({
 const nudge = (over: Partial<HootNudge>): HootNudge => ({ id: "n", kind: "earnings", priority: 5, title: "t", href: "/", mood: "idle", ...over });
 
 describe("buildNudges", () => {
-  it("puts an overdue write-up first, a due-soon one after it, and keeps one due after the weekend", () => {
-    const out = buildNudges(
-      input({
-        myMovements: [
-          { id: "m1", ticker: "NVDA", teamSlug: "tech", dueAt: new Date("2026-09-22T16:00:00Z") },
-          { id: "m2", ticker: "AAPL", teamSlug: "tech", dueAt: new Date("2026-09-23T16:00:00Z") },
-          { id: "m3", ticker: "MSFT", teamSlug: "tech", dueAt: new Date("2026-09-28T16:00:00Z") },
-        ],
-      }),
-    );
-    expect(out.map((n) => n.id)).toEqual(["movement:m1:overdue", "movement:m2:due", "movement:m3:due"]);
-    expect(out[0]).toMatchObject({ priority: 1, mood: "concerned", href: "/t/tech/movements/m1" });
-    expect(out[0].title).toBe("Your team's NVDA write-up is overdue");
-    expect(out[1].title).toBe("Your team's AAPL write-up is due in 22h");
-    expect(out[2]).toMatchObject({ priority: 5, title: "Your team's MSFT write-up is due Monday" });
-  });
-
-  it("gives an exec every unfinished write-up of the other teams they run: overdue ones urgent, the rest calm", () => {
-    const out = buildNudges(
-      input({
-        teamMovements: [
-          { id: "t1", ticker: "META", teamSlug: "consumer", teamName: "Consumer", dueAt: new Date("2026-09-20T16:00:00Z") },
-          { id: "t2", ticker: "JPM", teamSlug: "fig", teamName: "FIG", dueAt: new Date("2026-09-23T16:00:00Z") },
-          { id: "t3", ticker: "UNH", teamSlug: "healthcare", teamName: "Healthcare", dueAt: new Date("2026-09-21T16:00:00Z") },
-          { id: "t4", ticker: "AAPL", teamSlug: "tech", teamName: "Tech", dueAt: null },
-        ],
-      }),
-    );
-    expect(out.map((n) => [n.id, n.priority, n.title])).toEqual([
-      ["movement:t1:team:overdue", 3, "META write-up is overdue"],
-      ["movement:t3:team:overdue", 3, "UNH write-up is overdue"],
-      ["movement:t2:team:due", 5, "JPM write-up is due Wed, Sep 23, 12:00 PM ET"],
-    ]);
-    expect(out[0]).toMatchObject({ href: "/t/consumer/movements/t1", mood: "concerned", at: "2026-09-20T16:00:00.000Z" });
-    expect(out[1].detail).toBe("Healthcare hasn't finished it yet. Check in with the team.");
-    // Not yet due: no speech bubble, and it doesn't read as the exec's own.
-    expect(out[2]).toMatchObject({ mood: "idle", detail: "FIG is on it.", at: "2026-09-23T16:00:00.000Z", href: "/t/fig/movements/t2" });
-    expect(out[2].priority).toBeGreaterThan(BUBBLE_MAX_PRIORITY);
-    expect(out.some((n) => /owner|your/i.test(`${n.title} ${n.detail}`))).toBe(false);
-  });
-
   it("links in the member's scope when it shows the item, else in the item's team", () => {
     const rows = {
-      myMovements: [{ id: "m1", ticker: "NVDA", teamSlug: "tech", dueAt: new Date("2026-09-22T16:00:00Z") }],
       earnings: [{ id: "e1", ticker: "TSM", teamSlug: "tech", reportDate: "2026-09-22", reportHour: "bmo", expectationsLocked: false, mine: false }],
-      teamMovements: [{ id: "m2", ticker: "AAPL", teamSlug: "tech", teamName: "Tech", dueAt: new Date("2026-09-21T16:00:00Z") }],
     };
-    expect(buildNudges(input({ ...rows, scope: "fund" })).map((n) => n.href)).toEqual(["/t/fund/movements/m1", "/t/fund/earnings/e1", "/t/fund/movements/m2"]);
-    expect(buildNudges(input({ ...rows, scope: "tech" })).map((n) => n.href)).toEqual(["/t/tech/movements/m1", "/t/tech/earnings/e1", "/t/tech/movements/m2"]);
-    expect(buildNudges(input({ ...rows, scope: "consumer" })).map((n) => n.href)).toEqual(["/t/tech/movements/m1", "/t/tech/earnings/e1", "/t/tech/movements/m2"]);
+    expect(buildNudges(input({ ...rows, scope: "fund" })).map((n) => n.href)).toEqual(["/t/fund/earnings/e1"]);
+    expect(buildNudges(input({ ...rows, scope: "tech" })).map((n) => n.href)).toEqual(["/t/tech/earnings/e1"]);
+    expect(buildNudges(input({ ...rows, scope: "consumer" })).map((n) => n.href)).toEqual(["/t/tech/earnings/e1"]);
   });
 
   it("flags today's reports, asks the holding's team to lock expectations, and rolls the rest of the week into one line", () => {
@@ -153,16 +108,14 @@ describe("moods and routes", () => {
   it("reads tickers from holding pages and boards, and steps aside on agent pages", () => {
     expect(tickerFromPath("/t/tech/h/nvda")).toBe("NVDA");
     expect(tickerFromPath("/t/tech/agent/h/BRK.B")).toBe("BRK.B");
-    expect(tickerFromPath("/t/tech/movements")).toBeNull();
+    expect(tickerFromPath("/t/tech/models")).toBeNull();
     expect(companionHiddenOn("/t/tech/agent")).toBe(true);
     expect(companionHiddenOn("/t/tech/agent/h/NVDA")).toBe(true);
     expect(companionHiddenOn("/t/tech/agents-guide")).toBe(false);
     expect(companionHiddenOn("/hoot/0b7f")).toBe(true);
     expect(companionHiddenOn("/hootenanny")).toBe(false);
-    // Home and a movement write-up are conversations with Hoot already; the Calendar keeps the corner button.
+    // Home is a conversation with Hoot already; the Calendar keeps the corner button.
     expect(companionHiddenOn("/")).toBe(true);
-    expect(companionHiddenOn("/t/tech/movements")).toBe(true);
-    expect(companionHiddenOn("/t/tech/movements/m1")).toBe(true);
     expect(companionHiddenOn("/t/tech/earnings")).toBe(false);
     expect(companionHiddenOn("/t/fund/economic-calendar")).toBe(false);
     expect(companionHiddenOn("/t/tech/earnings/e1")).toBe(false);

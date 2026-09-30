@@ -15,7 +15,6 @@ describe("sectionFor", () => {
     expect(sectionFor("/t/fund/what-if")).toBe("portfolio");
     expect(sectionFor("/t/fund/activity")).toBe("portfolio");
     expect(sectionFor("/t/fund/h/NVDA")).toBe("holding");
-    expect(sectionFor("/t/tech/movements/abc")).toBe("holding");
     expect(sectionFor("/t/tech/models/m1")).toBe("holding");
     expect(sectionFor("/t/tech/sell-side/c2")).toBe("holding");
     expect(sectionFor("/t/tech/earnings/e1")).toBe("holding");
@@ -37,7 +36,7 @@ describe("portfolio views", () => {
     expect(portfolioViewFor("/t/tech/performance")).toBe("performance");
     expect(portfolioViewFor("/t/fund/what-if")).toBe("what-if");
     expect(portfolioViewFor("/t/fund/h/NVDA")).toBeNull();
-    expect(portfolioViewFor("/t/fund/movements")).toBeNull();
+    expect(portfolioViewFor("/t/fund/models")).toBeNull();
   });
 
   it("gives the fund all six to execs, and a team's book without Activity", () => {
@@ -75,8 +74,8 @@ describe("navModel: the sidebar", () => {
 });
 
 describe("navModel: the default header", () => {
-  it("sends a holding and its write-ups, models, calls and reports back to the Portfolio", () => {
-    for (const pathname of ["/t/fund/h/NVDA", "/t/fund/movements/m1", "/t/fund/earnings/e1"]) {
+  it("sends a holding and its models, calls and reports back to the Portfolio", () => {
+    for (const pathname of ["/t/fund/h/NVDA", "/t/fund/models/m1", "/t/fund/earnings/e1"]) {
       const nav = navModel({ pathname, ...exec });
       expect(nav.back, pathname).toEqual({ label: "Portfolio", href: "/t/fund" });
       expect(nav.crumbs, pathname).toEqual([{ label: "Portfolio", href: "/t/fund" }]);
@@ -104,7 +103,6 @@ describe("destinations", () => {
       "What if",
       "Markets",
       "Threads",
-      "Write-ups",
       "Models",
       "Sell-side calls",
       "Weekly update",
@@ -117,7 +115,6 @@ describe("destinations", () => {
       "/t/tech/what-if",
       "/markets",
       "/hoot",
-      "/t/tech/movements",
       "/t/tech/models",
       "/t/tech/sell-side",
     ]);

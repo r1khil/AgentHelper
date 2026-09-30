@@ -63,10 +63,3 @@ export function previousTradingDay(isoDate: string) {
   while (!isTradingDay(d.toISODate()!)) d = d.minus({ days: 1 });
   return d.toISODate()!;
 }
-
-/** Noon Eastern on the next trading day, as a JS Date (UTC instant). */
-export function movementDueAt(sessionDate: string) {
-  const next = nextTradingDay(sessionDate);
-  return DateTime.fromISO(next, { zone: NY }).set({ hour: 12, minute: 0, second: 0, millisecond: 0 }).toJSDate();
-}
-

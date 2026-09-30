@@ -37,9 +37,6 @@ export type PackListItem = {
 export type WeekStats = {
   fund: number | null;
   spx: number | null;
-  movementsOpened: number | null;
-  /** The movements the close check opened that week, oldest first; the move is against the S&P in percentage points. */
-  movements: { ticker: string; sessionDate: string; relativePp: number | null }[];
   window: { start: string; end: string };
 };
 

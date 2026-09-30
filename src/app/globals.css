@@ -197,7 +197,7 @@
     /* The amber of "check this". A fill only behind a whole notice; statuses are words. */
     --caution: #fdf6ec;
     --caution-foreground: #b45309;
-    /* The frame around a notice that needs you (a holding's overdue write-ups). */
+    /* The frame around a notice that needs you (a holding's expectations due). */
     --caution-line: #f3dfc1;
     --good: #f4f4f5;
     --good-foreground: #52525b;

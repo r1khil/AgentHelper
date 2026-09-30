@@ -7,9 +7,9 @@ import type { Feedback } from "@/db/schema";
  * Feedback on a student's reasoning: flags, never a rewrite. Returns structured bullets.
  * The model is told the evidence it may reference; it may not add facts of its own.
  */
-export async function reasoningFeedback(input: { kind: "movement" | "earnings"; ticker: string; studentText: string; thesis: string | null; evidence: string; expectations?: string | null }): Promise<Feedback> {
+export async function reasoningFeedback(input: { kind: "earnings"; ticker: string; studentText: string; thesis: string | null; evidence: string; expectations?: string | null }): Promise<Feedback> {
   if (!agentConfigured()) throw new Error("Agent is not configured");
-  const instructions = `You review a student analyst's ${input.kind === "movement" ? "major-movement update" : "post-earnings reflection"} for ${input.ticker} at a university investment fund.
+  const instructions = `You review a student analyst's post-earnings reflection for ${input.ticker} at a university investment fund.
 Your only job is to flag problems in THEIR reasoning. You never rewrite, redraft, or supply a replacement argument or conclusion. Do not propose what the update should say.
 Judge only against the evidence list and thesis below. If the student asserts something the evidence does not support, list it under "unsupported". If evidence in the list is relevant but ignored, list it under "missing". Offer alternative explanations the evidence would also fit under "alternatives" (as questions or possibilities, not conclusions). If the reasoning contradicts the recorded thesis, list it under "contradictions". Add up to three sharpening "questions".
 Each bullet: one sentence, specific, quoting the student's words where useful. Empty arrays are fine.

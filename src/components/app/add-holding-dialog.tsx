@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-/** Adds a holding to a team. It belongs to the whole team: anyone on it writes its movement updates. */
+/** Adds a holding to a team. It belongs to the whole team. */
 export function AddHoldingDialog({ teamId, primary }: { teamId: string; /** The page header's action: an ink button, no icon. */ primary?: boolean }) {
   const [open, setOpen] = useState(false);
   const [, action, pending] = useActionState<ActionResult | null, FormData>(async (prev, fd) => {

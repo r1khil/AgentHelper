@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EconomicEvent } from "@/lib/economic-calendar/types";
 import type { FlowIn, TradeIn } from "@/lib/portfolio/activity";
-import { earningsWindow, filterLedger, pickEconomicEvents, pickMovements, reportTiming, resolveWorkspaceScope, signedFlow, tradeTotals } from "./workspace-shape";
+import { earningsWindow, filterLedger, pickEconomicEvents, reportTiming, resolveWorkspaceScope, signedFlow, tradeTotals } from "./workspace-shape";
 
 const teams = [
   { id: "t1", slug: "tech", name: "Technology" },
@@ -12,8 +12,8 @@ const associate = { role: "associate_analyst" as const, teamId: "t1" };
 
 describe("resolveWorkspaceScope", () => {
   it("defaults to the chat's team, and to the whole fund in a fund-wide chat", () => {
-    expect(resolveWorkspaceScope(teams, associate, "t1", undefined, "movements")).toMatchObject({ slug: "tech", label: "Technology", teamIds: ["t1"], fund: false });
-    expect(resolveWorkspaceScope(teams, exec, null, undefined, "movements")).toMatchObject({ slug: "fund", teamIds: ["t1", "t2"], fund: true });
+    expect(resolveWorkspaceScope(teams, associate, "t1", undefined, "earnings")).toMatchObject({ slug: "tech", label: "Technology", teamIds: ["t1"], fund: false });
+    expect(resolveWorkspaceScope(teams, exec, null, undefined, "earnings")).toMatchObject({ slug: "fund", teamIds: ["t1", "t2"], fund: true });
   });
 
   it("reads a fund-wide chat (no team) as every team, and still names one team when asked", () => {
@@ -31,30 +31,9 @@ describe("resolveWorkspaceScope", () => {
   });
 
   it("keeps a member to their own team, as the pages do", () => {
-    expect(() => resolveWorkspaceScope(teams, associate, "t1", "fig", "movements")).toThrow(/visible to that team/);
-    expect(() => resolveWorkspaceScope(teams, associate, "t1", "fund", "movements")).toThrow(/execs and admins only/);
-    expect(() => resolveWorkspaceScope(teams, associate, "t1", "energy", "movements")).toThrow(/No team matches "energy". Teams: tech, fig\./);
-  });
-});
-
-describe("pickMovements", () => {
-  const now = Date.parse("2026-09-29T16:00:00Z");
-  const rows = [
-    { id: "a", ticker: "AVGO", status: "open" as const, dueAt: new Date("2026-09-28T16:00:00Z") },
-    { id: "b", ticker: "META", status: "in_progress" as const, dueAt: new Date("2026-09-30T16:00:00Z") },
-    { id: "c", ticker: "AVGO", status: "completed" as const, dueAt: new Date("2026-09-20T16:00:00Z") },
-  ];
-
-  it("counts open and in-progress as unfinished, and overdue only when past due and not done", () => {
-    expect(pickMovements(rows, { status: "unfinished", limit: 10, now }).rows.map((r) => r.id)).toEqual(["a", "b"]);
-    expect(pickMovements(rows, { status: "overdue", limit: 10, now }).rows.map((r) => r.id)).toEqual(["a"]);
-    expect(pickMovements(rows, { status: "completed", limit: 10, now }).rows.map((r) => r.id)).toEqual(["c"]);
-  });
-
-  it("filters by ticker in any case and reports the match count before the cap", () => {
-    const r = pickMovements(rows, { ticker: "avgo", status: "all", limit: 1, now });
-    expect(r.rows.map((x) => x.id)).toEqual(["a"]);
-    expect(r.matched).toBe(2);
+    expect(() => resolveWorkspaceScope(teams, associate, "t1", "fig", "earnings")).toThrow(/visible to that team/);
+    expect(() => resolveWorkspaceScope(teams, associate, "t1", "fund", "earnings")).toThrow(/execs and admins only/);
+    expect(() => resolveWorkspaceScope(teams, associate, "t1", "energy", "earnings")).toThrow(/No team matches "energy". Teams: tech, fig\./);
   });
 });
 

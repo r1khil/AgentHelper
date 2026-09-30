@@ -113,13 +113,13 @@ describe("proposalToolsFor", () => {
   it("offers only the change the member's own words ask for", () => {
     expect(proposalToolsFor("add a note to AXP that management guided to 8% revenue growth")).toEqual(["add_note"]);
     expect(proposalToolsFor("pin this chat to META's board")).toEqual(["pin_chat"]);
-    expect(proposalToolsFor("stop reminding me about the SYK write-up")).toEqual(["dismiss_nudge"]);
+    expect(proposalToolsFor("stop reminding me about the SYK report")).toEqual(["dismiss_nudge"]);
     expect(proposalToolsFor("record this trade in the ledger:\nAction (Buy, Sell): Buy")).toEqual(["record_trades_from_ticket"]);
   });
   it("offers nothing for a research question, however the answer's sources are worded", () => {
     expect(proposalToolsFor("Summarize the last 10-Q for AXP: revenue, margins, and guidance")).toEqual([]);
     expect(proposalToolsFor("What drove this period's performance versus the S&P 500?")).toEqual([]);
-    expect(proposalToolsFor("write my movement update for me")).toEqual([]);
+    expect(proposalToolsFor("write my expectations for me")).toEqual([]);
   });
 });
 
@@ -133,13 +133,13 @@ describe("cleanNoteBody", () => {
 
 describe("matchNudges", () => {
   const nudges = [
-    { id: "movement:m1:due", title: "Your team's SYK write-up is due in 5h" },
+    { id: "earnings:e2:today", title: "SYK reports today after the close" },
     { id: "earnings:e1:expectations", title: "Write down expectations for AXP" },
     { id: "changelog:170", title: "New in the app" },
   ];
   it("finds a nudge by id or by the member's words", () => {
     expect(matchNudges("changelog:170", nudges).map((n) => n.id)).toEqual(["changelog:170"]);
-    expect(matchNudges("the SYK reminder", nudges).map((n) => n.id)).toEqual(["movement:m1:due"]);
+    expect(matchNudges("the SYK reminder", nudges).map((n) => n.id)).toEqual(["earnings:e2:today"]);
     expect(matchNudges("AXP expectations", nudges).map((n) => n.id)).toEqual(["earnings:e1:expectations"]);
   });
   it("finds nothing rather than guessing", () => {

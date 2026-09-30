@@ -4,7 +4,7 @@ Research workspace for the six sector teams of Temple University's Owl Fund. One
 
 > The agent prepares the evidence. The student owns the interpretation.
 
-The agent pulls prices, SEC filings, XBRL financials, news, and earnings dates, and cites a source for every fact. It never writes a student's movement update, earnings reflection, thesis, or conclusion.
+The agent pulls prices, SEC filings, XBRL financials, news, and earnings dates, and cites a source for every fact. It never writes a student's earnings reflection, thesis, or conclusion.
 
 ## What it does
 
@@ -12,7 +12,6 @@ The agent pulls prices, SEC filings, XBRL financials, news, and earnings dates, 
 | --- | --- | --- |
 | Holdings | Live quote and day move vs the S&P 500, filings, news, notes, documents (uploads are filed into the Fund's Google Drive) | Writes and maintains the thesis |
 | Research agent | Chat with tools for quotes, price history, relative moves, EDGAR filings and documents, XBRL facts, news, earnings calendar, team context, and the team's own documents in the Fund's Google Drive (initiating reports, earnings updates, models). Every claim carries a `[src:ID]` chip | Asks questions, judges the evidence |
-| Major movements | Nightly close check: any holding whose daily return differs from the S&P 500 by 4 pp or more opens an investigation with evidence and a noon-next-day deadline, and emails the team's lead analysts (or the whole team when it has no lead); anyone on the team writes it | Writes the update, asks for feedback, marks it complete |
 | Earnings | Tracks the next report date (confirmed vs estimated); locks the student's expectations at the report; gathers the 8-K, press release and XBRL actuals with sources | Records expectations before, writes the reflection after |
 | Model historicals | Reads an uploaded Excel model, maps line items to XBRL concepts, proposes the other periods with period, unit, filing and derivation, and writes approved values into a new file version without touching formulas | Maps the anchor period, approves or rejects each proposal |
 
@@ -59,10 +58,10 @@ Setup (one time, by the admin whose account owns the folder):
 
 ## Scheduled jobs
 
-`vercel.json` runs the close check at 23:00 UTC on weekdays, the price history job at 23:30 UTC, the morning sweep (pending evidence, reminders, overdue notices, earnings calendar, email retries, Drive channel renewal, crawl, and file reading) at 14:00 UTC, and the weekly update pack at 13:00 UTC on Sundays (see `docs/weekly-update.md`). Both endpoints accept `Authorization: Bearer $CRON_SECRET` and can be run from the Admin page, with a date for backfills:
+`vercel.json` runs the price history job at 23:30 UTC on weekdays, the morning sweep (earnings calendar, email retries, Drive channel renewal, crawl, and file reading) at 14:00 UTC, and the weekly update pack at 13:00 UTC on Sundays (see `docs/weekly-update.md`). Each endpoint accepts `Authorization: Bearer $CRON_SECRET` and can be run from the Admin page:
 
 ```bash
-curl -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/close?date=2026-08-28"
+curl -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/prices"
 ```
 
 ## Scripts
@@ -90,7 +89,7 @@ Team sidebar tab for recording, timestamped transcripts, structured call briefs,
 
 ## Hoot
 
-Hoot is the owl companion in the bottom-right corner. His face shows the state of things at a glance: dozing after the close, alert on earnings day, worried about an overdue write-up. Clicking him (or ⌘J / Ctrl J) opens a quick ask that starts a research chat fitted to the page, pinned to the holding when you're on one. The same panel lists what needs you: movement deadlines, earnings this week, finished sell-side briefs, Drive proposals, the weekly pack and what's new. He speaks up on his own at most once per page and three times per session. Anyone can hide him from the sidebar. Apply `drizzle/0016_hoot.sql`.
+Hoot is the owl companion in the bottom-right corner. His face shows the state of things at a glance: dozing after the close, alert on earnings day, worried about something overdue. Clicking him (or ⌘J / Ctrl J) opens a quick ask that starts a research chat fitted to the page, pinned to the holding when you're on one. The same panel lists what needs you: earnings this week, finished sell-side briefs, Drive proposals, the weekly pack and what's new. He speaks up on his own at most once per page and three times per session. Anyone can hide him from the sidebar. Apply `drizzle/0016_hoot.sql`.
 
 He stays quietly alive without asking for attention: his eyes follow the caret while you type, glance where you click and the way you scroll, and wander when nothing is happening (`src/components/app/hoot/attention.ts`, one set of listeners for every Hoot on the page). He closes his eyes and looks away while a password is typed. Every 20 to 50 seconds of inactivity he fidgets (a shuffle, a feather ruffle, a nod when dozing). He glances over when you change pages, waves when you come back after five minutes away, hops once when something urgent turns up, and closes his eyes happily if you rest the pointer on him. Drag him, or use the panel's Move button, to switch bottom corners; the choice is kept per device. None of it runs with reduced motion or in a hidden tab.
 
