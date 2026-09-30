@@ -80,7 +80,7 @@ export function HoldingChart({ ticker, bars, marks, currency }: { ticker: string
     <div className="flex flex-col">
       <div className="mt-[22px]">
         {view ? (
-          <LineChart lines={view.lines} markers={view.markers} label={`${ticker} price, ${range === "All" ? "all history" : range}${view.markers.length ? `, with ${view.markers.length} fund ${view.markers.length === 1 ? "trade" : "trades"} marked` : ""}`} formatX={view.formatX} formatY={(v) => fmtCurrency(v, currency)} />
+          <LineChart key={range} lines={view.lines} markers={view.markers} label={`${ticker} price, ${range === "All" ? "all history" : range}${view.markers.length ? `, with ${view.markers.length} fund ${view.markers.length === 1 ? "trade" : "trades"} marked` : ""}`} formatX={view.formatX} formatY={(v) => fmtCurrency(v, currency)} />
         ) : (
           <div className="grid h-[220px] place-items-center text-body text-muted-foreground" role="status">
             {range === "1D" ? (day.status === "error" ? <span className="text-caution-foreground">The day&rsquo;s prices could not be loaded just now.</span> : day.status === "loading" ? "Loading the day’s prices…" : "No prices yet today.") : "No price history is available for this range."}

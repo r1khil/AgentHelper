@@ -4,12 +4,13 @@ import {
   useId,
   useMemo,
   useReducer,
-  useRef,
   useState,
   type Dispatch,
   type PointerEvent,
 } from "react";
 import {
+  DefaultZIndexes,
+  ZIndexLayer,
   CartesianGrid,
   Line,
   LineChart,
@@ -42,6 +43,7 @@ import {
   tone,
   valueAxis,
 } from "./primitives";
+import { useScrubBindings } from "./interaction";
 import { fmtAccounting, fmtBp, fmtCurrency, fmtPct } from "@/lib/format";
 
 import {
@@ -232,6 +234,7 @@ function ChartSession({
       <div
         key={range}
         className="financial-chart-enter relative h-64 w-full sm:h-72"
+        style={{ touchAction: "pan-y" }}
       >
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <LineChart
@@ -300,6 +303,7 @@ function ChartSession({
         </ResponsiveContainer>
         {active !== null && (
           <div
+            role="status"
             className={`pointer-events-none absolute top-2 z-10 max-w-[calc(100%-4rem)] ${active < points.length / 2 ? "right-3" : "left-16"}`}
           >
             <ChartTooltip
@@ -452,12 +456,12 @@ function ScrubLayer({
   label: string;
   helpId: string;
 }) {
-  const pointer = useRef<number | null>(null);
   const gradientId = useId();
   const area = usePlotArea();
   const xScale = useXAxisScale();
   const yScale = useYAxisScale();
   const inverse = useXAxisInverseScale();
+  const bind = useScrubBindings(points.length, selection, dispatch, indexAt);
   if (!area || !xScale || !yScale || !inverse) return null;
   const { active } = selection;
   const bounds = selectionBounds(selection);
@@ -472,6 +476,7 @@ function ScrubLayer({
         : "var(--down)";
   function indexAt(event: PointerEvent<SVGRectElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
+    if (!area || !inverse || !rect.width) return null;
     const pixel =
       area!.x +
       Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) *
@@ -482,14 +487,9 @@ function ScrubLayer({
       ? nearestPoint(points, time)
       : null;
   }
-  function release(target: SVGRectElement) {
-    const id = pointer.current;
-    pointer.current = null;
-    if (id !== null && target.hasPointerCapture(id))
-      target.releasePointerCapture(id);
-  }
   const endpoints = bounds ?? (active === null ? [] : [active]);
   return (
+    <ZIndexLayer zIndex={DefaultZIndexes.cursorLine}>
     <g>
       {bounds && (
         <g pointerEvents="none">
@@ -591,86 +591,9 @@ function ScrubLayer({
           })
           .join("; ")}`}
         className="outline-none focus-visible:stroke-ring focus-visible:stroke-2"
-        onPointerDown={(event) => {
-          if (
-            !event.isPrimary ||
-            event.button !== 0 ||
-            pointer.current !== null
-          )
-            return;
-          const index = indexAt(event);
-          if (index === null) return;
-          event.currentTarget.focus({ preventScroll: true });
-          pointer.current = event.pointerId;
-          event.currentTarget.setPointerCapture(event.pointerId);
-          dispatch({ type: "start", index });
-        }}
-        onPointerMove={(event) => {
-          if (
-            !event.isPrimary ||
-            (pointer.current !== null && pointer.current !== event.pointerId)
-          )
-            return;
-          const index = indexAt(event);
-          if (index !== null)
-            dispatch({
-              type: pointer.current === event.pointerId ? "move" : "hover",
-              index,
-            });
-        }}
-        onPointerUp={(event) => {
-          if (pointer.current !== event.pointerId) return;
-          const index = indexAt(event);
-          dispatch(index === null ? { type: "clear" } : { type: "end", index });
-          release(event.currentTarget);
-        }}
-        onPointerLeave={() => dispatch({ type: "leave" })}
-        onPointerCancel={(event) => {
-          if (pointer.current === event.pointerId) {
-            release(event.currentTarget);
-            dispatch({ type: "clear" });
-          }
-        }}
-        onLostPointerCapture={() => {
-          pointer.current = null;
-          dispatch({ type: "lost" });
-        }}
-        onBlur={(event) => {
-          release(event.currentTarget);
-          dispatch({ type: "lost" });
-          dispatch({ type: "leave" });
-        }}
-        onFocus={() => dispatch({ type: "hover", index: points.length - 1 })}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            event.preventDefault();
-            release(event.currentTarget);
-            dispatch({ type: "clear" });
-            return;
-          }
-          const index = active ?? points.length - 1;
-          const next =
-            event.key === "ArrowLeft"
-              ? Math.max(0, index - 1)
-              : event.key === "ArrowRight"
-                ? Math.min(points.length - 1, index + 1)
-                : event.key === "Home"
-                  ? 0
-                  : event.key === "End"
-                    ? points.length - 1
-                    : undefined;
-          if (next !== undefined) {
-            event.preventDefault();
-            release(event.currentTarget);
-            dispatch({
-              type: "key",
-              index: next,
-              extend: event.shiftKey,
-              fallback: index,
-            });
-          }
-        }}
+        {...bind}
       />
     </g>
+    </ZIndexLayer>
   );
 }
