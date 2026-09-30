@@ -8,8 +8,8 @@ import { getSetting } from "@/lib/settings";
  * discounted ones can change. Embeddings, reranking and call transcription stay on OpenRouter.
  */
 export const AGENT_MODELS = [
-  { id: "inclusionai/ling-3.1-flash-free", label: "Ling 3.1 Flash (free)", price: "free" },
   { id: "alibaba/qwen3.7-flash", label: "Qwen 3.7 Flash", price: "$0.03 / $0.13" },
+  { id: "inclusionai/ling-3.1-flash-free", label: "Ling 3.1 Flash (free)", price: "free" },
   { id: "inclusionai/ling-3.0-flash", label: "Ling 3.0 Flash", price: "$0.02 / $0.06" },
   { id: "inception/mercury-2.5", label: "Mercury 2.5", price: "$0.04 / $0.15" },
   { id: "inclusionai/ling-3.0-flash-fin", label: "Ling 3.0 Flash Fin", price: "$0.075 / $0.22" },
@@ -23,9 +23,12 @@ export const AGENT_MODELS = [
 
 export type AgentModelId = (typeof AGENT_MODELS)[number]["id"];
 
-/** Rikhil's choice on 2026-09-29: the free Ling 3.1 Flash first, Qwen 3.7 Flash when it fails. */
-export const DEFAULT_MODEL: AgentModelId = "inclusionai/ling-3.1-flash-free";
-export const DEFAULT_BACKUP_MODEL: AgentModelId = "alibaba/qwen3.7-flash";
+/**
+ * Rikhil's choice on 2026-09-29: Qwen 3.7 Flash first, the free Ling 3.1 Flash when it fails. Ling was the primary
+ * until live tests showed it stalling ~105 s on a simple tool call, and the fallback only moves on errors.
+ */
+export const DEFAULT_MODEL: AgentModelId = "alibaba/qwen3.7-flash";
+export const DEFAULT_BACKUP_MODEL: AgentModelId = "inclusionai/ling-3.1-flash-free";
 
 /** Keys in app_settings holding the admin's choices. New keys, so the OpenRouter-era `agent_model` choice is ignored. */
 export const AGENT_MODEL_SETTING = "gateway_agent_model";
