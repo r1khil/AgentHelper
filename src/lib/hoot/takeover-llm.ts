@@ -1,6 +1,7 @@
 // The one model call page-agent makes per step when Hoot takes over the screen to open a page. The browser sends an
 // OpenAI-style chat completion; the server forwards it to the AI Gateway with Hoot's own model and key. Pure, so the
 // shape it accepts is testable: only page-agent's single AgentOutput tool call, never a general-purpose completion.
+import { TAKEOVER_SYSTEM } from "./takeover";
 
 /** The tool page-agent packs every step's reflection and action into. */
 export const TAKEOVER_TOOL = "AgentOutput";
@@ -28,6 +29,8 @@ export function takeoverRequest(body: unknown, model: string): { body: Record<st
   if (!Array.isArray(b.tools) || b.tools.length !== 1) return { error: "Expected page-agent's one tool." };
   const tool = b.tools[0] as { type?: unknown; function?: { name?: unknown } };
   if (tool?.type !== "function" || tool.function?.name !== TAKEOVER_TOOL) return { error: "Expected page-agent's AgentOutput tool." };
+  // page-agent puts the takeover's own instructions in the user message; without them this isn't a takeover step.
+  if (!messages.some((m) => m.role === "user" && typeof m.content === "string" && m.content.includes(TAKEOVER_SYSTEM))) return { error: "Expected a Hoot takeover step." };
   return {
     body: {
       model,
@@ -41,5 +44,14 @@ export function takeoverRequest(body: unknown, model: string): { body: Record<st
   };
 }
 
-/** Whether a failed call is worth one more try on the backup model: rate limits and provider outages, not bad input. */
-export const retryOnBackup = (status: number) => status === 408 || status === 429 || status >= 500;
+/** Steps a member may send a minute: a takeover is at most 6 steps, each retried once. */
+export const TAKEOVER_STEPS_PER_MINUTE = 12;
+
+/** Whether a member may send another step now, recording it if so. `log` holds each member's recent step times. */
+export function allowStep(log: Map<string, number[]>, userId: string, now = Date.now()): boolean {
+  const recent = (log.get(userId) ?? []).filter((t) => now - t < 60_000);
+  const ok = recent.length < TAKEOVER_STEPS_PER_MINUTE;
+  if (ok) recent.push(now);
+  log.set(userId, recent);
+  return ok;
+}

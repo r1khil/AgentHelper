@@ -1,7 +1,8 @@
 import { getVercelOidcToken } from "@vercel/oidc";
 import { getCurrentUser } from "@/lib/auth";
 import { agentBackupModelId, agentConfigured, agentModelId } from "@/lib/agent/model";
-import { retryOnBackup, takeoverRequest, TAKEOVER_MAX_BODY } from "@/lib/hoot/takeover-llm";
+import { isFallbackStatus } from "@/lib/agent/fallback";
+import { allowStep, takeoverRequest, TAKEOVER_MAX_BODY } from "@/lib/hoot/takeover-llm";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -9,6 +10,8 @@ export const maxDuration = 60;
 const GATEWAY = "https://ai-gateway.vercel.sh/v1/chat/completions";
 /** A step normally answers in 2–4 s; one stalled past this is cut off and retried rather than waited out. */
 const STEP_TIMEOUT_MS = 12_000;
+/** Each member's recent steps, per server instance: enough to stop a loop from spending the gateway credit. */
+const steps = new Map<string, number[]>();
 
 /**
  * page-agent's model endpoint (its baseURL is /api/hoot/page-agent) for when Hoot takes over the screen to open a page.
@@ -18,6 +21,7 @@ const STEP_TIMEOUT_MS = 12_000;
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return Response.json({ error: { message: "Unauthorized" } }, { status: 401 });
+  if (!allowStep(steps, user.id)) return Response.json({ error: { message: "Too many takeover steps; try again in a minute." } }, { status: 429 });
   if (!agentConfigured()) return Response.json({ error: { message: "The AI Gateway is not configured." } }, { status: 503 });
 
   const text = await req.text();
@@ -49,7 +53,8 @@ export async function POST(req: Request) {
 
   let res = await call(await agentModelId());
   // A stall goes back to page-agent to retry on the primary; the backup is slower still.
-  if (!res.ok && retryOnBackup(res.status) && !res.headers.has("x-takeover-stall")) {
+  if (!res.ok && isFallbackStatus(res.status) && !res.headers.has("x-takeover-stall")) {
+    await res.body?.cancel();
     console.warn(`[hoot takeover] primary model failed (${res.status}); trying the backup`);
     res = await call(await agentBackupModelId());
   }

@@ -24,23 +24,29 @@ export const takeoverStore = {
   },
 };
 
-let current: { stop: () => void } | null = null;
+/** The takeover in progress. A newer one marks it superseded, so it neither updates the bar nor falls back. */
+let current: { stop: () => Promise<void>; superseded: boolean } | null = null;
+/** Bumped by each takeover as it starts, so one still loading page-agent knows a newer one came after it. */
+let latest = 0;
 
 /** End the takeover in progress; the caller then opens the page directly. */
 export function stopTakeover() {
-  current?.stop();
+  void current?.stop();
 }
 
 const here = () => ({ pathname: window.location.pathname, search: window.location.search });
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Until the address has changed from `before` and the new page has rendered a moment, or 4 s. */
+/** Until the address has changed from `before` and the new page has rendered a moment, or 2.5 s for a link that didn't move. */
 async function landed(before: string) {
-  const until = Date.now() + 4000;
+  const until = Date.now() + 2500;
   while (window.location.href === before && Date.now() < until) await sleep(100);
-  await sleep(400);
+  if (window.location.href !== before) await sleep(400);
 }
+
+/** The model's next goal for the bar, without page-agent's element numbers ("the FIG menu item [33]"). */
+const forBar = (goal: string) => goal.replace(/\s*\[\d+\]/g, "");
 
 // Dev only: run a takeover from the console without asking Hoot, e.g. __hootTakeOver("/t/fig/risk", "Risk for FIG").
 if (process.env.NODE_ENV === "development" && typeof window !== "undefined") {
@@ -49,14 +55,20 @@ if (process.env.NODE_ENV === "development" && typeof window !== "undefined") {
 
 /**
  * Drive the screen to `href`. Resolves true when the member is on the destination (or already was), false when the
- * caller should open it directly: reduced motion, or page-agent didn't make it.
+ * caller should open it directly: reduced motion, or page-agent didn't make it; null when a newer takeover replaced
+ * this one, which then owns the screen.
  */
-export async function takeOver(action: { href: string; label: string }): Promise<boolean> {
+export async function takeOver(action: { href: string; label: string }): Promise<boolean | null> {
   if (atDestination(here(), action.href)) return true;
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return false;
-  current?.stop();
+  const mine = ++latest;
+  if (current) {
+    current.superseded = true;
+    await current.stop();
+  }
 
   const [{ PageAgentCore }, { PageController }] = await Promise.all([import("@page-agent/core"), import("@page-agent/page-controller")]);
+  if (mine !== latest) return null;
 
   // page-agent's controller, limited to what a navigation needs: links, tabs and menus, never typing or buttons.
   class HootController extends PageController {
@@ -69,7 +81,8 @@ export async function takeOver(action: { href: string; label: string }): Promise
       const result = await super.clickElement(index);
       // A link to another page: let it land before the next look, or the model sees the old page and clicks again.
       const to = el.closest("a[href]")?.getAttribute("href");
-      if (result.success && to && new URL(to, before).href !== before) await landed(before);
+      const page = (u: string) => u.split("#")[0];
+      if (result.success && to && page(new URL(to, before).href) !== page(before)) await landed(before);
       return result;
     }
     override async inputText() {
@@ -109,19 +122,24 @@ export async function takeOver(action: { href: string; label: string }): Promise
     },
   });
 
+  const run = { stop: () => agent.stop(), superseded: false };
   agent.addEventListener("historychange", () => {
     const last = agent.history.at(-1);
-    if (last?.type === "step" && last.reflection.next_goal) set({ ...action, step: last.reflection.next_goal });
+    if (!run.superseded && last?.type === "step" && last.reflection.next_goal) set({ ...action, step: forBar(last.reflection.next_goal) });
   });
 
-  const stop = () => void agent.stop();
+  const stop = () => void run.stop();
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape") stop();
+    if (e.key !== "Escape") return;
+    // Esc here means Skip, not also closing the answer panel or the palette behind the mask.
+    e.stopPropagation();
+    e.preventDefault();
+    stop();
   };
   const timer = window.setTimeout(stop, TAKEOVER_TIMEOUT_MS);
   // The mask swallows keys that reach it; listen before it does.
   window.addEventListener("keydown", onKey, true);
-  current = { stop };
+  current = run;
   set({ ...action, step: null });
   try {
     await agent.execute(takeoverTask(action.label, action.href));
@@ -130,11 +148,11 @@ export async function takeOver(action: { href: string; label: string }): Promise
   } finally {
     window.clearTimeout(timer);
     window.removeEventListener("keydown", onKey, true);
-    if (current?.stop === stop) {
+    if (current === run) {
       current = null;
       set(null);
     }
     agent.dispose();
   }
-  return atDestination(here(), action.href);
+  return run.superseded ? null : atDestination(here(), action.href);
 }

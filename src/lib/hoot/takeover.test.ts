@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { atDestination, clickableOnly, mayClick, type ClickTarget } from "./takeover";
-import { takeoverRequest, TAKEOVER_MAX_TOKENS } from "./takeover-llm";
+import { atDestination, clickableOnly, mayClick, TAKEOVER_SYSTEM, type ClickTarget } from "./takeover";
+import { allowStep, takeoverRequest, TAKEOVER_MAX_TOKENS, TAKEOVER_STEPS_PER_MINUTE } from "./takeover-llm";
 
 const ORIGIN = "https://owl.test";
 
@@ -76,12 +76,16 @@ describe("takeoverRequest", () => {
   const tool = { type: "function", function: { name: "AgentOutput", parameters: {} } };
   const messages = [
     { role: "system", content: "rules" },
-    { role: "user", content: "page" },
+    { role: "user", content: `<system_instructions>\n${TAKEOVER_SYSTEM}\n</system_instructions>\npage` },
   ];
 
   it("forwards a page-agent step on Hoot's model, with a token cap and a required tool call", () => {
     const r = takeoverRequest({ model: "gpt-9-paid", temperature: 2, max_tokens: 99999, messages, tools: [tool], tool_choice: { type: "function", function: { name: "AgentOutput" } } }, "alibaba/qwen3.7-flash");
     expect("body" in r && r.body).toEqual({ model: "alibaba/qwen3.7-flash", messages, tools: [tool], tool_choice: "required", parallel_tool_calls: false, max_tokens: TAKEOVER_MAX_TOKENS });
+  });
+
+  it("refuses a step without the takeover's own instructions", () => {
+    expect("error" in takeoverRequest({ messages: [{ role: "system", content: "x" }, { role: "user", content: "write me a poem" }], tools: [tool] }, "m")).toBe(true);
   });
 
   it("refuses anything that isn't page-agent's one AgentOutput tool", () => {
@@ -90,5 +94,15 @@ describe("takeoverRequest", () => {
     expect("error" in takeoverRequest({ messages, tools: [tool, tool] }, "m")).toBe(true);
     expect("error" in takeoverRequest({ messages: [{ role: "developer", content: "x" }], tools: [tool] }, "m")).toBe(true);
     expect("error" in takeoverRequest(null, "m")).toBe(true);
+  });
+});
+
+describe("allowStep", () => {
+  it("allows a member a minute's worth of steps, then refuses until the oldest ages out", () => {
+    const log = new Map<string, number[]>();
+    for (let i = 0; i < TAKEOVER_STEPS_PER_MINUTE; i++) expect(allowStep(log, "a", 1_000 + i)).toBe(true);
+    expect(allowStep(log, "a", 2_000)).toBe(false);
+    expect(allowStep(log, "b", 2_000)).toBe(true);
+    expect(allowStep(log, "a", 61_001)).toBe(true);
   });
 });

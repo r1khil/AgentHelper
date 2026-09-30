@@ -34,7 +34,14 @@ export function useApplyHootAction() {
       const panel = answerPanelState();
       const askedAt = `${window.location.pathname}${window.location.search}`;
       // Hoot drives the screen there (page-agent), and opens it directly if that doesn't make it.
-      void takeOver(action).then((arrived) => {
+      // page-agent failing to load (a stale tab after a deploy) still opens the page.
+      const run = takeOver(action).catch((e: unknown) => {
+        console.warn("[hoot takeover] couldn't start", e);
+        return false;
+      });
+      void run.then((arrived) => {
+        // A later navigate took over the screen; it opens its own page.
+        if (arrived === null) return;
         if (!arrived) {
           if (action.href.startsWith("/t/")) markScopeIntent();
           router.push(action.href);
