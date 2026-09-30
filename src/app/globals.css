@@ -568,3 +568,24 @@ a:has(> .row-pending[data-pending]) { cursor: progress; }
 @keyframes tour-fade-in {
   from { opacity: 0; }
 }
+
+/*
+ * Hoot's takeover (page-agent's mask, components/app/hoot/takeover.ts), in the app's own ink instead of page-agent's
+ * rainbow: its animated glow and numbered element boxes are hidden, the screen gets a faint veil and a thin ink edge, and the cursor and its click
+ * ripple are ink too. Selectors match page-agent's hashed class names by prefix.
+ */
+#page-agent-runtime_simulator-mask {
+  background: color-mix(in oklab, var(--foreground) 4%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--foreground) 45%, transparent);
+}
+/* The glow's canvas sets display inline. */
+#page-agent-runtime_simulator-mask canvas,
+#playwright-highlight-container {
+  display: none !important;
+}
+#page-agent-runtime_simulator-mask [class*="_cursorBorder_"] {
+  background: var(--foreground);
+}
+#page-agent-runtime_simulator-mask [class*="_cursorRipple_"]::after {
+  border-color: color-mix(in oklab, var(--foreground) 60%, transparent);
+}

@@ -11,6 +11,7 @@ import type { CommandHolding, NavData, RecentChat, TabCount } from "@/lib/nav-da
 import { resolveScope } from "@/lib/scope";
 import { cn } from "@/lib/utils";
 import { HootAnswerPanel } from "../hoot/answer-panel";
+import { HootTakeoverBar } from "../hoot/takeover-bar";
 import { HootCorner } from "../hoot/hoot-corner";
 import { DefaultHead } from "../page-head";
 import { MobileBar, Sidebar, useTeamSection, type SidebarUser } from "../sidebar";
@@ -153,6 +154,8 @@ export function AppShell({ user, teams, signOut, hoot, backtestingLayout, initia
       />
       {/* A question asked from the palette is answered here, sliding in over the page. */}
       <HootAnswerPanel holdings={loaded?.holdings ?? []} />
+      {/* When Hoot drives the screen to a page it opened: what it's doing, and Skip. */}
+      <HootTakeoverBar />
     </>
   );
   const corner = hoot && <HootCorner onAsk={() => openPalette("ask")} suppressed={palette !== null} />;

@@ -7,10 +7,12 @@ import { toast } from "sonner";
 import { commandHref, parseHootCommand, scopeHref } from "@/lib/hoot/commands";
 import type { HootAction } from "@/lib/hoot/app-actions";
 import { markScopeIntent } from "@/components/app/shell/scope-intent";
+import { takeOver } from "./takeover";
 
 /**
- * Apply what Hoot did in a live answer (its navigate or set_theme tools): open the page, or change the theme. The
- * server already checked the page is one this member can open; this only runs for actions that stream in live.
+ * Apply what Hoot did in a live answer (its navigate or set_theme tools): drive the screen to the page (page-agent,
+ * see takeover.ts), or change the theme. The server already checked the page is one this member can open; this only
+ * runs for actions that stream in live.
  */
 export function useApplyHootAction() {
   const router = useRouter();
@@ -24,8 +26,13 @@ export function useApplyHootAction() {
       }
       // Asked for, so a scope change needs no "Switched to" notice.
       if (action.href.startsWith("/t/")) markScopeIntent();
-      router.push(action.href);
-      toast.success(`Hoot: Opening ${action.label}.`);
+      // Hoot drives the screen there (page-agent), and opens it directly if that doesn't make it.
+      void takeOver(action).then((arrived) => {
+        if (arrived) return;
+        if (action.href.startsWith("/t/")) markScopeIntent();
+        router.push(action.href);
+        toast.success(`Hoot: Opening ${action.label}.`);
+      });
     },
     [router, setTheme],
   );
