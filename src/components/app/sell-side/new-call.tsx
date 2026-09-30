@@ -24,11 +24,16 @@ type Props = {
 };
 
 /** "Record a call" as a button (the ink primary unless `variant` says otherwise); its form opens under it. */
-export function RecordACall({ variant = "default", ...props }: Omit<Props, "onCreated"> & { variant?: "default" | "secondary" }) {
+export function RecordACall({
+  variant = "default",
+  size = variant === "secondary" ? "sm" : "default",
+  label = "Record a call",
+  ...props
+}: Omit<Props, "onCreated"> & { variant?: "default" | "secondary"; size?: "sm" | "default"; label?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<Button variant={variant} size={variant === "secondary" ? "sm" : "default"} />}>Record a call</PopoverTrigger>
+      <PopoverTrigger render={<Button variant={variant} size={size} />}>{label}</PopoverTrigger>
       <PopoverContent align="end" className="w-[340px] gap-0 p-4">
         <NewCall {...props} onCreated={() => setOpen(false)} />
       </PopoverContent>
