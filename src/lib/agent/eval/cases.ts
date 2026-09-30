@@ -114,6 +114,21 @@ export const EVAL_CASES: EvalCase[] = [
     note: "2026-09-29 prod: asked from a general thread, the router offered no book tools and Hoot said it couldn't retrieve daily attribution.",
   },
   {
+    id: "daily-sizing-what-if",
+    question: "I'm thinking about adding 20 bps to MSFT. How would this of impacted today's performance if MSFT's weighting was 20 bps higher?",
+    as: "exec",
+    tags: ["portfolio"],
+    expect: {
+      calls: ["get_daily_performance"],
+      maxToolCalls: 3,
+      maxErrors: 0,
+      answer: [/\bbp\b/],
+      // Two figures that print the same, offered as a before and after ("0.698% instead of 0.698%").
+      answerNot: [/(?<![\d.])(\d+\.\d+%)[^\n]{0,40}instead of \1/, /^\W*Not retrieved/m],
+    },
+    note: "2026-09-29 prod (Tech lead): 19 s, answered for the Tech sleeve scaled to 100% with a five-row table, funded pro rata unasked, and the follow-up printed '0.698% instead of 0.698%'.",
+  },
+  {
     id: "risk-explain-page",
     question: "i dont understand what this page is saying",
     as: "exec",
