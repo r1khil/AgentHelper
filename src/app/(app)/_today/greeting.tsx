@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { HootFace } from "@/components/app/chat/thread-parts";
+import { HomeHoot } from "@/components/app/hoot/home-hoot";
 import { marketLine } from "@/lib/today";
 
 /** "Tue, Sep 29. Market open, closes in 2h 48m. Prices delayed 15 min", kept current while the page stays open. */
@@ -32,7 +32,7 @@ export function HomeTopLine({ line }: { line: string }) {
 export function HomeGreeting({ hello, name, lead }: { hello: string; name: string; lead?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center">
-      <HootFace className="size-14" />
+      <HomeHoot />
       <h1 className="mt-[18px] text-center font-serif text-hero font-normal tracking-[-0.01em]">
         Good {hello.toLowerCase()}, {name}.
       </h1>
