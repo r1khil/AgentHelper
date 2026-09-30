@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assembleIndexCloses, indexCloseLines } from "./index-closes";
+import { assembleIndexCloses, closedSessions, indexCloseLines } from "./index-closes";
 
 const days = ["2026-09-21", "2026-09-22", "2026-09-23", "2026-09-24", "2026-09-25"];
 const bars = (closes: (number | null)[]) => closes.flatMap((close, i) => (close === null ? [] : [{ date: days[i], close }]));
@@ -23,16 +23,27 @@ describe("assembleIndexCloses", () => {
     ]);
   });
 
-  it("marks a missing day n/a and says what to check, naming a source that failed outright", () => {
+  it("marks a missing day n/a and says what to check, naming any source that failed", () => {
     const data = assembleIndexCloses(days, {
-      SPXTR: [bars([1, 2, 3, 4, 5])],
-      SVX: ["CNBC 503 for .SVX"],
+      SPXTR: ["Yahoo: timed out", bars([1, 2, null, 4, 5])],
+      SVX: ["CNBC: CNBC 503 for .SVX"],
       SGX: [bars([1, 2, null, 4, 5])],
     });
-    expect(indexCloseLines(data)[3]).toBe("9/23/2026\t3.00\tn/a\tn/a");
+    expect(indexCloseLines(data)[3]).toBe("9/23/2026\tn/a\tn/a\tn/a");
     expect(data.problems).toEqual([
-      "Couldn't get the SVX closes (CNBC 503 for .SVX).",
+      "No SPXTR close for Wednesday 9/23 (Yahoo: timed out); take it from S&P's site.",
+      "Couldn't get the SVX closes (CNBC: CNBC 503 for .SVX).",
       "No SGX close for Wednesday 9/23; take it from S&P's site.",
     ]);
+  });
+});
+
+describe("closedSessions", () => {
+  it("lists the week's sessions, skipping holidays and any that haven't closed", () => {
+    expect(closedSessions("2026-09-25", "2026-09-29")).toEqual(days);
+    expect(closedSessions("2026-10-02", "2026-09-30")).toEqual(["2026-09-28", "2026-09-29", "2026-09-30"]);
+    expect(closedSessions("2026-10-02", "2026-09-25")).toEqual([]);
+    // Thanksgiving 2026 is Thursday 26 Nov.
+    expect(closedSessions("2026-11-27", "2026-11-30")).toEqual(["2026-11-23", "2026-11-24", "2026-11-25", "2026-11-27"]);
   });
 });

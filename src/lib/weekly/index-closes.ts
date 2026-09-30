@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { fmtAccounting } from "@/lib/format";
-import { NY } from "@/lib/providers/calendar";
+import { NY, nextTradingDay } from "@/lib/providers/calendar";
+import { priceWindow } from "./weeks";
 
 /**
  * The week's daily S&P closes for the deck's YTD chart, whose lines are OF, SPXTR, SVX and SGX. Pure: `indexes.ts`
@@ -24,7 +25,18 @@ export type WeekIndexCloses = {
   problems: string[];
 };
 
-/** Bars from each source for one index, best first; a source that failed is its error message instead. */
+/**
+ * The review week's sessions that have closed by `lastClosed`: the performers' Monday-to-Friday window, so holidays
+ * drop out, cut short when the week isn't over yet.
+ */
+export function closedSessions(weekEnding: string, lastClosed: string): string[] {
+  const { start, end } = priceWindow(weekEnding);
+  const out: string[] = [];
+  for (let d = start; d <= end && d <= lastClosed; d = nextTradingDay(d)) out.push(d);
+  return out;
+}
+
+/** Bars from each source for one index, best first; a source that failed is its error message instead ("Yahoo: ..."). */
 export type IndexBars = Record<IndexLabel, (Bar[] | string)[]>;
 
 const shortDay = (iso: string) => DateTime.fromISO(iso, { zone: NY }).toFormat("cccc M/d");
@@ -35,17 +47,16 @@ export function assembleIndexCloses(days: string[], bars: IndexBars): WeekIndexC
   const problems: string[] = [];
   for (const { label } of INDEX_SERIES) {
     const sources = bars[label] ?? [];
+    const lookups = sources.filter((s): s is Bar[] => Array.isArray(s)).map((s) => new Map(s.map((b) => [b.date, b.close])));
     const row: Record<string, number | null> = {};
-    for (const day of days) {
-      const hit = sources.find((s): s is Bar[] => Array.isArray(s) && s.some((b) => b.date === day));
-      row[day] = hit ? hit.find((b) => b.date === day)!.close : null;
-    }
+    for (const day of days) row[day] = lookups.find((m) => m.has(day))?.get(day) ?? null;
     closes[label] = row;
     const missing = days.filter((d) => row[d] === null);
     if (!missing.length) continue;
     const errors = sources.filter((s): s is string => typeof s === "string");
-    if (missing.length === days.length && errors.length) problems.push(`Couldn't get the ${label} closes (${errors.join("; ")}).`);
-    else problems.push(`No ${label} close for ${missing.map(shortDay).join(", ")}; take it from S&P's site.`);
+    const why = errors.length ? ` (${errors.join("; ")})` : "";
+    if (missing.length === days.length && errors.length) problems.push(`Couldn't get the ${label} closes${why}.`);
+    else problems.push(`No ${label} close for ${missing.map(shortDay).join(", ")}${why}; take it from S&P's site.`);
   }
   return { days, closes, problems };
 }

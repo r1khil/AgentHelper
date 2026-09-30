@@ -1,12 +1,13 @@
 import { cached } from "./cache";
-import { retry, spaced } from "./limiter";
+import { retry } from "./limiter";
 
 /**
  * CNBC's public chart feed (the one behind cnbc.com quote pages). It has daily closes for S&P indexes Yahoo only quotes
  * live, such as the S&P 500 Value (.SVX) and Growth (.SGX). No key; unofficial, so callers treat a failure as a gap.
  */
-const HOST = "cnbc";
-const GAP_MS = 300;
+
+/** An unofficial feed can stall; a stalled call must not hold up the Sunday email. */
+const TIMEOUT_MS = 10_000;
 
 export type CnbcBar = { date: string; close: number };
 
@@ -28,13 +29,11 @@ export function parseCnbcDailyBars(json: unknown): CnbcBar[] {
 export async function getCnbcDailyBars(symbol: string): Promise<CnbcBar[]> {
   return cached(`cnbc:daily:${symbol}`, 60 * 60, async () => {
     const url = `https://ts-api.cnbc.com/harmony/app/charts/1Y.json?symbol=${encodeURIComponent(symbol)}`;
-    const json = await spaced(HOST, GAP_MS, () =>
-      retry(async () => {
-        const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" } });
-        if (!res.ok) throw new Error(`CNBC ${res.status} for ${symbol}`);
-        return res.json();
-      }),
-    );
+    const json = await retry(async () => {
+      const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+      if (!res.ok) throw new Error(`CNBC ${res.status} for ${symbol}`);
+      return res.json();
+    });
     return parseCnbcDailyBars(json);
   });
 }
