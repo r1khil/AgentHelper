@@ -123,7 +123,7 @@ export async function distillTurn(p: { chat: { id: string; teamId: string | null
     model,
     instructions: INSTRUCTIONS,
     prompt: `QUESTION:\n${p.question.slice(0, 2000)}\n\nANSWER:\n${answerText}\n\nSOURCES:\n${list}`,
-    providerOptions: { openrouter: { reasoning: { effort: "low" } } },
+    reasoning: "low",
     maxOutputTokens: 4000,
     maxRetries: 1,
   });

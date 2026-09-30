@@ -4,12 +4,12 @@ export type FallbackEvent = { from: string; to: string; error: string };
 
 /**
  * Rate limits, upstream outages, dropped connections and a model that no longer exists are worth trying on the next
- * model; bad requests are not. OpenRouter answers 404 when a free variant is withdrawn (Ling's, 2026-09-28).
+ * model; bad requests are not. A withdrawn free variant answers 404 (Ling's on OpenRouter, 2026-09-28).
  */
 export function isFallbackError(e: unknown): boolean {
   if (APICallError.isInstance(e)) {
     const s = e.statusCode;
-    // 402: out of OpenRouter credits for a paid model; the free models on the list still answer.
+    // 402: out of gateway credits for a paid model; a free backup still answers.
     if (s === 429 || s === 408 || s === 404 || s === 402) return true;
     if (s !== undefined && s >= 500) return true;
     return s === undefined && e.isRetryable;

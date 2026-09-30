@@ -18,7 +18,7 @@ No holding notes, models, price targets or portfolio positions are modified. A m
 
 The old part-note request used `generateText`, a 700-token output cap and `result.text`, with no structured schema. A reasoning-capable provider can consume that budget entirely on reasoning, finish with `length`, and return an empty visible answer. The actual installed OpenRouter provider/AI SDK reproduces this behavior in `generate.test.ts`; it is not a JSON field-parsing mismatch. Production request logs were unavailable, so the specific failed production response could not be inspected.
 
-The fix uses `Output.object` with Zod validation, the existing `OPENROUTER_SUMMARY_MODEL` selection (falling back to the configured agent model), low reasoning effort and 8,000 output tokens. Incomplete or invalid output gets one retry with 12,000 tokens. Providers that explicitly reject JSON schema get a JSON-text fallback with the same schema validation. Authentication/configuration failures are not converted into successful summaries. Reasoning text is never used as the answer.
+The fix uses `Output.object` with Zod validation, the existing `SUMMARY_MODEL` selection (falling back to the configured agent model), low reasoning effort and 8,000 output tokens. Incomplete or invalid output gets one retry with 12,000 tokens. Providers that explicitly reject JSON schema get a JSON-text fallback with the same schema validation. Authentication/configuration failures are not converted into successful summaries. Reasoning text is never used as the answer.
 
 ### Free-tier provider fit
 

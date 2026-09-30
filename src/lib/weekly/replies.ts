@@ -18,7 +18,7 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 /** Split the exec's reply into items. The model only parses; the fallback is one item per line. */
 export async function parseProcessUpdates(text: string): Promise<{ items: AgendaItem[]; model: string | null; error: string | null }> {
   if (!text.trim()) return { items: [], model: null, error: null };
-  if (!agentConfigured()) return { items: fallbackItems(text), model: null, error: "skipped: OPENROUTER_API_KEY is not set" };
+  if (!agentConfigured()) return { items: fallbackItems(text), model: null, error: "skipped: AI_GATEWAY_API_KEY is not set" };
   try {
     const model = await summaryModelId();
     const { text: reply } = await generateText({
