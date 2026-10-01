@@ -119,6 +119,22 @@ describe("buildPortfolioDays", () => {
     expect(d.navEnd).toBeCloseTo(d.cashEnd + 50 * 99 + 40 * 55, 8);
   });
 
+  it("selling every traded share also closes the reinvested dividend fraction, at the close", () => {
+    const dividends = series({ AAA: { [D[1]]: 2.2 } });
+    const { days, quality } = buildPortfolioDays({
+      trades: [buy(D[0], "AAA", 50, 100), sell(D[2], "AAA", 10, 99), sell(D[3], "AAA", 40, 99)],
+      cashFlows: [deposit(D[0], 10000)],
+      prices, dividends, days: D,
+    });
+    // 50 × 2.20 / 110 = 1 share reinvested; a partial sale keeps it, the sale of the rest does not.
+    expect(days[2].positions[0].sharesEnd).toBeCloseTo(41, 10);
+    expect(days[3].positions[0].sharesEnd).toBe(0);
+    expect(quality.oversold).toHaveLength(0);
+    expect(days[3].cashEnd).toBeCloseTo(5000 + 51 * 99, 8);
+    expect(days[3].navEnd).toBeCloseTo(days[3].cashEnd, 8);
+    for (const d of days) expect(d.positions.reduce((s, p) => s + p.contribution, 0) + d.cashContribution).toBeCloseTo(d.ret, 12);
+  });
+
   it("a full sell removes the position the next day and books execution P&L", () => {
     const { days } = buildPortfolioDays({
       trades: [buy(D[0], "AAA", 50, 100), sell(D[1], "AAA", 50, 112)],
