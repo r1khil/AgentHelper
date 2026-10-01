@@ -61,6 +61,8 @@ function lastCloseBefore(series: Map<string, number> | undefined, date: string):
  * sells at the end of the day. Weights are taken on D = prior NAV + external flow, so position
  * contributions plus the cash contribution add up to the day's NAV return exactly.
  * Dividends reinvest on the ex-date at that day's close, for shares held coming into the day.
+ * A sale of every share the Fund traded also closes the reinvested fraction, at that day's close: the Fund took those
+ * dividends as cash, so no stub is left behind.
  */
 export function buildPortfolioDays(input: {
   trades: Trade[];
@@ -76,6 +78,8 @@ export function buildPortfolioDays(input: {
 
   const shares = new Map<string, number>();
   const lastClose = new Map<string, number>();
+  /** Shares each open position holds from reinvested dividends rather than trades. */
+  const reinvested = new Map<string, number>();
   let cash = 0;
   let navPrev = 0;
   const out: PortfolioDay[] = [];
@@ -136,6 +140,11 @@ export function buildPortfolioDays(input: {
       let sharesEnd = sharesStart + drip + buyShares - sellShares;
       if (sharesEnd < -EPS_SHARES) quality.oversold.push({ ticker, date, shares: -sharesEnd });
       if (Math.abs(sharesEnd) < EPS_SHARES || sharesEnd < 0) sharesEnd = 0;
+      const dripped = (reinvested.get(ticker) ?? 0) + drip;
+      if (sellShares > 0 && sharesEnd > 0 && sharesEnd <= dripped + EPS_SHARES) {
+        sellProceeds += sharesEnd * close;
+        sharesEnd = 0;
+      }
 
       const valueEnd = sharesEnd * close;
       const basis = startValue + buyCost;
@@ -155,8 +164,8 @@ export function buildPortfolioDays(input: {
         priced,
       });
 
-      if (sharesEnd > 0) shares.set(ticker, sharesEnd);
-      else shares.delete(ticker);
+      if (sharesEnd > 0) { shares.set(ticker, sharesEnd); reinvested.set(ticker, dripped); }
+      else { shares.delete(ticker); reinvested.delete(ticker); }
       lastClose.set(ticker, close);
     }
 

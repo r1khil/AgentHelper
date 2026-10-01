@@ -1,6 +1,6 @@
 import { asc, desc, eq, isNull } from "drizzle-orm";
 import { DateTime } from "luxon";
-import { benchmarkSectorWeights, cashFlows, holdings, securities, trades, type Security } from "@/db/schema";
+import { benchmarkSectorWeights, cashFlows, holdings, securities, teamSectors, trades, type Security } from "@/db/schema";
 import { loadCloses, loadEvents } from "@/lib/market-data";
 import { getSectorProfile, lookupCompany } from "@/lib/providers/yahoo";
 import { pickCompanyName } from "@/lib/company-name";
@@ -109,6 +109,12 @@ export async function ledgerSymbols(db: Db): Promise<string[]> {
   return [...new Set([...rows.map((r) => r.ticker), ...active.map((r) => r.ticker), ...benchmarkSymbols(), RISK_FREE_SYMBOL, ...FACTOR_ETFS])];
 }
 
+/** The team whose sectors include this one: who owns a name no team has a holding for yet. */
+async function sectorTeam(db: Db, sector: GicsSector): Promise<string | null> {
+  const [row] = await db.select({ teamId: teamSectors.teamId }).from(teamSectors).where(eq(teamSectors.sector, sector)).limit(1);
+  return row?.teamId ?? null;
+}
+
 /** Create the securities row for a ticker on first use: name, default sector and owning team. */
 export async function ensureSecurity(db: Db, rawTicker: string): Promise<Security | null> {
   const ticker = rawTicker.toUpperCase();
@@ -134,7 +140,7 @@ export async function ensureSecurity(db: Db, rawTicker: string): Promise<Securit
       sectorSource: guess?.source ?? null,
       yahooSector: profile.sector,
       industry: profile.industry,
-      teamId: covering?.teamId ?? null,
+      teamId: covering?.teamId ?? (guess?.sector ? await sectorTeam(db, guess.sector as GicsSector) : null),
     })
     .onConflictDoNothing()
     .returning();
